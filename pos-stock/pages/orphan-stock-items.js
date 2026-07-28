@@ -13,7 +13,13 @@ const STATUS_OPTIONS = [
 ];
 
 // Server page size used while draining all orphan items into memory.
-const FETCH_PAGE_SIZE = 20000;
+const FETCH_PAGE_SIZE = 50000;
+
+// Tokens shared by more than this many name groups are skipped when scanning
+// for cluster-merge candidates — a bound on the otherwise quadratic pair scan.
+// Merges need >= 2 shared tokens, so a pair is only missed when ALL its shared
+// words are this common.
+const TOKEN_CANDIDATE_CAP = 300;
 
 /** Lowercase, strip punctuation, split a name into word tokens. */
 function tokenize(name) {
@@ -25,6 +31,26 @@ function tokenize(name) {
         .filter(Boolean);
 }
 
+/**
+ * Pick the item whose selling_price is the most frequent in the set — a
+ * name group can mix prices, and the created product should get the group's
+ * dominant price, not whichever item happens to sort first.
+ */
+function pickDonor(items) {
+    const freq = new Map();
+    for (const it of items) {
+        const k = it.selling_price == null ? "__null__" : String(it.selling_price);
+        freq.set(k, (freq.get(k) || 0) + 1);
+    }
+    let bestKey = null, bestN = -1;
+    for (const [k, n] of freq) if (n > bestN) { bestN = n; bestKey = k; }
+    return items.find(it => (it.selling_price == null ? "__null__" : String(it.selling_price)) === bestKey) || items[0];
+}
+
+function distinctPrices(items) {
+    return new Set(items.map(i => (i.selling_price == null ? "__null__" : String(i.selling_price)))).size;
+}
+
 export default function OrphanStockItemsPage() {
     const [allItems, setAllItems] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -33,6 +59,7 @@ export default function OrphanStockItemsPage() {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(25);
     const [search, setSearch] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
     const [selected, setSelected] = useState(new Set());
     const [bulkBusy, setBulkBusy] = useState(false);
     const [bulkProgress, setBulkProgress] = useState("");
@@ -52,30 +79,47 @@ export default function OrphanStockItemsPage() {
         loadOrphans();
     }, []);
 
+    // Re-clustering on every keystroke is expensive on large datasets — filter
+    // on a debounced copy of the search term instead.
+    useEffect(() => {
+        const t = setTimeout(() => setDebouncedSearch(search), 250);
+        return () => clearTimeout(t);
+    }, [search]);
+
     // Drain every orphan stock item into memory; grouping/filtering/sorting are
     // all client-side from here so identical and similar names always meet.
     async function loadOrphans() {
         setLoading(true);
         setError("");
         try {
-            let fetched = [];
+            // Keyed by documentId — a row shifting across a page boundary
+            // between requests must not surface twice.
+            const fetched = new Map();
             let serverPage = 1;
             let total = Infinity;
-            while (fetched.length < total) {
+            while (fetched.size < total) {
                 const res = await StockItemsEndpoints.orphanGroupItems({ page: serverPage, pageSize: FETCH_PAGE_SIZE });
                 const batch = res.data || [];
-                fetched = fetched.concat(batch);
-                total = res.meta?.pagination?.total ?? fetched.length;
+                for (const item of batch) fetched.set(item.documentId, item);
+                total = res.meta?.pagination?.total ?? fetched.size;
                 if (batch.length === 0) break;
                 serverPage++;
             }
-            setAllItems(fetched);
+            setAllItems(Array.from(fetched.values()));
         } catch (e) {
             console.error("Failed to load orphan stock items:", e);
             setError("Failed to load data.");
         } finally {
             setLoading(false);
         }
+    }
+
+    // Items linked to a product are no longer orphans — drop them from memory
+    // instead of re-draining the whole table after every action.
+    function removeItems(docIds) {
+        const gone = new Set(docIds);
+        setAllItems(prev => prev.filter(i => !gone.has(i.documentId)));
+        setSelected(prev => new Set([...prev].filter(id => !gone.has(id))));
     }
 
     function openProductPicker(title, callback) {
@@ -103,10 +147,9 @@ export default function OrphanStockItemsPage() {
                 barcode: item.barcode,
             });
             const newProductDocId = (prodRes?.data ?? prodRes)?.documentId;
-            if (newProductDocId) {
-                await StockItemsEndpoints.update(item.documentId, { product: { connect: [newProductDocId] } });
-            }
-            await loadOrphans();
+            if (!newProductDocId) throw new Error("Product creation returned no documentId");
+            await StockItemsEndpoints.update(item.documentId, { product: { connect: [newProductDocId] } });
+            removeItems([item.documentId]);
         } catch (e) {
             console.error("Failed to create product:", e);
             setError("Failed to create and link product.");
@@ -120,7 +163,7 @@ export default function OrphanStockItemsPage() {
         setBusyId(item.documentId);
         try {
             await StockItemsEndpoints.update(item.documentId, { product: { connect: [productDocId] } });
-            await loadOrphans();
+            removeItems([item.documentId]);
         } catch (e) {
             console.error("Failed to attach product:", e);
             setError("Failed to attach product.");
@@ -188,15 +231,16 @@ export default function OrphanStockItemsPage() {
         if (selectedItems.length === 0) return;
         setBulkBusy(true);
         setError("");
+        const linkedIds = [];
         try {
-            const first = selectedItems[0];
+            const donor = pickDonor(selectedItems);
             setBulkProgress("Creating product...");
             const prodRes = await ProductsEndpoints.create({
-                name: first.name,
-                selling_price: first.selling_price,
-                cost_price: first.cost_price,
-                sku: first.sku,
-                barcode: first.barcode,
+                name: donor.name,
+                selling_price: donor.selling_price,
+                cost_price: donor.cost_price,
+                sku: donor.sku,
+                barcode: donor.barcode,
             });
             const newProductDocId = (prodRes?.data ?? prodRes)?.documentId;
             if (!newProductDocId) throw new Error("Product creation returned no documentId");
@@ -206,12 +250,13 @@ export default function OrphanStockItemsPage() {
                 done++;
                 setBulkProgress(`Linking item ${done} of ${selectedItems.length}...`);
                 await StockItemsEndpoints.update(item.documentId, { product: { connect: [newProductDocId] } });
+                linkedIds.push(item.documentId);
             }
-            setSelected(new Set());
-            await loadOrphans();
+            removeItems(linkedIds);
         } catch (e) {
             console.error("Bulk create failed:", e);
             setError("Bulk create & link failed. Some items may have been linked.");
+            await loadOrphans();
         } finally {
             setBulkBusy(false);
             setBulkProgress("");
@@ -224,18 +269,20 @@ export default function OrphanStockItemsPage() {
         if (selectedItems.length === 0) return;
         setBulkBusy(true);
         setError("");
+        const linkedIds = [];
         let done = 0;
         try {
             for (const item of selectedItems) {
                 done++;
                 setBulkProgress(`Attaching item ${done} of ${selectedItems.length}...`);
                 await StockItemsEndpoints.update(item.documentId, { product: { connect: [productDocId] } });
+                linkedIds.push(item.documentId);
             }
-            setSelected(new Set());
-            await loadOrphans();
+            removeItems(linkedIds);
         } catch (e) {
             console.error("Bulk attach failed:", e);
             setError(`Bulk attach failed at item ${done}. ${done - 1} items were processed.`);
+            await loadOrphans();
         } finally {
             setBulkBusy(false);
             setBulkProgress("");
@@ -246,18 +293,19 @@ export default function OrphanStockItemsPage() {
         if (groupItems.length === 0) return;
         setBulkBusy(true);
         setError("");
+        const linkedIds = [];
         try {
-            const first = groupItems[0];
-            const editedName = (groupNames[groupKey] ?? defaultName) || first.name;
+            const donor = pickDonor(groupItems);
+            const editedName = (groupNames[groupKey] ?? defaultName) || donor.name;
             const shouldRenameItems = applyNameToItems.has(groupKey);
 
             setBulkProgress("Creating product...");
             const prodRes = await ProductsEndpoints.create({
                     name: editedName,
-                    selling_price: first.selling_price,
-                    cost_price: first.cost_price,
-                    sku: first.sku,
-                    barcode: first.barcode,
+                    selling_price: donor.selling_price,
+                    cost_price: donor.cost_price,
+                    sku: donor.sku,
+                    barcode: donor.barcode,
                 });
             const newProductDocId = (prodRes?.data ?? prodRes)?.documentId;
             if (!newProductDocId) throw new Error("Product creation returned no documentId");
@@ -269,13 +317,15 @@ export default function OrphanStockItemsPage() {
                 const updateData = { product: { connect: [newProductDocId] } };
                 if (shouldRenameItems) updateData.name = editedName;
                 await StockItemsEndpoints.update(item.documentId, updateData);
+                linkedIds.push(item.documentId);
             }
             setGroupNames(prev => { const next = { ...prev }; delete next[groupKey]; return next; });
             setApplyNameToItems(prev => { const next = new Set(prev); next.delete(groupKey); return next; });
-            await loadOrphans();
+            removeItems(linkedIds);
         } catch (e) {
             console.error("Group create failed:", e);
             setError("Group create & link failed. Some items may have been linked.");
+            await loadOrphans();
         } finally {
             setBulkBusy(false);
             setBulkProgress("");
@@ -286,17 +336,20 @@ export default function OrphanStockItemsPage() {
         if (!productDocId || groupItems.length === 0) return;
         setBulkBusy(true);
         setError("");
+        const linkedIds = [];
         let done = 0;
         try {
             for (const item of groupItems) {
                 done++;
                 setBulkProgress(`Attaching item ${done} of ${groupItems.length}...`);
                 await StockItemsEndpoints.update(item.documentId, { product: { connect: [productDocId] } });
+                linkedIds.push(item.documentId);
             }
-            await loadOrphans();
+            removeItems(linkedIds);
         } catch (e) {
             console.error("Group attach failed:", e);
             setError(`Group attach failed at item ${done}. ${done - 1} items were processed.`);
+            await loadOrphans();
         } finally {
             setBulkBusy(false);
             setBulkProgress("");
@@ -327,7 +380,7 @@ export default function OrphanStockItemsPage() {
     }
 
     const filteredItems = useMemo(() => {
-        const term = search.trim().toLowerCase();
+        const term = debouncedSearch.trim().toLowerCase();
         return allItems.filter(i => {
             if (statusFilter && i.status !== statusFilter) return false;
             if (skuFilter === "has" && !i.sku) return false;
@@ -338,7 +391,7 @@ export default function OrphanStockItemsPage() {
             }
             return true;
         });
-    }, [allItems, search, statusFilter, skuFilter]);
+    }, [allItems, debouncedSearch, statusFilter, skuFilter]);
 
     const clusters = useMemo(() => {
         // 1) Exact-name groups — case, punctuation and spacing insensitive, so
@@ -372,7 +425,9 @@ export default function OrphanStockItemsPage() {
             if (g.tokenSet.size === 0) return;
             const candidates = new Set();
             for (const t of g.tokenSet) {
-                for (const j of tokenIndex.get(t)) if (j > i) candidates.add(j);
+                const withToken = tokenIndex.get(t);
+                if (withToken.length > TOKEN_CANDIDATE_CAP) continue;
+                for (const j of withToken) if (j > i) candidates.add(j);
             }
             for (const j of candidates) {
                 const other = groups[j];
@@ -421,7 +476,10 @@ export default function OrphanStockItemsPage() {
                 else for (const t of [...shared]) if (!g.tokenSet.has(t)) shared.delete(t);
             }
             return {
-                key: "cluster:" + gs.map(g => g.key).sort().join("|"),
+                // Keyed by the lead (largest) group, not the full membership —
+                // a membership fingerprint would change on every filter
+                // keystroke and wipe typed names/expansion state with it.
+                key: "cluster:" + gs[0].key,
                 groups: gs,
                 totalCount,
                 sharedTokens: [...(shared || [])],
@@ -543,6 +601,8 @@ export default function OrphanStockItemsPage() {
         const editedName = groupNames[key] ?? defaultName;
         const nameChanged = editedName !== defaultName;
         const allGroupSelected = items.length > 0 && items.every(i => selected.has(i.documentId));
+        const priceCount = distinctPrices(items);
+        const canCreate = !bulkBusy && (editedName || "").trim().length > 0;
         return (
             <tr key={`grp-${key}`} className={rowClass}>
                 <td
@@ -555,6 +615,11 @@ export default function OrphanStockItemsPage() {
                     <div className="d-flex align-items-center flex-wrap gap-1">
                         <span className="me-1">{isExpanded ? "▼" : "▶"}</span>
                         <span className="badge bg-secondary">{count} items</span>
+                        {priceCount > 1 && (
+                            <span className="badge bg-warning text-dark" title="Items in this group have different selling prices; Create Product uses the most common one">
+                                {priceCount} prices
+                            </span>
+                        )}
                         {badges}
                         {label && <span className="fw-normal small text-muted">{label}</span>}
                         <button
@@ -610,7 +675,8 @@ export default function OrphanStockItemsPage() {
                     <button
                         className="btn btn-sm btn-outline-primary me-2"
                         onClick={() => handleGroupCreateProduct(items, key, defaultName)}
-                        disabled={bulkBusy}
+                        disabled={!canCreate}
+                        title={canCreate || bulkBusy ? "" : "Enter a product name first"}
                     >
                         {bulkBusy ? "Working..." : "Create Product & Link All"}
                     </button>
@@ -699,12 +765,17 @@ export default function OrphanStockItemsPage() {
                             onPageSize={(n) => { setPageSize(n); setPage(1); }}
                         />
                     }
-                    emptyState={
-                        <div className="alert alert-success mb-0">All stock items are linked to a product.</div>
-                    }
                 >
                     {error && <div className="alert alert-danger m-3 mb-0">{error}</div>}
-                    {pagedClusters.length === 0 ? null : (
+                    {pagedClusters.length === 0 ? (
+                        <div className="text-center py-5">
+                            {allItems.length === 0 ? (
+                                <div className="alert alert-success d-inline-block mb-0">All stock items are linked to a product.</div>
+                            ) : (
+                                <span className="text-muted">No orphan items match the current filters.</span>
+                            )}
+                        </div>
+                    ) : (
                     <div className="table-responsive">
                         <table className="table table-hover list-table">
                             <thead className="table-light">

@@ -70,6 +70,7 @@ module.exports = createCoreController('api::stock-item.stock-item', ({ strapi })
 
     qb.orderBy(`stock_items.${sortField}`, sortDir);
     if (sortField !== 'name') qb.orderBy('stock_items.name', 'asc');
+    qb.orderBy('stock_items.id', 'asc');
 
     const rows = await qb;
 
@@ -146,6 +147,10 @@ module.exports = createCoreController('api::stock-item.stock-item', ({ strapi })
 
     qb.orderBy(`stock_items.${sortField}`, sortDir);
     if (sortField !== 'name') qb.orderBy('stock_items.name', 'asc');
+    // Stable tiebreaker — equal-name rows otherwise have no guaranteed order
+    // across requests, so a client draining multiple pages can see the same
+    // row twice (or miss one) at page boundaries.
+    qb.orderBy('stock_items.id', 'asc');
 
     const rows = await qb;
 
