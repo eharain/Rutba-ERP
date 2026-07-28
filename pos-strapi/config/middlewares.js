@@ -6,10 +6,36 @@ module.exports = ({ env }) => {
     .map((s) => s.trim())
     .filter(Boolean);
 
+  // MEDIA_BASE_URL (the standalone media-fileserver origin, see the
+  // `upload` provider config in plugins.js) needs to be CSP-allowlisted for
+  // img-src/media-src or the admin panel silently fails to render previews.
+  const mediaOrigin = (() => {
+    const raw = env('MEDIA_BASE_URL', '');
+    if (!raw) return null;
+    try {
+      return new URL(raw).origin;
+    } catch {
+      return null;
+    }
+  })();
+
   return [
     'strapi::logger',
     'strapi::errors',
-    'strapi::security',
+    mediaOrigin
+      ? {
+          name: 'strapi::security',
+          config: {
+            contentSecurityPolicy: {
+              useDefaults: true,
+              directives: {
+                'img-src': ["'self'", 'data:', 'blob:', mediaOrigin],
+                'media-src': ["'self'", 'data:', 'blob:', mediaOrigin],
+              },
+            },
+          },
+        }
+      : 'strapi::security',
     {
       name: 'strapi::cors',
       config: {

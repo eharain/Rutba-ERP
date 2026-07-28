@@ -1,0 +1,35 @@
+{
+  "name": "strapi-provider-upload-media",
+  "version": "1.0.0",
+  "description": "Strapi upload provider for the Rutba/TrustList standalone media service (masters-only, resize-on-request)",
+  "main": "index.js",
+  "license": "MIT",
+  "author": "Ejaz Arain <eharain@yahoo.com> (https://tech-style.co)",
+  "homepage": "https://tech-style.co",
+  "keywords": [
+    "strapi",
+    "strapi-provider",
+    "strapi-provider-upload",
+    "provider",
+    "upload",
+    "media",
+    "sharp"
+  ],
+  "files": [
+    "index.js",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "strapi": {
+    "kind": "provider",
+    "name": "upload-media",
+    "displayName": "Media (masters-only)",
+    "description": "Stores masters only; variants are resized on request by the media service."
+  },
+  "peerDependencies": {
+    "@strapi/strapi": "^4.0.0 || ^5.0.0"
+  }
+}

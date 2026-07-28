@@ -37,6 +37,7 @@
     "react-router-dom": "^6.30.4",
     "api-pro": "file://../packages/strapi-api-pro",
     "strapi-content-sync-pro": "^1.0.8",
+    "strapi-provider-upload-media": "file://../packages/strapi-provider-upload-media",
     "stripe": "^22.3.2",
     "styled-components": "^6.4.4",
     "xlsx": "^0.18.5"

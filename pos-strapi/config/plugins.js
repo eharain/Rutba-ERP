@@ -178,6 +178,16 @@ module.exports = ({ env }) => ({
     upload: {
         config: {
             sizeLimit: env.int('UPLOAD_MAX_FILE_SIZE', 250 * 1024 * 1024), // 250 MB default
+            ...(env('MEDIA_BASE_URL')
+                ? {
+                    provider: 'strapi-provider-upload-media',
+                    providerOptions: {
+                        baseUrl: env('MEDIA_BASE_URL'),
+                        uploadToken: env('MEDIA_UPLOAD_TOKEN'),
+                        skipVariants: true,
+                    },
+                }
+                : {}),
         },
     },
 });
