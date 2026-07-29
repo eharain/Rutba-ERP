@@ -3,11 +3,17 @@
   "uid": "api::site-setting.site-setting",
   "records": [
     {
+      "locate": {
+        "by": "app_slug",
+        "value": "web"
+      },
       "policy": {
         "editable": true,
         "revertOnSeed": false
       },
       "data": {
+        "app_slug": "web",
+        "is_default": true,
         "site_name": "Rutba ERP",
         "site_tagline": "Unified ERP for Retail, Commerce, and Operations",
         "site_description": "Rutba ERP platform for inventory, sales, accounting, HR, delivery and CMS operations.",

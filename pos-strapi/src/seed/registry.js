@@ -92,7 +92,7 @@ const REGISTRY = [
     },
     {
         key: 'site-setting',
-        title: 'Site-setting singleton',
+        title: 'Site-setting default row',
         category: 'reference',
         essential: true,
         supportsPartial: true,
