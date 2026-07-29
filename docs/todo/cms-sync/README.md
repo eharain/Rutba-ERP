@@ -1,10 +1,22 @@
 # Syncing Rutba CMS content between two Strapi instances
 
-> **Status (2026-07-29):** Configuration runbook, not yet executed against
-> production. Read [plugin-gaps.md](./plugin-gaps.md) **first** — three of the
-> gaps listed there are hard blockers, and this document tells you which parts
-> of a CMS sync work today and which you have to do by hand until they are
-> fixed.
+> **Status (2026-07-29), updated:** GAP-1, GAP-2, GAP-8, GAP-10 (and part of
+> GAP-3) were fixed in the plugin (see plugin-gaps.md), and this runbook has now
+> been **executed and verified live** between the LAN instance (source) and
+> rutba.pk (target): Connection configured (paired mode, matching shared
+> secret, a full-access API token issued by rutba.pk and stored on both sides
+> so it survives a future LAN→rutba.pk DB refresh — see
+> `strapi_api_tokens` id 4 on LAN, name "content-sync-pro (LAN)"), all five
+> in-scope content types enabled (`seo-meta` deliberately left off per §4b),
+> six advanced push profiles created with the field policies from §5. Two
+> `sync-now` runs completed with **zero errors and zero unmatched relations**.
+> Spot-verified directly against rutba.pk's content API: every
+> `cms-menu-item.menu` relation resolves (confirms the GAP-1 fix), and
+> `cms-page-group.pages` membership (flip-card members) resolves too — both
+> were unconditional blockers before the fix. Still not verified: published-page
+> images (§7a, GAP-2) and Site Settings (§11.3, GAP-5 — still unfixed, do by
+> hand). Read [plugin-gaps.md](./plugin-gaps.md) for what's fixed vs. still
+> open before assuming more than this was done.
 
 ## 0. TL;DR
 
