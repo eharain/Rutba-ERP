@@ -14,12 +14,13 @@
  */
 
 const { registerMfgModule } = require('./mfg');
+const { registerHrModule } = require('./hr');
 
 let initialized = null;
 
 function initModules() {
   if (initialized) return initialized;
-  const modules = [registerMfgModule()];
+  const modules = [registerMfgModule(), registerHrModule()];
   const routes = modules.flatMap((m) => m.routes || []);
   initialized = { modules: modules.map((m) => m.name), routes };
   return initialized;

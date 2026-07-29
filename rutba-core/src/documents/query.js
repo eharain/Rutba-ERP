@@ -11,7 +11,7 @@
 const { snakeCase } = require('../schema/naming');
 
 const OPERATORS = new Set([
-  '$eq', '$ne', '$in', '$notIn', '$null', '$notNull',
+  '$eq', '$eqi', '$ne', '$nei', '$in', '$notIn', '$null', '$notNull',
   '$contains', '$notContains', '$containsi', '$notContainsi',
   '$startsWith', '$endsWith',
   '$gt', '$gte', '$lt', '$lte', '$between',
@@ -20,9 +20,13 @@ const OPERATORS = new Set([
 
 function applyOperator(qb, column, op, value) {
   switch (op) {
+    // MySQL default collation is case-insensitive, so $eqi/$nei coincide with
+    // $eq/$ne here — same note as $contains/$containsi below.
     case '$eq':
+    case '$eqi':
       return value === null ? qb.whereNull(column) : qb.where(column, value);
     case '$ne':
+    case '$nei':
       return value === null ? qb.whereNotNull(column) : qb.whereNot(column, value);
     case '$in': return qb.whereIn(column, value);
     case '$notIn': return qb.whereNotIn(column, value);

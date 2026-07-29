@@ -101,7 +101,8 @@ function createCache({ ttlMs = 30_000, maxEntries = 5_000, enabled = true } = {}
   };
 }
 
-/** Drop populate keys the (possibly partial) model doesn't declare. */
+/** Drop populate keys the (possibly partial) model doesn't declare, and map
+ *  query-engine populate opts (`where`) onto the shim dialect (`filters`). */
 function sanitizePopulate(model, populate, reg) {
   if (!populate || typeof populate !== 'object' || Array.isArray(populate)) return populate;
   const known = new Set([
@@ -110,8 +111,13 @@ function sanitizePopulate(model, populate, reg) {
     ...model.components.map((c) => c.attr),
   ]);
   const out = {};
-  for (const [attr, opts] of Object.entries(populate)) {
+  for (const [attr, rawOpts] of Object.entries(populate)) {
     if (!known.has(attr)) continue;
+    let opts = rawOpts;
+    if (opts && typeof opts === 'object' && opts.where && !opts.filters) {
+      const { where, ...rest } = opts;
+      opts = { ...rest, filters: where };
+    }
     if (opts && typeof opts === 'object' && opts.populate) {
       const rel = model.relations.find((r) => r.attr === attr);
       const target = rel ? reg.models.get(rel.target) : null;
@@ -311,6 +317,23 @@ function createServiceResolver(strapi) {
   };
 }
 
+/**
+ * Instantiate a ported createCoreController module. The custom-methods object
+ * gets the default REST handlers as its PROTOTYPE, so `super.create(ctx)`
+ * inside a ported override dispatches to the same handler the seeded core
+ * route uses (JS super resolves through the home object's prototype at call
+ * time, so Object.setPrototypeOf after creation is sufficient).
+ */
+function instantiateController(mod, strapi) {
+  const { baseController } = require('../http/rest');
+  if (mod && mod.__rutbaCoreFactory === 'controller') {
+    const custom = typeof mod.cfg === 'function' ? mod.cfg({ strapi }) : (mod.cfg || {});
+    Object.setPrototypeOf(custom, baseController(mod.uid));
+    return custom;
+  }
+  return mod; // plain-object controllers (mfg style)
+}
+
 function buildCompatStrapi(overrides = {}) {
   installStrapiFactoryStub();
   const config = { ...pluginConfig.default, ...(overrides.apiProConfig || {}) };
@@ -332,7 +355,14 @@ function buildCompatStrapi(overrides = {}) {
     documents,
     entityService: entityServiceAdapter(),
     eventHub: new EventEmitter(),
-    apiPro: { cache: createCache(config.cache), roleProviders: [] },
+    apiPro: {
+      cache: createCache(config.cache),
+      roleProviders: [],
+      registerRoleProvider(fn) {
+        if (typeof fn !== 'function') throw new Error('[api-pro] registerRoleProvider expects a function');
+        strapi.apiPro.roleProviders.push(fn);
+      },
+    },
     log: {
       info: (...a) => console.log('[core]', ...a),
       warn: (...a) => console.warn('[core]', ...a),
@@ -358,4 +388,4 @@ function loadApiProServices() {
   };
 }
 
-module.exports = { buildCompatStrapi, loadApiProServices, createCache, posRequire };
+module.exports = { buildCompatStrapi, loadApiProServices, createCache, posRequire, instantiateController };
