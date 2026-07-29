@@ -30,6 +30,8 @@ function main() {
   runner.defineJob('orders', () => engine.syncAllOrders());
   runner.defineJob('inventory', () => engine.syncAllInventory());
   runner.defineJob('catalog', () => engine.syncAllCatalog());
+  runner.defineJob('fulfillment', () => engine.syncAllOrderStatuses());
+  runner.defineJob('messages', () => engine.syncAllOrderMessages());
   runner.defineJob('refreshTokens', () => engine.refreshExpiringTokens());
 
   // initialDelayMs is staggered minutes apart so a worker (re)start doesn't fire
@@ -38,6 +40,10 @@ function main() {
   runner.scheduleRecurring('orders', config.worker.ordersRule, { fallbackMs: 15 * 60 * 1000, initialDelayMs: 2 * 60 * 1000 });
   runner.scheduleRecurring('inventory', config.worker.inventoryRule, { fallbackMs: 60 * 60 * 1000, initialDelayMs: 4 * 60 * 1000 });
   runner.scheduleRecurring('catalog', config.worker.catalogRule, { fallbackMs: 6 * 60 * 60 * 1000, initialDelayMs: 8 * 60 * 1000 });
+  // Both of these face a waiting customer, so they poll tighter than catalog
+  // and start sooner after a restart.
+  runner.scheduleRecurring('fulfillment', config.worker.fulfillmentRule, { fallbackMs: 10 * 60 * 1000, initialDelayMs: 3 * 60 * 1000 });
+  runner.scheduleRecurring('messages', config.worker.messagesRule, { fallbackMs: 5 * 60 * 1000, initialDelayMs: 90 * 1000 });
   runner.scheduleRecurring('refreshTokens', config.worker.refreshRule, { fallbackMs: 4 * 60 * 60 * 1000, initialDelayMs: 6 * 60 * 1000 });
 
   console.log(`[marketplace worker] up (backend=${runner.backend}); Strapi=${config.strapi.apiUrl}`);

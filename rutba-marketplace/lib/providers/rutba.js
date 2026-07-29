@@ -51,10 +51,12 @@ async function req(account, method, path, { query, json } = {}) {
 module.exports = {
   key: PLATFORM,
   label: 'Rutba (online instance)',
-  // No oauth, no fulfillment push in phase 1. catalog=true unlocks pushCatalog
-  // in the engine (full product upsert); orders=true pulls the target's web
-  // orders back for local processing.
-  capabilities: { oauth: false, orders: true, inventory: true, fulfillment: false, catalog: true },
+  // No oauth. catalog=true unlocks pushCatalog in the engine (full product
+  // upsert); orders=true pulls the target's web orders back for local
+  // processing; fulfillment=true pushes our processing status back so the
+  // storefront the customer is watching reflects reality; messages=true syncs
+  // the order conversation both ways.
+  capabilities: { oauth: false, orders: true, inventory: true, fulfillment: true, catalog: true, messages: true },
 
   // Rutba↔Rutba taxonomy is matched by slug on the target side (find-or-create),
   // so there is nothing for the operator to hand-map — the mapping UI renders no
@@ -124,5 +126,63 @@ module.exports = {
     const payload = (data && (data.data || data)) || {};
     const orders = Array.isArray(payload.orders) ? payload.orders : (Array.isArray(payload) ? payload : []);
     return orders;
+  },
+
+  /**
+   * Report our processing status back to the target, keyed by ITS documentId
+   * (which we hold as external_order_id). The target applies each through its
+   * own state machine, so its notifications and stock effects fire normally.
+   *
+   * Returns { results: [{ key, ok, error }] } — a per-row shape, because one
+   * stale order must not fail the batch.
+   */
+  async pushOrderStatus({ account, updates }) {
+    const rows = (updates || []).filter((u) => u && u.external_order_id);
+    if (!rows.length) return { results: [] };
+
+    const payload = rows.map((u) => ({
+      order_document_id: u.external_order_id,
+      order_status: u.order_status,
+      tracking_number: u.tracking_number || null,
+      actual_delivery_time: u.actual_delivery_time || null,
+    }));
+
+    try {
+      const data = await req(account, 'POST', '/sale-orders/integration/update-status', {
+        json: { updates: payload },
+      });
+      const out = (data && (data.data || data)) || {};
+      return { results: Array.isArray(out.results) ? out.results : [], raw: out };
+    } catch (e) {
+      return { results: rows.map((u) => ({ key: u.external_order_id, ok: false, error: e.message })) };
+    }
+  },
+
+  /** Conversation messages written on the target since the watermark. */
+  async fetchOrderMessages({ account, since, limit = 200 }) {
+    const query = { limit: Math.min(Number(limit) || 200, 500) };
+    if (since) query.since = new Date(since).toISOString();
+    const data = await req(account, 'GET', '/order-messages/integration/export', { query });
+    const payload = (data && (data.data || data)) || {};
+    return Array.isArray(payload.messages) ? payload.messages : [];
+  },
+
+  /**
+   * Send our side of the conversation. The target replies with the ids it
+   * assigned, which the engine stamps locally so the same messages are not
+   * resent as new on the next run.
+   */
+  async pushOrderMessages({ account, messages }) {
+    const rows = (messages || []).filter(Boolean);
+    if (!rows.length) return { pairs: [], results: [] };
+    try {
+      const data = await req(account, 'POST', '/order-messages/integration/ingest', {
+        json: { messages: rows },
+      });
+      const out = (data && (data.data || data)) || {};
+      return { pairs: Array.isArray(out.pairs) ? out.pairs : [], results: out.results || [], raw: out };
+    } catch (e) {
+      return { pairs: [], results: rows.map((m) => ({ key: m.source_document_id, ok: false, error: e.message })) };
+    }
   },
 };

@@ -2397,7 +2397,9 @@ export interface ApiMarketplaceAccountMarketplaceAccount
     is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
     last_connected_at: Schema.Attribute.DateTime;
     last_inventory_synced_at: Schema.Attribute.DateTime;
+    last_messages_synced_at: Schema.Attribute.DateTime;
     last_orders_synced_at: Schema.Attribute.DateTime;
+    last_status_pushed_at: Schema.Attribute.DateTime;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -2418,12 +2420,16 @@ export interface ApiMarketplaceAccountMarketplaceAccount
     refresh_token: Schema.Attribute.Text & Schema.Attribute.Private;
     region: Schema.Attribute.String;
     seller_id: Schema.Attribute.String;
+    sync_fulfillment_enabled: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<true>;
     sync_inventory_enabled: Schema.Attribute.Boolean &
       Schema.Attribute.DefaultTo<true>;
     sync_logs: Schema.Attribute.Relation<
       'oneToMany',
       'api::marketplace-sync-log.marketplace-sync-log'
     >;
+    sync_messages_enabled: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<true>;
     sync_orders_enabled: Schema.Attribute.Boolean &
       Schema.Attribute.DefaultTo<true>;
     token_expires_at: Schema.Attribute.DateTime & Schema.Attribute.Private;
@@ -3880,6 +3886,8 @@ export interface ApiOrderMessageOrderMessage
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    external_id: Schema.Attribute.String;
+    internal_only: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     is_read: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
@@ -3889,11 +3897,14 @@ export interface ApiOrderMessageOrderMessage
       Schema.Attribute.Private;
     message: Schema.Attribute.Text & Schema.Attribute.Required;
     order: Schema.Attribute.Relation<'manyToOne', 'api::sale-order.sale-order'>;
+    origin: Schema.Attribute.Enumeration<['local', 'remote']> &
+      Schema.Attribute.DefaultTo<'local'>;
     publishedAt: Schema.Attribute.DateTime;
     sender_id: Schema.Attribute.String;
     sender_type: Schema.Attribute.Enumeration<['rider', 'customer', 'staff']> &
       Schema.Attribute.Required;
     sent_at: Schema.Attribute.DateTime;
+    synced_at: Schema.Attribute.DateTime;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -4868,10 +4879,11 @@ export interface ApiReturnMethodReturnMethod
   };
 }
 
-export interface ApiReturnPolicyReturnPolicy extends Struct.SingleTypeSchema {
+export interface ApiReturnPolicyReturnPolicy
+  extends Struct.CollectionTypeSchema {
   collectionName: 'return_policies';
   info: {
-    description: 'Global return-window configuration. MVP scope: one global policy + per-product non_returnable opt-out (on product schema). Future: per-category / per-channel scope rows.';
+    description: 'Return-window configuration, one row per app (keyed by app_slug) with one row flagged is_default. Per-product opt-out stays on product.non_returnable. Future: per-category / per-channel scope rows.';
     displayName: 'Return Policy';
     pluralName: 'return-policies';
     singularName: 'return-policy';
@@ -4880,12 +4892,14 @@ export interface ApiReturnPolicyReturnPolicy extends Struct.SingleTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    app_slug: Schema.Attribute.String & Schema.Attribute.Unique;
     auto_approve_under_paisa: Schema.Attribute.BigInteger;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     exchange_enabled: Schema.Attribute.Boolean &
       Schema.Attribute.DefaultTo<false>;
+    is_default: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -5685,10 +5699,10 @@ export interface ApiSeoMetaSeoMeta extends Struct.CollectionTypeSchema {
   };
 }
 
-export interface ApiSiteSettingSiteSetting extends Struct.SingleTypeSchema {
+export interface ApiSiteSettingSiteSetting extends Struct.CollectionTypeSchema {
   collectionName: 'site_settings';
   info: {
-    description: 'Global site configuration: branding, SEO defaults, promo banner, navigation labels';
+    description: 'Per-app site configuration: branding, SEO defaults, promo banner, navigation labels. One row per app (keyed by app_slug), with one row flagged is_default as the fallback.';
     displayName: 'Site Settings';
     pluralName: 'site-settings';
     singularName: 'site-setting';
@@ -5697,6 +5711,7 @@ export interface ApiSiteSettingSiteSetting extends Struct.SingleTypeSchema {
     draftAndPublish: true;
   };
   attributes: {
+    app_slug: Schema.Attribute.String & Schema.Attribute.Unique;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -5714,6 +5729,7 @@ export interface ApiSiteSettingSiteSetting extends Struct.SingleTypeSchema {
     header_promo_enabled: Schema.Attribute.Boolean &
       Schema.Attribute.DefaultTo<false>;
     header_promo_text: Schema.Attribute.String;
+    is_default: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',

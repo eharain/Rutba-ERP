@@ -632,7 +632,182 @@ async function syncInventoryForAccount(accountDocumentId) {
   }
 }
 
+// ── fulfillment: push our processing status back to the marketplace ───────────
+
+/**
+ * Tell the marketplace what happened to the orders it gave us.
+ *
+ * Orders flow marketplace → here, get picked, shipped and delivered here, and
+ * the customer keeps watching the marketplace — so without this the storefront
+ * shows "confirmed" forever while the parcel is already delivered.
+ *
+ * Watermark-driven rather than queue-driven: a status change is already
+ * recorded on the order, so `updatedAt` IS the queue. A missed run self-heals,
+ * because the next one simply scans a wider window.
+ */
+async function pushOrderStatusForAccount(accountDocumentId) {
+  let account = await strapi.getAccountSecrets(accountDocumentId);
+  if (!account) throw new Error('Account not found');
+  if (!account.is_active) return { skipped: true, reason: 'account disabled' };
+  if (account.sync_fulfillment_enabled === false) return { skipped: true, reason: 'fulfillment sync disabled' };
+  account = await ensureFreshToken(account);
+
+  const adapter = providers.getAdapter(account.platform);
+  if (!adapter.capabilities?.fulfillment || typeof adapter.pushOrderStatus !== 'function') {
+    return { skipped: true, reason: 'fulfillment not supported by this platform' };
+  }
+
+  const log = await strapi.createSyncLog({
+    marketplace_account: account.documentId, platform: account.platform,
+    kind: 'fulfillment', status: 'running', started_at: new Date().toISOString(),
+  });
+  const runStartedAt = new Date().toISOString();
+  const counts = { fetched: 0, updated: 0, skipped: 0, failed: 0 };
+  let detail = [];
+
+  try {
+    const out = await strapi.outboundStatuses(account.documentId, {});
+    const updates = Array.isArray(out?.updates) ? out.updates : [];
+    counts.fetched = updates.length;
+
+    if (updates.length) {
+      const res = await adapter.pushOrderStatus({ account, updates });
+      detail = Array.isArray(res?.results) ? res.results : [];
+      for (const r of detail) {
+        if (r.ok === false) counts.failed += 1;
+        else if (r.action === 'unchanged') counts.skipped += 1;
+        else counts.updated += 1;
+      }
+    }
+
+    // Advance the watermark only when nothing failed — a partial failure must
+    // stay in the window so the next run retries it rather than losing it.
+    if (counts.failed === 0) {
+      await strapi.updateAccount(account.documentId, { last_status_pushed_at: runStartedAt });
+    }
+
+    const status = counts.failed > 0 ? (counts.updated > 0 ? 'partial' : 'error') : 'success';
+    await strapi.updateSyncLog(log.documentId, { status, ...counts, detail, finished_at: new Date().toISOString() });
+    return counts;
+  } catch (e) {
+    await strapi.updateSyncLog(log.documentId, { status: 'error', ...counts, error: msg(e).slice(0, 2000), detail, finished_at: new Date().toISOString() });
+    throw e;
+  }
+}
+
+// ── conversations: two-way order message sync ────────────────────────────────
+
+/**
+ * Exchange order conversation messages with the marketplace, both directions.
+ *
+ * Pull first, then push: a reply written here in response to something pulled
+ * in the same run then goes out immediately, instead of waiting a cycle.
+ *
+ * Loop safety lives in the data, not the timing — a message that arrived from
+ * the peer is stamped origin='remote' and is never selected for pushing back.
+ */
+async function syncOrderMessagesForAccount(accountDocumentId) {
+  let account = await strapi.getAccountSecrets(accountDocumentId);
+  if (!account) throw new Error('Account not found');
+  if (!account.is_active) return { skipped: true, reason: 'account disabled' };
+  if (account.sync_messages_enabled === false) return { skipped: true, reason: 'message sync disabled' };
+  account = await ensureFreshToken(account);
+
+  const adapter = providers.getAdapter(account.platform);
+  if (!adapter.capabilities?.messages) {
+    return { skipped: true, reason: 'messages not supported by this platform' };
+  }
+
+  const log = await strapi.createSyncLog({
+    marketplace_account: account.documentId, platform: account.platform,
+    kind: 'messages', status: 'running', started_at: new Date().toISOString(),
+  });
+  const runStartedAt = new Date().toISOString();
+  const since = account.last_messages_synced_at
+    ? new Date(account.last_messages_synced_at).toISOString()
+    : new Date(Date.now() - FIRST_RUN_LOOKBACK_MS).toISOString();
+
+  // Field names match marketplace-sync-log's columns — Strapi silently drops
+  // unknown attributes, so a counter it has no column for would vanish from the
+  // audit trail without any error.
+  const counts = { fetched: 0, created: 0, updated: 0, pushed: 0, failed: 0 };
+  let detail = [];
+
+  try {
+    // ── inbound: their side of the thread ──
+    if (typeof adapter.fetchOrderMessages === 'function') {
+      const remote = await adapter.fetchOrderMessages({ account, since, limit: 200 });
+      counts.fetched = remote.length;
+      if (remote.length) {
+        const res = await strapi.ingestMessages(account.documentId, remote);
+        counts.created += res?.created || 0;
+        counts.updated += res?.updated || 0;
+        counts.failed += res?.failed || 0;
+        detail = detail.concat(res?.results || []);
+      }
+    }
+
+    // ── outbound: our side of the thread ──
+    if (typeof adapter.pushOrderMessages === 'function') {
+      const out = await strapi.outboundMessages(account.documentId, {});
+      const messages = Array.isArray(out?.messages) ? out.messages : [];
+      if (messages.length) {
+        const res = await adapter.pushOrderMessages({ account, messages });
+        counts.pushed = messages.length - (res?.results || []).filter((r) => r.ok === false).length;
+        counts.failed += (res?.results || []).filter((r) => r.ok === false).length;
+        // Stamp the peer's ids so the next run updates instead of resending.
+        if (res?.pairs?.length) await strapi.stampMessages(account.documentId, res.pairs);
+        detail = detail.concat(res?.results || []);
+      }
+    }
+
+    if (counts.failed === 0) {
+      await strapi.updateAccount(account.documentId, { last_messages_synced_at: runStartedAt });
+    }
+
+    const moved = counts.created + counts.updated + counts.pushed;
+    const status = counts.failed > 0 ? (moved > 0 ? 'partial' : 'error') : 'success';
+    await strapi.updateSyncLog(log.documentId, { status, ...counts, detail, finished_at: new Date().toISOString() });
+    return counts;
+  } catch (e) {
+    await strapi.updateSyncLog(log.documentId, { status: 'error', ...counts, error: msg(e).slice(0, 2000), detail, finished_at: new Date().toISOString() });
+    throw e;
+  }
+}
+
 // ── cron drivers ───────────────────────────────────────────────────────────────
+
+async function syncAllOrderStatuses() {
+  const accounts = await strapi.listAccounts({ is_active: { $eq: true }, sync_fulfillment_enabled: { $eq: true } });
+  let updated = 0;
+  let considered = 0;
+  for (const a of accounts) {
+    if (!providers.hasAdapter(a.platform)) continue;
+    const adapter = providers.getAdapter(a.platform);
+    if (!adapter.capabilities?.fulfillment) continue;
+    considered += 1;
+    try { const r = await pushOrderStatusForAccount(a.documentId); updated += r.updated || 0; }
+    catch (e) { console.warn(`[marketplace] cron pushOrderStatus ${a.documentId} failed: ${msg(e)}`); }
+  }
+  return { accounts: considered, updated };
+}
+
+async function syncAllOrderMessages() {
+  const accounts = await strapi.listAccounts({ is_active: { $eq: true }, sync_messages_enabled: { $eq: true } });
+  let moved = 0;
+  let considered = 0;
+  for (const a of accounts) {
+    if (!providers.hasAdapter(a.platform)) continue;
+    const adapter = providers.getAdapter(a.platform);
+    if (!adapter.capabilities?.messages) continue;
+    considered += 1;
+    try {
+      const r = await syncOrderMessagesForAccount(a.documentId);
+      moved += (r.created || 0) + (r.pushed || 0);
+    } catch (e) { console.warn(`[marketplace] cron syncOrderMessages ${a.documentId} failed: ${msg(e)}`); }
+  }
+  return { accounts: considered, moved };
+}
 
 async function syncAllOrders() {
   const accounts = await strapi.listAccounts({ is_active: { $eq: true }, sync_orders_enabled: { $eq: true } });
@@ -694,9 +869,13 @@ module.exports = {
   syncOrdersForAccount,
   syncInventoryForAccount,
   syncCatalogForAccount,
+  pushOrderStatusForAccount,
+  syncOrderMessagesForAccount,
   syncAllOrders,
   syncAllInventory,
   syncAllCatalog,
+  syncAllOrderStatuses,
+  syncAllOrderMessages,
   refreshExpiringTokens,
   // pure helpers exported for unit tests
   effectiveAdjustment,

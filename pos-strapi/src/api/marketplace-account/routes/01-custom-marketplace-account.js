@@ -25,5 +25,27 @@ module.exports = {
       path: '/marketplace-accounts/:id/offer-prices',
       handler: 'marketplace-account.offerPrices',
     },
+    // Outbound integration: what this instance still owes the peer. The worker
+    // reads these, ships them through the adapter, then reports back.
+    {
+      method: 'GET',
+      path: '/marketplace-accounts/:id/outbound-status',
+      handler: 'marketplace-account.outboundStatus',
+    },
+    {
+      method: 'GET',
+      path: '/marketplace-accounts/:id/outbound-messages',
+      handler: 'marketplace-account.outboundMessages',
+    },
+    {
+      method: 'POST',
+      path: '/marketplace-accounts/:id/ingest-messages',
+      handler: 'marketplace-account.ingestMessages',
+    },
+    {
+      method: 'POST',
+      path: '/marketplace-accounts/:id/stamp-messages',
+      handler: 'marketplace-account.stampMessages',
+    },
   ],
 };

@@ -65,6 +65,14 @@
     "last_inventory_synced_at": {
       "type": "datetime"
     },
+    "last_status_pushed_at": {
+      "type": "datetime",
+      "description": "Watermark for outbound order-status pushes: local orders updated after this are sent back to the marketplace on the next run."
+    },
+    "last_messages_synced_at": {
+      "type": "datetime",
+      "description": "Watermark for the two-way order conversation sync."
+    },
     "extra_config": {
       "type": "json",
       "private": true
@@ -80,6 +88,16 @@
     "sync_inventory_enabled": {
       "type": "boolean",
       "default": true
+    },
+    "sync_fulfillment_enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Push local order-status changes back to the marketplace (only acts on adapters whose capabilities.fulfillment is true)."
+    },
+    "sync_messages_enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Two-way sync of order conversation messages between this instance and the marketplace."
     },
     "price_adjust_pct": {
       "type": "decimal",

@@ -42,45 +42,81 @@ export default function PullOrdersButton({ onDone }) {
 
     useEffect(() => { loadAccounts(); }, [loadAccounts]);
 
-    const pull = async (acc) => {
-        setBusyId(acc.documentId);
+    /**
+     * The three order-facing flows, all driven by the same engine:
+     *   sync-orders    pull new orders down
+     *   push-status    report our processing status back up
+     *   sync-messages  exchange the customer conversation both ways
+     */
+    const ACTIONS = {
+        "sync-orders": {
+            label: "Pull orders",
+            icon: "fa-cloud-arrow-down",
+            done: (b) => `${b.created || 0} new, ${b.updated || 0} updated`,
+        },
+        "push-status": {
+            label: "Push statuses",
+            icon: "fa-cloud-arrow-up",
+            done: (b) => `${b.updated || 0} status update(s) sent`,
+        },
+        "sync-messages": {
+            label: "Sync messages",
+            icon: "fa-comments",
+            done: (b) => `${(b.created || 0) + (b.updated || 0)} received, ${b.pushed || 0} sent`,
+        },
+    };
+
+    const run = async (acc, action) => {
+        setBusyId(acc.documentId + action);
         setMsg(null);
         try {
             const base = APP_URLS.marketplace;
-            const res = await fetch(`${base}/api/accounts/${acc.documentId}/sync-orders`, {
+            const res = await fetch(`${base}/api/accounts/${acc.documentId}/${action}`, {
                 method: "POST",
                 headers: { Authorization: `Bearer ${jwt}`, "Content-Type": "application/json" },
             });
             const body = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(body?.error || `Pull failed (${res.status})`);
+            if (!res.ok) throw new Error(body?.error || `${ACTIONS[action].label} failed (${res.status})`);
 
-            setMsg({
-                type: "success",
-                text: `${acc.label || acc.platform}: ${body.created || 0} new, ${body.updated || 0} updated${body.failed ? `, ${body.failed} failed` : ""}`,
-            });
+            const summary = body.skipped
+                ? `${acc.label || acc.platform}: skipped — ${body.reason}`
+                : `${acc.label || acc.platform}: ${ACTIONS[action].done(body)}${body.failed ? `, ${body.failed} failed` : ""}`;
+            setMsg({ type: body.failed ? "danger" : "success", text: summary });
             if (onDone) onDone();
         } catch (err) {
-            setMsg({ type: "danger", text: err.message || "Pull failed" });
+            setMsg({ type: "danger", text: err.message || "Failed" });
         } finally {
             setBusyId(null);
         }
     };
 
+    const pull = (acc) => run(acc, "sync-orders");
+
     if (denied || accounts.length === 0) return null;
+
+    // One account is the common case (the public storefront) — show its three
+    // actions directly. With several, group per account so it stays obvious
+    // which marketplace an action is aimed at.
+    const single = accounts.length === 1 ? accounts[0] : null;
 
     return (
         <>
-            {accounts.length === 1 ? (
-                <button
-                    className="btn btn-sm btn-outline-info"
-                    onClick={() => pull(accounts[0])}
-                    disabled={!!busyId}
-                    title="Pull new orders from the live site now"
-                >
-                    {busyId
-                        ? <><span className="spinner-border spinner-border-sm me-1" />Pulling…</>
-                        : <><i className="fas fa-cloud-arrow-down me-1" />Pull orders</>}
-                </button>
+            {single ? (
+                <div className="btn-group">
+                    {Object.entries(ACTIONS).map(([action, cfg]) => (
+                        <button
+                            key={action}
+                            className="btn btn-sm btn-outline-info"
+                            onClick={() => run(single, action)}
+                            disabled={!!busyId}
+                            title={cfg.label}
+                        >
+                            {busyId === single.documentId + action
+                                ? <span className="spinner-border spinner-border-sm" />
+                                : <><i className={`fas ${cfg.icon} me-1`} />{cfg.label}</>}
+                        </button>
+                    ))}
+                </div>
             ) : (
                 <div className="dropdown">
                     <button
@@ -89,15 +125,22 @@ export default function PullOrdersButton({ onDone }) {
                         disabled={!!busyId}
                     >
                         {busyId
-                            ? <><span className="spinner-border spinner-border-sm me-1" />Pulling…</>
-                            : <><i className="fas fa-cloud-arrow-down me-1" />Pull orders</>}
+                            ? <><span className="spinner-border spinner-border-sm me-1" />Working…</>
+                            : <><i className="fas fa-rotate me-1" />Marketplace sync</>}
                     </button>
                     <ul className="dropdown-menu dropdown-menu-end">
                         {accounts.map((acc) => (
                             <li key={acc.documentId}>
-                                <button className="dropdown-item" onClick={() => pull(acc)}>
-                                    {acc.label || acc.platform}
-                                </button>
+                                <h6 className="dropdown-header">{acc.label || acc.platform}</h6>
+                                {Object.entries(ACTIONS).map(([action, cfg]) => (
+                                    <button
+                                        key={action}
+                                        className="dropdown-item"
+                                        onClick={() => run(acc, action)}
+                                    >
+                                        <i className={`fas ${cfg.icon} me-2`} />{cfg.label}
+                                    </button>
+                                ))}
                             </li>
                         ))}
                     </ul>

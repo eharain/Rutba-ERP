@@ -28,7 +28,8 @@
         "inventory",
         "catalog",
         "oauth",
-        "fulfillment"
+        "fulfillment",
+        "messages"
       ],
       "required": true
     },
@@ -45,6 +46,11 @@
     "fetched": {
       "type": "integer",
       "default": 0
+    },
+    "pushed": {
+      "type": "integer",
+      "default": 0,
+      "description": "Rows sent TO the marketplace (status updates, conversation messages). Distinct from created/updated, which count what changed on this side."
     },
     "created": {
       "type": "integer",

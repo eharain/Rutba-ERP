@@ -17,6 +17,13 @@ const config = {
       path: '/sale-orders/integration/export',
       handler: 'api::sale-order.sale-order.exportMarketplace',
     },
+    // Inbound status push-back from the instance that fulfils these orders.
+    // Same service-token gate, same two-segment path rule.
+    {
+      method: 'POST',
+      path: '/sale-orders/integration/update-status',
+      handler: 'api::sale-order.sale-order.integrationUpdateStatus',
+    },
 
     {
       method: 'POST',

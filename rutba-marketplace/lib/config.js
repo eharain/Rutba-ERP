@@ -34,6 +34,12 @@ module.exports = {
     // targets). Heavier than the price/stock inventory push, so it runs less
     // often; the inventory job keeps price+stock fresh in between.
     catalogRule: process.env.CRON_CATALOG_RULE || '0 */6 * * *',
+    // Order-status push-back and the order conversation both face a waiting
+    // customer, so they run tighter than catalog/inventory: a delivered parcel
+    // still showing "processing", or an unanswered question, is what the
+    // customer actually notices.
+    fulfillmentRule: process.env.CRON_FULFILLMENT_RULE || '*/10 * * * *',
+    messagesRule: process.env.CRON_MESSAGES_RULE || '*/5 * * * *',
     refreshRule: process.env.CRON_REFRESH_RULE || '0 */4 * * *',
   },
 

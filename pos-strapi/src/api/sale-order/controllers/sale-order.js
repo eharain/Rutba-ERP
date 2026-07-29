@@ -234,6 +234,27 @@ module.exports = factories.createCoreController(
             return ctx.send({ data: { orders: rows.map(normalizeExportOrder) } });
         },
 
+        // ── POST /sale-orders/integration/update-status ─────────────────────
+        // Inbound order-status push from a peer instance. The peer processes
+        // the order (picking, shipping, delivery) and reports back so the
+        // customer-facing side reflects reality.
+        //
+        // Applied through this instance's own state machine, so its stock,
+        // accounting and notification side effects run exactly as they would
+        // for a local change — a bare field write would skip all of them.
+        async integrationUpdateStatus(ctx) {
+            if (!isServiceToken(ctx)) return ctx.forbidden('Service token required');
+            const body = ctx.request.body || {};
+            const updates = Array.isArray(body.updates) ? body.updates : [];
+            if (updates.length === 0) return ctx.badRequest('updates[] is required');
+
+            const result = await strapi
+                .service('api::sale-order.order-integration-sync')
+                .applyInboundStatuses(updates);
+
+            return ctx.send({ data: result });
+        },
+
         // ── POST /orders/calculate-delivery ────────────────────────────────
         async calculateDelivery(ctx) {
             const { destination, productGroupDocumentIds, weightKg, cartTotal } = readBody(ctx);

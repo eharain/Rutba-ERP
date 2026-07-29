@@ -130,6 +130,38 @@ module.exports = {
     return r.data || r;
   },
 
+  /** Local order-status changes the peer has not been told about yet. */
+  async outboundStatuses(accountDocumentId, { since, limit } = {}) {
+    const r = await sreq('GET', `/marketplace-accounts/${accountDocumentId}/outbound-status`, {
+      query: { ...(since ? { since } : {}), ...(limit ? { limit } : {}) },
+    });
+    return r.data || r;
+  },
+
+  /** Local conversation messages the peer has not seen. */
+  async outboundMessages(accountDocumentId, { since, limit } = {}) {
+    const r = await sreq('GET', `/marketplace-accounts/${accountDocumentId}/outbound-messages`, {
+      query: { ...(since ? { since } : {}), ...(limit ? { limit } : {}) },
+    });
+    return r.data || r;
+  },
+
+  /** Apply conversation messages pulled from the peer. */
+  async ingestMessages(accountDocumentId, messages) {
+    const r = await sreq('POST', `/marketplace-accounts/${accountDocumentId}/ingest-messages`, {
+      body: { messages },
+    });
+    return r.data || r;
+  },
+
+  /** Record the ids the peer assigned to messages we pushed. */
+  async stampMessages(accountDocumentId, pairs) {
+    const r = await sreq('POST', `/marketplace-accounts/${accountDocumentId}/stamp-messages`, {
+      body: { pairs },
+    });
+    return r.data || r;
+  },
+
   /** All listings for an account (selected or not), product price/stock populated. */
   async listAllListings(accountDocumentId) {
     const r = await sreq('GET', '/marketplace-listings', {

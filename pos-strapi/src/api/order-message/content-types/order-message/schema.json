@@ -10,6 +10,26 @@
     "sender_id": { "type": "string" },
     "message": { "type": "text", "required": true },
     "sent_at": { "type": "datetime" },
-    "is_read": { "type": "boolean", "default": false }
+    "is_read": { "type": "boolean", "default": false },
+
+    "external_id": {
+      "type": "string",
+      "description": "documentId of this same message on the peer instance. This is the identity that makes the conversation two-way: without it a synced message is indistinguishable from a new one, and every run duplicates the whole thread."
+    },
+    "origin": {
+      "type": "enumeration",
+      "enum": ["local", "remote"],
+      "default": "local",
+      "description": "Where the message was written. A 'remote' message arrived via sync and is never pushed back — that is the loop guard."
+    },
+    "synced_at": {
+      "type": "datetime",
+      "description": "When this message was last exchanged with the peer."
+    },
+    "internal_only": {
+      "type": "boolean",
+      "default": false,
+      "description": "Staff-to-staff note. Never leaves this instance, so back-office discussion cannot leak into the customer-facing thread."
+    }
   }
 }

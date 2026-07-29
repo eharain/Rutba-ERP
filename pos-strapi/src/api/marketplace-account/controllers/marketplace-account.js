@@ -72,6 +72,58 @@ module.exports = createCoreController(ACCOUNT_UID, ({ strapi }) => ({
     return ctx.send({ data: { results } });
   },
 
+  // ── worker-only: outbound order-status push ─────────────────────────────────
+  // What has changed locally since the account's watermark and needs telling the
+  // peer about. The worker ships these through the adapter; nothing here makes
+  // an outbound call, because the credentials and adapters live in the worker.
+  async outboundStatus(ctx) {
+    if (!isServiceToken(ctx)) return ctx.forbidden('Service token required');
+    try {
+      const data = await strapi
+        .service('api::sale-order.order-integration-sync')
+        .collectOutboundStatuses(ctx.params.id, { since: ctx.query.since, limit: ctx.query.limit });
+      return ctx.send({ data });
+    } catch (e) {
+      return ctx.badRequest(e.message);
+    }
+  },
+
+  // ── worker-only: outbound conversation messages ─────────────────────────────
+  async outboundMessages(ctx) {
+    if (!isServiceToken(ctx)) return ctx.forbidden('Service token required');
+    try {
+      const data = await strapi
+        .service('api::sale-order.order-integration-sync')
+        .collectOutboundMessages(ctx.params.id, { since: ctx.query.since, limit: ctx.query.limit });
+      return ctx.send({ data });
+    } catch (e) {
+      return ctx.badRequest(e.message);
+    }
+  },
+
+  // ── worker-only: apply conversation messages pulled from the peer ───────────
+  async ingestMessages(ctx) {
+    if (!isServiceToken(ctx)) return ctx.forbidden('Service token required');
+    const messages = ctx.request.body?.messages;
+    if (!Array.isArray(messages)) return ctx.badRequest('messages[] is required');
+    const data = await strapi
+      .service('api::sale-order.order-integration-sync')
+      .applyInboundMessages(messages);
+    return ctx.send({ data });
+  },
+
+  // ── worker-only: record the ids the peer assigned to messages we pushed ─────
+  // Without this the same messages are resent as new on every run.
+  async stampMessages(ctx) {
+    if (!isServiceToken(ctx)) return ctx.forbidden('Service token required');
+    const pairs = ctx.request.body?.pairs;
+    if (!Array.isArray(pairs)) return ctx.badRequest('pairs[] is required');
+    const data = await strapi
+      .service('api::sale-order.order-integration-sync')
+      .stampPushedMessages(pairs);
+    return ctx.send({ data });
+  },
+
   // ── worker-only: resolve the marketplace SalePrice from live offers ──────────
   async offerPrices(ctx) {
     if (!isServiceToken(ctx)) return ctx.forbidden('Service token required');
