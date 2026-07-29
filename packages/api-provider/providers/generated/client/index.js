@@ -19,6 +19,7 @@ export * from './cms-menu-items.js';
 export * from './cms-menus.js';
 export * from './cms-page-groups.js';
 export * from './cms-pages.js';
+export * from './content-sync.js';
 export * from './crm-activities.js';
 export * from './crm-contacts.js';
 export * from './crm-leads.js';

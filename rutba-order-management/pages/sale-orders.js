@@ -6,6 +6,7 @@ import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { SaleOrdersEndpoints } from "@rutba/api-provider/endpoints/index.js";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import { useToast } from "../components/Toast";
+import PullOrdersButton from "../components/PullOrdersButton";
 import Link from "next/link";
 
 function getStatusBadgeClass(status) {
@@ -105,7 +106,10 @@ export default function SaleOrdersPage() {
                 <ToastContainer />
                 <div className="d-flex align-items-center justify-content-between mb-3">
                     <h2 className="mb-0">{heading}</h2>
-                    <div className="d-flex gap-2">
+                    <div className="d-flex gap-2 align-items-center">
+                        {/* Manual trigger for the worker's order download — the
+                            worker still pulls on its own schedule. */}
+                        <PullOrdersButton onDone={load} />
                         {activeStatus && (
                             <Link className="btn btn-sm btn-outline-secondary" href="/sale-orders">
                                 <i className="fas fa-times me-1" />Clear filter

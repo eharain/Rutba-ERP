@@ -19,6 +19,7 @@ export * from './cms-menu-items';
 export * from './cms-menus';
 export * from './cms-page-groups';
 export * from './cms-pages';
+export * from './content-sync';
 export * from './crm-activities';
 export * from './crm-contacts';
 export * from './crm-leads';
