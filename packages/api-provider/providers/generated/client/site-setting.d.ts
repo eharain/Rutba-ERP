@@ -1,11 +1,17 @@
 // AUTO-GENERATED — do not edit. Source: scaffold-endpoint-providers.mjs
 export interface SiteSettingEndpointsType {
-    getDraft({ populate, fields }?: any): Promise<any>;
-    fetchDraft({ populate, fields }?: any): Promise<any>;
-    getPublished({ populate, fields }?: any): Promise<any>;
-    updateDraft(data: any): Promise<any>;
-    publish(data: any): Promise<any>;
-    discard(data: any): Promise<any>;
+    getDraft({ populate, fields, app }?: any): Promise<any>;
+    fetchDraft({ populate, fields, app }?: any): Promise<any>;
+    getPublished({ populate, fields, app }?: any): Promise<any>;
+    publishResolved(data: any): Promise<any>;
+    discardResolved(data: any): Promise<any>;
+    list({ populate, fields, sort, pagination }?: any): Promise<any>;
+    findOne(documentId: any, { populate, fields, status }?: any): Promise<any>;
+    updateDraft(documentId: any, data: any): Promise<any>;
+    publish(documentId: any): Promise<any>;
+    unpublish(documentId: any): Promise<any>;
+    create(data: any): Promise<any>;
+    del(documentId: any): Promise<any>;
     meta: any;
 }
 

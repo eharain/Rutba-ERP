@@ -1,17 +1,27 @@
 {
-  "kind": "singleType",
+  "kind": "collectionType",
   "collectionName": "return_policies",
   "info": {
     "singularName": "return-policy",
     "pluralName": "return-policies",
     "displayName": "Return Policy",
-    "description": "Global return-window configuration. MVP scope: one global policy + per-product non_returnable opt-out (on product schema). Future: per-category / per-channel scope rows."
+    "description": "Return-window configuration, one row per app (keyed by app_slug) with one row flagged is_default. Per-product opt-out stays on product.non_returnable. Future: per-category / per-channel scope rows."
   },
   "options": {
     "draftAndPublish": false
   },
   "pluginOptions": {},
   "attributes": {
+    "app_slug": {
+      "type": "string",
+      "unique": true,
+      "description": "App this policy applies to (e.g. web, pos). Resolution is by app_slug first, then the is_default row. Left empty the row is only reachable by documentId."
+    },
+    "is_default": {
+      "type": "boolean",
+      "default": false,
+      "description": "Fallback policy used when no app_slug matches. Exactly one row carries this — setting it on a row clears it on the others."
+    },
     "window_days": {
       "type": "integer",
       "default": 7,

@@ -29,11 +29,14 @@ async function ensureSiteSettingSingleton(strapi) {
         return { updated: 1 };
     }
 
+    // Site settings are a collection now, resolved by app_slug then is_default.
+    // The seeded row is the storefront's AND the global fallback, so it carries
+    // both — otherwise a fresh DB resolves only via the "any row" last resort.
     await strapi.documents(uid).create({
-        data: { site_name: 'Rutba.pk' },
+        data: { site_name: 'Rutba.pk', app_slug: 'web', is_default: true },
         status: 'published',
     });
-    strapi.log.info('[seed] Seeded default site-setting singleton');
+    strapi.log.info('[seed] Seeded default site-setting row (app_slug=web, is_default)');
     return { created: 1 };
 }
 

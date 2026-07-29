@@ -6,13 +6,35 @@ const POLICY_UID = 'api::return-policy.return-policy';
 
 module.exports = createCoreService(POLICY_UID, ({ strapi }) => ({
     /**
-     * Read the (single) policy row, falling back to safe defaults when the
-     * row hasn't been seeded yet. Keeps callers — controllers, eligibility
+     * Resolve the policy row for an app: `app_slug` match first, then the row
+     * flagged `is_default`, then any row. Mirrors site-setting's resolver —
+     * the policy is a collection now, and both must answer "which row?" the
+     * same way or an app could get its site identity from one row and its
+     * return window from another.
+     */
+    async resolveRow(appSlug = null) {
+        const attempts = [];
+        if (appSlug) attempts.push({ app_slug: appSlug });
+        attempts.push({ is_default: true });
+        attempts.push(null);
+
+        for (const filters of attempts) {
+            const row = await strapi.documents(POLICY_UID)
+                .findFirst(filters ? { filters } : {})
+                .catch(() => null);
+            if (row) return row;
+        }
+        return null;
+    },
+
+    /**
+     * Read the policy row for an app, falling back to safe defaults when no
+     * row has been seeded yet. Keeps callers — controllers, eligibility
      * checks, the storefront /me window probe — from having to defensively
      * coalesce on every read.
      */
-    async getEffective() {
-        const row = await strapi.documents(POLICY_UID).findFirst({}).catch(() => null);
+    async getEffective(appSlug = null) {
+        const row = await this.resolveRow(appSlug);
         return {
             window_days:               row?.window_days ?? 7,
             restocking_fee_percent:    Number(row?.restocking_fee_percent) || 0,
@@ -30,8 +52,8 @@ module.exports = createCoreService(POLICY_UID, ({ strapi }) => ({
      *
      * Returns { eligible: bool, reason?: string, deadline: ISO date }.
      */
-    async checkWindow(order) {
-        const policy = await this.getEffective();
+    async checkWindow(order, appSlug = null) {
+        const policy = await this.getEffective(appSlug);
         if (order?.order_status !== 'DELIVERED') {
             return { eligible: false, reason: 'order_not_delivered', deadline: null };
         }

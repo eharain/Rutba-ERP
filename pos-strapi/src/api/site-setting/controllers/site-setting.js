@@ -2,42 +2,74 @@
 
 const { createCoreController } = require('@strapi/strapi').factories;
 
-module.exports = createCoreController('api::site-setting.site-setting', ({ strapi }) => ({
-  async find(ctx) {
-    const uid = 'api::site-setting.site-setting';
-    const { populate, fields } = ctx.query || {};
-    const opts = {
-      ...(populate ? { populate } : {}),
-      ...(fields ? { fields } : {}),
-    };
+const UID = 'api::site-setting.site-setting';
 
-    // Prefer the published row (what the storefront should normally show);
-    // fall back to the draft so a freshly-edited record never hard-404s the
-    // public client. The storefront uses its own defaults if data is null.
-    let doc = await strapi.documents(uid).findFirst({ status: 'published', ...opts });
-    if (!doc) {
-      doc = await strapi.documents(uid).findFirst({ status: 'draft', ...opts });
-    }
+/**
+ * The app whose settings a request wants.
+ *
+ * Explicit `?app=` wins; otherwise fall back to the app header every Rutba
+ * client already sends (X-Rutba-App), so the storefront keeps resolving to its
+ * own row without any client change. Nothing matching → the resolver's
+ * is_default row.
+ */
+function appSlugFrom(ctx) {
+  const q = ctx.query || {};
+  return (
+    q.app
+    || q.app_slug
+    || ctx.request?.header?.['x-rutba-app']
+    || null
+  );
+}
+
+/**
+ * Keep only the read params the document service accepts — `app` is ours and
+ * would be rejected as an unknown key if it were passed through.
+ */
+function readOpts(ctx) {
+  const { populate, fields, status } = ctx.query || {};
+  return {
+    ...(populate ? { populate } : {}),
+    ...(fields ? { fields } : {}),
+    ...(status ? { status } : {}),
+  };
+}
+
+module.exports = createCoreController(UID, ({ strapi }) => ({
+  /**
+   * GET /site-setting            → the requesting app's row, else the default
+   * GET /site-setting?app=pos    → the pos row, else the default
+   *
+   * This path was the singleType read before site settings became a
+   * collection. Keeping it as the RESOLVER is what lets every existing
+   * consumer — storefront, CMS, social — carry on unchanged.
+   */
+  async find(ctx) {
+    const doc = await strapi
+      .service(UID)
+      .resolve(appSlugFrom(ctx), readOpts(ctx));
 
     return ctx.send({ data: doc ?? null });
   },
+
   async publish(ctx) {
-    // Find the single-type document first
-    const doc = await strapi.documents('api::site-setting.site-setting').findFirst({ status: 'draft' });
+    const doc = await strapi.service(UID).resolve(appSlugFrom(ctx), { status: 'draft' });
     if (!doc) return ctx.notFound('Site setting not found');
-    const result = await strapi.documents('api::site-setting.site-setting').publish({ documentId: doc.documentId });
+    const result = await strapi.documents(UID).publish({ documentId: doc.documentId });
     ctx.body = { data: result };
   },
+
   async unpublish(ctx) {
-    const doc = await strapi.documents('api::site-setting.site-setting').findFirst({ status: 'published' });
+    const doc = await strapi.service(UID).resolve(appSlugFrom(ctx), { status: 'published' });
     if (!doc) return ctx.notFound('Site setting not found');
-    const result = await strapi.documents('api::site-setting.site-setting').unpublish({ documentId: doc.documentId });
+    const result = await strapi.documents(UID).unpublish({ documentId: doc.documentId });
     ctx.body = { data: result };
   },
+
   async discardDraft(ctx) {
-    const doc = await strapi.documents('api::site-setting.site-setting').findFirst({ status: 'draft' });
+    const doc = await strapi.service(UID).resolve(appSlugFrom(ctx), { status: 'draft' });
     if (!doc) return ctx.notFound('Site setting not found');
-    const result = await strapi.documents('api::site-setting.site-setting').discardDraft({ documentId: doc.documentId });
+    const result = await strapi.documents(UID).discardDraft({ documentId: doc.documentId });
     ctx.body = { data: result };
   },
 }));

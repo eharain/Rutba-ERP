@@ -24,6 +24,11 @@ async function applyReturnPolicy(knex) {
 
     const now = new Date();
     await knex('return_policies').insert({
+        // The policy is a collection now (one row per app, resolved by
+        // app_slug then is_default). The seeded row is the global fallback, so
+        // it carries is_default and stays unkeyed — an app-specific policy is
+        // added later as its own row.
+        is_default: true,
         window_days: 7,
         restocking_fee_percent: 0,
         return_shipping_borne_by: 'merchant',

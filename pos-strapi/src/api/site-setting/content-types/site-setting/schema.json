@@ -1,17 +1,27 @@
 {
-  "kind": "singleType",
+  "kind": "collectionType",
   "collectionName": "site_settings",
   "info": {
     "singularName": "site-setting",
     "pluralName": "site-settings",
     "displayName": "Site Settings",
-    "description": "Global site configuration: branding, SEO defaults, promo banner, navigation labels"
+    "description": "Per-app site configuration: branding, SEO defaults, promo banner, navigation labels. One row per app (keyed by app_slug), with one row flagged is_default as the fallback."
   },
   "options": {
     "draftAndPublish": true
   },
   "pluginOptions": {},
   "attributes": {
+    "app_slug": {
+      "type": "string",
+      "unique": true,
+      "description": "App this row configures (e.g. web, pos, cms). Resolution is by app_slug first, then the is_default row. Left empty the row is only reachable by documentId."
+    },
+    "is_default": {
+      "type": "boolean",
+      "default": false,
+      "description": "Fallback row used when no app_slug matches. Exactly one row carries this — setting it on a row clears it on the others."
+    },
     "site_name": {
       "type": "string",
       "required": true,
