@@ -34,7 +34,97 @@ restore cannot overwrite.** Everything below follows from that one sentence.
 
 ## The design
 
-### Layer 1 — Env-anchored ownership stamp (the core protection)
+### Layer 0 — Bind the stored integration to the database server itself (preferred)
+
+Rather than asking an operator to set an env var correctly on every box, derive
+the identity from the database server the data is sitting on. You are on
+**MySQL 8.0** (`docker-compose.yml:23`), which gives us exactly the right value:
+
+```sql
+SELECT @@server_uuid;   -- e.g. 3e11fa47-71ca-11e1-9e33-c80aa9429562
+```
+
+**Why this value and not another:** `@@server_uuid` is generated on first start
+and persisted in `<datadir>/auto.cnf`. It is **not part of a mysqldump** — a
+logical dump contains schemas and rows, never `auto.cnf`. So a dump restored onto
+a different MySQL server comes up with a *different* `@@server_uuid`, while the
+data is identical. That is precisely the signal we want, and it costs the
+operator nothing to maintain.
+
+**How to bind.** Stamp at *write* time, verify at *read* time:
+
+- when the integration is saved — content-sync-pro's remote config, and each
+  `marketplace-account`'s credentials — record the current `@@server_uuid`
+  alongside it (`bound_server_uuid`)
+- whenever those credentials are read for use — `config.getConfig({ safe: false })`,
+  `GET /marketplace-accounts/:id/secrets` — compare the stored binding to the
+  live `@@server_uuid`
+- mismatch → **the integration is treated as not configured**, and no sync runs
+
+Binding per stored integration, rather than once globally, means the check sits
+at the exact point where credentials are handed out. A flow added later that
+reads credentials inherits the protection automatically.
+
+#### The strongest form: make it structural, not a check
+
+content-sync-pro already encrypts its secrets (`secure-keystore-js`). If the
+encryption key is **derived from `@@server_uuid`**, a restored database cannot
+decrypt the peer's API token or shared secret at all. Sync then fails to run
+because the credentials are unreadable — not because a check said no. There is no
+comparison to bypass, no flag to flip, and no code path that forgets to ask.
+
+The cost is honest and, I would argue, correct: if the database legitimately
+moves to a new MySQL server, the peer credentials must be re-entered. That is a
+reasonable ritual, and it forces a human to confirm intent at exactly the moment
+you want them to.
+
+#### Where this does and does not fire
+
+| restore method | `auto.cnf` | detected? |
+| --- | --- | --- |
+| `mysqldump` → `mysql <` import (the usual path) | not copied → new uuid | **yes** |
+| phpMyAdmin / SQL file import | not copied → new uuid | **yes** |
+| fresh container + re-import into a new volume | new uuid | **yes** |
+| **copying the Docker volume / datadir wholesale** | **copied → same uuid** | **no** |
+| same-box backup restore into the same server | same uuid | no — correct, nothing moved |
+
+**The gap is physical copies.** A volume snapshot carries `auto.cnf`, so the uuid
+travels with the data and the binding still matches. If volume-level copying is
+ever how data reaches the live box, `@@server_uuid` alone is not sufficient —
+which is why it should be *one component of a composite fingerprint*, not the
+whole thing.
+
+#### Composite fingerprint
+
+Bind to a small set, and quarantine when any **strong** component disagrees:
+
+| component | source | survives logical restore? | survives volume copy? |
+| --- | --- | --- | --- |
+| `db_server_uuid` | `SELECT @@server_uuid` | no → detects | yes → misses |
+| app instance token | file on the app host (or `RUTBA_INSTANCE_ID`) | n/a | no → detects |
+| `db_host` + `db_name` | connection config | often changes | often changes |
+
+The first two are complementary: the database-side value catches a dump imported
+onto an existing server, and the app-side value catches a wholesale copy of the
+database volume. Together they cover both restore styles. `db_host`/`db_name` are
+weak signals — log them for diagnosis, do not quarantine on them alone.
+
+#### Other engines
+
+`DATABASE_CLIENT` defaults to `sqlite` (`pos-strapi/config/database.js:4`), so
+the resolver needs a per-engine strategy rather than assuming MySQL:
+
+- **mysql / mysql2** — `SELECT @@server_uuid` (MySQL 8). Note **MariaDB does not
+  have `@@server_uuid`**; fall back to the app-side token there.
+- **postgres** — `SELECT system_identifier FROM pg_control_system()`, which has
+  the same "identifies the cluster, not the dump" property.
+- **sqlite** — no server identity at all; use the app-side token.
+
+Resolve once at boot and cache it. If the engine offers nothing usable, say so
+explicitly in the diagnose output rather than silently degrading to "no
+protection".
+
+### Layer 1 — Env-anchored ownership stamp (fallback / second signal)
 
 Each box gets an immutable, per-host environment variable:
 
@@ -159,7 +249,12 @@ that would otherwise sync against production, and self-targeting.
 **Does not cover:** someone setting `RUTBA_INSTANCE_ID` on the live box to
 `lan-master` to "make the warning go away". That is a deliberate override, and
 the audit record is the mitigation. Worth stating plainly in the runbook so the
-temptation is named up front.
+temptation is named up front. Note the server-uuid binding of Layer 0 is much
+harder to wave away in a hurry — you cannot casually forge a MySQL server uuid —
+which is a further reason to lead with it rather than with the env var.
+
+**Does not cover:** a datadir/volume-level copy, where `auto.cnf` travels with
+the data. That is what the app-side token in the composite fingerprint is for.
 
 **Does not cover:** a restore performed while the worker is already running with
 credentials in memory. Restores should stop the worker first; the runbook should
@@ -169,8 +264,13 @@ say so.
 
 ## Suggested build order
 
-1. **Ownership stamp + quarantine state** — env var, boot check, `strapi.rutbaInstance`,
-   and the `/secrets` refusal. On its own this stops every marketplace flow. Small.
+0. **Server-uuid binding** — resolve `@@server_uuid` at boot, stamp it when an
+   integration is saved, verify it when credentials are read. This alone stops a
+   dump-and-import restore from syncing, needs no operator setup, and is the
+   smallest piece here. Do it first.
+1. **Ownership stamp + quarantine state** — env var / app-side token, boot check,
+   `strapi.rutbaInstance`, and the `/secrets` refusal. Adds the second signal that
+   catches volume-level copies, and gives every consumer one verdict to read.
 2. **content-sync-pro guards** — skip `initializeSchedulers`, refuse the run
    entry points. Needs a plugin change and a republish.
 3. **Self-target refusal** — ping returns the env id; check before each run.
