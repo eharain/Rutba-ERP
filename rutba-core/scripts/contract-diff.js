@@ -178,6 +178,11 @@ async function main() {
   // (me-permissions src maps appRoles with id; the deployed dist build doesn't.)
   const ALLOWED = [
     /appRoles\[\d+\]\.id: MISSING in strapi/,
+    // Live-Strapi bug: branch.locations (→ api::storage-location) is stripped
+    // from populate=* by removeRestrictedRelations because the storage-location
+    // UP find grant is missing; core returns the real data. Remove once the
+    // grant is reseeded / the branch.locations fix lands in pos-strapi.
+    /\.locations: MISSING in strapi/,
   ];
 
   let identical = 0;

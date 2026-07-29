@@ -9,7 +9,12 @@
  *  - Core actions (find/findOne/create/update/delete) → documents() shim,
  *    Strapi REST envelope ({ data, meta }), REST status defaults
  *    (published for D&P types, drafts via ?status=draft).
- *  - Custom actions → 501 until their module is ported (playbook tranches).
+ *  - Ported custom actions → module registry handlers (src/modules/*), mounted
+ *    BEFORE the seeded table so they override rows seeded with core action
+ *    names for the verb whitelist. `selfAuth` routes skip the api-pro
+ *    interceptor (parity: auth:false in Strapi → interceptor never saw them;
+ *    the controllers gate themselves).
+ *  - Unported custom actions → 501 until their module's tranche.
  */
 
 const Koa = require('koa');
@@ -18,13 +23,48 @@ const bodyParser = require('koa-bodyparser');
 const qs = require('qs');
 const { documents, getRegistry } = require('../documents');
 const { buildCompatStrapi, loadApiProServices } = require('../compat/strapi');
+const { initModules } = require('../modules');
 const { createAuthMiddleware } = require('./auth');
 
 const CORE_ACTIONS = new Set(['find', 'findOne', 'create', 'update', 'delete']);
 
-function sendError(ctx, status, name, message) {
+function sendError(ctx, status, name, message, details) {
   ctx.status = status;
-  ctx.body = { data: null, error: { status, name, message } };
+  ctx.body = { data: null, error: { status, name, message, ...(details !== undefined ? { details } : {}) } };
+}
+
+// Strapi assigns these statuses by error class; ported code throws them.
+const ERROR_NAME_STATUS = {
+  ValidationError: 400,
+  ApplicationError: 400,
+  BadRequestError: 400,
+  UnauthorizedError: 401,
+  ForbiddenError: 403,
+  PolicyError: 403,
+  NotFoundError: 404,
+};
+const STATUS_ERROR_NAME = {
+  400: 'BadRequestError',
+  401: 'UnauthorizedError',
+  403: 'ForbiddenError',
+  404: 'NotFoundError',
+  500: 'InternalServerError',
+  501: 'NotImplementedError',
+};
+
+/** Strapi-style ctx helpers the ported controllers call (ctx.badRequest, …). */
+function installCtxHelpers(ctx) {
+  const fail = (status, name) => (message, details) => {
+    sendError(ctx, status, name, message || name, details);
+  };
+  ctx.badRequest = fail(400, 'BadRequestError');
+  ctx.unauthorized = fail(401, 'UnauthorizedError');
+  ctx.forbidden = fail(403, 'ForbiddenError');
+  ctx.notFound = fail(404, 'NotFoundError');
+  ctx.send = (body, status) => {
+    if (status) ctx.status = status;
+    ctx.body = body;
+  };
 }
 
 function restStatus(model, query) {
@@ -129,10 +169,15 @@ async function buildServer() {
 
   app.use(async (ctx, next) => {
     try {
+      installCtxHelpers(ctx);
       await next();
     } catch (err) {
-      console.error('[core] unhandled:', err.message);
-      sendError(ctx, err.status || 500, err.name || 'InternalServerError', err.message);
+      const status = err.status || ERROR_NAME_STATUS[err.name] || 500;
+      const name = err.name && err.name !== 'Error'
+        ? err.name
+        : (STATUS_ERROR_NAME[status] || 'InternalServerError');
+      if (status >= 500) console.error('[core] unhandled:', err.message);
+      sendError(ctx, status, name, err.message, err.details);
     }
   });
   // Deep-parse the query string once and pin it, so api-pro's interceptor can
@@ -173,6 +218,44 @@ async function buildServer() {
   const seen = new Set();
   let mounted = 0; let custom = 0;
 
+  // Module-registry custom routes mount FIRST: they claim their verb+path in
+  // `seen` so seeded rows can't shadow them (some custom actions are seeded
+  // with action 'create' and would otherwise mount as create handlers), and
+  // literal paths (…/recompute) precede the seeded :documentId patterns.
+  const { modules, routes: moduleRoutes } = initModules();
+  let ported = 0;
+  for (const r of moduleRoutes) {
+    const key = `${r.method} ${r.path}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const handler = async (ctx) => {
+      // Strapi routes for some modules name the param :id — alias it.
+      if (ctx.params.documentId !== undefined && ctx.params.id === undefined) {
+        ctx.params.id = ctx.params.documentId;
+      }
+      return r.handler(ctx);
+    };
+    if (r.selfAuth) {
+      // auth:false in Strapi — the controller gates itself (ensureUser /
+      // requireAppRole); the interceptor never ran there, so it doesn't here.
+      router[r.method](r.path, auth, handler);
+    } else {
+      const gate = async (ctx, next) => {
+        ctx.state.route = { handler: `${r.uid}.${r.action}` };
+        if (ctx.state.user && !isBypassed(ctx.path)) {
+          const result = await interceptor.process(ctx, strapi);
+          if (result.status === 'denied') {
+            return sendError(ctx, 403, 'PolicyError', result.reason);
+          }
+        }
+        return next();
+      };
+      router[r.method](r.path, auth, gate, handler);
+    }
+    mounted++;
+    ported++;
+  }
+
   for (const route of routes) {
     const key = `${route.verb} ${route.path}`;
     if (seen.has(key)) continue;
@@ -203,7 +286,7 @@ async function buildServer() {
   }
 
   app.use(router.routes()).use(router.allowedMethods());
-  console.log(`[core] mounted ${mounted} routes (${custom} custom → 501 until ported)`);
+  console.log(`[core] mounted ${mounted} routes (modules: ${modules.join(', ')} — ${ported} custom ported; ${custom} custom → 501)`);
   return app;
 }
 

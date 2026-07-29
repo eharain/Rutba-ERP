@@ -143,9 +143,9 @@ async function populateRows(db, reg, model, rows, populate, status) {
 async function populateRelation(db, reg, model, rows, ids, rel, opts, status) {
   const edge = resolveEdge(reg, model, rel);
   const target = edge.target;
-  if (target.builtin && rel.target !== 'plugin::users-permissions.user') {
-    // Builtin plugin models (up role, admin users, …) have no compiled schema —
-    // resolve to empty rather than failing the whole populate tree.
+  if (target.builtin && !BUILTIN_ROW_MAPPERS[rel.target]) {
+    // Builtin plugin models without a safe projection (admin users, …) have no
+    // compiled schema — resolve to empty rather than failing the populate tree.
     const single = rel.relation === 'oneToOne' || rel.relation === 'manyToOne';
     for (const row of rows) attach(row, rel.attr, single ? null : []);
     return;
@@ -179,7 +179,7 @@ async function populateRelation(db, reg, model, rows, ids, rel, opts, status) {
     if (seenPerParent.has(seenKey)) continue;
     seenPerParent.set(seenKey, true);
     const mapped = target.builtin
-      ? mapUpUserRow(child)
+      ? BUILTIN_ROW_MAPPERS[rel.target](child)
       : mapRow(target, child);
     if (!grouped.has(parentId)) grouped.set(parentId, []);
     grouped.get(parentId).push({ mapped, raw: child });
@@ -216,6 +216,19 @@ function mapUpUserRow(row) {
     blocked: row.blocked,
   };
 }
+
+// Builtin targets that MAY be populated, each with a fixed safe projection.
+// UP role is needed by the ported auth utils (super-admin check reads role.type).
+const BUILTIN_ROW_MAPPERS = {
+  'plugin::users-permissions.user': mapUpUserRow,
+  'plugin::users-permissions.role': (row) => ({
+    id: row.id,
+    documentId: row.document_id,
+    name: row.name,
+    description: row.description,
+    type: row.type,
+  }),
+};
 
 async function populateMedia(db, model, rows, ids, media, opts) {
   const children = await db('files_related_mph as m')
@@ -379,5 +392,9 @@ function documents(uid) {
   }
   return api;
 }
+
+// Mirror Strapi's `strapi.documents.use(...)` so ported registration code
+// (pos-strapi src/index.js style) reads the same in core.
+documents.use = useDocumentMiddleware;
 
 module.exports = { documents, getRegistry, useDocumentMiddleware };

@@ -78,7 +78,7 @@ async function resolveTargetId(trx, target, item) {
   }
   if (id !== null) return id;
   if (documentId === null) throw new Error(`Cannot resolve relation target from ${JSON.stringify(item)}`);
-  if (target.builtin) throw new Error(`documentId lookup not supported for builtin target ${target.uid}`);
+  if (target.builtin && !target.tableName) throw new Error(`documentId lookup not supported for builtin target ${target.uid}`);
   const qb = trx(target.tableName).where('document_id', documentId);
   if (target.draftAndPublish) qb.whereNull('published_at');
   const row = await qb.first('id');

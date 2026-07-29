@@ -152,6 +152,19 @@ function applyAttributeFilter(db, registry, qb, model, attr, value, alias) {
     const edge = resolveEdge(registry, model, rel);
     const linkAlias = `${alias}_${attr}_l`;
     const targetAlias = `${alias}_${attr}_t`;
+    // Strapi shorthand: { rel: 5 } / { rel: [5,6] } means the target's id;
+    // { rel: null } means "no linked row".
+    if (value === null) {
+      qb.whereNotExists(function () {
+        this.select(db.raw('1'))
+          .from(`${edge.table} as ${linkAlias}`)
+          .whereRaw('??.?? = ??.??', [linkAlias, edge.thisColumn, alias, 'id']);
+      });
+      return;
+    }
+    if (typeof value !== 'object' || Array.isArray(value)) {
+      value = { id: Array.isArray(value) ? { $in: value } : value };
+    }
     qb.whereExists(function () {
       this.select(db.raw('1'))
         .from(`${edge.table} as ${linkAlias}`)
