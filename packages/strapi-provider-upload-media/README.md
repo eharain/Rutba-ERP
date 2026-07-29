@@ -1,10 +1,27 @@
 # strapi-provider-upload-media
 
-Strapi (v4/v5) upload provider for the **Rutba/TrustList standalone media service**
-(`server.js` at the repo root). Stores **only master files** on the service; Strapi's
+A general Strapi (v4/v5) file-upload provider that **flips backend based on configuration**:
+
+| configuration | backend |
+| --- | --- |
+| `baseUrl` + `uploadToken` **unset** (default) | **local file upload** — files land in `public/uploads`, exactly as a stock Strapi install |
+| `baseUrl` + `uploadToken` **both set** | **media file server** — masters only, variants resized on request |
+| exactly **one** of them set | **throws** — see below |
+
+That means one provider entry works everywhere: a developer machine or a fresh
+checkout with no media service still boots and accepts uploads, and setting the two
+env vars flips that instance over to the media service without touching config.
+
+Setting only one of the pair is treated as a misconfiguration and throws at boot,
+rather than quietly falling back to local storage — a silent fallback there would
+write production media to the app server's disk, which nobody notices until the
+disk fills.
+
+**In media-file-server mode** it stores **only master files** on the service; Strapi's
 responsive variants (`thumbnail_/xsmall_/small_/medium_/large_/xlarge_`, matching Strapi's
-default breakpoints) are **not uploaded** — the service resizes the master on request. `formats` metadata still works, so no frontend
-changes are needed, but disk only ever holds masters.
+default breakpoints) are **not uploaded** — the service resizes the master on request.
+`formats` metadata still works, so no frontend changes are needed, but disk only ever
+holds masters.
 
 ## Install
 

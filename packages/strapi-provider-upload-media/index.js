@@ -3,24 +3,40 @@
 /**
  * strapi-provider-upload-media
  *
- * Strapi (v4/v5) upload provider for the Rutba standalone media service
- * (deploy/image-server). It stores ONLY master files on the service and lets the
- * service resize on the fly. For Strapi's responsive variants (thumbnail_/small_/
- * medium_/large_) it does NOT upload bytes — it just returns the variant URL, which
- * the media service generates from the master on first request. So `formats`
- * metadata keeps working unchanged while disk only ever holds masters.
+ * A general file-upload provider that flips between two backends based on
+ * configuration:
  *
- * config/plugins.js:
+ *   1. LOCAL FILE UPLOAD (default) — no media service configured, so uploads go
+ *      to the local filesystem exactly as stock Strapi does. This is the
+ *      fallback so a fresh checkout, a developer machine, or an instance that
+ *      has no media service still boots and accepts uploads.
+ *
+ *   2. MEDIA FILE SERVER — when a base URL and upload token are configured, the
+ *      provider stores ONLY master files on the standalone media service and
+ *      lets the service resize on the fly. For Strapi's responsive variants
+ *      (thumbnail_/small_/medium_/large_) it does NOT upload bytes — it returns
+ *      the variant URL, which the service generates from the master on first
+ *      request. So `formats` metadata keeps working unchanged while disk only
+ *      ever holds masters.
+ *
+ * Because the provider itself decides, config/plugins.js can name it
+ * unconditionally instead of conditionally spreading a provider block:
+ *
  *   upload: {
  *     config: {
  *       provider: 'strapi-provider-upload-media',
  *       providerOptions: {
+ *         // Omit these two and the provider serves local file upload.
  *         baseUrl: env('MEDIA_BASE_URL'),        // e.g. https://images.rutba.pk
  *         uploadToken: env('MEDIA_UPLOAD_TOKEN'),// matches the service UPLOAD_TOKEN
  *         skipVariants: true,                    // default true (recommended)
  *       },
  *     },
  *   }
+ *
+ * Supplying only ONE of baseUrl / uploadToken is treated as a misconfiguration
+ * and throws. Falling back to local storage there would silently write media to
+ * the app server's disk — the failure nobody notices until the disk fills.
  */
 
 // Strapi variant prefixes → width (px). Mirrors Strapi's default upload
@@ -31,13 +47,70 @@
 const VARIANT_W = { thumbnail: 245, xsmall: 64, small: 500, medium: 750, large: 1000, xlarge: 1920 };
 const VARIANT_RE = new RegExp('^(' + Object.keys(VARIANT_W).join('|') + ')_');
 
+/**
+ * Local file upload — the default backend.
+ *
+ * Delegates to Strapi's own bundled local provider rather than reimplementing
+ * filesystem writes, so path handling, size limits, private files and signed
+ * URLs behave exactly as they do on a stock install.
+ */
+function initLocalFileUpload(options) {
+  // This package is commonly installed as a `file:` dependency, which puts it
+  // OUTSIDE the Strapi app's node_modules tree — a bare require() of a package
+  // that only the app depends on then fails. So resolve from the app's own
+  // working directory first, and only fall back to normal resolution.
+  const load = () => {
+    for (const paths of [[process.cwd()], null]) {
+      try {
+        // eslint-disable-next-line global-require, import/no-dynamic-require
+        return require(paths ? require.resolve('@strapi/provider-upload-local', { paths }) : '@strapi/provider-upload-local');
+      } catch (_) {
+        // try the next resolution strategy
+      }
+    }
+    return null;
+  };
+
+  const local = load();
+  if (!local) {
+    throw new Error(
+      '[upload-file] No media service configured (baseUrl + uploadToken), so this provider '
+      + 'falls back to local file upload — but @strapi/provider-upload-local could not be resolved '
+      + `from ${process.cwd()} or from ${__dirname}. Either install it in the Strapi app, or set `
+      + 'MEDIA_BASE_URL and MEDIA_UPLOAD_TOKEN to use the media file server instead.'
+    );
+  }
+
+  // The local provider throws at init if public/uploads is missing, and that
+  // folder is gitignored — so a fresh checkout (exactly the case this fallback
+  // exists for) would fail to boot. Create it first; Strapi does the same thing
+  // for a stock install, we just can't rely on the ordering from here.
+  try {
+    const fs = require('node:fs');
+    const path = require('node:path');
+    const publicDir = global.strapi?.dirs?.static?.public || path.join(process.cwd(), 'public');
+    fs.mkdirSync(path.join(publicDir, 'uploads'), { recursive: true });
+  } catch (_) {
+    // Not fatal on its own — let the provider report the real problem below.
+  }
+
+  return local.init(options);
+}
+
 module.exports = {
   init(options = {}) {
     const baseUrl = String(options.baseUrl || process.env.MEDIA_BASE_URL || '').replace(/\/+$/, '');
     const token = options.uploadToken || process.env.MEDIA_UPLOAD_TOKEN || '';
     const skipVariants = options.skipVariants !== false; // default true
-    if (!baseUrl) throw new Error('[upload-media] providerOptions.baseUrl (or MEDIA_BASE_URL) is required');
-    if (!token) throw new Error('[upload-media] providerOptions.uploadToken (or MEDIA_UPLOAD_TOKEN) is required');
+
+    // Neither configured → plain file upload. Both → media service. Exactly one
+    // is a misconfiguration: silently storing locally would hide the fact that
+    // the media service is not being used at all.
+    if (!baseUrl && !token) {
+      return initLocalFileUpload(options);
+    }
+    if (!baseUrl) throw new Error('[upload-media] uploadToken is set but baseUrl (or MEDIA_BASE_URL) is missing — refusing to fall back to local storage. Set both to use the media service, or neither for local file upload.');
+    if (!token) throw new Error('[upload-media] baseUrl is set but uploadToken (or MEDIA_UPLOAD_TOKEN) is missing — refusing to fall back to local storage. Set both to use the media service, or neither for local file upload.');
 
     // Optional file visibility for the media service's clustering. Either supply a
     // `visibility(key, file) -> 'private'|'public'|null` function, or list

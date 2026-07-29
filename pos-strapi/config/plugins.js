@@ -175,19 +175,22 @@ module.exports = ({ env }) => ({
             },
         },
     },
+    // ── upload ───────────────────────────────────────────────────────
+    // One provider, two backends. It serves plain local file upload unless a
+    // media file server is configured, so this block no longer has to
+    // conditionally swap the provider in and out: leaving MEDIA_BASE_URL /
+    // MEDIA_UPLOAD_TOKEN unset (dev machine, fresh checkout) simply means files
+    // land in public/uploads, and setting both flips every instance over to the
+    // media service. Setting only one throws rather than quietly storing local.
     upload: {
         config: {
             sizeLimit: env.int('UPLOAD_MAX_FILE_SIZE', 250 * 1024 * 1024), // 250 MB default
-            ...(env('MEDIA_BASE_URL')
-                ? {
-                    provider: 'strapi-provider-upload-media',
-                    providerOptions: {
-                        baseUrl: env('MEDIA_BASE_URL'),
-                        uploadToken: env('MEDIA_UPLOAD_TOKEN'),
-                        skipVariants: true,
-                    },
-                }
-                : {}),
+            provider: 'strapi-provider-upload-media',
+            providerOptions: {
+                baseUrl: env('MEDIA_BASE_URL'),
+                uploadToken: env('MEDIA_UPLOAD_TOKEN'),
+                skipVariants: true,
+            },
         },
     },
 });

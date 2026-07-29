@@ -1,7 +1,7 @@
 {
   "name": "strapi-provider-upload-media",
-  "version": "1.0.0",
-  "description": "Strapi upload provider for the Rutba/TrustList standalone media service (masters-only, resize-on-request)",
+  "version": "1.1.0",
+  "description": "Strapi upload provider: local file upload by default, flipping to the standalone media file server (masters-only, resize-on-request) when configured",
   "main": "index.js",
   "license": "MIT",
   "author": "Ejaz Arain <eharain@yahoo.com> (https://tech-style.co)",
@@ -25,9 +25,9 @@
   },
   "strapi": {
     "kind": "provider",
-    "name": "upload-media",
-    "displayName": "Media (masters-only)",
-    "description": "Stores masters only; variants are resized on request by the media service."
+    "name": "upload-file",
+    "displayName": "File upload (media service when configured)",
+    "description": "Local file upload by default; flips to the standalone media file server when baseUrl + uploadToken are configured, storing masters only and resizing variants on request."
   },
   "peerDependencies": {
     "@strapi/strapi": "^4.0.0 || ^5.0.0"
