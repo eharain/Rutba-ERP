@@ -13,6 +13,8 @@
 const jwt = require('jsonwebtoken');
 const { get } = require('../src/config/env');
 const { getDb, closeDb } = require('../src/db/connection');
+const { buildCompatStrapi } = require('../src/compat/strapi');
+const { initModules } = require('../src/modules');
 const { start } = require('../src/http/server');
 
 const PORT = 4021;
@@ -54,10 +56,18 @@ async function main() {
     .select('i.uid', 'm.path').first();
   // ...and one where NO find-method of the interface has a policy for this
   // role (the engine matches policies per interface uid × action, not per path).
+  // Skip paths claimed as selfAuth by ported modules (e.g. GET /me/addresses):
+  // those are auth:false + controller-gated in pos-strapi — the interceptor
+  // never denies them, so they are not valid denyByDefault probes.
+  buildCompatStrapi(); // module registration reads global.strapi
+  const selfAuthPaths = initModules().routes
+    .filter((r) => r.selfAuth && r.method === 'get')
+    .map((r) => r.path.replace(/^\/api/, ''));
   const denied = await db('api_pro_interfaces as i')
     .join('api_pro_interface_methods_api_interface_lnk as ml', 'ml.api_interface_id', 'i.id')
     .join('api_pro_interface_methods as m', 'm.id', 'ml.api_interface_method_id')
     .where('m.action', 'find')
+    .whereNotIn('m.path', selfAuthPaths.length ? selfAuthPaths : ['__none__'])
     .whereNotExists(function () {
       this.select(1).from('api_pro_method_policies as p')
         .join('api_pro_method_policies_interface_method_lnk as pl', 'pl.api_method_policy_id', 'p.id')

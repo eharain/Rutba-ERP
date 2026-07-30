@@ -169,6 +169,38 @@ function applyAttributeFilter(db, registry, qb, model, attr, value, alias) {
     if (typeof value !== 'object' || Array.isArray(value)) {
       value = { id: Array.isArray(value) ? { $in: value } : value };
     }
+    // Strapi's query engine LEFT JOINs relation traversals, so a filter made
+    // purely of null-tests ({ user: { id: { $null: true } } }) also matches
+    // rows with NO link at all — the idiom ported code uses for "orphan".
+    // The EXISTS translation can't express absence; rewrite as absence-or-null.
+    const isNullTest = (v) => {
+      if (v === null) return true;
+      if (v && typeof v === 'object' && !Array.isArray(v)) {
+        const ops = Object.entries(v);
+        return ops.length > 0 && ops.every(([op, val]) =>
+          (op === '$null' && val !== false) || (op === '$eq' && val === null));
+      }
+      return false;
+    };
+    const valueEntries = Object.entries(value);
+    const pureNullTest = valueEntries.length > 0 &&
+      valueEntries.every(([k, v]) => scalarColumn(edge.target, k) && isNullTest(v));
+    if (pureNullTest) {
+      qb.where(function () {
+        this.whereNotExists(function () {
+          this.select(db.raw('1'))
+            .from(`${edge.table} as ${linkAlias}`)
+            .whereRaw('??.?? = ??.??', [linkAlias, edge.thisColumn, alias, 'id']);
+        }).orWhereExists(function () {
+          this.select(db.raw('1'))
+            .from(`${edge.table} as ${linkAlias}`)
+            .join(`${edge.target.tableName} as ${targetAlias}`, `${targetAlias}.id`, `${linkAlias}.${edge.otherColumn}`)
+            .whereRaw('??.?? = ??.??', [linkAlias, edge.thisColumn, alias, 'id']);
+          applyFilters(db, registry, this, edge.target, value, targetAlias);
+        });
+      });
+      return;
+    }
     qb.whereExists(function () {
       this.select(db.raw('1'))
         .from(`${edge.table} as ${linkAlias}`)

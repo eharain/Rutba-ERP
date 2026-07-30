@@ -24,6 +24,9 @@ function restStatus(model, query) {
 function coreHandler(uid, action) {
   const reg = getRegistry();
   const model = reg.models.get(uid);
+  // Handlers RETURN the response body as well as assigning ctx.body — Strapi
+  // core-controller actions return the envelope, and ported overrides chain on
+  // it (`const response = await super.find(ctx); response.data...`).
   return async (ctx) => {
     const q = ctx.query || {};
     const docs = documents(uid);
@@ -41,27 +44,27 @@ function coreHandler(uid, action) {
         data: rows,
         meta: { pagination: { page, pageSize, pageCount: Math.ceil(total / pageSize), total } },
       };
-      return;
+      return ctx.body;
     }
     if (action === 'findOne') {
       const row = await docs.findOne({ documentId: ctx.params.documentId, populate: q.populate, status });
       if (!row) return sendError(ctx, 404, 'NotFoundError', 'Not Found');
       ctx.body = { data: row, meta: {} };
-      return;
+      return ctx.body;
     }
     if (action === 'create') {
       const data = (ctx.request.body && ctx.request.body.data) || {};
       const row = await docs.create({ data, status, populate: q.populate });
       ctx.status = 201;
       ctx.body = { data: row, meta: {} };
-      return;
+      return ctx.body;
     }
     if (action === 'update') {
       const data = (ctx.request.body && ctx.request.body.data) || {};
       const row = await docs.update({ documentId: ctx.params.documentId, data, status, populate: q.populate });
       if (!row) return sendError(ctx, 404, 'NotFoundError', 'Not Found');
       ctx.body = { data: row, meta: {} };
-      return;
+      return ctx.body;
     }
     if (action === 'delete') {
       await docs.delete({ documentId: ctx.params.documentId });

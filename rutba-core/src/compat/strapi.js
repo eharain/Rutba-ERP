@@ -161,6 +161,28 @@ function scalarWriteValues(model, data) {
 }
 
 /**
+ * Split a query-engine `data` payload into scalar column values and owner-side
+ * XtoOne relation writes given as a bare id or null (the query-engine dialect —
+ * e.g. crm-lead `{ assigned_to: userId }`). Anything else still throws via
+ * scalarWriteValues.
+ */
+function splitWriteValues(reg, model, data) {
+  const scalars = {};
+  const relations = [];
+  for (const [attr, v] of Object.entries(data || {})) {
+    const rel = model.relations.find((r) => r.attr === attr);
+    const isToOne = rel && rel.owner && (rel.relation === 'manyToOne' || rel.relation === 'oneToOne');
+    const isIdish = v === null || typeof v === 'number' || (typeof v === 'string' && /^\d+$/.test(v));
+    if (isToOne && isIdish) {
+      const jt = reg.joinTables.find((j) => j.ownerUid === model.uid && j.attr === attr);
+      if (jt) { relations.push({ jt, targetId: v === null ? null : Number(v) }); continue; }
+    }
+    Object.assign(scalars, scalarWriteValues(model, { [attr]: v }));
+  }
+  return { scalars, relations };
+}
+
+/**
  * db.query(uid) adapter. Reads map onto the shim (filters dialect ⊇ the query
  * engine's `where`). Writes are DIRECT scalar row updates — like Strapi's query
  * engine they bypass document middlewares, so ported code uses them only for
@@ -192,9 +214,17 @@ function dbQueryAdapter(uid) {
     async update({ where, data } = {}) {
       const ids = await matchingIds(where);
       if (!ids.length) return null;
-      const values = scalarWriteValues(model, data);
-      values.updated_at = new Date();
-      await getDb()(model.tableName).where('id', ids[0]).update(values);
+      const { scalars, relations } = splitWriteValues(reg, model, data);
+      scalars.updated_at = new Date();
+      await getDb()(model.tableName).where('id', ids[0]).update(scalars);
+      // Owner-side XtoOne link replacement — like Strapi's query engine,
+      // direct and lifecycle-free.
+      for (const { jt, targetId } of relations) {
+        await getDb()(jt.table).where(jt.sourceColumn, ids[0]).del();
+        if (targetId !== null) {
+          await getDb()(jt.table).insert({ [jt.sourceColumn]: ids[0], [jt.targetColumn]: targetId });
+        }
+      }
       return docs.findFirst({ filters: { id: { $eq: ids[0] } } });
     },
     async updateMany({ where, data } = {}) {
@@ -368,6 +398,12 @@ function buildCompatStrapi(overrides = {}) {
       warn: (...a) => console.warn('[core]', ...a),
       error: (...a) => console.error('[core]', ...a),
       debug: () => {},
+    },
+    // Strapi plugins are not loaded in core. Ported call sites that reach for
+    // one (notification-engine → plugin('email')) wrap the call in try/catch;
+    // throwing here keeps the failure explicit instead of a TypeError.
+    plugin(name) {
+      throw new Error(`compat: strapi.plugin('${name}') is not available in rutba-core`);
     },
   };
   strapi.service = createServiceResolver(strapi);
