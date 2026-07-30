@@ -44,9 +44,12 @@ function scalarInsertValues(model, data, now) {
   const values = {};
   for (const s of model.scalars) {
     if (!(s.attr in data)) continue;
-    const v = data[s.attr];
-    values[s.column] =
-      s.type === 'json' && v !== null && typeof v !== 'string' ? JSON.stringify(v) : v;
+    let v = data[s.attr];
+    if (s.type === 'json' && v !== null && typeof v !== 'string') v = JSON.stringify(v);
+    // Strapi accepts ISO-8601 strings for datetimes; MySQL DATETIME columns
+    // reject the raw 'T…Z' form — hand knex a Date so it formats it.
+    if (s.type === 'datetime' && typeof v === 'string' && !Number.isNaN(Date.parse(v))) v = new Date(v);
+    values[s.column] = v;
   }
   return values;
 }

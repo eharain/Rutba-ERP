@@ -55,6 +55,17 @@ function mapRow(model, row) {
   return out;
 }
 
+/** Strapi `fields` selection: id + documentId always, then only the asked-for
+ *  attributes (createdAt etc. included only when requested). */
+function projectFields(mapped, fields) {
+  if (!Array.isArray(fields) || !fields.length || !mapped) return mapped;
+  const out = { id: mapped.id, documentId: mapped.documentId };
+  for (const attr of fields) {
+    if (attr in mapped) out[attr] = mapped[attr];
+  }
+  return out;
+}
+
 function mapComponentRow(model, row) {
   const out = { id: row.id };
   for (const s of model.scalars) {
@@ -180,7 +191,7 @@ async function populateRelation(db, reg, model, rows, ids, rel, opts, status) {
     seenPerParent.set(seenKey, true);
     const mapped = target.builtin
       ? BUILTIN_ROW_MAPPERS[rel.target](child)
-      : mapRow(target, child);
+      : projectFields(mapRow(target, child), opts.fields);
     if (!grouped.has(parentId)) grouped.set(parentId, []);
     grouped.get(parentId).push({ mapped, raw: child });
   }
@@ -352,7 +363,8 @@ function documents(uid) {
     }
     const rows = await qb;
     await populateRows(db, reg, model, rows, params.populate, params.status);
-    return rows.map((raw) => Object.assign(mapRow(model, raw), raw.__populated || {}));
+    return rows.map((raw) =>
+      Object.assign(projectFields(mapRow(model, raw), params.fields), raw.__populated || {}));
   }
 
   const rawApi = {

@@ -155,7 +155,12 @@ function scalarWriteValues(model, data) {
         'query-engine writes support scalar cache columns only (use documents() for relations)'
       );
     }
-    values[s.column] = s.type === 'json' && v !== null && typeof v !== 'string' ? JSON.stringify(v) : v;
+    let value = v;
+    if (s.type === 'json' && value !== null && typeof value !== 'string') value = JSON.stringify(value);
+    // MySQL DATETIME rejects raw ISO 'T…Z' strings — same normalization as
+    // the documents write path.
+    if (s.type === 'datetime' && typeof value === 'string' && !Number.isNaN(Date.parse(value))) value = new Date(value);
+    values[s.column] = value;
   }
   return values;
 }
@@ -282,6 +287,7 @@ function entityServiceAdapter() {
         filters: opts.filters,
         populate: opts.populate,
         sort: orderByToSort(opts.sort) || opts.sort,
+        ...(opts.fields !== undefined ? { fields: opts.fields } : {}),
         ...(opts.limit !== undefined ? { limit: opts.limit } : {}),
         ...(opts.start !== undefined ? { start: opts.start } : {}),
       });

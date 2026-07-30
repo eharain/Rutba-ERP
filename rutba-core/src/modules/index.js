@@ -16,12 +16,13 @@
 const { registerMfgModule } = require('./mfg');
 const { registerHrModule } = require('./hr');
 const { registerCrmModule } = require('./crm');
+const { registerInventoryModule } = require('./inventory');
 
 let initialized = null;
 
 function initModules() {
   if (initialized) return initialized;
-  const modules = [registerMfgModule(), registerHrModule(), registerCrmModule()];
+  const modules = [registerMfgModule(), registerHrModule(), registerCrmModule(), registerInventoryModule()];
   const routes = modules.flatMap((m) => m.routes || []);
   initialized = { modules: modules.map((m) => m.name), routes };
   return initialized;
