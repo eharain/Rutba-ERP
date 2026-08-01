@@ -411,6 +411,25 @@ npm run build:all
 log_ok "Build completed successfully."
 
 ###########################################
+# HAND THE BUILD TO THE SERVICE USER
+###########################################
+# Clone + install + build all run as root (this script needs sudo for systemd),
+# so every file lands root:root — but the units run as ${RUN_USER}. Anything the
+# apps write at RUNTIME then fails with EACCES, and because those failures are
+# caught and logged rather than fatal, the services come up "healthy" while
+# quietly degraded. Observed on the LAN box: api-pro could not mkdir
+# pos-strapi/.api-pro, so its file→DB policy sync threw on EVERY boot of EVERY
+# build since 2026-07-26 and .api-pro/{policies,interfaces} stayed empty.
+# Next.js needs the same for .next/cache.
+
+log "Handing ${BUILD_DIR} to ${RUN_USER}:${RUN_GROUP} ..."
+if chown -R "${RUN_USER}:${RUN_GROUP}" "$BUILD_DIR"; then
+    log_ok "Ownership set to ${RUN_USER}:${RUN_GROUP}."
+else
+    log_warn "chown failed — services may hit EACCES writing inside the build."
+fi
+
+###########################################
 # BACKUP DATABASE (skip on first deploy)
 ###########################################
 
