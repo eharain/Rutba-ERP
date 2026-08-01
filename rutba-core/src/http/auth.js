@@ -38,8 +38,18 @@ async function resolveApiToken(rawToken) {
   return { id: row.id, name: row.name, type: row.type };
 }
 
-function createAuthMiddleware({ isBypassed } = {}) {
+/**
+ * `optional: true` builds the auth used on module selfAuth routes — parity
+ * with Strapi's `auth: false`, where the framework never rejects a request:
+ * a valid token still populates ctx.state.user (so the controllers'
+ * ensureUser short-circuits), but a missing OR invalid token falls through
+ * anonymously and the controller's own gate decides. A storefront holding an
+ * expired JWT must still be served the public CMS reads.
+ */
+function createAuthMiddleware({ isBypassed, optional = false } = {}) {
   const jwtSecret = get('JWT_SECRET');
+  const reject = (ctx, next, message) =>
+    optional ? next() : unauthorized(ctx, message);
   return async function auth(ctx, next) {
     const header = ctx.get('authorization') || '';
     const token = header.startsWith('Bearer ') ? header.slice(7).trim() : null;
@@ -47,7 +57,7 @@ function createAuthMiddleware({ isBypassed } = {}) {
       // Bypass-listed paths (public web routes etc.) run unauthenticated —
       // parity with pos-strapi where those routes are auth: false.
       if (isBypassed && isBypassed(ctx.path)) return next();
-      return unauthorized(ctx, 'Missing or invalid credentials');
+      return reject(ctx, next, 'Missing or invalid credentials');
     }
 
     // 1. users-permissions JWT — two shapes:
@@ -74,7 +84,7 @@ function createAuthMiddleware({ isBypassed } = {}) {
             filters: { id: { $eq: userId } },
           });
           if (!user || user.blocked || user.confirmed === false) {
-            return unauthorized(ctx, 'User blocked or unconfirmed');
+            return reject(ctx, next, 'User blocked or unconfirmed');
           }
           ctx.state.user = user;
           return next();
@@ -91,7 +101,7 @@ function createAuthMiddleware({ isBypassed } = {}) {
       return next();
     }
 
-    return unauthorized(ctx, 'Missing or invalid credentials');
+    return reject(ctx, next, 'Missing or invalid credentials');
   };
 }
 

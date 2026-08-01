@@ -130,6 +130,16 @@ async function buildServer() {
     await next();
   });
   app.use(bodyParser({ enableTypes: ['json'] }));
+  // Strapi's includeUnparsed parity: expose the exact request bytes under the
+  // same well-known symbol, for handlers that verify HMAC signatures over the
+  // raw body (social webhooks).
+  const UNPARSED = Symbol.for('unparsedBody');
+  app.use(async (ctx, next) => {
+    if (ctx.request.body && typeof ctx.request.body === 'object' && ctx.request.rawBody !== undefined) {
+      ctx.request.body[UNPARSED] = ctx.request.rawBody;
+    }
+    return next();
+  });
 
   router.get('/_health', (ctx) => { ctx.body = { status: 'ok', server: 'rutba-core' }; });
 
@@ -140,6 +150,9 @@ async function buildServer() {
   const isBypassed = (p) => bypassPrefixes.some((b) => p === b || p.startsWith(`${b}/`));
 
   const auth = createAuthMiddleware({ isBypassed });
+  // For module selfAuth routes (auth:false in Strapi): identify when possible,
+  // never reject — the controllers gate themselves (ensureUser & co).
+  const authOptional = createAuthMiddleware({ isBypassed, optional: true });
 
   // /me/permissions — the login-time contract endpoint every app calls.
   // Ported straight from the plugin's me controller + mePermissions service.
@@ -180,7 +193,7 @@ async function buildServer() {
     if (r.selfAuth) {
       // auth:false in Strapi — the controller gates itself (ensureUser /
       // requireAppRole); the interceptor never ran there, so it doesn't here.
-      router[r.method](r.path, auth, handler);
+      router[r.method](r.path, authOptional, handler);
     } else {
       const gate = async (ctx, next) => {
         ctx.state.route = { handler: `${r.uid}.${r.action}` };

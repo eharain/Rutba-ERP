@@ -166,6 +166,8 @@ async function populateRelation(db, reg, model, rows, ids, rel, opts, status) {
   // (Strapi resolves versions per-document at read time — verified against
   // live data: a published branch links draft AND published product rows).
   // Hop through the linked row to the version matching the requested status.
+  // (The SOURCE side needs no hop: publish/discard repair inbound link rows
+  // onto the fresh version row at write time, matching Strapi — see write.js.)
   const qb = db(`${edge.table} as l`).whereIn(`l.${edge.thisColumn}`, ids);
   if (!target.builtin && target.draftAndPublish) {
     qb.join(`${target.tableName} as tl`, 'tl.id', `l.${edge.otherColumn}`)
@@ -176,7 +178,11 @@ async function populateRelation(db, reg, model, rows, ids, rel, opts, status) {
   qb.select('t.*', `l.${edge.thisColumn} as __parent_id`);
   if (!target.builtin) applyStatus(qb, target, opts.status || status, 't');
   if (opts.filters) applyFilters(db, reg, qb, target, opts.filters, 't');
-  if (edge.orderColumn) qb.orderBy(`l.${edge.orderColumn}`, 'asc');
+  // An explicit `sort` in the populate opts overrides the link-order default
+  // (e.g. children: { sort: ['order:asc'] } on cms-menu items).
+  if (opts.sort && !target.builtin) {
+    for (const [column, dir] of normalizeSort(target, opts.sort)) qb.orderBy(`t.${column}`, dir);
+  } else if (edge.orderColumn) qb.orderBy(`l.${edge.orderColumn}`, 'asc');
   else qb.orderBy('l.id', 'asc');
 
   const children = await qb;
@@ -351,15 +357,23 @@ function documents(uid) {
     for (const [column, dir] of normalizeSort(model, params.sort)) {
       qb.orderBy(`t.${column}`, dir);
     }
+    // The Document Service accepts pagination both as top-level page/pageSize/
+    // limit/start and nested under `pagination: {...}` (the shape the ported
+    // cms services use).
+    const pag = params.pagination || {};
+    const page = params.page !== undefined ? params.page : pag.page;
+    const pageSize = params.pageSize !== undefined ? params.pageSize : pag.pageSize;
+    const limit = params.limit !== undefined ? params.limit : pag.limit;
+    const start = params.start !== undefined ? params.start : pag.start;
     if (limitOne) {
       qb.limit(1);
-    } else if (params.page !== undefined || params.pageSize !== undefined) {
-      const page = Math.max(1, parseInt(params.page || 1, 10));
-      const pageSize = Math.max(1, parseInt(params.pageSize || 25, 10));
-      qb.limit(pageSize).offset((page - 1) * pageSize);
+    } else if (page !== undefined || pageSize !== undefined) {
+      const p = Math.max(1, parseInt(page || 1, 10));
+      const size = Math.max(1, parseInt(pageSize || 25, 10));
+      qb.limit(size).offset((p - 1) * size);
     } else {
-      if (params.limit !== undefined) qb.limit(parseInt(params.limit, 10));
-      if (params.start !== undefined) qb.offset(parseInt(params.start, 10));
+      if (limit !== undefined) qb.limit(parseInt(limit, 10));
+      if (start !== undefined) qb.offset(parseInt(start, 10));
     }
     const rows = await qb;
     await populateRows(db, reg, model, rows, params.populate, params.status);

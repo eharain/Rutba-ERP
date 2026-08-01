@@ -11,6 +11,8 @@
  *  - publish → deletes any existing published version, clones the draft graph
  *    (entity row + owner-side link rows + component graph + media morph rows),
  *    remapping D&P relation targets to their published counterparts.
+ *  - discardDraft → the inverse: deletes the draft version and clones the
+ *    published graph back into a fresh draft (targets remapped to drafts).
  *  - delete → removes every version and its full graph.
  *
  * Every operation runs in its own transaction.
@@ -224,21 +226,34 @@ async function deleteComponentGraph(trx, reg, ownerModel, ownerRowIds, onlyField
   await trx(cmpsTable).whereIn('id', cmpsRows.map((r) => r.id)).del();
 }
 
-/** Find the published counterpart's row id for a D&P target row id (null if unpublished). */
-async function publishedCounterpartId(trx, target, draftRowId) {
-  const src = await trx(target.tableName).where('id', draftRowId).first('document_id');
+/** Find the counterpart row id of the wanted status for a D&P target row id
+ *  (null when that version doesn't exist). */
+async function counterpartId(trx, target, rowId, wantStatus) {
+  const src = await trx(target.tableName).where('id', rowId).first('document_id');
   if (!src) return null;
-  const pub = await trx(target.tableName)
-    .where('document_id', src.document_id).whereNotNull('published_at').first('id');
-  return pub ? pub.id : null;
+  const qb = trx(target.tableName).where('document_id', src.document_id);
+  if (wantStatus === 'published') qb.whereNotNull('published_at');
+  else qb.whereNull('published_at');
+  const row = await qb.first('id');
+  return row ? row.id : null;
 }
 
-/** Clone an entity/component row and its graph; returns the new row id. */
-async function cloneEntityGraph(trx, reg, model, sourceRowId, overrides) {
+/** Clone an entity/component row and its graph; returns the new row id.
+ *  `remapTo` remaps D&P relation targets onto that version ('published' when
+ *  publishing a draft, 'draft' when discarding back from the published copy);
+ *  targets without that version are dropped from the clone. */
+async function cloneEntityGraph(trx, reg, model, sourceRowId, overrides, remapTo = 'published') {
   const source = await trx(model.tableName).where('id', sourceRowId).first();
   if (!source) throw new Error(`${model.uid}: row ${sourceRowId} not found for clone`);
   const values = { ...source, ...overrides };
   delete values.id;
+  // mysql2 PARSES JSON columns on read; handing the parsed value back to knex
+  // breaks (arrays become SQL lists). Re-stringify for the insert.
+  for (const s of model.scalars) {
+    if (s.type === 'json' && values[s.column] !== null && typeof values[s.column] === 'object') {
+      values[s.column] = JSON.stringify(values[s.column]);
+    }
+  }
   const [newId] = await trx(model.tableName).insert(values);
 
   // Owner-side link rows, remapping D&P targets to their published versions.
@@ -250,8 +265,8 @@ async function cloneEntityGraph(trx, reg, model, sourceRowId, overrides) {
     for (const link of links) {
       let targetId = link[jt.targetColumn];
       if (!target.builtin && target.draftAndPublish) {
-        targetId = await publishedCounterpartId(trx, target, targetId);
-        if (targetId === null) continue; // target not published → drop from published version
+        targetId = await counterpartId(trx, target, targetId, remapTo);
+        if (targetId === null) continue; // target has no such version → drop from the clone
       }
       const row = { ...link, [jt.sourceColumn]: newId, [jt.targetColumn]: targetId };
       delete row.id;
@@ -275,7 +290,7 @@ async function cloneEntityGraph(trx, reg, model, sourceRowId, overrides) {
     for (const c of cmpsRows) {
       const compModel = reg.models.get(c.component_type);
       if (!compModel) continue;
-      const newCmpId = await cloneEntityGraph(trx, reg, compModel, c.cmp_id, {});
+      const newCmpId = await cloneEntityGraph(trx, reg, compModel, c.cmp_id, {}, remapTo);
       const row = { ...c, entity_id: newId, cmp_id: newCmpId };
       delete row.id;
       await trx(cmpsTable).insert(row);
@@ -303,14 +318,48 @@ function versionRowsQuery(trx, model, documentId, status) {
 }
 
 function createWriteApi({ db, reg, model, findOne }) {
+  // Join tables owned by OTHER rows that point AT rows of this model
+  // (including self-relations from other documents of the same type). Strapi
+  // repairs these on publish/discard: deleting the replaced version row
+  // FK-cascades them, and the fresh clone must inherit them — otherwise e.g.
+  // the seo-meta sidecar loses its page after a discard, and a menu item's
+  // published children detach when the parent is re-published.
+  const inboundJts = reg.joinTables.filter((jt) => jt.targetUid === model.uid);
+
+  async function snapshotInboundLinks(trx, oldIds) {
+    if (!oldIds.length) return [];
+    const inbound = [];
+    for (const jt of inboundJts) {
+      const rows = await trx(jt.table).whereIn(jt.targetColumn, oldIds);
+      for (const row of rows) {
+        // Self-relation rows whose SOURCE is also a row being replaced are
+        // outbound — the clone regenerates those itself.
+        if (jt.ownerUid === model.uid && oldIds.includes(row[jt.sourceColumn])) continue;
+        inbound.push({ jt, row });
+      }
+    }
+    return inbound;
+  }
+
+  async function restoreInboundLinks(trx, inbound, newId) {
+    for (const { jt, row } of inbound) {
+      const copy = { ...row, [jt.targetColumn]: newId };
+      delete copy.id;
+      await trx(jt.table).insert(copy);
+    }
+  }
+
   async function publishInternal(trx, documentId) {
     const draft = await versionRowsQuery(trx, model, documentId, 'draft').first('id');
     if (!draft) throw new Error(`${model.uid}: no draft for documentId ${documentId}`);
     const published = await versionRowsQuery(trx, model, documentId, 'published').select('id');
-    await deleteVersionGraph(trx, reg, model, published.map((r) => r.id));
-    await cloneEntityGraph(trx, reg, model, draft.id, {
+    const oldIds = published.map((r) => r.id);
+    const inbound = await snapshotInboundLinks(trx, oldIds);
+    await deleteVersionGraph(trx, reg, model, oldIds);
+    const newId = await cloneEntityGraph(trx, reg, model, draft.id, {
       published_at: new Date(),
     });
+    await restoreInboundLinks(trx, inbound, newId);
   }
 
   return {
@@ -389,6 +438,23 @@ function createWriteApi({ db, reg, model, findOne }) {
         await deleteVersionGraph(trx, reg, model, published.map((r) => r.id));
       });
       return findOne({ documentId });
+    },
+
+    async discardDraft(params = {}) {
+      const { documentId } = params;
+      if (!documentId) throw new Error('discardDraft requires a documentId');
+      if (!model.draftAndPublish) throw new Error(`${model.uid} is not a draftAndPublish type`);
+      await withTransaction(async (trx) => {
+        const published = await versionRowsQuery(trx, model, documentId, 'published').first('id');
+        if (!published) throw new Error(`${model.uid}: no published version for documentId ${documentId}`);
+        const drafts = await versionRowsQuery(trx, model, documentId, 'draft').select('id');
+        const oldIds = drafts.map((r) => r.id);
+        const inbound = await snapshotInboundLinks(trx, oldIds);
+        await deleteVersionGraph(trx, reg, model, oldIds);
+        const newId = await cloneEntityGraph(trx, reg, model, published.id, { published_at: null }, 'draft');
+        await restoreInboundLinks(trx, inbound, newId);
+      });
+      return findOne({ documentId, status: 'draft', populate: params.populate });
     },
   };
 }

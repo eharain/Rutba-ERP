@@ -28,7 +28,7 @@
 
 const path = require('path');
 const { EventEmitter } = require('events');
-const { REPO_ROOT } = require('../config/env');
+const { REPO_ROOT, get: envGet } = require('../config/env');
 const { withTransaction, getDb } = require('../db/connection');
 const { documents, getRegistry } = require('../documents');
 const { applyFilters } = require('../documents/query');
@@ -73,6 +73,35 @@ function installStrapiFactoryStub() {
 function posRequire(relPath) {
   installStrapiFactoryStub();
   return require(path.join(POS_SRC, relPath));
+}
+
+/**
+ * Strapi-style env helper for evaluating pos-strapi config factories
+ * (config/social.js etc.). Name resolution goes through core's env loader, so
+ * the POS_STRAPI__ prefix convention keeps working (workspace-env parity).
+ */
+function makeEnvHelper() {
+  const env = (name, fallback) => {
+    const v = envGet(name);
+    return v === undefined ? fallback : v;
+  };
+  env.bool = (name, fallback) => {
+    const v = envGet(name);
+    if (v === undefined) return fallback;
+    return v === true || String(v).toLowerCase() === 'true' || v === '1';
+  };
+  env.int = (name, fallback) => {
+    const v = envGet(name);
+    if (v === undefined) return fallback;
+    const n = parseInt(v, 10);
+    return Number.isFinite(n) ? n : fallback;
+  };
+  env.array = (name, fallback = []) => {
+    const v = envGet(name);
+    if (v === undefined) return fallback;
+    return String(v).split(',').map((s) => s.trim()).filter(Boolean);
+  };
+  return env;
 }
 
 function createCache({ ttlMs = 30_000, maxEntries = 5_000, enabled = true } = {}) {
@@ -373,12 +402,41 @@ function instantiateController(mod, strapi) {
 function buildCompatStrapi(overrides = {}) {
   installStrapiFactoryStub();
   const config = { ...pluginConfig.default, ...(overrides.apiProConfig || {}) };
+  let socialConfig; // lazy — evaluated from pos-strapi's own config factory
+  let contentTypesCache = null;
   const strapi = {
     config: {
-      get(key) {
+      get(key, fallback) {
         if (key === 'plugin::api-pro') return config;
-        return undefined;
+        if (key === 'social') {
+          if (socialConfig === undefined) {
+            const factory = require(path.join(REPO_ROOT, 'pos-strapi', 'config', 'social.js'));
+            socialConfig = factory({ env: makeEnvHelper() });
+          }
+          return socialConfig;
+        }
+        // config/server.js subset ported code reads (absolute media URLs, …).
+        if (key === 'server.url') return envGet('PUBLIC_URL', '');
+        if (key === 'server') return { url: envGet('PUBLIC_URL', '') };
+        return fallback;
       },
+    },
+    // Attribute metadata view over the registry — enough for ported code that
+    // introspects types (cms-bulk's Excel coercion, draftAndPublish checks).
+    get contentTypes() {
+      if (!contentTypesCache) {
+        contentTypesCache = {};
+        for (const [uid, model] of getRegistry().models) {
+          if (model.isComponent) continue;
+          const attributes = {};
+          for (const s of model.scalars) attributes[s.attr] = { type: s.type };
+          for (const r of model.relations) attributes[r.attr] = { type: 'relation', relation: r.relation, target: r.target };
+          for (const m of model.media) attributes[m.attr] = { type: 'media', multiple: m.multiple };
+          for (const c of model.components) attributes[c.attr] = { type: 'component', component: c.component, repeatable: c.repeatable };
+          contentTypesCache[uid] = { uid, attributes, options: { draftAndPublish: model.draftAndPublish } };
+        }
+      }
+      return contentTypesCache;
     },
     db: {
       query: dbQueryAdapter,
