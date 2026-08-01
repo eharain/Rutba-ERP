@@ -11,6 +11,7 @@
 // stay the same.
 
 const { schedule } = require('./scheduler');
+const health = require('./engine-health');
 
 function createJobRunner({ backend = 'inproc' } = {}) {
   const handlers = new Map();
@@ -31,7 +32,23 @@ function createJobRunner({ backend = 'inproc' } = {}) {
       // A broker backend would register a repeatable job here instead of a timer.
       throw new Error(`Job backend '${backend}' not implemented — only 'inproc' for now`);
     }
-    return schedule(name, cronExpr, () => run(name), opts);
+    // Stand down while our Strapi credentials are known-bad. Every job in this
+    // process talks to Strapi first, so with a dead token they can only fail —
+    // repeatedly, on their own cadence, filling the log with identical 401s.
+    // The breaker still lets one run through every PROBE_INTERVAL_MS so a
+    // repaired token resumes syncing without waiting for a restart.
+    // Only the SCHEDULED path is gated: run()/enqueue() stay direct so an
+    // operator pressing "Run now" gets a real attempt and a real error.
+    return schedule(name, cronExpr, () => {
+      const slot = health.claimScheduledRun();
+      if (!slot.allowed) {
+        return undefined; // silent by design — noteAuthFailure already said it once
+      }
+      if (slot.probe) {
+        console.log(`[marketplace worker] probing Strapi with job '${name}' — credentials still faulted`);
+      }
+      return run(name);
+    }, opts);
   }
 
   // On the inproc backend an "enqueue" is just an immediate run; a broker

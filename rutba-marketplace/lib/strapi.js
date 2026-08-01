@@ -11,6 +11,7 @@
 
 const qs = require('qs');
 const config = require('./config');
+const health = require('./engine-health');
 
 const BASE = config.strapi.apiUrl;
 
@@ -39,6 +40,22 @@ function authHeaders() {
 }
 
 async function sreq(method, path, { query, body } = {}) {
+  // No token at all: fail fast with something actionable instead of sending an
+  // anonymous request that Strapi answers with a generic 401. Recorded as a
+  // credential fault so the breaker and the UI treat it like any other.
+  if (!config.strapi.token) {
+    health.noteAuthFailure({
+      status: 401, method, path,
+      message: 'STRAPI_SERVICE_TOKEN is not set',
+    });
+    const err = new Error(
+      `[strapi] ${method} ${path} — no service token configured. ` +
+      'Set RUTBA_MARKETPLACE__STRAPI_SERVICE_TOKEN and restart.'
+    );
+    err.status = 401;
+    throw err;
+  }
+
   let url = `${BASE}${path}`;
   if (query && Object.keys(query).length) {
     url += (url.includes('?') ? '&' : '?') + qs.stringify(query, { encodeValuesOnly: true });
@@ -60,11 +77,19 @@ async function sreq(method, path, { query, body } = {}) {
   if (text) { try { data = JSON.parse(text); } catch { data = text; } }
   if (!res.ok) {
     const msg = (data && data.error && data.error.message) || `${res.status} ${res.statusText}`;
+    // 401 = our token is missing/invalid/revoked, which no amount of retrying
+    // fixes — trip the breaker. 403 is deliberately NOT treated this way: it
+    // means we authenticated fine and Strapi declined this one route, so it is
+    // a per-endpoint policy gap, not a dead engine.
+    if (res.status === 401) {
+      health.noteAuthFailure({ status: res.status, method, path, message: msg });
+    }
     const err = new Error(`[strapi] ${method} ${path} → ${msg}`);
     err.status = res.status;
     err.raw = data;
     throw err;
   }
+  health.noteAuthOk();
   return data;
 }
 
