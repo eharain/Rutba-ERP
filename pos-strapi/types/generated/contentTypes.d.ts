@@ -2596,7 +2596,7 @@ export interface ApiMarketplaceSyncLogMarketplaceSyncLog
     fetched: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
     finished_at: Schema.Attribute.DateTime;
     kind: Schema.Attribute.Enumeration<
-      ['orders', 'inventory', 'catalog', 'oauth', 'fulfillment']
+      ['orders', 'inventory', 'catalog', 'oauth', 'fulfillment', 'messages']
     > &
       Schema.Attribute.Required;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
@@ -2611,6 +2611,7 @@ export interface ApiMarketplaceSyncLogMarketplaceSyncLog
     >;
     platform: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
+    pushed: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
     skipped: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
     started_at: Schema.Attribute.DateTime;
     status: Schema.Attribute.Enumeration<
