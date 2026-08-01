@@ -47,6 +47,35 @@ function actionBadgeClass(action) {
     return ACTION_BADGE_CLASSES[action] || 'bg-light text-dark';
 }
 
+// Drop print snapshots the print window never consumed. Each one holds a whole
+// serialised sale, so on a busy till they are what exhausts the localStorage
+// quota — and once it is exhausted every setItem on the origin throws, which is
+// how a leak in the PRINT path surfaced as a JavaScript error on SAVE.
+// Anything older than the cutoff is dead: the print window reads its key
+// immediately on open.
+const PRINT_SNAPSHOT_PREFIX = 'print_invoice_';
+const PRINT_SNAPSHOT_TTL_MS = 10 * 60 * 1000;
+
+function prunePrintSnapshots() {
+    try {
+        const cutoff = Date.now() - PRINT_SNAPSHOT_TTL_MS;
+        // Collect first — removing while iterating by index reshuffles the store.
+        const stale = [];
+        for (let i = 0; i < localStorage.length; i += 1) {
+            const key = localStorage.key(i);
+            if (!key || !key.startsWith(PRINT_SNAPSHOT_PREFIX)) continue;
+            const stamp = Number(key.slice(PRINT_SNAPSHOT_PREFIX.length));
+            // Unparseable suffix => not one of ours in a shape we can age out; drop it
+            // rather than leave an immortal entry behind.
+            if (!Number.isFinite(stamp) || stamp < cutoff) stale.push(key);
+        }
+        stale.forEach(k => localStorage.removeItem(k));
+        if (stale.length) console.info(`[print] cleared ${stale.length} stale print snapshot(s)`);
+    } catch {
+        // Storage unavailable (private mode, disabled) — nothing to prune.
+    }
+}
+
 export default function SalePage() {
     const router = useRouter();
     const { documentId } = router.query;
@@ -429,11 +458,24 @@ export default function SalePage() {
             }
         }
 
-        const storageKey = `print_invoice_${Date.now()}`;
+        // Clear out snapshots leaked by earlier builds. The print page prefers
+        // ?saleId and, until now, returned without deleting the ?key it was also
+        // handed — so every receipt ever printed left a whole serialised sale in
+        // localStorage. Tills accumulated them until the ~5MB origin quota was
+        // full and EVERY setItem started throwing "Failed to execute 'setItem'
+        // on 'Storage'" — including the jwt/session writes and this one. Sweeping
+        // on print lets an affected till recover on its own.
+        prunePrintSnapshots();
 
-        localStorage.setItem(
-            storageKey,
-            JSON.stringify({
+        const resolvedDocId = saleModel.documentId || (documentId !== 'new' ? documentId : null);
+
+        // Only stash a snapshot when there is no documentId to fetch by: with one,
+        // print-invoice reads the server copy and never looks at this payload, so
+        // writing it is pure waste — and it was the waste that filled the quota.
+        let storageKey = null;
+        if (!resolvedDocId) {
+            storageKey = `print_invoice_${Date.now()}`;
+            const snapshot = JSON.stringify({
                 sale: {
                     customer: saleModel.customer,
                     invoice_no: saleModel.invoice_no,
@@ -450,12 +492,19 @@ export default function SalePage() {
                     total: saleModel.total
                 },
                 timestamp: Date.now()
-            })
-        );
+            });
+            try {
+                localStorage.setItem(storageKey, snapshot);
+            } catch (err) {
+                // A full or unavailable store must not block the receipt.
+                console.warn('Could not stash the print snapshot', err?.message || err);
+                storageKey = null;
+            }
+        }
 
-        const resolvedDocId = saleModel.documentId || (documentId !== 'new' ? documentId : null);
-        const saleIdParam = resolvedDocId ? `&saleId=${resolvedDocId}` : '';
-        window.open(`/print-invoice?key=${storageKey}${saleIdParam}`, '_blank', 'width=1000,height=800');
+        const keyParam = storageKey ? `key=${storageKey}` : '';
+        const saleIdParam = resolvedDocId ? `${keyParam ? '&' : ''}saleId=${resolvedDocId}` : '';
+        window.open(`/print-invoice?${keyParam}${saleIdParam}`, '_blank', 'width=1000,height=800');
         // Track whether the receipt was printed before or after checkout
         // so admins can spot misuse (e.g. printing a "paid" receipt that
         // was never actually checked out, or repeated draft prints).

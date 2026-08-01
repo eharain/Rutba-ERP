@@ -24,6 +24,24 @@ const PrintInvoicePage = () => {
                 const saleId = urlParams.get('saleId');
                 const storageKey = urlParams.get('key');
 
+                // The snapshot is single-use: the opener writes it immediately
+                // before opening this window and nothing reads it again. Take it
+                // and delete it NOW, unconditionally — the cleanup used to sit
+                // inside the `else if (storageKey)` branch below, so whenever a
+                // ?saleId was also present (i.e. every saved sale) the branch
+                // never ran and the entry stayed forever. That leak filled the
+                // localStorage quota on till browsers until every setItem on the
+                // origin threw "Failed to execute 'setItem' on 'Storage'".
+                let stored = null;
+                if (storageKey) {
+                    try {
+                        stored = localStorage.getItem(storageKey);
+                        localStorage.removeItem(storageKey);
+                    } catch {
+                        // Storage unavailable — fall through to the API path.
+                    }
+                }
+
                 let saleData = null;
                 let itemsData = [];
                 let totalsData = {
@@ -52,8 +70,8 @@ const PrintInvoicePage = () => {
                         total: Number(rawSale.total) || 0
                     };
                 } else if (storageKey) {
-                    // Load from localStorage
-                    const storedData = JSON.parse(localStorage.getItem(storageKey) || '{}');
+                    // Load from the snapshot read (and deleted) above.
+                    const storedData = JSON.parse(stored || '{}');
                     saleData = storedData.sale || null;
                     itemsData = storedData.items || [];
                     totalsData = storedData.totals || saleData?.totals || {
@@ -62,9 +80,6 @@ const PrintInvoicePage = () => {
                         tax: 0,
                         total: 0
                     };
-
-                    // Clean up storage after loading
-                    localStorage.removeItem(storageKey);
                 } else {
                     setError('No sale ID or storage key provided');
                     setLoading(false);
