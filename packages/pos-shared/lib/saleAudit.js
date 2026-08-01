@@ -78,7 +78,24 @@ export function recordSaleAudit(saleDocId, action, description) {
         // teller's flow. Swallow errors here; the controller-side log
         // suffices for ops visibility.
         Promise.resolve(SaleAuditLogsEndpoints.create(payload)).catch((err) => {
-            console.warn('[saleAudit] failed', action, err?.response?.status || err?.message);
+            // Log what the SERVER objected to, not just the status. A bare "400"
+            // is undiagnosable: every audit write has been failing since the
+            // feature shipped (sale_audit_logs is empty) and the one thing that
+            // would have named the offending field was being thrown away here.
+            // Strapi puts the reason in error.message and the offending key in
+            // error.details, so print both — plus the payload, since the bad
+            // value is usually a stale documentId held in localStorage
+            // (cash-register/user/branch) that no longer exists in this database.
+            const serverError = err?.response?.data?.error;
+            console.warn(
+                '[saleAudit] failed', action,
+                err?.response?.status || err?.message,
+                serverError?.message || '',
+                serverError?.details && Object.keys(serverError.details).length
+                    ? JSON.stringify(serverError.details)
+                    : '',
+                payload,
+            );
         });
     } catch (err) {
         console.warn('[saleAudit] dispatch threw', err?.message);
