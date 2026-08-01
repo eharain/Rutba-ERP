@@ -17,6 +17,16 @@ export default class SaleItem {
     }) {
         this.id = id;
         this.documentId = documentId;
+
+        // The sale-item's OWN product relation, as persisted by saveSaleItems.
+        // It is the durable record of what was sold: the stock-item array can
+        // come back empty (units returned/re-linked, or the relation stripped
+        // from the response), and without this the line degrades to "Unnamed
+        // Item" at 0.00 even though the server returned everything needed —
+        // which is exactly why the printed receipt stayed correct while the
+        // editor did not (SaleInvoice reads `item.product?.name` directly).
+        this.product = product ?? null;
+
         this.discount = discount ?? 0;
         this.discount_percentage = discount_percentage ?? 0;// ValidNumberOrDefault(discount_percentage, this.discount);
 
@@ -86,11 +96,15 @@ export default class SaleItem {
     get name() {
         const first = this.first();
 
-        return first?.name || first?.product?.name || 'Unnamed Item';
+        return first?.name || first?.product?.name || this.product?.name || 'Unnamed Item';
     };
 
     get sellingPrice() {
-        return this.first()?.selling_price || 0;
+        const first = this.first();
+        // No stock items on the line (see `product` in the constructor): fall
+        // back to the per-unit price persisted on the sale-item row.
+        if (!first) return this._price || 0;
+        return first.selling_price || 0;
     }
 
     get costPrice() {
@@ -107,8 +121,12 @@ export default class SaleItem {
         return this.sellingPrice || this._price || this.unitPrice || 0;
     }
 
+    // "Backed by a catalogue product" — drives the read-only name/price cells.
+    // A line whose stock items didn't come back is still a product line, so it
+    // must not fall through to the editable ad-hoc rendering (which would let a
+    // teller retype a real product's name over an empty item array).
     get isDynamicStock() {
-        return this.first()?.product != null;
+        return this.first()?.product != null || this.product != null;
     }
 
     /* ---------------- Divisible stock ---------------- */
@@ -307,8 +325,10 @@ export default class SaleItem {
     /* ---------------- Pricing ---------------- */
 
     get unitPrice() {
-        if (this.items?.length == 0) return 0;
         if (this.isDivisible) return this.perSubUnitPrice;
+        // Stock items absent → price the line off the persisted sale-item row
+        // rather than reporting 0, which silently zeroes the whole sale.
+        if (!this.items?.length) return this._price || 0;
         let sum = this.sumBy('selling_price');
         return sum / this.items.length;
     }
@@ -365,7 +385,11 @@ export default class SaleItem {
      * Discount amount (number ≥ 0)
      */
     get row_discount() {
-        const sp = this.isDivisible ? (this.perSubUnitPrice * this.effectiveSellableQty) : this.sumBy('selling_price');
+        // `subtotal` is the same selling-price base in every mode (divisible
+        // portion, whole units, or the persisted-scalar fallback), so reading it
+        // keeps the discount in step with the row total instead of collapsing to
+        // 0 whenever the stock-item array is empty.
+        const sp = this.subtotal;
         const cp = this.sumBy('cost_price');
 
         const discount = sp * (this.discount_percentage / 100);
@@ -377,8 +401,10 @@ export default class SaleItem {
     }
         
     get subtotal() {
-        if (this.items?.length == 0) return 0;
         if (this.isDivisible) return this.perSubUnitPrice * this.effectiveSellableQty;
+        // Same fallback as unitPrice — quantity is the sale-item scalar, which
+        // survives even when the stock-item links don't.
+        if (!this.items?.length) return (this._price || 0) * (Number(this.quantity) || 0);
         let sum = this.sumBy('selling_price');
         let subTotal = sum || 0;
 
@@ -416,7 +442,10 @@ export default class SaleItem {
         }
         return {
 
-            quantity: this.items.length,
+            // items.length is the source of truth while the line holds stock
+            // units; with none attached, writing 0 would overwrite a good row
+            // with an empty one, so keep the quantity already on the sale-item.
+            quantity: this.items.length || Number(this.quantity) || 0,
             price: this.unitPrice,
             discount: this.row_discount,
             discount_percentage: this.discount_percentage,
@@ -431,6 +460,11 @@ export default class SaleItem {
             id: this.id,
             documentId: this.documentId,
             name: this.name,
+            // SaleInvoice resolves the printed name from items[0].name → product
+            // .name, so carry the relation through the print-via-localStorage
+            // path too — otherwise it prints "Item" where the fetch-by-saleId
+            // path prints the product.
+            product: this.product,
 
             ... this.toPayload(),
 

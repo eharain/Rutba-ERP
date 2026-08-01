@@ -291,9 +291,14 @@ export default class SaleApi {
                 sale: { connect: [saleId] }
             };
 
-            if (baseStockItem?.product?.documentId) {
+            // Keep the sale-item's own product link authoritative. `item.product`
+            // covers a line reloaded without its stock items — without it a
+            // re-save of such a line would leave the only surviving record of
+            // what was sold to chance.
+            const productDocId = baseStockItem?.product?.documentId || item.product?.documentId;
+            if (productDocId) {
                 saleItemPayload.product = {
-                    set: [baseStockItem.product.documentId]
+                    set: [productDocId]
                 };
             }
 

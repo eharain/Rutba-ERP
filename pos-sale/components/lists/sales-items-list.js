@@ -51,7 +51,9 @@ function NumberCell({ value, onCommit, disabled, min = 0, max, step = 'any', inv
  *  (non-stock) custom items or products without media. */
 function saleItemThumbUrl(item) {
     const stockItem = typeof item?.first === 'function' ? item.first() : null;
-    const product = stockItem?.product;
+    // Fall back to the sale-item's own product relation so a line whose stock
+    // items are missing still shows its thumbnail (see SaleItem.product).
+    const product = stockItem?.product || item?.product;
     if (!product) return null;
     const pick = (file) => {
         if (!file || !isImage(file)) return null;
