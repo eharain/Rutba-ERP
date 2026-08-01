@@ -16,6 +16,13 @@ module.exports = {
       handler: 'marketplace-account.getSecrets',
     },
     {
+      // Engine-owned writes (tokens, watermarks, enable flags). The core PUT
+      // /marketplace-accounts/:id is admin-gated and unreachable with a token.
+      method: 'PUT',
+      path: '/marketplace-accounts/:id/state',
+      handler: 'marketplace-account.patchState',
+    },
+    {
       method: 'POST',
       path: '/marketplace-accounts/:id/ingest-orders',
       handler: 'marketplace-account.ingestOrders',

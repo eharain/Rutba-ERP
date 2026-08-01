@@ -14,6 +14,20 @@ const ACCOUNT_UID = 'api::marketplace-account.marketplace-account';
 // not ctx.state.user, so api-pro skips it). The UI never calls these.
 const requireAdmin = (ctx, strapi) => requireAppAdmin(ctx, strapi, 'marketplace');
 
+// Fields the engine owns and may write through the worker-only patch route:
+// OAuth tokens it refreshes, sync watermarks it advances, the identity the
+// provider hands back on connect, and the operator enable flags (the app
+// authenticates the operator before calling — see lib/api-handler.js). Anything
+// else — api_key/api_secret, product_groups, price_adjust_pct, platform —
+// remains admin-only through the core PUT /marketplace-accounts/:id.
+const WORKER_PATCHABLE = new Set([
+  'access_token', 'refresh_token', 'token_expires_at', 'refresh_expires_at',
+  'seller_id', 'account_name', 'extra_config',
+  'last_connected_at', 'last_orders_synced_at', 'last_inventory_synced_at',
+  'last_status_pushed_at', 'last_messages_synced_at',
+  'is_active', 'sync_orders_enabled', 'sync_inventory_enabled',
+]);
+
 function isServiceToken(ctx) {
   // Strapi 5 registers the content-API token strategy as 'content-api-token'
   // (NOT 'api-token'). Accept both for forward/back-compat, and require that
@@ -47,6 +61,30 @@ module.exports = createCoreController(ACCOUNT_UID, ({ strapi }) => ({
     const account = await strapi.documents(ACCOUNT_UID).findOne({ documentId: ctx.params.id });
     if (!account) return ctx.notFound('Account not found');
     return ctx.send({ data: account });
+  },
+
+  // ── worker-only (service token): patch the engine-owned account state ───────
+  // The engine cannot use the core update route above: requireAppAdmin needs a
+  // users-permissions user, and a service token only sets ctx.state.auth — so
+  // every watermark/token write 401s there. This route takes the same token as
+  // the rest of the worker surface and restricts what it can touch to
+  // WORKER_PATCHABLE; unknown keys are rejected loudly rather than dropped, so
+  // a field added to the engine can't silently stop persisting.
+  async patchState(ctx) {
+    if (!isServiceToken(ctx)) return ctx.forbidden('Service token required');
+    const data = ctx.request.body?.data;
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return ctx.badRequest('data{} is required');
+
+    const keys = Object.keys(data);
+    if (!keys.length) return ctx.badRequest('data{} is empty');
+    const rejected = keys.filter((k) => !WORKER_PATCHABLE.has(k));
+    if (rejected.length) return ctx.badRequest(`Not patchable by the worker: ${rejected.join(', ')}`);
+
+    const account = await strapi.documents(ACCOUNT_UID).findOne({ documentId: ctx.params.id });
+    if (!account) return ctx.notFound('Account not found');
+
+    const updated = await strapi.documents(ACCOUNT_UID).update({ documentId: ctx.params.id, data });
+    return ctx.send({ data: { documentId: updated.documentId } });
   },
 
   // ── worker-only (service token): map a batch of normalized orders → sale-orders ─

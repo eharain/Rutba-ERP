@@ -83,9 +83,17 @@ module.exports = {
     return r.data || r;
   },
 
-  /** Patch an account (tokens, watermarks, flags). */
+  /**
+   * Patch an account (tokens, watermarks, flags).
+   *
+   * Goes to the worker-only `/state` route, NOT the core PUT
+   * /marketplace-accounts/:id — that one is admin-gated (requireAppAdmin), and
+   * our service token carries no users-permissions user, so it always answered
+   * "Authentication required". `/state` takes the token and whitelists the
+   * engine-owned fields; anything outside that list comes back as a 400.
+   */
   async updateAccount(documentId, data) {
-    const r = await sreq('PUT', `/marketplace-accounts/${documentId}`, { body: { data } });
+    const r = await sreq('PUT', `/marketplace-accounts/${documentId}/state`, { body: { data } });
     return r.data || r;
   },
 
