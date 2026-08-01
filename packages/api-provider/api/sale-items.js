@@ -20,13 +20,15 @@ export const SaleItemsEndpoints = {
         data,
     }),
 
-    /** Update a sale item by documentId. */
+    /** Update a sale item by documentId.
+     *  `staff` matches create above — a cashier who can add a line must be able
+     *  to re-save it (every re-save of an existing sale goes through here). */
     update: (documentId, data) => ({
         path: `/sale-items/${documentId}`,
         action: 'update',
         method: 'put',
         apps: ['sale', 'stock'],
-        approle: ['admin', 'manager'],
+        approle: ['admin', 'manager', 'staff'],
         data,
     }),
 
@@ -39,7 +41,7 @@ export const SaleItemsEndpoints = {
         action: 'disconnect',
         method: 'put',
         apps: ['sale', 'stock'],
-        approle: ['admin', 'manager']
+        approle: ['admin', 'manager', 'staff']
     }),
 
     /** Async: create a new sale item. */

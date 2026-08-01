@@ -40,7 +40,8 @@ export const StockItemsEndpoints = {
             path: '/me/stock-items-search',
             action: 'find',
             method: 'get',
-            apps: ['inventory', 'stock'],
+            // `sale` — this is the POS search box (SaleApi.searchStockItemsByNameOrBarcode).
+            apps: ['sale', 'inventory', 'stock'],
             approle: ['admin', 'manager', 'staff'],
             params: {
                 // Populate product.logo + product.gallery so the sale-editor
@@ -154,12 +155,15 @@ export const StockItemsEndpoints = {
         },
     }),
 
-    /** Create one or more stock items. */
+    /** Create one or more stock items.
+     *  `sale` is load-bearing: an ad-hoc ("custom line") sale item has no stock
+     *  behind it, so saveSaleItems creates the stock row at checkout. Without
+     *  this app the POS save throws mid-loop and drops the rest of the basket. */
     create: (data) => ({
         path: '/stock-items',
         action: 'create',
         method: 'post',
-        apps: ['inventory', 'stock'],
+        apps: ['sale', 'inventory', 'stock'],
         approle: ['admin', 'manager', 'staff'],
         data,
     }),
@@ -227,13 +231,20 @@ export const StockItemsEndpoints = {
         params: byIdParams({ populate, fields }),
     }),
 
-    /** Update a stock item by documentId. */
+    /** Update a stock item by documentId.
+     *  `sale` + `staff` are load-bearing, not a widening for convenience: every
+     *  POS sale calls this per line to connect `sale_items` and flip the unit to
+     *  Sold (and back to InStock when a line is removed), and the cashier who
+     *  rings it up holds sale_staff. Leaving them out 403s the write, which
+     *  aborts saveSaleItems after the first line — the sale header keeps the
+     *  full basket total while lines 2..n are never written and no stock is
+     *  consumed. */
     update: (documentId, data) => ({
         path: `/stock-items/${documentId}`,
         action: 'update',
         method: 'put',
-        apps: ['inventory', 'stock'],
-        approle: ['admin', 'manager'],
+        apps: ['sale', 'inventory', 'stock'],
+        approle: ['admin', 'manager', 'staff'],
         data,
     }),
 

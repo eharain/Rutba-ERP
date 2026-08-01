@@ -87,12 +87,15 @@ export const SaleReturnsEndpoints = {
     }),
 
     /** Update a sale return by documentId. */
+    // `staff` matches create — saveExchangeReturn creates the return and then
+    // immediately PUTs it to link exchange_sale, so a cashier who can start an
+    // exchange must be able to finish one.
     update: (documentId, data) => ({
         path: `/sale-returns/${documentId}`,
         action: 'update',
         method: 'put',
         apps: ['sale', 'return'],
-        approle: ['admin', 'manager'],
+        approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
         data,
     }),

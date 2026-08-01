@@ -412,8 +412,16 @@ export default function SalePage() {
     const handlePrint = async () => {
         if (saleModel.items.length === 0) return;
 
-        // Save before printing so the invoice reflects the latest data
-        if (isDirty) {
+        // Always commit before printing — never gate this on isDirty. The print
+        // page prefers ?saleId and REFETCHES the sale from the server
+        // (print-invoice.js), so the receipt renders persisted state, not what
+        // is on screen. If the sale is unsaved or only partly saved, the receipt
+        // silently mixes the header's totals with whichever lines made it to the
+        // database. Aborting on failure is the point: better no receipt than one
+        // that disagrees with the sale.
+        // A paid, cancelled or pay-later-locked sale is already final server-side
+        // and rejects item writes, so there is nothing to commit.
+        if (saleModel.isEditable) {
             try {
                 await doSave({ paid: false });
             } catch {

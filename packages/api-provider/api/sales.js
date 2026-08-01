@@ -128,12 +128,17 @@ export const SalesEndpoints = {
     }),
 
     /** Update a sale by documentId. */
+    // `staff` matches create: a cashier who can open a sale must be able to
+    // re-save it. Every checkout and every edit of an existing sale runs this
+    // first (saveSale writes the header before the lines), so excluding staff
+    // 403s the whole save. Row-level reach stays bounded by ROLE_SCOPES, which
+    // limits staff to their own recent sales.
     update: (documentId, data) => ({
         path: `/sales/${documentId}`,
         action: 'update',
         method: 'put',
         apps: ['sale'],
-        approle: ['admin', 'manager'],
+        approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
         data,
     }),

@@ -3,16 +3,39 @@
  * Pure endpoint descriptors for the /sale-return-items resource.
  */
 export const SaleReturnItemsEndpoints = {
-    meta: { domains: ['sale'] },
+    // `uid` and `roles` are load-bearing, not decoration: up-permissions-seed
+    // grants only content-types reachable via a descriptor's meta.uid, and the
+    // api-pro seeder emits no policy without roles — so omitting them left this
+    // resource denied by default for every role while every other return
+    // endpoint worked.
+    meta: {
+        uid: 'api::sale-return-item.sale-return-item',
+        domains: ['sale', 'return'],
+        roles: ['admin', 'manager', 'staff'],
+    },
 
     /** Create a new sale return item. */
-    create: (data) => ({ path: '/sale-return-items', action: 'create', method: 'post', data }),
+    create: (data) => ({
+        path: '/sale-return-items',
+        action: 'create',
+        method: 'post',
+        apps: ['sale', 'return'],
+        approle: ['admin', 'manager', 'staff'],
+        data,
+    }),
 
     /**
      * Update a sale return item by documentId â€” body provided by caller as { data }.
      * @param {string} documentId
      */
-    update: (documentId, data) => ({ path: `/sale-return-items/${documentId}`, action: 'update', method: 'put', data }),
+    update: (documentId, data) => ({
+        path: `/sale-return-items/${documentId}`,
+        action: 'update',
+        method: 'put',
+        apps: ['sale', 'return'],
+        approle: ['admin', 'manager', 'staff'],
+        data,
+    }),
 /** Async: update a sale return item by documentId. */
 
 };
