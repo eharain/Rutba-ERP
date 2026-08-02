@@ -52,48 +52,24 @@ export const SalesEndpoints = {
 
     /**
      * Fetch a single sale by documentId / id / invoice_no with full detail populate.
+     *
+     * The identity match and the whole populate tree live in the `sale.detail`
+     * controller — spelled out here they made a ~2KB querystring, which is the
+     * single largest URL the POS issues and which every sale-page load, receipt
+     * print and post-save reload repeated. Keep the method named `byId`: the
+     * api-pro seeder only walks descriptor methods whose name starts with a
+     * known verb, and `detail` is not one of them. `action` is what has to match
+     * the route handler (`sale.detail`) for the policy lookup to resolve.
+     *
      * @param {string|number} idOrInvoice
      */
     byId: (idOrInvoice) => ({
-        path: '/sales/',
-        action: 'findOne',
+        path: `/sales/${idOrInvoice}/detail`,
+        action: 'detail',
         method: 'get',
         apps: ['sale'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
-        params: {
-            filters: {
-                $or: [
-                    { invoice_no: idOrInvoice },
-                    { id: idOrInvoice },
-                    { documentId: idOrInvoice },
-                ],
-            },
-            populate: {
-                payments: {
-                    populate: {
-                        sale_return: { fields: ['id', 'documentId', 'return_no', 'type'] },
-                    },
-                },
-                customer: true,
-                cash_register: {
-                    fields: ['id', 'documentId', 'desk_id', 'desk_name', 'branch_name', 'opened_by', 'opened_at', 'status'],
-                },
-                items: { populate: { product: true, items: { populate: ['product'] } } },
-                sale_returns: {
-                    populate: {
-                        items: { populate: { product: true, items: { populate: ['product'] } } },
-                        exchange_sale: { fields: ['id', 'documentId', 'invoice_no'] },
-                    },
-                },
-                exchange_returns: {
-                    populate: {
-                        items: { populate: { product: true, items: { populate: ['product'] } } },
-                        sale: { fields: ['id', 'documentId', 'invoice_no'] },
-                    },
-                },
-            },
-        },
     }),
 
     /**

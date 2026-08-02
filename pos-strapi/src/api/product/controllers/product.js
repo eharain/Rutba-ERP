@@ -219,6 +219,39 @@ module.exports = createCoreController('api::product.product', ({ strapi }) => ({
     return ctx.send(result);
   },
 
+  // Which of these documents currently have a published version, and since when.
+  //
+  // The CMS product list renders drafts and needs a published/unpublished badge
+  // per row, so after every page load it asked for the published siblings of the
+  // 25 documentIds it just fetched. Expressed as a filter that was a
+  // `?filters[documentId][$in][0..24]=…` querystring dragging the list route's
+  // whole default populate tree behind it — ~1.9KB of URL to retrieve one
+  // timestamp per row. The ids go in the body instead; the reply is a flat
+  // { documentId: publishedAt } map.
+  async publishedStatus(ctx) {
+    if (!await ensureUser(ctx, strapi)) return;
+
+    const body = ctx.request.body?.data ?? ctx.request.body ?? {};
+    const raw = body.documentIds;
+    const documentIds = [...new Set((Array.isArray(raw) ? raw : []).filter((v) => typeof v === 'string' && v))];
+    if (documentIds.length === 0) return ctx.send({ data: {} });
+
+    const rows = await strapi.documents('api::product.product').findMany({
+      status: 'published',
+      filters: { documentId: { $in: documentIds } },
+      fields: ['documentId', 'publishedAt'],
+      // One row per requested document at most; the cap keeps a caller from
+      // turning a long id list into an unbounded scan.
+      limit: documentIds.length,
+    });
+
+    const data = {};
+    for (const row of rows) {
+      if (row?.documentId) data[row.documentId] = row.publishedAt ?? null;
+    }
+    return ctx.send({ data });
+  },
+
   async publish(ctx) {
     if (!await ensureUser(ctx, strapi)) return;
     const result = await strapi.documents('api::product.product').publish({ documentId: ctx.params.id });

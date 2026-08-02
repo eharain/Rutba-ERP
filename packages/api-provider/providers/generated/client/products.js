@@ -7,6 +7,11 @@ async function listPaged(page = 1, pageSize = 100, arg3 = {}) {
     return authApi.fetch(ep.path, ep.params);
 }
 
+async function listPublishedStatus(documentIds = []) {
+    const ep = ProductsEndpointsApi.listPublishedStatus(documentIds);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
 async function listAll(arg1 = {}) {
     const ep = ProductsEndpointsApi.listAll(arg1);
     return authApi.fetch(ep.path, ep.params);
@@ -104,6 +109,7 @@ const endpoints = strictEndpointGuard(
     'ProductsEndpoints',
     {
         listPaged,
+        listPublishedStatus,
         listAll,
         list,
         search,
@@ -124,7 +130,7 @@ const endpoints = strictEndpointGuard(
         unpublish,
         meta: ProductsEndpointsApi.meta,
     },
-    ["listPaged","listAll","list","search","searchInRelation","byId","save","create","update","del","searchByTerm","loadProduct","byParent","byParentDraft","byIdDraft","byIdPublished","updateDraft","publish","unpublish","meta"],
+    ["listPaged","listPublishedStatus","listAll","list","search","searchInRelation","byId","save","create","update","del","searchByTerm","loadProduct","byParent","byParentDraft","byIdDraft","byIdPublished","updateDraft","publish","unpublish","meta"],
 );
 
 export default endpoints;

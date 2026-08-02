@@ -43,6 +43,13 @@ module.exports = {
       config: { auth: false },
     },
     {
+      // Batch "is this published, and since when" lookup for a page of drafts.
+      // Literal path registered ahead of the /products/:id/* routes below.
+      method: 'POST',
+      path: '/products/published-status',
+      handler: 'product.publishedStatus',
+    },
+    {
       method: 'POST',
       path: '/products/:id/publish',
       handler: 'product.publish',

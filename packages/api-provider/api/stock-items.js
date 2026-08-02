@@ -22,20 +22,6 @@ export const StockItemsEndpoints = {
      */
     list: (page = 1, pageSize = 20, { statusFilter, branchDocId, productDocId, showArchived, sort, searchTerm } = {}) => {
         const term = typeof searchTerm === 'string' ? searchTerm.trim() : '';
-        const searchFilter = term
-            ? {
-                  $or: [
-                      { name: { $containsi: term } },
-                      { barcode: { $containsi: term } },
-                      { sku: { $containsi: term } },
-                      { product: { name: { $containsi: term } } },
-                      { product: { sku: { $containsi: term } } },
-                      // Manufacturer / EAN codes live on product.barcode (shared across
-                      // all units) — include it so scanning the maker's label resolves.
-                      { product: { barcode: { $containsi: term } } },
-                  ],
-              }
-            : null;
         return {
             path: '/me/stock-items-search',
             action: 'find',
@@ -43,24 +29,21 @@ export const StockItemsEndpoints = {
             // `sale` — this is the POS search box (SaleApi.searchStockItemsByNameOrBarcode).
             apps: ['sale', 'inventory', 'stock'],
             approle: ['admin', 'manager', 'staff'],
+            // Flat params. The six-way search `$or` and the populate tree are
+            // rebuilt by the route's controller from `view` — spelled out here
+            // they made a ~700-character URL, re-sent on every keystroke of the
+            // POS search box. `view: 'search'` selects the sale-editor shape:
+            // product.logo/gallery for the dropdown thumbnail, plus brands.
             params: {
-                // Populate product.logo + product.gallery so the sale-editor
-                // search dropdown can render a thumbnail per row. Keeping these
-                // to `fields: [...]` (or just allowing the whole relation)
-                // shaves the payload — the consumer only reads url/formats.
-                populate: {
-                    product: { populate: { logo: true, gallery: true, brands: true } },
-                    purchase_item: { populate: { purchase: true } },
-                },
-                filters: {
-                    ...(statusFilter ? { status: statusFilter } : {}),
-                    ...(branchDocId ? { branch: { documentId: branchDocId } } : {}),
-                    ...(productDocId ? { product: { documentId: productDocId } } : {}),
-                    ...(showArchived ? { archived: true } : {}),
-                    ...(searchFilter ? searchFilter : {}),
-                },
-                pagination: { page, pageSize },
-                sort: sort ?? ['createdAt:desc'],
+                view: 'search',
+                ...(term ? { q: term } : {}),
+                ...(statusFilter ? { status: statusFilter } : {}),
+                ...(branchDocId ? { branch: branchDocId } : {}),
+                ...(productDocId ? { product: productDocId } : {}),
+                ...(showArchived ? { archived: 1 } : {}),
+                page,
+                pageSize,
+                sort: Array.isArray(sort) ? sort[0] : (sort ?? 'createdAt:desc'),
             },
         };
     },
@@ -72,19 +55,36 @@ export const StockItemsEndpoints = {
      * @param {string} productDocId
      * @param {{ statusFilter?, page?, pageSize? }} opts
      */
-    listByProduct: (productDocId, { statusFilter, page = 1, pageSize = 200, populate, fields, sort } = {}) => ({
-        path: '/me/stock-items-search',
-        params: {
-            populate: populate ?? { product: true, purchase_item: { populate: { purchase: true } } },
-            ...(fields ? { fields } : {}),
-            filters: {
-                product: { documentId: productDocId },
+    listByProduct: (productDocId, { statusFilter, page = 1, pageSize = 200, populate, fields, sort } = {}) => {
+        // A caller that overrides the shape has to spell it out; everyone else
+        // gets the named `product` view built server-side.
+        if (populate || fields) {
+            return {
+                path: '/me/stock-items-search',
+                params: {
+                    populate: populate ?? { product: true, purchase_item: { populate: { purchase: true } } },
+                    ...(fields ? { fields } : {}),
+                    filters: {
+                        product: { documentId: productDocId },
+                        ...(statusFilter ? { status: statusFilter } : {}),
+                    },
+                    pagination: { page, pageSize },
+                    sort: sort ?? ['createdAt:desc'],
+                },
+            };
+        }
+        return {
+            path: '/me/stock-items-search',
+            params: {
+                view: 'product',
+                product: productDocId,
                 ...(statusFilter ? { status: statusFilter } : {}),
+                page,
+                pageSize,
+                sort: Array.isArray(sort) ? sort[0] : (sort ?? 'createdAt:desc'),
             },
-            pagination: { page, pageSize },
-            sort: sort ?? ['createdAt:desc'],
-        },
-    }),
+        };
+    },
 
     /**
      * Lookup a stock item by exact barcode.

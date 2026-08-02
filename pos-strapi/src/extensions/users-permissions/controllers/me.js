@@ -2,6 +2,8 @@
 'use strict';
 const { createCoreController } = require('@strapi/strapi').factories;
 
+const { shapeStockItemsQuery } = require('./stock-items-query');
+
 const DEFAULT_SESSION_TIMEOUT = 300;
 
 module.exports = createCoreController('plugin::users-permissions.me', ({ strapi }) => ({
@@ -114,7 +116,10 @@ module.exports = createCoreController('plugin::users-permissions.me', ({ strapi 
             if (!user) {
                 return ctx.unauthorized("You must be logged in");
             }
-            const { filters, pagination, sort, populate } = ctx.query;
+            const shaped = shapeStockItemsQuery(ctx.query);
+            const { pagination, sort } = ctx.query;
+            const filters = shaped ? shaped.filters : ctx.query.filters;
+            const populate = shaped ? shaped.populate : ctx.query.populate;
 
             // Exclude archived items by default unless explicitly requested
             const archiveFilter = filters?.archived !== undefined
@@ -125,8 +130,8 @@ module.exports = createCoreController('plugin::users-permissions.me', ({ strapi 
                 ? { $and: [filters, archiveFilter].filter(Boolean) }
                 : { ...filters };
 
-            const pageSize = parseInt(pagination?.pageSize) || 20;
-            const page = parseInt(pagination?.page) || 1;
+            const pageSize = parseInt(shaped?.pageSize ?? pagination?.pageSize) || 20;
+            const page = parseInt(shaped?.page ?? pagination?.page) || 1;
             const start = (page - 1) * pageSize;
 
             const [entries, totalCount] = await Promise.all([
@@ -134,7 +139,7 @@ module.exports = createCoreController('plugin::users-permissions.me', ({ strapi 
                     filters: mergedFilters,
                     start,
                     limit: pageSize,
-                    sort: sort || [],
+                    sort: shaped ? shaped.sort : (sort || []),
                     populate: populate
                 }),
                 strapi.entityService.count('api::stock-item.stock-item', {

@@ -1,6 +1,7 @@
 // AUTO-GENERATED — do not edit. Source: scaffold-endpoint-providers.mjs
 export interface ProductsEndpointsType {
     listPaged(page?: any, pageSize?: any, { sort, populate }?: any): Promise<any>;
+    listPublishedStatus(documentIds?: any): Promise<any>;
     listAll({ sort, populate }?: any): Promise<any>;
     list(page?: any, pageSize?: any, filters?: any): Promise<any>;
     search(searchText: any, page?: any, pageSize?: any): Promise<any>;

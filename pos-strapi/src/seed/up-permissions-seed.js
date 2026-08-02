@@ -29,8 +29,9 @@ const STANDARD_ACTIONS = ['find', 'findOne', 'create', 'update', 'delete'];
 // authorization (e.g. crm-lead.assignees checks the caller holds a CRM
 // app-role itself, because a UP grant alone admits every app user).
 const CUSTOM_ACTIONS = {
-  'api::sale.sale': ['checkout', 'markPayLater', 'unlockPayLater'],
+  'api::sale.sale': ['detail', 'checkout', 'markPayLater', 'unlockPayLater'],
   'api::crm-lead.crm-lead': ['assignees'],
+  'api::product.product': ['publishedStatus'],
   'api::stock-item.stock-item': ['resolveBulkStock', 'processBulkStock'],
   'api::hr-leave-request.hr-leave-request': ['myRequests', 'teamQueue', 'approve', 'reject', 'cancel'],
   'api::hr-team.hr-team': ['appRoleOptions'],

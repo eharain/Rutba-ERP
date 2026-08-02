@@ -53,9 +53,13 @@ export async function fetchBrands(page = 1, rowsPerPage = 100) {
 }
 
 export async function fetchSaleByIdOrInvoice(id) {
+    // /sales/:id/detail answers with a single document — or null when the id
+    // matches nothing the caller may read — not a find page. Read `data`
+    // directly: extractData's envelope heuristics fall through to the whole
+    // response body on a null hit, which would hand the caller a bogus object
+    // instead of the miss it expects.
     const res = await SalesEndpoints.byId(id);
-    const data = extractData(res);
-    return Array.isArray(data) ? data[0] : data;
+    return res?.data ?? null;
 }
 
 export async function fetchPurchaseByIdDocumentIdOrPO(id) {

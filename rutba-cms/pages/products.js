@@ -284,14 +284,8 @@ export default function Products() {
                 if (draftProducts.length > 0) {
                     const docIds = draftProducts.map(p => p.documentId);
                     try {
-                        const pubRes = await ProductsEndpoints.list(1, docIds.length, {
-                            status: "published",
-                            fields: ["documentId", "publishedAt"],
-                            filters: { documentId: { $in: docIds } },
-                        });
-                        for (const p of (pubRes.data || [])) {
-                            pubMap[p.documentId] = p.publishedAt;
-                        }
+                        const pubRes = await ProductsEndpoints.listPublishedStatus(docIds);
+                        pubMap = pubRes?.data || {};
                     } catch (err) {
                         console.error("Failed to check published status", err);
                     }

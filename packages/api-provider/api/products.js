@@ -57,6 +57,29 @@ export const ProductsEndpoints = {
     }),
 
     /**
+     * Which of `documentIds` have a published version, and since when.
+     *
+     * Returns { data: { [documentId]: publishedAt|null } } — only published
+     * documents appear, so a missing key means "draft only".
+     *
+     * Sent as a POST body rather than a `filters[documentId][$in][…]`
+     * querystring: the CMS list asks this for every page of 25 rows it renders,
+     * and as a URL it came to ~1.9KB (the id list, plus list()'s default
+     * populate tree, for one timestamp per row).
+     *
+     * Named `list…` so the api-pro seeder's verb check picks it up; `action`
+     * is what must match the route handler (`product.publishedStatus`).
+     *
+     * @param {string[]} documentIds
+     */
+    listPublishedStatus: (documentIds = []) => ({
+        path: '/products/published-status',
+        action: 'publishedStatus',
+        method: 'post',
+        data: { documentIds },
+    }),
+
+    /**
      * Fetch all products without pagination (use only when count is small).
      * @param {{ sort?, populate? }} opts
      */
@@ -245,17 +268,26 @@ export const ProductsEndpoints = {
             publishStateParam = 'unpublished';
         }
 
+        // A caller that names `fields` wants a projection, not the full row —
+        // sending the seven-relation default populate alongside it is both a
+        // wasted join and ~400 characters of querystring. An explicit `populate`
+        // still wins, so a caller that genuinely wants both can ask for both.
+        const defaultPopulate = {
+            categories: true,
+            brands: true,
+            suppliers: true,
+            logo: true,
+            gallery: true,
+            items: true,
+            purchase_items: { populate: { purchase: true } },
+        };
+        const extra = extraPopulate && typeof extraPopulate === 'object' ? extraPopulate : null;
+        const populate = extra
+            ? { ...defaultPopulate, ...extra }
+            : (fields ? null : defaultPopulate);
+
         const params = {
-            populate: {
-                categories: true,
-                brands: true,
-                suppliers: true,
-                logo: true,
-                gallery: true,
-                items: true,
-                purchase_items: { populate: { purchase: true } },
-                ...(extraPopulate && typeof extraPopulate === 'object' ? extraPopulate : {}),
-            },
+            ...(populate ? { populate } : {}),
             pagination: { page, pageSize },
             filters: finalFilters,
             ...(sort ? { sort } : {}),

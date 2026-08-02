@@ -14,6 +14,7 @@
 const { createCoreController } = require('@strapi/strapi').factories;
 const { markPayLater, unlockPayLater } = require('./pay-later');
 const { checkout } = require('./checkout');
+const { detail } = require('./detail');
 const { roleLevelsFor } = require('../../../utils/app-roles');
 
 // Pay Later lock/unlock is an ADMIN-only action (matches the client gate).
@@ -34,6 +35,10 @@ async function requireSaleAdmin(ctx) {
 }
 
 module.exports = createCoreController('api::sale.sale', () => ({
+  async detail(ctx) {
+    return detail(ctx);
+  },
+
   async checkout(ctx) {
     return checkout(ctx);
   },
