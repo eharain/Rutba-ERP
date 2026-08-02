@@ -4,7 +4,7 @@ import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
 import { fetchSales } from "@rutba/api-provider/pos";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { isAppAdmin, isActiveAdminRole } from "@rutba/pos-shared/lib/roles";
+import { isAppAdmin, isEffectiveAdmin } from "@rutba/pos-shared/lib/roles";
 import { BranchesEndpoints, SalesEndpoints } from "@rutba/api-provider/endpoints";
 import SaleApi from "@rutba/pos-shared/lib/saleApi";
 import Link from "next/link";
@@ -67,13 +67,21 @@ export default function Sales() {
     const [sales, setSales] = useState([]);
     const { jwt, adminAppAccess, activeRoleKey } = useAuth();
     const admin = isAppAdmin(adminAppAccess, "sale");
-    const elevated = admin && isActiveAdminRole(activeRoleKey);
+    // Cancel is admin-only. Gate on the ACTIVE role (with the capability
+    // fallback for the bootstrap window where activeRoleKey is still null) —
+    // `admin && isActiveAdminRole()` hid the button from real admins until the
+    // role header landed.
+    const elevated = isEffectiveAdmin(activeRoleKey, adminAppAccess, "sale");
+    // Holds admin but is currently acting as staff/manager: explain the missing
+    // button instead of silently dropping it.
+    const needsRoleSwitch = admin && !elevated;
     // 1-based page for ListPagination
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(false);
     const [cancellingId, setCancellingId] = useState(null);
+    const [cancelError, setCancelError] = useState(null);
     const [refreshKey, setRefreshKey] = useState(0);
     const { currency } = useUtil();
 
@@ -292,12 +300,16 @@ export default function Sales() {
             return;
         }
         setCancellingId(sale.documentId);
+        setCancelError(null);
         try {
             await SaleApi.cancelSale(sale.documentId);
             setRefreshKey(k => k + 1);
         } catch (err) {
             console.error('Cancel failed', err);
-            alert('Failed to cancel sale. ' + (err?.response?.data?.error?.message || 'See console for details.'));
+            // Surface the server's reason (403 role refusal, "already paid",
+            // pay-later lock) inline rather than in a browser alert.
+            const reason = err?.response?.data?.error?.message || err?.message || 'See console for details.';
+            setCancelError(`Could not cancel sale ${label}: ${reason}`);
         } finally {
             setCancellingId(null);
         }
@@ -414,6 +426,21 @@ export default function Sales() {
                         }
                         emptyState={<div>No sales found.</div>}
                     >
+                        {cancelError && (
+                            <div className="alert alert-danger py-2 d-flex align-items-start">
+                                <i className="fas fa-triangle-exclamation me-2 mt-1"></i>
+                                <span className="flex-grow-1">{cancelError}</span>
+                                <button type="button" className="btn-close" onClick={() => setCancelError(null)}></button>
+                            </div>
+                        )}
+                        {needsRoleSwitch && (
+                            <div className="alert alert-secondary py-2 small d-flex align-items-center">
+                                <i className="fas fa-user-shield me-2"></i>
+                                You hold an admin role for Sales but are acting as
+                                <strong className="mx-1">{activeRoleKey}</strong>
+                                — switch to your admin role to cancel sales.
+                            </div>
+                        )}
                         <div className="table-responsive">
                             <table className="table table-hover list-table">
                                 <thead>

@@ -16,64 +16,21 @@
  * so Strapi doesn't reject the custom action name.
  */
 
-async function ensureUser(ctx, strapi) {
-  if (ctx.state?.user) return ctx.state.user;
-  try {
-    const token = await strapi
-      .plugin('users-permissions')
-      .service('jwt')
-      .getToken(ctx);
-    if (token?.id) {
-      const user = await strapi
-        .plugin('users-permissions')
-        .service('user')
-        .fetchAuthenticatedUser(token.id);
-      if (user && !user.blocked) {
-        ctx.state.user = user;
-        return user;
-      }
-    }
-  } catch (_) { /* invalid / missing token */ }
-  ctx.unauthorized('Authentication required');
-  return null;
-}
-
-/**
- * Check whether the authenticated user is an admin for the "sale" app.
- */
-async function isAdminUser(userId, strapi) {
-  const user = await strapi.query('plugin::users-permissions.user').findOne({
-    where: { id: userId },
-    populate: {
-      role: { select: ['type'] },
-      permission_roles: {
-        select: ['level'],
-        populate: { domain: { select: ['key'] } },
-      },
-    },
-  });
-
-  // Super-admin role always passes
-  if (user?.role?.type === 'admin') return true;
-
-  // Domain-level admin for the "sale" domain
-  const adminKeys = (user?.permission_roles || [])
-    .filter((r) => r?.level === 'admin')
-    .map((r) => r?.domain?.key)
-    .filter(Boolean);
-  return adminKeys.includes('sale');
-}
+const { requireAppRole } = require('../../../utils/require-admin');
 
 module.exports = {
   async cancel(ctx) {
-    const user = await ensureUser(ctx, strapi);
-    if (!user) return;
-
     // ── Admin guard ─────────────────────────────────────────
-    const admin = await isAdminUser(user.id, strapi);
-    if (!admin) {
-      return ctx.forbidden('Only administrators can cancel sales');
-    }
+    // requireAppRole reads the user's REAL app_roles (`sale_admin`) from the
+    // DB. The previous guard populated a `permission_roles` relation that has
+    // no schema, so it always came back empty and every non-super-admin — the
+    // sale admins this action exists for — was refused.
+    const user = await requireAppRole(ctx, strapi, {
+      domains: ['sale'],
+      levels: ['admin'],
+      message: 'Only administrators can cancel sales',
+    });
+    if (!user) return;
 
     const { id } = ctx.params;
 

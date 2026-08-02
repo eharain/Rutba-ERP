@@ -161,6 +161,40 @@ export function isActiveAdminRole(activeRoleKey) {
 }
 
 /**
+ * Same as isActiveAdminRole but for manager-level roles (`{domain}_manager`).
+ *
+ * @param {string} activeRoleKey - from useAuth().activeRoleKey
+ * @returns {boolean}
+ */
+export function isActiveManagerRole(activeRoleKey) {
+    if (!activeRoleKey || typeof activeRoleKey !== 'string') return false;
+    return /(?:^|_)manager$/.test(activeRoleKey);
+}
+
+/**
+ * The check nearly every admin-gated control wants: "should this user get the
+ * admin affordance right now?".
+ *
+ * Prefers the ACTIVE role (RoleSwitcher model) and falls back to "holds an
+ * admin role for this app" only while activeRoleKey is still unset — the same
+ * rule PermissionCheck applies, so page chrome and inline buttons agree.
+ *
+ * Gating on `isAppAdmin() && isActiveAdminRole()` instead is a trap: it hides
+ * the control during the bootstrap window where activeRoleKey is null, which
+ * reads as "admin doesn't work".
+ *
+ * @param {string} activeRoleKey   - from useAuth().activeRoleKey
+ * @param {string[]} adminAppAccess - from useAuth().adminAppAccess
+ * @param {string} appKey          - 'sale' | 'stock' | …
+ * @returns {boolean}
+ */
+export function isEffectiveAdmin(activeRoleKey, adminAppAccess, appKey) {
+    return activeRoleKey
+        ? isActiveAdminRole(activeRoleKey)
+        : isAppAdmin(adminAppAccess, appKey);
+}
+
+/**
  * Build navigation cross-links for the current user.
  * Only includes apps the user actually has access to (excludes
  * the current app).
