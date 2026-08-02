@@ -15,6 +15,7 @@ import CashRegisterGuard, { useCashRegister } from '../../components/CashRegiste
 import AddLeadModal from '../../components/AddLeadModal';
 import CashDrawTopUpModal from '../../components/CashDrawTopUpModal';
 import RecentProductsPanel, { recordRecentFromStockItem } from '../../components/RecentProductsPanel';
+import PinnedListsManager from '../../components/PinnedListsManager';
 
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 
@@ -109,6 +110,7 @@ export default function SalePage() {
     const [notesSaving, setNotesSaving] = useState(false);
     const [showLeadModal, setShowLeadModal] = useState(false);
     const [showCashDrawModal, setShowCashDrawModal] = useState(false);
+    const [showPinnedManager, setShowPinnedManager] = useState(false);
     const [showPayLaterModal, setShowPayLaterModal] = useState(false);
     const [showUnlockModal, setShowUnlockModal] = useState(false);
     const [payLaterSaving, setPayLaterSaving] = useState(false);
@@ -1071,6 +1073,16 @@ export default function SalePage() {
                             disabled={!saleModel.isEditable}
                             usedStockIds={usedStockIds}
                             onAddStockItem={addStockItem}
+                            onManagePinned={() => setShowPinnedManager(true)}
+                        />
+
+                        {/* Owned by the page, not the rail: the manager is a
+                            standalone dialog over till configuration, and
+                            nesting it inside the 56px-wide sticky rail tied its
+                            lifetime to a collapsible sidebar for no reason. */}
+                        <PinnedListsManager
+                            isOpen={showPinnedManager}
+                            onClose={() => setShowPinnedManager(false)}
                         />
                     </div>{/* /d-flex outer wrapper */}
                     </CashRegisterGuard>

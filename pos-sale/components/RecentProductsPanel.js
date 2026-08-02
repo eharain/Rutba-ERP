@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 import SaleApi from '@rutba/pos-shared/lib/saleApi';
-import PinnedListsManager from './PinnedListsManager';
 import {
     loadState, setActiveList, addEntry, removeEntry,
     entryKeyOf, productThumbUrl, MAX_ITEMS_PER_LIST,
@@ -61,13 +60,12 @@ function saveList(key, items) {
  */
 const COLLAPSED_KEY = 'pos.quickAdd.collapsed';
 
-export default function RecentProductsPanel({ disabled, usedStockIds, onAddStockItem }) {
+export default function RecentProductsPanel({ disabled, usedStockIds, onAddStockItem, onManagePinned }) {
     const { branch, desk, currency } = useUtil();
     const [recent, setRecent] = useState(() => loadList(recentKey(branch, desk)));
     const [pinnedState, setPinnedState] = useState(() => loadState(branch, desk));
     const [busy, setBusy] = useState(null);
     const [error, setError] = useState(null);
-    const [showManager, setShowManager] = useState(false);
     // Right-rail collapse: default to narrow icon-only column to save
     // screen real estate; teller can expand for full tile view. State is
     // device-local (not per-desk) — it's a UI preference, not a workflow.
@@ -301,12 +299,12 @@ export default function RecentProductsPanel({ disabled, usedStockIds, onAddStock
                     </span>
                 )}
                 <div className="d-flex align-items-center gap-1 ms-auto">
-                    {!collapsed && (
+                    {!collapsed && onManagePinned && (
                         <button
                             type="button"
                             className="btn btn-sm btn-link text-muted p-0"
                             title="Manage pinned lists"
-                            onClick={() => setShowManager(true)}
+                            onClick={onManagePinned}
                             style={{ lineHeight: 1 }}
                         >
                             <i className="fas fa-sliders-h"></i>
@@ -423,8 +421,6 @@ export default function RecentProductsPanel({ disabled, usedStockIds, onAddStock
                     )
                 )}
             </div>
-
-            <PinnedListsManager isOpen={showManager} onClose={() => setShowManager(false)} />
         </div>
     );
 }

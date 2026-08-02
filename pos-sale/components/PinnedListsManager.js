@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
+import PinnedProductSearch from './PinnedProductSearch';
 import {
     loadState, createList, renameList, deleteList, moveList,
-    removeEntry, moveEntry, moveEntryWithin, entryKeyOf,
+    addEntry, removeEntry, moveEntry, moveEntryWithin, entryKeyOf,
     MAX_ITEMS_PER_LIST, MAX_LISTS, PINNED_CHANGED_EVENT,
 } from '../lib/pinnedLists';
 
@@ -183,14 +184,23 @@ export default function PinnedListsManager({ isOpen, onClose }) {
                                     <span>{selected.items.length}/{MAX_ITEMS_PER_LIST}</span>
                                 </div>
 
+                                {/* Add products without having to sell one first —
+                                    a till can be set up before the shift starts. */}
+                                <PinnedProductSearch
+                                    existingKeys={new Set(selected.items.map(entryKeyOf))}
+                                    full={selected.items.length >= MAX_ITEMS_PER_LIST}
+                                    onAdd={(entry) => apply(() => addEntry(branch, desk, selected.id, entry))}
+                                />
+
                                 {selected.items.length === 0 ? (
                                     <div className="p-3 text-muted small">
-                                        Nothing pinned here yet. Pin products from the search box
+                                        Nothing pinned here yet. Search above to add products, pin
+                                        them from a sale line
                                         <i className="fas fa-thumbtack mx-1" style={{ fontSize: 10 }}></i>
                                         or move them across from another list.
                                     </div>
                                 ) : (
-                                    <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+                                    <div style={{ maxHeight: 210, overflowY: 'auto' }}>
                                         {selected.items.map((entry, i) => {
                                             const k = entryKeyOf(entry);
                                             return (
