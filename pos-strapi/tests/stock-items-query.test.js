@@ -17,9 +17,16 @@ const {
 
 let passed = 0;
 let failed = 0;
-async function test(name, fn) {
-  try { await fn(); passed += 1; console.log(`  ok   ${name}`); }
-  catch (e) { failed += 1; console.log(`  FAIL ${name} :: ${e && e.message}`); }
+// Cases are registered from the top level, so hold each one's promise and await
+// the lot before reporting. Every body here is synchronous today, but summing
+// the tally on a bare timer would let a future async case report after the exit
+// code had already been decided — a failure that exits 0 is worse than no test.
+const pending = [];
+function test(name, fn) {
+  pending.push((async () => {
+    try { await fn(); passed += 1; console.log(`  ok   ${name}`); }
+    catch (e) { failed += 1; console.log(`  FAIL ${name} :: ${e && e.message}`); }
+  })());
 }
 
 // ── legacy fall-through ──────────────────────────────────────────────────────
@@ -160,7 +167,8 @@ test('a full POS search request shapes to the pre-refactor filter set', () => {
   });
 });
 
-setTimeout(() => {
+(async () => {
+  await Promise.all(pending);
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);
-}, 0);
+})();
