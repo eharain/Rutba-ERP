@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { MAX_CUSTOM_QTY, CUSTOM_QTY_WARN } from '@rutba/pos-shared/lib/utils';
 import { StraipImageUrl, isImage } from '@rutba/api-provider/lib/api';
+import { useUtil } from '@rutba/pos-shared/context/UtilContext';
+import { isProductPinned, togglePinForStockItem, PINNED_CHANGED_EVENT } from '../../lib/pinnedLists';
 
 /**
  * Numeric cell that keeps a local text draft while focused so typing stays
@@ -49,6 +51,18 @@ function NumberCell({ value, onCommit, disabled, min = 0, max, step = 'any', inv
 /** Resolve the best thumbnail for a SaleItem. Prefers product.logo, falls
  *  back to the first image in product.gallery. Returns null for ad-hoc
  *  (non-stock) custom items or products without media. */
+/** A stock-item-shaped object the pinned-lists model can turn into an entry.
+ *  Built from the SaleItem rather than reaching for first() directly, so a line
+ *  whose stock items didn't come back — or an ad-hoc custom line that never had
+ *  any — is still pinnable by name. */
+function pinSourceFor(item) {
+    const stockItem = typeof item?.first === 'function' ? item.first() : null;
+    const product = stockItem?.product || item?.product || null;
+    const name = product?.name || stockItem?.name || item?.name;
+    if (!name) return null;
+    return { product, name, selling_price: item?.unitPrice ?? stockItem?.selling_price ?? 0 };
+}
+
 function saleItemThumbUrl(item) {
     const stockItem = typeof item?.first === 'function' ? item.first() : null;
     // Fall back to the sale-item's own product relation so a line whose stock
@@ -70,6 +84,17 @@ export default function SalesItemsList({
     onRemove,
     disabled = false
 }) {
+    const { branch, desk } = useUtil();
+    // isProductPinned reads localStorage synchronously, so nothing would
+    // re-render when the pin state changes — here, from the search box, or from
+    // the quick-add manager. Bump a counter on the shared event to re-read.
+    const [, bumpPins] = useState(0);
+    useEffect(() => {
+        const handler = () => bumpPins(n => n + 1);
+        window.addEventListener(PINNED_CHANGED_EVENT, handler);
+        return () => window.removeEventListener(PINNED_CHANGED_EVENT, handler);
+    }, []);
+
     if (items.length === 0) return null;
 
     return (
@@ -78,6 +103,7 @@ export default function SalesItemsList({
                 <thead className="table-light">
                     <tr>
                         <th>#</th>
+                        <th width="34"></th>
                         <th width="48"></th>
                         <th>Item</th>
                         <th width="140">Unit Price</th>
@@ -91,10 +117,47 @@ export default function SalesItemsList({
                 <tbody>
                     {items.map((item, index) => {
                         const thumbUrl = saleItemThumbUrl(item);
+                        const pinSource = pinSourceFor(item);
+                        const pinned = pinSource ? isProductPinned(branch, desk, pinSource) : false;
                         return (
                         <tr key={index}>
                             {/* # */}
                             <td className="text-muted small">{index + 1}</td>
+
+                            {/* PIN — put what the teller just rang up onto the
+                                quick-add rail without hunting for it in search
+                                again. Stays enabled on a locked/paid sale: the
+                                pinned rail is till configuration, not sale data,
+                                so there's no reason a completed sale can't be a
+                                source of pins. No local re-render on click —
+                                the toggle dispatches PINNED_CHANGED_EVENT, which
+                                the effect above already listens for, and that is
+                                the same path that keeps this icon in sync when
+                                the pin is changed from the rail or search box. */}
+                            <td>
+                                {pinSource && (
+                                    <button
+                                        type="button"
+                                        className="btn btn-sm btn-link p-0"
+                                        title={pinned
+                                            ? `Unpin "${pinSource.name}" from Quick add`
+                                            : `Pin "${pinSource.name}" to Quick add`}
+                                        aria-pressed={pinned}
+                                        onClick={() => togglePinForStockItem(branch, desk, pinSource)}
+                                        style={{ lineHeight: 1 }}
+                                    >
+                                        <i
+                                            className="fas fa-thumbtack"
+                                            style={{
+                                                fontSize: 12,
+                                                opacity: pinned ? 1 : 0.35,
+                                                transform: pinned ? 'none' : 'rotate(45deg)',
+                                                color: pinned ? '#f0a500' : '#6c757d',
+                                            }}
+                                        />
+                                    </button>
+                                )}
+                            </td>
 
                             {/* THUMB */}
                             <td>
