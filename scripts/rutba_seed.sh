@@ -17,17 +17,28 @@
 #   So: hold for a grace delay, then poll /_health until the API answers.
 #
 # USAGE
-#   sudo bash scripts/rutba_seed.sh                      # partial run, all entries (default)
-#   sudo bash scripts/rutba_seed.sh --essential          # essential entries only
-#   sudo bash scripts/rutba_seed.sh --mode=full          # force re-apply where supported
+#   sudo bash scripts/rutba_seed.sh                      # essential entries only (default)
 #   sudo bash scripts/rutba_seed.sh --only=accounting,shipping
+#   sudo bash scripts/rutba_seed.sh --categories=regional,demo
+#   sudo bash scripts/rutba_seed.sh --mode=full          # force re-apply where supported
 #   RUTBA_SEED_BUILD_DIR=/path/to/build bash scripts/rutba_seed.sh
+#
+# WHY ESSENTIAL-ONLY BY DEFAULT
+#   Every non-essential registry entry (regional tax/shipping profiles,
+#   industry onboarding packs, demo datasets, one-off backfills, ...) is
+#   tenant-specific or opt-in by design - see src/seed/registry.js. Deploy
+#   is unattended and runs on every push, so it must never reach for those:
+#   an unattended "run everything" default is what dumped all 8 industry
+#   packs' category trees onto a single-tenant DB in one shot. Anything
+#   beyond the essential set is applied deliberately, by an operator, via
+#   the rutba-seed control app (:4018) or an explicit --only/--categories.
 #
 # TUNING (environment variables)
 #   RUTBA_SEED_ENABLED       1 (default) | 0 to skip seeding entirely
 #   RUTBA_SEED_DELAY         Grace delay before the first probe (default 20s)
 #   RUTBA_SEED_TIMEOUT       Max seconds to wait for Strapi        (default 300)
 #   RUTBA_SEED_ARGS          Default seed args when none are passed on the CLI
+#                            (default: --essential)
 #   RUTBA_SEED_BUILD_DIR     Build dir to seed (default: the active build)
 #
 # Called automatically at the end of rutba_deploy.sh and rutba_rollback.sh.
@@ -45,13 +56,18 @@ SEED_DELAY="${RUTBA_SEED_DELAY:-20}"
 SEED_TIMEOUT="${RUTBA_SEED_TIMEOUT:-300}"
 SEED_POLL_INTERVAL=5
 
-# CLI args win; otherwise fall back to RUTBA_SEED_ARGS; otherwise a plain
-# partial run, which is idempotent across the whole registry and therefore
-# picks up seeders added since the last deploy.
+# CLI args win; otherwise fall back to RUTBA_SEED_ARGS; otherwise
+# --essential, so an unattended deploy only ever touches the small
+# system-bootstrap set (roles, api-pro descriptors, permissions, default
+# workflows, ...) and never a tenant-specific or demo dataset.
 SEED_ARGS=("$@")
-if [ ${#SEED_ARGS[@]} -eq 0 ] && [ -n "${RUTBA_SEED_ARGS:-}" ]; then
-    # shellcheck disable=SC2206  # word splitting is intended here
-    SEED_ARGS=(${RUTBA_SEED_ARGS})
+if [ ${#SEED_ARGS[@]} -eq 0 ]; then
+    if [ -n "${RUTBA_SEED_ARGS:-}" ]; then
+        # shellcheck disable=SC2206  # word splitting is intended here
+        SEED_ARGS=(${RUTBA_SEED_ARGS})
+    else
+        SEED_ARGS=(--essential)
+    fi
 fi
 
 ###########################################
@@ -172,11 +188,7 @@ STRAPI_HOST="127.0.0.1"
 
 log "Build:  ${SEED_BUILD_DIR}"
 log "Strapi: ${STRAPI_HOST}:${STRAPI_PORT}"
-if [ ${#SEED_ARGS[@]} -gt 0 ]; then
-    log "Args:   ${SEED_ARGS[*]}"
-else
-    log "Args:   (none - partial idempotent run of every registry entry)"
-fi
+log "Args:   ${SEED_ARGS[*]}"
 
 if ! wait_for_strapi "$STRAPI_HOST" "$STRAPI_PORT"; then
     log_err "Skipping seeding - Strapi never became ready."
