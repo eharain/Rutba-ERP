@@ -4,7 +4,9 @@ import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 import SaleApi from '@rutba/pos-shared/lib/saleApi';
 import { MAX_CUSTOM_QTY, CUSTOM_QTY_WARN } from '@rutba/pos-shared/lib/utils';
 import { StraipImageUrl, isImage } from '@rutba/api-provider/lib/api';
-import { isProductPinned, togglePinForStockItem } from '../RecentProductsPanel';
+// Straight from the model — these are pure storage helpers, so there's no
+// reason for the search box to pull in the whole quick-add panel for them.
+import { isProductPinned, togglePinForStockItem } from '../../lib/pinnedLists';
 
 const MAX_VISIBLE_RESULTS = 12;
 

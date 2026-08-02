@@ -1,21 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 import SaleApi from '@rutba/pos-shared/lib/saleApi';
-import { StraipImageUrl, isImage } from '@rutba/api-provider/lib/api';
+import PinnedListsManager from './PinnedListsManager';
+import {
+    loadState, setActiveList, addEntry, removeEntry,
+    entryKeyOf, productThumbUrl, MAX_ITEMS_PER_LIST,
+    PINNED_CHANGED_EVENT, notifyChanged,
+} from '../lib/pinnedLists';
 
-// Stock-item → best thumbnail URL. Mirrors the resolver in
-// sales-items-form so the same image follows the product into the
-// Quick-add tiles. Prefer the explicit `logo`, fall back to gallery.
-function productThumbUrl(product) {
-    if (!product) return null;
-    const pick = (file) => {
-        if (!file || !isImage(file)) return null;
-        const thumb = file.formats?.thumbnail || file;
-        return StraipImageUrl(thumb);
-    };
-    return pick(product.logo)
-        || pick(Array.isArray(product.gallery) ? product.gallery.find(isImage) : null);
-}
+// Re-exported so the search dropdown keeps importing pin helpers from one place.
+export { isProductPinned, togglePinForStockItem } from '../lib/pinnedLists';
 
 /** Compact abbreviation for the no-image fallback on icon tiles.
  *
@@ -37,13 +31,9 @@ function abbreviateName(name) {
 }
 
 const MAX_RECENT = 8;     // cap the auto-tracked list short so tellers see only what's actually fresh
-const MAX_PINNED = 12;    // pinned items stay until the teller removes them — slightly bigger headroom
 
 function recentKey(branch, desk) {
     return `pos.recentProducts.${branch?.id || branch?.documentId || 'no-branch'}.${desk?.id || 'no-desk'}`;
-}
-function pinnedKey(branch, desk) {
-    return `pos.pinnedProducts.${branch?.id || branch?.documentId || 'no-branch'}.${desk?.id || 'no-desk'}`;
 }
 
 function loadList(key) {
@@ -57,78 +47,27 @@ function saveList(key, items) {
     try { localStorage.setItem(key, JSON.stringify(items)); } catch { /* quota — silent */ }
 }
 
-function entryKeyOf(entry) {
-    return entry.productId || entry.name;
-}
-
-const PINNED_CHANGED_EVENT = 'pos.pinnedChanged';
-
-/** Build a pinnable entry from a search-result row. The shape matches
- *  what the panel stores — name, productId, price, thumb. */
-function entryFromStockItem(stockItem) {
-    if (!stockItem) return null;
-    const name = stockItem.product?.name || stockItem.name;
-    if (!name) return null;
-    return {
-        name,
-        productId: stockItem.product?.documentId || stockItem.product?.id || null,
-        price: Number(stockItem.selling_price || 0),
-        thumb: productThumbUrl(stockItem.product),
-    };
-}
-
-/** Is this product currently pinned on this (branch, desk)? */
-export function isProductPinned(branch, desk, stockItem) {
-    const entry = entryFromStockItem(stockItem);
-    if (!entry) return false;
-    const list = loadList(pinnedKey(branch, desk));
-    const key = entryKeyOf(entry);
-    return list.some(p => entryKeyOf(p) === key);
-}
-
-/** Pin / unpin a product from any caller (e.g. search dropdown). The
- *  panel listens for `pos.pinnedChanged` and refreshes — no parent
- *  needs to coordinate the state. */
-export function togglePinForStockItem(branch, desk, stockItem) {
-    const entry = entryFromStockItem(stockItem);
-    if (!entry) return false;
-    const key = pinnedKey(branch, desk);
-    const current = loadList(key);
-    const k = entryKeyOf(entry);
-    const isPinned = current.some(p => entryKeyOf(p) === k);
-    const next = isPinned
-        ? current.filter(p => entryKeyOf(p) !== k)
-        : [entry, ...current.filter(p => entryKeyOf(p) !== k)].slice(0, MAX_PINNED);
-    saveList(key, next);
-    try {
-        window.dispatchEvent(new CustomEvent(PINNED_CHANGED_EVENT, {
-            detail: { branchKey: branch?.id || branch?.documentId, deskKey: desk?.id },
-        }));
-    } catch { /* no DOM in SSR — silent */ }
-    return !isPinned;
-}
-
 /**
- * Quick-add sidebar for the cash teller. Two short lists:
- *   • Pinned — items the teller marked as favourites. Stays put until
- *     unpinned. Top of the panel because these are the fast-movers the
- *     teller chose to keep close.
- *   • Recent — last few items automatically added on this desk. Capped
- *     short so it stays focused on the current shift's pattern.
+ * Quick-add sidebar for the cash teller.
+ *   • Pinned — the ACTIVE named list (see lib/pinnedLists). A till can keep
+ *     several lists — "Bags", "Cold drinks", "Promo" — and switch between them
+ *     from the tab strip; the gear opens the manager.
+ *   • Recent — last few items automatically added on this desk. Capped short so
+ *     it stays focused on the current shift's pattern.
  *
- * Both lists live in localStorage scoped to (branch, desk) so each till
- * has its own tile set. Click → search → add the first available stock
- * item; if everything's been added or is out of stock, surface that
- * inline instead of silently failing.
+ * Both live in localStorage scoped to (branch, desk) so each till has its own
+ * set. Click → search → add the first available stock item; if everything's
+ * been added or is out of stock, surface that inline instead of failing quietly.
  */
 const COLLAPSED_KEY = 'pos.quickAdd.collapsed';
 
 export default function RecentProductsPanel({ disabled, usedStockIds, onAddStockItem }) {
     const { branch, desk, currency } = useUtil();
     const [recent, setRecent] = useState(() => loadList(recentKey(branch, desk)));
-    const [pinned, setPinned] = useState(() => loadList(pinnedKey(branch, desk)));
+    const [pinnedState, setPinnedState] = useState(() => loadState(branch, desk));
     const [busy, setBusy] = useState(null);
     const [error, setError] = useState(null);
+    const [showManager, setShowManager] = useState(false);
     // Right-rail collapse: default to narrow icon-only column to save
     // screen real estate; teller can expand for full tile view. State is
     // device-local (not per-desk) — it's a UI preference, not a workflow.
@@ -142,22 +81,28 @@ export default function RecentProductsPanel({ disabled, usedStockIds, onAddStock
 
     useEffect(() => {
         setRecent(loadList(recentKey(branch, desk)));
-        setPinned(loadList(pinnedKey(branch, desk)));
+        setPinnedState(loadState(branch, desk));
     }, [branch?.id, branch?.documentId, desk?.id]);
 
-    // Listen for pin changes triggered elsewhere (e.g. the search dropdown
-    // calling togglePinForStockItem). localStorage events don't fire in the
-    // same tab, so we route through a custom DOM event.
+    // Listen for pin changes triggered elsewhere (the search dropdown, or the
+    // manager modal). localStorage events don't fire in the same tab, so we
+    // route through a custom DOM event.
     useEffect(() => {
         const handler = () => {
-            setPinned(loadList(pinnedKey(branch, desk)));
+            setPinnedState(loadState(branch, desk));
             setRecent(loadList(recentKey(branch, desk)));
         };
         window.addEventListener(PINNED_CHANGED_EVENT, handler);
         return () => window.removeEventListener(PINNED_CHANGED_EVENT, handler);
     }, [branch?.id, branch?.documentId, desk?.id]);
 
-    const pinnedKeys = new Set(pinned.map(entryKeyOf));
+    const lists = pinnedState.lists;
+    const activeList = lists.find(l => l.id === pinnedState.activeId) || lists[0];
+    const pinned = activeList?.items || [];
+
+    // "Pinned" for tile purposes means pinned in ANY list — otherwise switching
+    // tabs would make the same product's pin icon flicker between states.
+    const pinnedKeys = new Set(lists.flatMap(l => l.items.map(entryKeyOf)));
 
     const handlePick = async (entry) => {
         if (disabled || busy) return;
@@ -181,32 +126,32 @@ export default function RecentProductsPanel({ disabled, usedStockIds, onAddStock
         }
     };
 
+    /** Pin/unpin against the ACTIVE list. Unpinning a tile that lives in another
+     *  list only removes it from THIS one — the manager is where cross-list
+     *  edits happen, and silently emptying another list from here would be a
+     *  surprise. */
     const togglePin = (entry, e) => {
         e?.stopPropagation();
+        if (!activeList) return;
         const k = entryKeyOf(entry);
-        const key = pinnedKey(branch, desk);
-        const next = pinnedKeys.has(k)
-            ? pinned.filter(p => entryKeyOf(p) !== k)
-            : [entry, ...pinned.filter(p => entryKeyOf(p) !== k)].slice(0, MAX_PINNED);
-        setPinned(next);
-        saveList(key, next);
-        // Mirror the cross-component contract so anyone else listening
-        // (e.g. another widget showing pinned state) refreshes too.
-        try {
-            window.dispatchEvent(new CustomEvent(PINNED_CHANGED_EVENT, {
-                detail: { branchKey: branch?.id || branch?.documentId, deskKey: desk?.id },
-            }));
-        } catch { /* SSR — silent */ }
+        const inActive = pinned.some(p => entryKeyOf(p) === k);
+        const next = inActive
+            ? removeEntry(branch, desk, activeList.id, k)
+            : addEntry(branch, desk, activeList.id, entry);
+        setPinnedState(next);
     };
+
+    const switchList = (id) => setPinnedState(setActiveList(branch, desk, id));
 
     const clearRecent = () => {
         if (!confirm('Clear recent products for this desk?')) return;
         setRecent([]);
         saveList(recentKey(branch, desk), []);
+        notifyChanged(branch, desk);
     };
 
-    // Recent display = auto-tracked list, but hide entries already in Pinned
-    // so the two sections don't double-show the same product.
+    // Recent display = auto-tracked list, but hide entries already pinned
+    // anywhere so the two sections don't double-show the same product.
     const recentVisible = recent.filter(r => !pinnedKeys.has(entryKeyOf(r)));
 
     /** Narrow icon-only tile for collapsed mode — just the thumb, tooltip
@@ -305,7 +250,7 @@ export default function RecentProductsPanel({ disabled, usedStockIds, onAddStock
                 <button
                     type="button"
                     className={`btn btn-sm position-absolute end-0 top-0 ${unpinMode ? 'text-danger' : 'btn-link text-muted'}`}
-                    title={unpinMode ? `Unpin "${entry.name}"` : (isPinned ? 'Unpin' : 'Pin to Quick add')}
+                    title={unpinMode ? `Remove "${entry.name}" from ${activeList?.name || 'this list'}` : (isPinned ? 'Unpin' : 'Pin to Quick add')}
                     onClick={(e) => togglePin(entry, e)}
                     style={{
                         lineHeight: 1,
@@ -335,6 +280,7 @@ export default function RecentProductsPanel({ disabled, usedStockIds, onAddStock
     };
 
     const isEmpty = pinned.length === 0 && recentVisible.length === 0;
+    const multipleLists = lists.length > 1;
 
     return (
         <div
@@ -355,6 +301,17 @@ export default function RecentProductsPanel({ disabled, usedStockIds, onAddStock
                     </span>
                 )}
                 <div className="d-flex align-items-center gap-1 ms-auto">
+                    {!collapsed && (
+                        <button
+                            type="button"
+                            className="btn btn-sm btn-link text-muted p-0"
+                            title="Manage pinned lists"
+                            onClick={() => setShowManager(true)}
+                            style={{ lineHeight: 1 }}
+                        >
+                            <i className="fas fa-sliders-h"></i>
+                        </button>
+                    )}
                     {!collapsed && recent.length > 0 && (
                         <button
                             type="button"
@@ -378,6 +335,29 @@ export default function RecentProductsPanel({ disabled, usedStockIds, onAddStock
                 </div>
             </div>
 
+            {/* List switcher — only worth the vertical space once there's more
+                than one list. Hidden when collapsed: at 56px there's no room
+                for names, and the rail still shows the active list's tiles. */}
+            {!collapsed && multipleLists && (
+                <div className="px-2 pt-2 d-flex flex-wrap gap-1">
+                    {lists.map(l => (
+                        <button
+                            key={l.id}
+                            type="button"
+                            className={`btn btn-sm py-0 px-2 ${l.id === activeList.id ? 'btn-warning' : 'btn-outline-secondary'}`}
+                            style={{ fontSize: 11 }}
+                            title={`${l.name} — ${l.items.length} item(s)`}
+                            onClick={() => switchList(l.id)}
+                        >
+                            {l.name}
+                            {l.items.length > 0 && (
+                                <span className="ms-1 opacity-75">{l.items.length}</span>
+                            )}
+                        </button>
+                    ))}
+                </div>
+            )}
+
             <div
                 className="card-body p-2"
                 style={{ overflowY: 'auto', flex: 1 }}
@@ -386,7 +366,8 @@ export default function RecentProductsPanel({ disabled, usedStockIds, onAddStock
 
                 {isEmpty && !collapsed && (
                     <div className="text-muted small">
-                        Items you add appear here. Pin <i className="fas fa-thumbtack mx-1" style={{ fontSize: 10 }}></i> to keep them visible.
+                        Items you add appear here. Pin <i className="fas fa-thumbtack mx-1" style={{ fontSize: 10 }}></i> to keep them visible,
+                        and use <i className="fas fa-sliders-h mx-1" style={{ fontSize: 10 }}></i> to group them into named lists.
                     </div>
                 )}
 
@@ -396,7 +377,7 @@ export default function RecentProductsPanel({ disabled, usedStockIds, onAddStock
                     </div>
                 )}
 
-                {/* Pinned section */}
+                {/* Pinned section — the active list */}
                 {pinned.length > 0 && (
                     collapsed ? (
                         <div className="d-flex flex-column align-items-center gap-1 mb-2">
@@ -404,8 +385,14 @@ export default function RecentProductsPanel({ disabled, usedStockIds, onAddStock
                         </div>
                     ) : (
                         <>
-                            <div className="small text-muted fw-semibold mb-1">
-                                <i className="fas fa-thumbtack me-1 text-warning" style={{ fontSize: 10 }}></i>Pinned
+                            <div className="small text-muted fw-semibold mb-1 d-flex justify-content-between align-items-center">
+                                <span className="text-truncate">
+                                    <i className="fas fa-thumbtack me-1 text-warning" style={{ fontSize: 10 }}></i>
+                                    {activeList?.name || 'Pinned'}
+                                </span>
+                                <span className="text-muted" style={{ fontSize: 10 }}>
+                                    {pinned.length}/{MAX_ITEMS_PER_LIST}
+                                </span>
                             </div>
                             <div className="d-grid gap-1 mb-2">
                                 {pinned.map((p) => renderTile(p, { unpinMode: true }))}
@@ -436,6 +423,8 @@ export default function RecentProductsPanel({ disabled, usedStockIds, onAddStock
                     )
                 )}
             </div>
+
+            <PinnedListsManager isOpen={showManager} onClose={() => setShowManager(false)} />
         </div>
     );
 }
@@ -443,7 +432,7 @@ export default function RecentProductsPanel({ disabled, usedStockIds, onAddStock
 /**
  * Record a freshly-added stock item into the per-desk recent list so the
  * RecentProductsPanel can offer it as a quick re-add next time. Dedupes by
- * (productId | name) and caps to MAX_RECENT. Does NOT touch the pinned
+ * (productId | name) and caps to MAX_RECENT. Does NOT touch any pinned
  * list — pinning is an explicit teller action.
  */
 export function recordRecentFromStockItem(branch, desk, stockItem) {
