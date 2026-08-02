@@ -56,6 +56,13 @@
     "notes": {
       "type": "text"
     },
+    "force_closed": {
+      "type": "boolean",
+      "default": false
+    },
+    "force_close_reason": {
+      "type": "text"
+    },
     "opening_note": {
       "type": "text"
     },

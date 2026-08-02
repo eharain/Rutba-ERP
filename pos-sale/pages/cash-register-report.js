@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Layout from "../components/Layout";
+import CloseRegisterModal from "../components/CloseRegisterModal";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { AppContextEndpoints, CashRegistersEndpoints } from "@rutba/api-provider/endpoints/index.js";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { isAppAdmin } from "@rutba/pos-shared/lib/roles";
+import { isAppAdmin, isActiveManagerRole, isEffectiveAdmin } from "@rutba/pos-shared/lib/roles";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 
 /**
@@ -19,6 +20,10 @@ import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 
 // A discrepancy each register may trip. `sev` drives the row colour + sort.
 const SEVERITY_RANK = { high: 0, med: 1, low: 2 };
+
+// Statuses a register can still be closed from — the "Expired — never closed"
+// rows are exactly what an admin comes to this page to clear.
+const CLOSABLE = ["Active", "Open", "Expired"];
 
 function analyzeRegister(reg, threshold, fmt) {
     const flags = [];
@@ -36,8 +41,12 @@ function analyzeRegister(reg, threshold, fmt) {
     if (status === "Expired" && !reg.closed_at) {
         flags.push({ key: "NOT_CLOSED", sev: "high", label: "Expired — never closed" });
     }
-    // Closed but the counted cash is missing/zero while money was expected.
-    if (closed && (counted == null || counted === 0) && exp != null && exp !== 0) {
+    // Force-closed: an admin wrote the drawer off because no count existed.
+    // Reported on its own — it isn't a count of zero, it's an absent count.
+    if (reg.force_closed) {
+        flags.push({ key: "FORCED", sev: "high", label: "Force closed — no count" });
+    } else if (closed && (counted == null || counted === 0) && exp != null && exp !== 0) {
+        // Closed but the counted cash is missing/zero while money was expected.
         flags.push({ key: "UNCOUNTED", sev: "med", label: "Closed without counting" });
     }
     // Material shortage / overage at close.
@@ -56,12 +65,17 @@ function analyzeRegister(reg, threshold, fmt) {
 
 export default function CashRegisterReportPage() {
     const { currency } = useUtil();
-    const { adminAppAccess } = useAuth();
-    const userIsAdmin = isAppAdmin(adminAppAccess, AppContextEndpoints.getAppName());
+    const { adminAppAccess, activeRoleKey } = useAuth();
+    const appName = AppContextEndpoints.getAppName();
+    const userIsAdmin = isAppAdmin(adminAppAccess, appName);
+    const canCloseAny = isEffectiveAdmin(activeRoleKey, adminAppAccess, appName)
+        || isActiveManagerRole(activeRoleKey);
 
     const [registers, setRegisters] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [closingRegister, setClosingRegister] = useState(null);
+    const [closedNotice, setClosedNotice] = useState(null);
 
     const [threshold, setThreshold] = useState("500");
     const [dateFrom, setDateFrom] = useState("");
@@ -141,6 +155,7 @@ export default function CashRegisterReportPage() {
             negExpected: 0,
             uncounted: 0,
             notClosed: 0,
+            forced: 0,
             floatMismatch: 0,
             shortTotal: 0,
             overTotal: 0,
@@ -152,6 +167,7 @@ export default function CashRegisterReportPage() {
                 if (f.key === "NEG_EXPECTED") s.negExpected += 1;
                 if (f.key === "UNCOUNTED") s.uncounted += 1;
                 if (f.key === "NOT_CLOSED") s.notClosed += 1;
+                if (f.key === "FORCED") s.forced += 1;
                 if (f.key === "FLOAT") s.floatMismatch += 1;
             }
             const diff = a.reg.status === "Closed" && a.reg.difference != null ? Number(a.reg.difference) : 0;
@@ -209,6 +225,13 @@ export default function CashRegisterReportPage() {
                     </div>
 
                     {error && <div className="alert alert-danger">{error}</div>}
+                    {closedNotice && (
+                        <div className="alert alert-success py-2 d-flex align-items-center">
+                            <i className="fas fa-circle-check me-2"></i>
+                            <span className="flex-grow-1">{closedNotice}</span>
+                            <button type="button" className="btn-close" onClick={() => setClosedNotice(null)}></button>
+                        </div>
+                    )}
 
                     {/* Summary metrics */}
                     <div className="row g-2 mb-3">
@@ -220,6 +243,7 @@ export default function CashRegisterReportPage() {
                         <Metric label="Neg. Expected" value={summary.negExpected} cls={summary.negExpected > 0 ? "text-danger" : ""} />
                         <Metric label="Uncounted" value={summary.uncounted} cls={summary.uncounted > 0 ? "text-warning" : ""} />
                         <Metric label="Never Closed" value={summary.notClosed} cls={summary.notClosed > 0 ? "text-danger" : ""} />
+                        <Metric label="Force Closed" value={summary.forced} cls={summary.forced > 0 ? "text-danger" : ""} />
                     </div>
 
                     {/* Controls */}
@@ -316,9 +340,21 @@ export default function CashRegisterReportPage() {
                                                         )}
                                                     </td>
                                                     <td>
-                                                        <Link href={`/${reg.documentId}/cash-register-detail`} className="btn btn-outline-primary btn-sm">
-                                                            <i className="fas fa-eye"></i>
-                                                        </Link>
+                                                        <div className="d-flex gap-1">
+                                                            <Link href={`/${reg.documentId}/cash-register-detail`} className="btn btn-outline-primary btn-sm">
+                                                                <i className="fas fa-eye"></i>
+                                                            </Link>
+                                                            {canCloseAny && CLOSABLE.includes(reg.status) && !reg.closed_at && (
+                                                                <button
+                                                                    type="button"
+                                                                    className="btn btn-sm btn-dark text-nowrap"
+                                                                    onClick={() => setClosingRegister(reg)}
+                                                                    title={`Close register #${reg.id}${reg.opened_by ? ` (opened by ${reg.opened_by})` : ''}`}
+                                                                >
+                                                                    <i className="fas fa-lock me-1"></i>Close
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             ))}
@@ -335,6 +371,19 @@ export default function CashRegisterReportPage() {
                         (a credit applied to a new sale was double-counted as a cash payout) — fixed for new sales.
                     </div>
                 </div>
+                <CloseRegisterModal
+                    register={closingRegister}
+                    allowForce={canCloseAny}
+                    onCancel={() => setClosingRegister(null)}
+                    onClosed={(updated) => {
+                        const label = `Register #${updated?.id ?? closingRegister?.id}`;
+                        setClosedNotice(updated?.force_closed
+                            ? `${label} force-closed — counted cash recorded as unknown.`
+                            : `${label} closed.`);
+                        setClosingRegister(null);
+                        loadAll();
+                    }}
+                />
             </Layout>
         </ProtectedRoute>
     );

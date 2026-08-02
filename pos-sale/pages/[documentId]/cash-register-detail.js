@@ -287,6 +287,19 @@ export default function CashRegisterDetailPage() {
                         </Link>
                     </div>
 
+                    {/* Force close — no cash count was ever taken for this register */}
+                    {register.force_closed && (
+                        <div className="alert alert-danger py-2 d-flex align-items-start mb-3">
+                            <i className="fas fa-triangle-exclamation me-2 mt-1"></i>
+                            <span>
+                                <strong>Force-closed</strong> by {register.closed_by || 'an administrator'} — no cash
+                                count was available, so the expected {fmt(register.expected_cash)} was written off to
+                                Cash Short/Over.
+                                {register.force_close_reason ? <> Reason: “{register.force_close_reason}”</> : null}
+                            </span>
+                        </div>
+                    )}
+
                     {/* Opening float mismatch recorded at open time */}
                     {register.opening_note && (
                         <div className="alert alert-warning py-2 d-flex align-items-start mb-3">
@@ -324,7 +337,13 @@ export default function CashRegisterDetailPage() {
                         <div className="col-6 col-md-3 col-xl-2">
                             <div className="card text-center h-100"><div className="card-body py-2">
                                 <div className="text-muted small">Counted Cash</div>
-                                <div className="fw-bold">{register.counted_cash != null ? fmt(register.counted_cash) : '-'}</div>
+                                <div className="fw-bold">
+                                    {register.counted_cash != null
+                                        ? fmt(register.counted_cash)
+                                        : register.force_closed
+                                            ? <span className="text-danger">Unknown</span>
+                                            : '-'}
+                                </div>
                                 {(register.cash_left != null || register.cash_drawn != null) && (
                                     <div className="text-muted" style={{ fontSize: 11 }}>
                                         Left {fmt(register.cash_left)} · Drawn {fmt(register.cash_drawn)}

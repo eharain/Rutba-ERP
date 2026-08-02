@@ -17,6 +17,7 @@
  */
 
 const { createCoreController } = require('@strapi/strapi').factories;
+const { hasAppRole } = require('../../../utils/require-admin');
 
 const EXPIRY_HOURS = 20;
 
@@ -43,7 +44,7 @@ async function getDeskCarryover(strapi, deskId) {
     },
     sort: [{ closed_at: 'desc' }, { opened_at: 'desc' }],
     limit: 1,
-    fields: ['cash_left', 'counted_cash', 'expected_cash', 'opening_cash', 'closed_at', 'opened_at', 'status', 'desk_name'],
+    fields: ['cash_left', 'counted_cash', 'expected_cash', 'opening_cash', 'closed_at', 'opened_at', 'status', 'desk_name', 'force_closed'],
   });
   const reg = prev?.[0];
   if (!reg) return null;
@@ -53,7 +54,13 @@ async function getDeskCarryover(strapi, deskId) {
   const counted = reg.counted_cash;
   const expected = reg.expected_cash;
   let amount = null, source = 'none';
-  if (left != null) { amount = Number(left); source = 'left'; }
+  if (reg.force_closed) {
+    // Force-closed: its expected_cash was written off as unaccounted, so
+    // carrying it forward would tell the next shift to expect money that
+    // isn't there. The float is genuinely unknown — say so and warn nobody.
+    amount = null; source = 'force-closed';
+  }
+  else if (left != null) { amount = Number(left); source = 'left'; }
   else if (counted != null) { amount = Number(counted); source = 'counted'; }
   else if (expected != null) { amount = Number(expected); source = 'expected'; }
   return {
@@ -336,16 +343,53 @@ module.exports = createCoreController('api::cash-register.cash-register', ({ str
 
     const { id } = ctx.params;
     const { counted_cash, closing_cash, cash_left, cash_drawn, notes,
+            force, force_reason,
             closed_by, closed_by_id, closed_by_user: closedUserConnect } = ctx.request.body?.data ?? {};
+
+    // Force close: an admin clears a register nobody can produce a cash count
+    // for any more — the staff member left, the drawer was emptied by someone
+    // else, the shift is weeks old. The count is recorded as UNKNOWN (null)
+    // rather than invented as 0, and `force_closed` marks it so the register
+    // report can tell "counted nothing" apart from "never counted".
+    const forceClose = force === true || force === 'true';
 
     const register = await strapi.documents('api::cash-register.cash-register').findOne({
       documentId: id,
-      populate: ['payments', 'transactions'],
+      populate: ['payments', 'transactions', 'opened_by_user'],
     });
 
     if (!register) return ctx.notFound('Register not found');
     if (register.status === 'Closed') return ctx.badRequest('Register is already closed');
     if (register.status === 'Cancelled') return ctx.badRequest('Register has been cancelled');
+
+    // ── Who may close this ──────────────────────────────────
+    // The route is `auth: false`, so nothing else gates it: without this any
+    // authenticated user could close any desk's drawer. The rule matches the
+    // POS UI — you close your own live register; someone else's, or an expired
+    // one, needs a manager/admin (that's the path the registers list uses).
+    const actorId = ctx.state.user.id;
+    const ownerId = register.opened_by_user?.id ?? register.opened_by_id ?? null;
+    const isOwner = ownerId != null && Number(ownerId) === Number(actorId);
+    if (forceClose || !isOwner || register.status === 'Expired') {
+      const privileged = await hasAppRole(strapi, actorId, {
+        domains: ['sale', 'accounts'],
+        levels: ['admin', 'manager'],
+      });
+      if (!privileged) {
+        return ctx.forbidden(
+          forceClose ? 'Only a manager or admin can force-close a register.'
+            : isOwner ? 'This register has expired — only a manager or admin can close it.'
+            : "Only a manager or admin can close another user's register."
+        );
+      }
+    }
+
+    // A force close writes off whatever the drawer was expected to hold, so it
+    // has to say why. That reason is the only audit trail this close leaves.
+    const forceReason = String(force_reason ?? notes ?? '').trim();
+    if (forceClose && !forceReason) {
+      return ctx.badRequest('A reason is required to force-close a register');
+    }
 
     // Compute expected cash
     const openingCash = Number(register.opening_cash || 0);
@@ -386,12 +430,16 @@ module.exports = createCoreController('api::cash-register.cash-register', ({ str
 
     // Counted total = cash left in the drawer + cash drawn out. Fall back to the
     // legacy single counted_cash/closing_cash field for older clients.
-    const leftVal = cash_left != null ? Number(cash_left) : null;
-    const drawnVal = cash_drawn != null ? Number(cash_drawn) : null;
-    const countedValue = (leftVal != null || drawnVal != null)
-      ? (leftVal || 0) + (drawnVal || 0)
-      : Number(counted_cash ?? closing_cash ?? 0);
-    const difference = countedValue - expectedCash;
+    // A force close has no count at all: counted/difference stay null so no
+    // report ever treats an invented 0 as a real observation.
+    const leftVal = !forceClose && cash_left != null ? Number(cash_left) : null;
+    const drawnVal = !forceClose && cash_drawn != null ? Number(cash_drawn) : null;
+    const countedValue = forceClose
+      ? null
+      : (leftVal != null || drawnVal != null)
+        ? (leftVal || 0) + (drawnVal || 0)
+        : Number(counted_cash ?? closing_cash ?? 0);
+    const difference = forceClose ? null : countedValue - expectedCash;
 
     const updated = await strapi.documents('api::cash-register.cash-register').update({
       documentId: id,
@@ -402,10 +450,13 @@ module.exports = createCoreController('api::cash-register.cash-register', ({ str
         ...(drawnVal != null ? { cash_drawn: drawnVal } : {}),
         expected_cash: expectedCash,
         difference,
-        short_cash: Math.max(-difference, 0),
+        short_cash: forceClose ? null : Math.max(-difference, 0),
         closed_at: new Date().toISOString(),
         status: 'Closed',
-        notes: notes || '',
+        // A force close sends no notes — don't blank whatever is already there.
+        notes: notes != null ? notes : (register.notes || ''),
+        force_closed: forceClose,
+        ...(forceClose ? { force_close_reason: forceReason } : {}),
         closed_by: closed_by || '',
         closed_by_id: closed_by_id || null,
         ...(closedUserConnect ? { closed_by_user: closedUserConnect } : {}),
@@ -425,17 +476,22 @@ module.exports = createCoreController('api::cash-register.cash-register', ({ str
       const already = await accounting.findBySource('Cash Register Close', register.id);
       if (!already || already.length === 0) {
         const glDrawer = Math.round((expectedCash - cashAdjustments) * 100) / 100;
-        const counted = Math.round(countedValue * 100) / 100;
+        // Force close: nothing was recovered into the safe, so the whole drawer
+        // balance lands on Cash Short/Over. Leaving it on CASH_DRAWER instead
+        // would keep an account open against a register nobody can reconcile.
+        const counted = Math.round(Number(countedValue || 0) * 100) / 100;
         const variance = Math.round((counted - glDrawer) * 100) / 100;
         const lines = [];
         if (counted > 0) lines.push({ account: await resolver.resolve('CASH_SAFE', branchId), debit: counted, credit: 0, description: 'Counted cash to safe' });
-        if (variance < 0) lines.push({ account: await resolver.resolve('CASH_SHORT_OVER', branchId), debit: -variance, credit: 0, description: 'Cash short' });
+        if (variance < 0) lines.push({ account: await resolver.resolve('CASH_SHORT_OVER', branchId), debit: -variance, credit: 0, description: forceClose ? 'Unaccounted cash (force close)' : 'Cash short' });
         if (glDrawer > 0) lines.push({ account: await resolver.resolve('CASH_DRAWER', branchId), debit: 0, credit: glDrawer, description: 'Clear drawer' });
         if (variance > 0) lines.push({ account: await resolver.resolve('CASH_SHORT_OVER', branchId), debit: 0, credit: variance, description: 'Cash over' });
         if (lines.length >= 2) {
           await accounting.createAndPost({
             date: new Date(),
-            description: `Register closed — desk ${register.desk_name || register.desk_id}`,
+            description: forceClose
+              ? `Register force-closed, no cash count — desk ${register.desk_name || register.desk_id} (${forceReason})`
+              : `Register closed — desk ${register.desk_name || register.desk_id}`,
             source_type: 'Cash Register Close',
             source_id: register.id,
             source_ref: `REG-${register.id}`,

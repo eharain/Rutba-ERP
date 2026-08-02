@@ -1,25 +1,67 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import Layout from "../components/Layout";
+import CloseRegisterModal from "../components/CloseRegisterModal";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { AppContextEndpoints, CashRegistersEndpoints } from "@rutba/api-provider/endpoints/index.js";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { isAppAdmin } from "@rutba/pos-shared/lib/roles";
+import { isAppAdmin, isActiveManagerRole, isEffectiveAdmin } from "@rutba/pos-shared/lib/roles";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import ListPageLayout from "@rutba/pos-shared/components/ListPageLayout";
 import ListPagination from "@rutba/pos-shared/components/ListPagination";
 
 const STATUS_OPTIONS = ["Active", "Open", "Closed", "Expired", "Cancelled"];
+// Sentinel status filter: every register still holding the drawer open —
+// Active/Open/Expired with no closed_at. This is the admin's work queue.
+const NEEDS_CLOSING = "__needs_closing__";
+// Statuses a register can still be closed from.
+const CLOSABLE = ["Active", "Open", "Expired"];
+
+// Sortable columns. Every key is a scalar column on the register, so sorting
+// is done server-side and holds across pages (a client-side sort of the
+// current page would silently lie about "the biggest difference").
+const COLUMNS = [
+    { key: "id", label: "#" },
+    { key: "desk_name", label: "Desk" },
+    { key: "opened_by", label: "Opened By" },
+    { key: "opened_at", label: "Open Time" },
+    { key: "closed_at", label: "Close Time" },
+    { key: "opening_cash", label: "Opening", align: "right" },
+    { key: "expected_cash", label: "Expected", align: "right" },
+    { key: "counted_cash", label: "Counted", align: "right" },
+    { key: "difference", label: "Difference", align: "right" },
+    { key: "status", label: "Status" },
+];
 
 export default function CashRegisterHistoryPage() {
     const { currency, desk, user } = useUtil();
-    const { adminAppAccess } = useAuth();
-    const userIsAdmin = isAppAdmin(adminAppAccess, AppContextEndpoints.getAppName());
+    const { adminAppAccess, activeRoleKey } = useAuth();
+    const appName = AppContextEndpoints.getAppName();
+    const userIsAdmin = isAppAdmin(adminAppAccess, appName);
+    // Who may close someone else's register: an admin (active, or before the
+    // active role resolves) or a manager. Mirrors the /cash-register rule that
+    // an expired register needs a manager or admin.
+    const canCloseAny = isEffectiveAdmin(activeRoleKey, adminAppAccess, appName)
+        || isActiveManagerRole(activeRoleKey);
     const [registers, setRegisters] = useState([]);
     const [loading, setLoading] = useState(false);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [total, setTotal] = useState(0);
+    // Registers still holding a drawer open — the count on the queue button.
+    const [openCount, setOpenCount] = useState(null);
+    // The register the close modal is working on.
+    const [closingRegister, setClosingRegister] = useState(null);
+    const [closedNotice, setClosedNotice] = useState(null);
+
+    // Sort — server-side, so it applies to the whole result set.
+    const [sortField, setSortField] = useState("opened_at");
+    const [sortOrder, setSortOrder] = useState("desc");
+    // Bumped to re-run the search. Filters are applied on demand (Search /
+    // Clear / the queue button), and a state bump re-runs the effect AFTER the
+    // new filter values have rendered — calling loadRegisters() directly from
+    // the handler would read the filter state it just replaced.
+    const [searchKey, setSearchKey] = useState(0);
 
     // Current-register pointer for this desk/user (drives the hub banner).
     const [current, setCurrent] = useState(null);        // active register | null
@@ -55,32 +97,42 @@ export default function CashRegisterHistoryPage() {
     useEffect(() => {
         loadRegisters();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [page, pageSize]);
+    }, [page, pageSize, sortField, sortOrder, searchKey]);
+
+    // Apply the non-admin recency clamp: staff only ever see the last 7 days.
+    const clampRecency = (filters) => {
+        if (userIsAdmin) return filters;
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+        const minDate = oneWeekAgo.toISOString().split('T')[0];
+        const existingGte = filters.opened_at?.$gte;
+        if (!existingGte || existingGte < minDate) {
+            filters.opened_at = { ...(filters.opened_at || {}), $gte: minDate };
+        }
+        return filters;
+    };
+
+    const buildFilters = () => {
+        const filters = {};
+        if (filterStatus === NEEDS_CLOSING) {
+            filters.status = { $in: CLOSABLE };
+            filters.closed_at = { $null: true };
+        } else if (filterStatus) {
+            filters.status = { $eq: filterStatus };
+        }
+        if (filterDesk) filters.desk_name = { $containsi: filterDesk };
+        if (filterUser) filters.opened_by = { $containsi: filterUser };
+        if (filterDateFrom) filters.opened_at = { ...(filters.opened_at || {}), $gte: filterDateFrom };
+        if (filterDateTo) filters.opened_at = { ...(filters.opened_at || {}), $lte: filterDateTo + 'T23:59:59.999Z' };
+        return clampRecency(filters);
+    };
 
     const loadRegisters = async () => {
         setLoading(true);
         try {
-            const filters = {};
-            if (filterStatus) filters.status = { $eq: filterStatus };
-            if (filterDesk) filters.desk_name = { $containsi: filterDesk };
-            if (filterUser) filters.opened_by = { $containsi: filterUser };
-            if (filterDateFrom) filters.opened_at = { ...(filters.opened_at || {}), $gte: filterDateFrom };
-            if (filterDateTo) filters.opened_at = { ...(filters.opened_at || {}), $lte: filterDateTo + 'T23:59:59.999Z' };
-
-            // Non-admin users can only see registers from the last 7 days
-            if (!userIsAdmin) {
-                const oneWeekAgo = new Date();
-                oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-                const minDate = oneWeekAgo.toISOString().split('T')[0];
-                const existingGte = filters.opened_at?.$gte;
-                if (!existingGte || existingGte < minDate) {
-                    filters.opened_at = { ...(filters.opened_at || {}), $gte: minDate };
-                }
-            }
-
             const res = await CashRegistersEndpoints.list({
-                filters,
-                sort: ["opened_at:desc"],
+                filters: buildFilters(),
+                sort: [`${sortField}:${sortOrder}`],
                 page,
                 pageSize,
                 populate: ["opened_by_user", "closed_by_user"],
@@ -94,9 +146,58 @@ export default function CashRegisterHistoryPage() {
         }
     };
 
+    // How many drawers are still open anywhere — drives the queue button.
+    // Only privileged users can act on it, so don't spend the request otherwise.
+    const loadOpenCount = useCallback(async () => {
+        if (!canCloseAny) { setOpenCount(null); return; }
+        try {
+            const res = await CashRegistersEndpoints.list({
+                filters: clampRecency({ status: { $in: CLOSABLE }, closed_at: { $null: true } }),
+                page: 1,
+                pageSize: 1,
+                fields: ["id"],
+            });
+            setOpenCount(res?.meta?.pagination?.total ?? 0);
+        } catch (err) {
+            setOpenCount(null);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [userIsAdmin, canCloseAny]);
+
+    useEffect(() => { loadOpenCount(); }, [loadOpenCount]);
+
+    const handleSort = (field) => {
+        if (sortField === field) {
+            setSortOrder(prev => prev === "asc" ? "desc" : "asc");
+        } else {
+            setSortField(field);
+            // Dates and money read most usefully largest-first; names A→Z.
+            setSortOrder(field === "desk_name" || field === "opened_by" || field === "status" ? "asc" : "desc");
+        }
+        setPage(1);
+    };
+
+    const sortIcon = (field) => {
+        if (sortField !== field) return <i className="fas fa-sort ms-1" style={{ opacity: 0.3 }}></i>;
+        return sortOrder === "asc"
+            ? <i className="fas fa-sort-up ms-1"></i>
+            : <i className="fas fa-sort-down ms-1"></i>;
+    };
+
     const handleSearch = () => {
         setPage(1);
-        setTimeout(() => loadRegisters(), 0);
+        setSearchKey(k => k + 1);
+    };
+
+    // A register just closed: refresh the page of rows and the queue count.
+    const handleClosed = (updated) => {
+        const label = updated?.id ? `Register #${updated.id}` : 'Register';
+        setClosedNotice(updated?.force_closed
+            ? `${label} force-closed — counted cash recorded as unknown.`
+            : `${label} closed.`);
+        setClosingRegister(null);
+        loadRegisters();
+        loadOpenCount();
     };
 
     const handleClearFilters = () => {
@@ -106,7 +207,7 @@ export default function CashRegisterHistoryPage() {
         setFilterDateFrom("");
         setFilterDateTo("");
         setPage(1);
-        setTimeout(() => loadRegisters(), 0);
+        setSearchKey(k => k + 1);
     };
 
     const fmt = (v) => `${currency}${Number(v || 0).toFixed(2)}`;
@@ -125,6 +226,7 @@ export default function CashRegisterHistoryPage() {
     const filterNodes = [
         <select key="status" className="form-select form-select-sm" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} title="Status">
             <option value="">Status: All</option>
+            <option value={NEEDS_CLOSING}>Needs closing (still open)</option>
             {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
         </select>,
         <input key="desk" type="text" className="form-control form-control-sm" value={filterDesk}
@@ -145,8 +247,21 @@ export default function CashRegisterHistoryPage() {
         </div>,
     ];
 
+    const showQueueButton = canCloseAny && openCount != null && openCount > 0 && filterStatus !== NEEDS_CLOSING;
+
     const headerActions = (
         <div className="d-flex gap-1">
+            {showQueueButton && (
+                <button
+                    type="button"
+                    className="btn btn-outline-danger btn-sm"
+                    onClick={() => { setFilterStatus(NEEDS_CLOSING); setPage(1); setSearchKey(k => k + 1); }}
+                    title="Show every register whose drawer is still open"
+                >
+                    <i className="fas fa-door-open me-1"></i>Needs closing
+                    <span className="badge bg-danger ms-1">{openCount}</span>
+                </button>
+            )}
             <Link href="/cash-register-report" className="btn btn-outline-warning btn-sm">
                 <i className="fas fa-triangle-exclamation me-1"></i>Report
             </Link>
@@ -214,27 +329,34 @@ export default function CashRegisterHistoryPage() {
                     emptyState={<div>No registers found.</div>}
                 >
                     {currentBanner}
+                    {closedNotice && (
+                        <div className="alert alert-success py-2 d-flex align-items-center mb-2">
+                            <i className="fas fa-circle-check me-2"></i>
+                            <span className="flex-grow-1">{closedNotice}</span>
+                            <button type="button" className="btn-close" onClick={() => setClosedNotice(null)}></button>
+                        </div>
+                    )}
                     <div className="table-responsive">
                         <table className="table table-hover list-table">
                             <thead>
                                 <tr>
-                                    <th>#</th>
-                                    <th>Desk</th>
-                                    <th>Opened By</th>
-                                    <th>Open Time</th>
-                                    <th>Close Time</th>
-                                    <th style={{ textAlign: 'right' }}>Opening</th>
-                                    <th style={{ textAlign: 'right' }}>Expected</th>
-                                    <th style={{ textAlign: 'right' }}>Counted</th>
-                                    <th style={{ textAlign: 'right' }}>Difference</th>
-                                    <th>Status</th>
+                                    {COLUMNS.map(col => (
+                                        <th
+                                            key={col.key}
+                                            style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap', textAlign: col.align || 'left' }}
+                                            onClick={() => handleSort(col.key)}
+                                            title={`Sort by ${col.label}`}
+                                        >
+                                            {col.label}{sortIcon(col.key)}
+                                        </th>
+                                    ))}
                                     <th></th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {registers.length === 0 ? (
                                     <tr>
-                                        <td colSpan={11}>
+                                        <td colSpan={COLUMNS.length + 1}>
                                             <div className="text-muted text-center py-3">No registers found.</div>
                                         </td>
                                     </tr>
@@ -255,12 +377,30 @@ export default function CashRegisterHistoryPage() {
                                                 </span>
                                             ) : '-'}
                                         </td>
-                                        <td>{statusBadge(reg.status)}</td>
+                                        <td>
+                                            {statusBadge(reg.status)}
+                                            {reg.force_closed && (
+                                                <span className="list-status bg-danger ms-1"
+                                                    title={reg.force_close_reason || 'Force-closed without a cash count'}>
+                                                    Forced
+                                                </span>
+                                            )}
+                                        </td>
                                         <td>
                                             <div className="list-actions">
                                                 <Link href={`/${reg.documentId}/cash-register-detail`} className="btn btn-outline-primary btn-sm">
                                                     <i className="fas fa-eye"></i>
                                                 </Link>
+                                                {canCloseAny && CLOSABLE.includes(reg.status) && !reg.closed_at && (
+                                                    <button
+                                                        type="button"
+                                                        className={`btn btn-sm ${reg.status === 'Expired' ? 'btn-danger' : 'btn-outline-dark'}`}
+                                                        onClick={() => setClosingRegister(reg)}
+                                                        title={`Close register #${reg.id}${reg.opened_by ? ` (opened by ${reg.opened_by})` : ''}`}
+                                                    >
+                                                        <i className="fas fa-lock me-1"></i>Close
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
@@ -269,6 +409,12 @@ export default function CashRegisterHistoryPage() {
                         </table>
                     </div>
                 </ListPageLayout>
+                <CloseRegisterModal
+                    register={closingRegister}
+                    allowForce={canCloseAny}
+                    onCancel={() => setClosingRegister(null)}
+                    onClosed={handleClosed}
+                />
             </Layout>
         </ProtectedRoute>
     );

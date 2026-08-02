@@ -1259,6 +1259,8 @@ export interface ApiCashRegisterCashRegister
     desk_name: Schema.Attribute.String;
     difference: Schema.Attribute.Decimal;
     expected_cash: Schema.Attribute.Decimal;
+    force_close_reason: Schema.Attribute.Text;
+    force_closed: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',

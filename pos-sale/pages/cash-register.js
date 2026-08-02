@@ -441,6 +441,13 @@ export default function CashRegisterPage() {
                                                     <input type="number" step="0.01" min="0" className="form-control" value={openingCash}
                                                         onChange={(e) => setOpeningCash(e.target.value)} disabled={loading} autoFocus />
                                                 </div>
+                                                {lastCarryover?.source === 'force-closed' && (
+                                                    <div className="form-text text-danger">
+                                                        <i className="fas fa-triangle-exclamation me-1"></i>
+                                                        Previous register{lastCarryover.registerId ? ` #${lastCarryover.registerId}` : ''} was
+                                                        force-closed with no cash count — count the drawer physically before opening.
+                                                    </div>
+                                                )}
                                                 {lastCarryover?.amount != null && (
                                                     <div className="form-text">
                                                         Previous register{lastCarryover.registerId ? ` #${lastCarryover.registerId}` : ''} left{' '}
