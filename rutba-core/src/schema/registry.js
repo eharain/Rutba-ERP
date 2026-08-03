@@ -46,6 +46,7 @@ function compileModel(uid, source, schema) {
   };
 
   for (const [attr, def] of Object.entries(schema.attributes || {})) {
+    const isPrivate = Boolean(def.private);
     if (def.type === 'relation') {
       model.relations.push({
         attr,
@@ -54,19 +55,21 @@ function compileModel(uid, source, schema) {
         mappedBy: def.mappedBy || null,
         inversedBy: def.inversedBy || null,
         owner: !def.mappedBy,
+        private: isPrivate,
       });
     } else if (def.type === 'media') {
-      model.media.push({ attr, multiple: Boolean(def.multiple) });
+      model.media.push({ attr, multiple: Boolean(def.multiple), private: isPrivate });
     } else if (def.type === 'component') {
       model.components.push({
         attr,
         component: def.component,
         repeatable: Boolean(def.repeatable),
+        private: isPrivate,
       });
     } else if (def.type === 'dynamiczone') {
       throw new Error(`${uid}: dynamiczone is not supported (none expected in this schema)`);
     } else if (SCALAR_TYPES.has(def.type)) {
-      model.scalars.push({ attr, column: snakeCase(attr), type: def.type });
+      model.scalars.push({ attr, column: snakeCase(attr), type: def.type, private: isPrivate });
     } else {
       throw new Error(`${uid}: unknown attribute type "${def.type}" on "${attr}"`);
     }

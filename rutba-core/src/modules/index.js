@@ -18,6 +18,7 @@ const { registerHrModule } = require('./hr');
 const { registerCrmModule } = require('./crm');
 const { registerInventoryModule } = require('./inventory');
 const { registerCmsSocialModule } = require('./cms-social');
+const { registerMarketplaceModule } = require('./marketplace');
 
 let initialized = null;
 
@@ -29,6 +30,7 @@ function initModules() {
     registerCrmModule(),
     registerInventoryModule(),
     registerCmsSocialModule(),
+    registerMarketplaceModule(),
   ];
   const routes = modules.flatMap((m) => m.routes || []);
   initialized = { modules: modules.map((m) => m.name), routes };

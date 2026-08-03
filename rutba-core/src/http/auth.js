@@ -98,6 +98,10 @@ function createAuthMiddleware({ isBypassed, optional = false } = {}) {
     const apiToken = await resolveApiToken(token);
     if (apiToken) {
       ctx.state.apiToken = apiToken;
+      // Strapi shape: a content-API token authenticates via the
+      // 'content-api-token' strategy and sets ctx.state.auth (never .user).
+      // Ported worker gates (isServiceToken) read exactly this.
+      ctx.state.auth = { strategy: { name: 'content-api-token' }, credentials: apiToken };
       return next();
     }
 

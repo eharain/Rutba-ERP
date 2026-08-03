@@ -4,7 +4,7 @@
 /**
  * Golden contract diff: replays identical requests against live pos-strapi
  * (:4010) and rutba-core (booted here on :4023) with the same JWT + claim
- * headers, and deep-diffs the JSON responses. This is the parity gate —
+ * headers, and deep-diffs the JSON responses. This is the parity gate â€”
  * "at par with Strapi" for a route means zero diff paths here.
  *
  * Usage: node rutba-core/scripts/contract-diff.js [maxRoutes]
@@ -19,7 +19,7 @@ const { getDb, closeDb } = require('../src/db/connection');
 const { start } = require('../src/http/server');
 const { getRegistry } = require('../src/documents');
 
-const STRAPI = 'http://127.0.0.1:4010';
+const STRAPI = process.env.CONTRACT_STRAPI_URL || 'http://127.0.0.1:4010';
 const CORE_PORT = 4023;
 const CORE = `http://127.0.0.1:${CORE_PORT}`;
 const MAX_ROUTES = parseInt(process.argv[2] || '15', 10);
@@ -76,7 +76,7 @@ async function main() {
     .whereIn('l.user_id', (await db('strapi_sessions')
       .where({ status: 'active', origin: 'users-permissions' })
       .distinct('user_id')).map((r) => Number(r.user_id)).filter(Number.isFinite))
-    .whereNotNull('d.key') // realistic claims only — clients always send a domain
+    .whereNotNull('d.key') // realistic claims only â€” clients always send a domain
     .select('l.user_id as userId', 'r.key as roleKey', 'd.key as domainKey')
     .groupBy('l.user_id', 'r.key', 'd.key').limit(12);
   const grant = grants[0];
@@ -102,7 +102,7 @@ async function main() {
   const session = await db('strapi_sessions')
     .where({ user_id: String(grant.userId), status: 'active', origin: 'users-permissions' })
     .orderBy('id', 'desc').first('session_id');
-  if (!session) throw new Error(`no active strapi_session for user ${grant.userId} — log in once via an app`);
+  if (!session) throw new Error(`no active strapi_session for user ${grant.userId} â€” log in once via an app`);
   const token = jwt.sign(
     { userId: String(grant.userId), sessionId: session.session_id, type: 'access' },
     get('JWT_SECRET'), { expiresIn: '10m' }
@@ -144,7 +144,7 @@ async function main() {
         'x-rutba-app': g.domainKey,
         'x-rutba-app-role': g.roleKey,
       };
-      // findOne probes only where the CLAIMED role has a findOne policy — the
+      // findOne probes only where the CLAIMED role has a findOne policy â€” the
       // live dist still merges policies across all the user's roles (pre-claim
       // model); core implements the src claim model, which is the target.
       const findOneUids = new Set((await db('api_pro_method_policies as p')
@@ -178,7 +178,7 @@ async function main() {
   // (me-permissions src maps appRoles with id; the deployed dist build doesn't.)
   const ALLOWED = [
     /appRoles\[\d+\]\.id: MISSING in strapi/,
-    // Live-Strapi bug: branch.locations (→ api::storage-location) is stripped
+    // Live-Strapi bug: branch.locations (â†’ api::storage-location) is stripped
     // from populate=* by removeRestrictedRelations because the storage-location
     // UP find grant is missing; core returns the real data. Remove once the
     // grant is reseeded / the branch.locations fix lands in pos-strapi.
