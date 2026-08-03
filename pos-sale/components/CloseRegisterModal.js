@@ -32,7 +32,7 @@ import {
  *  - onClosed   : (updatedRegister) => void — fired after a successful close
  */
 export default function CloseRegisterModal({ register, allowForce = true, onCancel, onClosed }) {
-    const { currency, user, cashRegister, setCashRegister } = useUtil();
+    const { currency, user, desk, cashRegister, setCashRegister } = useUtil();
 
     const [payments, setPayments] = useState([]);
     const [transactions, setTransactions] = useState([]);
@@ -192,6 +192,9 @@ export default function CloseRegisterModal({ register, allowForce = true, onCanc
                         counted_cash: countedTotal,
                         notes,
                     }),
+                // The desk this close is performed from — the server accepts it
+                // as ownership for registers that record no opener.
+                desk_id: desk?.id ?? null,
                 closed_by: user?.username || user?.email || '',
                 closed_by_id: user?.id ?? null,
                 ...(userId ? { closed_by_user: { connect: [userId] } } : {}),
@@ -213,6 +216,7 @@ export default function CloseRegisterModal({ register, allowForce = true, onCanc
 
     const isExpired = register.status === 'Expired';
     const openedLabel = register.opened_at ? new Date(register.opened_at).toLocaleString() : '—';
+    const openedByLabel = register.opened_by || register.opened_by_user?.username || '';
 
     return (
         <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
@@ -231,7 +235,9 @@ export default function CloseRegisterModal({ register, allowForce = true, onCanc
                             <div>
                                 <i className={`fas ${isExpired ? 'fa-triangle-exclamation' : 'fa-cash-register'} me-1`}></i>
                                 <strong>{register.desk_name || `Desk ${register.desk_id}`}</strong>
-                                {register.opened_by ? <> · opened by <strong>{register.opened_by}</strong></> : null}
+                                {openedByLabel
+                                    ? <> · opened by <strong>{openedByLabel}</strong></>
+                                    : <span className="text-muted"> · no opener recorded</span>}
                             </div>
                             <div className="text-muted">Open since {openedLabel}{isExpired ? ' · expired' : ''}</div>
                         </div>

@@ -328,6 +328,10 @@ export default function CashRegisterPage() {
                     cash_left: Number(cashLeft || 0),
                     cash_drawn: Number(cashDrawn || 0),
                     counted_cash: countedTotal,
+                    // Which desk this close is being performed from — lets the
+                    // server allow a desk to close a register that records no
+                    // opener (older registers, before the opener was stamped).
+                    desk_id: desk?.id ?? null,
                     notes: closingNotes,
                     closed_by: user?.username || user?.email || "",
                     closed_by_id: user?.id ?? null,

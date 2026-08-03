@@ -86,6 +86,27 @@ function buildOpeningNote(opening, carryover) {
 }
 
 /**
+ * Does `user` own `register`?
+ *
+ * Returns true / false, or NULL when the register records no opener at all —
+ * a distinct answer, because those registers must stay closable by the desk
+ * rather than escalating to an admin. Registers opened before the server
+ * started stamping the opener are exactly this case.
+ */
+function resolveOwnership(register, user) {
+  const ownerId = register.opened_by_user?.id ?? register.opened_by_id ?? null;
+  if (ownerId != null) return Number(ownerId) === Number(user?.id);
+
+  // No relation and no id — fall back to the display name the POS recorded.
+  const openedBy = String(register.opened_by || '').trim().toLowerCase();
+  if (openedBy) {
+    return openedBy === String(user?.username || '').trim().toLowerCase()
+      || openedBy === String(user?.email || '').trim().toLowerCase();
+  }
+  return null; // ownerless
+}
+
+/**
  * Manually parse the JWT and populate ctx.state.user.
  * Returns the user object, or null (after sending 401) if invalid.
  */
@@ -287,6 +308,19 @@ module.exports = createCoreController('api::cash-register.cash-register', ({ str
       strapi.log.warn(`cash-register open: carryover lookup failed — ${e.message}`);
     }
 
+    // Stamp the opener from the AUTHENTICATED user, not from the request body.
+    // The POS client reads its user out of storage once at mount, so it can
+    // post an empty `opened_by`/`opened_by_user` — which left registers with no
+    // recorded owner, and therefore closable only by an admin. The server
+    // always knows who is calling, so it fills these in itself; the client
+    // values are only a fallback.
+    const openerName = currentUser?.username || currentUser?.email || opened_by || '';
+    const openerId = currentUser?.id ?? opened_by_id ?? null;
+    // Prefer the documentId; fall back to the numeric id rather than
+    // String(id), which would connect nothing.
+    const openerRef = currentUser?.documentId ?? currentUser?.id ?? null;
+    const openerConnect = openerRef != null ? { connect: [openerRef] } : (userConnect || null);
+
     const created = await strapi.documents('api::cash-register.cash-register').create({
       data: {
         opening_cash: Number(opening_cash || 0),
@@ -296,12 +330,12 @@ module.exports = createCoreController('api::cash-register.cash-register', ({ str
         desk_name: desk_name || '',
         branch_id: branch_id || null,
         branch_name: branch_name || '',
-        opened_by: opened_by || '',
-        opened_by_id: opened_by_id || null,
+        opened_by: openerName,
+        opened_by_id: openerId,
         ...(carryover && carryover.amount != null ? { carry_over_expected: carryover.amount } : {}),
         ...(openingNote ? { opening_note: openingNote } : {}),
         ...(branchConnect ? { branch: branchConnect } : {}),
-        ...(userConnect ? { opened_by_user: userConnect } : {}),
+        ...(openerConnect ? { opened_by_user: openerConnect } : {}),
       },
       populate: ['opened_by_user', 'branch'],
     });
@@ -367,22 +401,44 @@ module.exports = createCoreController('api::cash-register.cash-register', ({ str
     // authenticated user could close any desk's drawer. The rule matches the
     // POS UI — you close your own live register; someone else's, or an expired
     // one, needs a manager/admin (that's the path the registers list uses).
-    const actorId = ctx.state.user.id;
-    const ownerId = register.opened_by_user?.id ?? register.opened_by_id ?? null;
-    const isOwner = ownerId != null && Number(ownerId) === Number(actorId);
+    const actor = ctx.state.user;
+    const actorId = actor.id;
+    const ownership = resolveOwnership(register, actor);
+
+    // Ownerless register (opened before the server stamped the opener): anyone
+    // working that same desk closes it, provided they hold a POS role. The desk
+    // comes from the caller, which is a weak claim — but it only ever widens
+    // access to registers that name nobody, and the alternative is a drawer
+    // the desk physically holds but cannot close without an admin.
+    let isOwner = ownership === true;
+    if (ownership === null && !isOwner) {
+      const actorDeskId = ctx.request.body?.data?.desk_id;
+      const sameDesk = actorDeskId != null && register.desk_id != null
+        && Number(actorDeskId) === Number(register.desk_id);
+      if (sameDesk) {
+        isOwner = await hasAppRole(strapi, actorId, { domains: ['sale', 'accounts'] });
+      }
+    }
+
     if (forceClose || !isOwner || register.status === 'Expired') {
       const privileged = await hasAppRole(strapi, actorId, {
         domains: ['sale', 'accounts'],
         levels: ['admin', 'manager'],
       });
       if (!privileged) {
+        const deskLabel = register.desk_name || `desk ${register.desk_id}`;
         return ctx.forbidden(
           forceClose ? 'Only a manager or admin can force-close a register.'
             : isOwner ? 'This register has expired — only a manager or admin can close it.'
-            : "Only a manager or admin can close another user's register."
+            : ownership === null
+              ? `This register records no opener — close it from ${deskLabel}, or ask a manager.`
+              : "Only a manager or admin can close another user's register."
         );
       }
     }
+
+    const closerRef = actor?.documentId ?? actor?.id ?? null;
+    const closerConnect = closerRef != null ? { connect: [closerRef] } : (closedUserConnect || null);
 
     // A force close writes off whatever the drawer was expected to hold, so it
     // has to say why. That reason is the only audit trail this close leaves.
@@ -457,9 +513,11 @@ module.exports = createCoreController('api::cash-register.cash-register', ({ str
         notes: notes != null ? notes : (register.notes || ''),
         force_closed: forceClose,
         ...(forceClose ? { force_close_reason: forceReason } : {}),
-        closed_by: closed_by || '',
-        closed_by_id: closed_by_id || null,
-        ...(closedUserConnect ? { closed_by_user: closedUserConnect } : {}),
+        // Stamped from the authenticated caller for the same reason as the
+        // opener — the client's copy of the user can be empty.
+        closed_by: actor?.username || actor?.email || closed_by || '',
+        closed_by_id: actor?.id ?? closed_by_id ?? null,
+        ...(closerConnect ? { closed_by_user: closerConnect } : {}),
       },
       populate: ['opened_by_user', 'closed_by_user', 'branch', 'payments', 'transactions'],
     });

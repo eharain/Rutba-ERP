@@ -364,7 +364,9 @@ export default function CashRegisterHistoryPage() {
                                     <tr key={reg.documentId ?? reg.id}>
                                         <td>{reg.id}</td>
                                         <td>{reg.desk_name || `Desk ${reg.desk_id}`}</td>
-                                        <td>{reg.opened_by || '-'}</td>
+                                        {/* The name column can be empty on registers opened before
+                                            the server stamped the opener — fall back to the relation. */}
+                                        <td>{reg.opened_by || reg.opened_by_user?.username || <span className="text-muted">unknown</span>}</td>
                                         <td className="small">{reg.opened_at ? new Date(reg.opened_at).toLocaleString() : '-'}</td>
                                         <td className="small">{reg.closed_at ? new Date(reg.closed_at).toLocaleString() : '-'}</td>
                                         <td style={{ textAlign: 'right' }}>{fmt(reg.opening_cash)}</td>

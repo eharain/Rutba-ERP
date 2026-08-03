@@ -71,7 +71,7 @@ export function clampPrintSettings(settings) {
 }
 
 export function UtilProvider({ children }) {
-    const { jwt: authJwt, loading: authLoading } = useAuth() || {};
+    const { jwt: authJwt, loading: authLoading, user: authUser } = useAuth() || {};
     // State variables for branch, branch-desk, and user
     const [branch, setBranchState] = useState(null);
     const [desk, setDeskState] = useState(null);
@@ -118,6 +118,15 @@ export function UtilProvider({ children }) {
             setHydrated(true);
         }
     }, []); // run once
+
+    // Track the authenticated session. The storage read above only runs at
+    // mount, so a session that lands afterwards (login redirect, refresh,
+    // remember-me writing to the other store) left `user` null for the rest of
+    // the page's life — which is how cash registers were created with no
+    // `opened_by`, and only an admin could then close them.
+    useEffect(() => {
+        if (authUser) setUserState(authUser);
+    }, [authUser]);
 
     // Refresh the branch entity from the API after hydration so that
     // fields edited in the admin panel (social links, etc.) are always current.

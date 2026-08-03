@@ -369,7 +369,10 @@ export default function CashRegisterDetailPage() {
                                     <div className="col-4 text-muted">Opened At</div>
                                     <div className="col-8">{register.opened_at ? new Date(register.opened_at).toLocaleString() : '-'}</div>
                                     <div className="col-4 text-muted">Opened By</div>
-                                    <div className="col-8">{register.opened_by || '-'}</div>
+                                    <div className="col-8">
+                                        {register.opened_by || register.opened_by_user?.username
+                                            || <span className="text-muted">unknown — opened before the server recorded the opener</span>}
+                                    </div>
                                 </div>
                             </div></div>
                         </div>
