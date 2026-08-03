@@ -69,11 +69,21 @@ function createAuthMiddleware({ isBypassed, optional = false } = {}) {
         let userId = null;
         if (payload && payload.type === 'access' && payload.userId && payload.sessionId) {
           const db = getDb();
+          // A ROTATED session still authenticates its already-issued access
+          // tokens: refresh mints the child and marks the parent 'rotated', so
+          // requests in flight during a rotation legitimately name the parent.
+          // (Strapi checks no session row at all here — it trusts the access
+          // token until it expires. Core stays stricter: a session that was
+          // deleted by logout/revoke, or has passed its expiry, stops
+          // authenticating immediately instead of lingering for the token's
+          // full lifespan.)
           const session = await db('strapi_sessions')
-            .where({ session_id: payload.sessionId, status: 'active', origin: 'users-permissions' })
-            .first('user_id', 'expires_at');
+            .where({ session_id: payload.sessionId, origin: 'users-permissions' })
+            .whereIn('status', ['active', 'rotated'])
+            .first('user_id', 'absolute_expires_at');
           if (session && String(session.user_id) === String(payload.userId)
-              && (!session.expires_at || new Date(session.expires_at) > new Date())) {
+              && (!session.absolute_expires_at
+                  || new Date(session.absolute_expires_at) > new Date())) {
             userId = payload.userId;
           }
         } else if (payload && payload.id) {
