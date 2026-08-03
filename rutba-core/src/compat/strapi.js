@@ -443,6 +443,48 @@ function buildCompatStrapi(overrides = {}) {
       // Caller-scoped transaction: shim ops inside the callback join it (ALS).
       transaction: (cb) => withTransaction((trx) => cb({ trx })),
       get connection() { return getDb(); },
+      // Strapi's db.metadata surface, backed by the registry. Ported code uses
+      // it for raw-knex query building: tableName, scalar columnName, and the
+      // relation joinTable layout (stock-item valuation/cohort queries).
+      metadata: {
+        get(uid) {
+          const reg = getRegistry();
+          const model = reg.models.get(uid);
+          if (!model) throw new Error(`compat: db.metadata has no model ${uid}`);
+          const attributes = {
+            documentId: { columnName: 'document_id' },
+            createdAt: { columnName: 'created_at' },
+            updatedAt: { columnName: 'updated_at' },
+            publishedAt: { columnName: 'published_at' },
+          };
+          for (const s of model.scalars) attributes[s.attr] = { columnName: s.column, type: s.type };
+          for (const r of model.relations) {
+            let jt = reg.joinTablesByOwner.get(`${uid}.${r.attr}`);
+            let joinTable = null;
+            if (jt) {
+              joinTable = {
+                name: jt.table,
+                joinColumn: { name: jt.sourceColumn },
+                inverseJoinColumn: { name: jt.targetColumn },
+                orderColumnName: jt.columns.find((c) => c.endsWith('_ord') && c.startsWith(jt.targetColumn.replace(/_id$/, ''))) || null,
+              };
+            } else if (r.mappedBy) {
+              // Inverse side: the owner's join table viewed from this end.
+              jt = reg.joinTablesByOwner.get(`${r.target}.${r.mappedBy}`);
+              if (jt) {
+                joinTable = {
+                  name: jt.table,
+                  joinColumn: { name: jt.targetColumn },
+                  inverseJoinColumn: { name: jt.sourceColumn },
+                  orderColumnName: jt.columns.find((c) => c.endsWith('_ord') && c.startsWith(jt.sourceColumn.replace(/_id$/, ''))) || null,
+                };
+              }
+            }
+            attributes[r.attr] = { type: 'relation', relation: r.relation, target: r.target, ...(joinTable ? { joinTable } : {}) };
+          }
+          return { uid, tableName: model.tableName, attributes };
+        },
+      },
     },
     // Query-engine alias used by the shared auth utils (strapi.query(uid)).
     query: dbQueryAdapter,
