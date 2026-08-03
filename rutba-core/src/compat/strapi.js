@@ -59,7 +59,28 @@ function installStrapiFactoryStub() {
   const factories = {
     createCoreService: marker('service'),
     createCoreController: marker('controller'),
-    createCoreRouter: marker('router'),
+    // Router stub exposes the five CRUD routes Strapi generates, because
+    // several pos-strapi route files build their export as
+    // `[...customRoutes, ...defaultRouter.routes]` — without a real array
+    // there, requiring those files throws and their custom routes are
+    // invisible to tooling (route-audit.js reads them this way).
+    createCoreRouter: (uid, cfg) => ({
+      __rutbaCoreFactory: 'router',
+      uid,
+      cfg,
+      get routes() {
+        let plural = null;
+        try { plural = (getRegistry().models.get(uid) || {}).pluralName; } catch { /* registry unavailable */ }
+        if (!plural) return [];
+        return [
+          { method: 'GET', path: `/${plural}`, handler: `${uid}.find` },
+          { method: 'POST', path: `/${plural}`, handler: `${uid}.create` },
+          { method: 'GET', path: `/${plural}/:documentId`, handler: `${uid}.findOne` },
+          { method: 'PUT', path: `/${plural}/:documentId`, handler: `${uid}.update` },
+          { method: 'DELETE', path: `/${plural}/:documentId`, handler: `${uid}.delete` },
+        ];
+      },
+    }),
   };
   require.cache[resolved] = {
     id: resolved,
