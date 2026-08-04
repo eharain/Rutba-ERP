@@ -17,6 +17,7 @@ import PageLayoutEditor from "../../components/PageLayoutEditor";
 import { persistSeoMeta } from "../../components/SeoMetaFields";
 import { toOrderedRelation } from "../../components/orderedRelation";
 import { buildCmsPageWebUrl } from "../../lib/cmsPageWebUrl";
+import QrCodeModal from "../../components/QrCodeModal";
 
 // Sections in their default top-to-bottom order. The numeric priority
 // stored on the cms-page record is just the index of the key in this
@@ -127,6 +128,7 @@ export default function CmsPageDetail() {
     const [isPublished, setIsPublished] = useState(false);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [qrOpen, setQrOpen] = useState(false);
     const { toast, ToastContainer } = useToast();
 
     const [title, setTitle] = useState("");
@@ -468,6 +470,7 @@ export default function CmsPageDetail() {
         <ProtectedRoute>
             <Layout>
                 <ToastContainer />
+                <QrCodeModal open={qrOpen} onClose={() => setQrOpen(false)} kind="cms-page" entity={page} />
                 <div className="d-flex align-items-center mb-3">
                     <Link className="btn btn-sm btn-outline-secondary me-3" href="/pages">
                         <i className="fas fa-arrow-left"></i> Back
@@ -489,6 +492,16 @@ export default function CmsPageDetail() {
                         {!isNew && isPublished && (
                             <button className="btn btn-sm btn-outline-warning" onClick={handleDiscardDraft} disabled={saving}>
                                 <i className="fas fa-undo me-1"></i>Load Published
+                            </button>
+                        )}
+                        {!isNew && page?.slug && (
+                            <button
+                                className="btn btn-sm btn-outline-dark"
+                                onClick={() => setQrOpen(true)}
+                                title="QR code for print material"
+                                type="button"
+                            >
+                                <i className="fas fa-qrcode me-1"></i>QR
                             </button>
                         )}
                         {!isNew && page?.slug && buildCmsPageWebUrl(page, { draft: true }) && (

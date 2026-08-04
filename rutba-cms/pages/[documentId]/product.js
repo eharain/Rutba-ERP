@@ -18,6 +18,7 @@ import InlineSeoPanel from "../../components/InlineSeoPanel";
 import { persistSeoMeta } from "../../components/SeoMetaFields";
 import { toOrderedRelation } from "../../components/orderedRelation";
 import { buildProductWebUrl } from "../../lib/cmsPageWebUrl";
+import QrCodeModal from "../../components/QrCodeModal";
 
 export default function ProductDetail() {
     const router = useRouter();
@@ -30,12 +31,14 @@ export default function ProductDetail() {
     const [isPublished, setIsPublished] = useState(false);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [qrOpen, setQrOpen] = useState(false);
     const { toast, ToastContainer } = useToast();
     const [activeTab, setActiveTab] = useState("details");
 
     // Editable fields
     const [name, setName] = useState("");
     const [slug, setSlug] = useState("");
+    const [qrCode, setQrCode] = useState("");
     const [summary, setSummary] = useState("");
     const [description, setDescription] = useState("");
     const [sellingPrice, setSellingPrice] = useState("");
@@ -85,6 +88,7 @@ export default function ProductDetail() {
             setIsPublished(!!(pubRes.data));
             setName(p.name || "");
             setSlug(p.slug || "");
+            setQrCode(p.qr_code || "");
             setSummary(p.summary || "");
             setDescription(p.description || "");
             setSellingPrice(p.selling_price ?? "");
@@ -203,6 +207,9 @@ export default function ProductDetail() {
                 // Send slug only when the editor populated it. Empty means
                 // "let the server derive it from name" (lifecycle handles it).
                 ...(trimmedSlug ? { slug: trimmedSlug } : {}),
+                // null, not "", so clearing the field frees the code for reuse
+                // instead of leaving an empty-string row that matches nothing.
+                qr_code: (qrCode || "").trim() || null,
                 summary,
                 description,
                 selling_price: parseFloat(sellingPrice) || 0,
@@ -240,6 +247,9 @@ export default function ProductDetail() {
             const data = {
                 name,
                 ...(trimmedSlug ? { slug: trimmedSlug } : {}),
+                // null, not "", so clearing the field frees the code for reuse
+                // instead of leaving an empty-string row that matches nothing.
+                qr_code: (qrCode || "").trim() || null,
                 summary,
                 description,
                 selling_price: parseFloat(sellingPrice) || 0,
@@ -295,6 +305,9 @@ export default function ProductDetail() {
             await ProductsEndpoints.updateDraft(documentId, {
                 name,
                 ...(trimmedSlug ? { slug: trimmedSlug } : {}),
+                // null, not "", so clearing the field frees the code for reuse
+                // instead of leaving an empty-string row that matches nothing.
+                qr_code: (qrCode || "").trim() || null,
                 summary,
                 description,
                 selling_price: parseFloat(sellingPrice) || 0,
@@ -314,6 +327,7 @@ export default function ProductDetail() {
             if (!p) { toast("No published version found.", "warning"); return; }
             setName(p.name || "");
             setSlug(p.slug || "");
+            setQrCode(p.qr_code || "");
             setSummary(p.summary || "");
             setDescription(p.description || "");
             setSellingPrice(p.selling_price ?? "");
@@ -415,6 +429,16 @@ export default function ProductDetail() {
                     <i className="fas fa-undo me-1"></i>Load Published
                 </button>
             )}
+            {!isNew && product?.documentId && (
+                <button
+                    className="btn btn-sm btn-outline-dark"
+                    onClick={() => setQrOpen(true)}
+                    title="QR code for labels and print material"
+                    type="button"
+                >
+                    <i className="fas fa-qrcode me-1"></i>QR
+                </button>
+            )}
             {!isNew && product?.documentId && buildProductWebUrl(product) && (
                 <a
                     className="btn btn-sm btn-outline-info"
@@ -450,10 +474,33 @@ export default function ProductDetail() {
         { key: "merge", label: "Merge", icon: "fa-compress-arrows-alt", onClick: () => { setActiveTab("merge"); return true; } },
     ] : [];
 
+    const trimmedQrCode = (qrCode || "").trim();
+    const trimmedFormSlug = (slug || "").trim();
+    const qrEntity = {
+        ...product,
+        slug: trimmedFormSlug || product?.slug || "",
+        qr_code: trimmedQrCode || null,
+    };
+    const unsavedQr = Boolean(
+        trimmedQrCode !== (product?.qr_code || "") ||
+        (trimmedFormSlug && trimmedFormSlug !== (product?.slug || "")),
+    );
+
     return (
         <ProtectedRoute>
             <Layout>
                 <ToastContainer />
+                {/* The QR encodes the code currently in the form, not the one
+                    last loaded — otherwise typing a code, saving, and printing
+                    would put the previous code on the labels (handleSave does
+                    not refetch). unsavedQr surfaces the opposite risk. */}
+                <QrCodeModal
+                    open={qrOpen}
+                    onClose={() => setQrOpen(false)}
+                    kind="product"
+                    entity={qrEntity}
+                    unsavedWarning={unsavedQr}
+                />
                 <ProductPageShell
                     product={product}
                     isNew={isNew}
@@ -493,6 +540,22 @@ export default function ProductDetail() {
                                                 />
                                                 <div className="form-text small">
                                                     Used in the public URL (<code>/product/{slug || "auto-generated"}</code>). Leave blank to auto-generate from the name.
+                                                </div>
+                                            </div>
+                                            <div className="mb-3">
+                                                <label className="form-label">QR code</label>
+                                                <input
+                                                    type="text"
+                                                    className="form-control"
+                                                    value={qrCode}
+                                                    onChange={e => setQrCode(e.target.value)}
+                                                    placeholder="leave blank to use the slug"
+                                                />
+                                                <div className="form-text small">
+                                                    Optional short token for printed QR codes
+                                                    (<code>/qr/{qrCode || slug || "…"}</code>). Set one when the
+                                                    slug is long or changes often — a printed label can&apos;t be
+                                                    reprinted, and this field keeps resolving even after a rename.
                                                 </div>
                                             </div>
                                             <div className="mb-3">

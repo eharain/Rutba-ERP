@@ -35,6 +35,10 @@
     "barcode": {
       "type": "string"
     },
+    "qr_code": {
+      "type": "string",
+      "description": "Optional short token printed inside the product QR. Resolved by GET /qr/resolve/:code and takes priority over a slug match. Leave blank to have the QR encode the slug."
+    },
     "cost_price": {
       "type": "decimal"
     },

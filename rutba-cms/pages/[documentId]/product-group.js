@@ -15,6 +15,7 @@ import InlineSeoPanel from "../../components/InlineSeoPanel";
 import { persistSeoMeta } from "../../components/SeoMetaFields";
 import { toOrderedRelation } from "../../components/orderedRelation";
 import { buildProductGroupWebUrl } from "../../lib/cmsPageWebUrl";
+import QrCodeModal from "../../components/QrCodeModal";
 
 const LAYOUT_LABELS = {
     "grid-4": "Grid 4 Columns",
@@ -40,6 +41,7 @@ export default function ProductGroupDetail() {
     const [isPublished, setIsPublished] = useState(false);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [qrOpen, setQrOpen] = useState(false);
     const { toast, ToastContainer } = useToast();
     const isNew = !documentId || documentId === "new";
 
@@ -273,6 +275,7 @@ export default function ProductGroupDetail() {
         <ProtectedRoute>
             <Layout>
                 <ToastContainer />
+                <QrCodeModal open={qrOpen} onClose={() => setQrOpen(false)} kind="product-group" entity={group} />
                 <div className="d-flex align-items-center mb-3">
                     <Link className="btn btn-sm btn-outline-secondary me-3" href="/product-groups">
                         <i className="fas fa-arrow-left"></i> Back
@@ -294,6 +297,16 @@ export default function ProductGroupDetail() {
                         {!isNew && isPublished && (
                             <button className="btn btn-sm btn-outline-warning" onClick={handleDiscardDraft} disabled={saving}>
                                 <i className="fas fa-undo me-1"></i>Load Published
+                            </button>
+                        )}
+                        {!isNew && group?.slug && (
+                            <button
+                                className="btn btn-sm btn-outline-dark"
+                                onClick={() => setQrOpen(true)}
+                                title="QR code for print material"
+                                type="button"
+                            >
+                                <i className="fas fa-qrcode me-1"></i>QR
                             </button>
                         )}
                         {!isNew && group?.slug && buildProductGroupWebUrl(group) && (

@@ -13,6 +13,7 @@ import InlineSeoPanel from "../../components/InlineSeoPanel";
 import { persistSeoMeta } from "../../components/SeoMetaFields";
 import { toOrderedRelation } from "../../components/orderedRelation";
 import { buildPageGroupWebUrl } from "../../lib/cmsPageWebUrl";
+import QrCodeModal from "../../components/QrCodeModal";
 
 const LAYOUT_OPTIONS = [
     { value: "flip-grid", label: "Flip Cards (grid)" },
@@ -28,6 +29,7 @@ export default function CmsPageGroupDetail() {
     const [isPublished, setIsPublished] = useState(false);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [qrOpen, setQrOpen] = useState(false);
     const { toast, ToastContainer } = useToast();
     const isNew = !documentId || documentId === "new";
 
@@ -174,6 +176,7 @@ export default function CmsPageGroupDetail() {
         <ProtectedRoute>
             <Layout>
                 <ToastContainer />
+                <QrCodeModal open={qrOpen} onClose={() => setQrOpen(false)} kind="cms-page-group" entity={group} />
                 <div className="d-flex align-items-center mb-3">
                     <Link className="btn btn-sm btn-outline-secondary me-3" href="/cms-page-groups">
                         <i className="fas fa-arrow-left"></i> Back
@@ -190,6 +193,11 @@ export default function CmsPageGroupDetail() {
                         {!isNew && isPublished && (
                             <button className="btn btn-sm btn-outline-secondary" onClick={handleUnpublish} disabled={saving}>
                                 <i className="fas fa-eye-slash me-1"></i>Unpublish
+                            </button>
+                        )}
+                        {!isNew && group?.slug && (
+                            <button className="btn btn-sm btn-outline-dark" onClick={() => setQrOpen(true)} title="QR code for print material" type="button">
+                                <i className="fas fa-qrcode me-1"></i>QR
                             </button>
                         )}
                         {!isNew && group?.slug && buildPageGroupWebUrl(group) && (

@@ -39,6 +39,7 @@ const SECTIONS = [
     { divider: true },
     { href: APP_URLS['order-management'], external: true, label: "Orders", icon: "fa-shopping-bag" },
     { href: "/media",                  label: "Media",         icon: "fa-photo-film" },
+    { href: "/qr-codes",               label: "QR Codes",      icon: "fa-qrcode" },
     { href: "/notification-templates", label: "Notifications", icon: "fa-bell" },
     { href: "/sync",                   label: "Sync to Live",  icon: "fa-rotate" },
     { href: "/site-settings",          label: "Settings",      icon: "fa-gear" },

@@ -3796,6 +3796,7 @@ export interface ApiNotificationTemplateNotificationTemplate
         'return_received',
         'return_completed',
         'cost_change_approval',
+        'none',
       ]
     > &
       Schema.Attribute.Required;
@@ -4538,6 +4539,7 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
       'oneToMany',
       'api::purchase-item.purchase-item'
     >;
+    qr_code: Schema.Attribute.String;
     reorder_level: Schema.Attribute.Integer;
     sellable_quantity: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
     selling_price: Schema.Attribute.Decimal;
