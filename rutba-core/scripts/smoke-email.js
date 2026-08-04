@@ -167,8 +167,42 @@ async function main() {
     const buyerMail = mails.find((m) => m.to === `${MARK}@example.test`);
     check('the customer confirmation still goes out on the same event',
       Boolean(buyerMail), `recipients seen: ${JSON.stringify(mails.map((m) => m.to))}`);
-    check('both mails were produced by one order_placed event', mails.length >= 2,
-      `sent ${mails.length}`);
+
+    // ── E. nothing ELSE fires on order_placed ─────────────────────────────
+    // This used to assert `mails.length >= 2`, which is why nobody noticed that
+    // "Support Ticket Submitted (User+Admin)" had been seeded with
+    // trigger_event='order_placed' and was mailing every buyer "We received your
+    // message" next to their confirmation. Exactly two mails, no more.
+    console.log('E. no stray templates on order_placed');
+    check('exactly two mails were produced by one order_placed event',
+      mails.length === 2,
+      `sent ${mails.length}: ${JSON.stringify(mails.map((m) => `${m.to} / ${m.subject}`))}`);
+    check('no support, stock or cart template rode along',
+      !mails.some((m) => /received your message|support|stock|cart|payment failed/i.test(m.subject || '')),
+      JSON.stringify(mails.map((m) => m.subject)));
+
+    // Guard the data itself, not just this one event: only the buyer
+    // confirmation and the team alert may claim the order_placed trigger.
+    const onOrderPlaced = await db('notification_templates')
+      .where({ trigger_event: 'order_placed', is_active: true })
+      .pluck('name');
+    check('only the buyer and team templates are active on order_placed',
+      onOrderPlaced.length === 2
+      && onOrderPlaced.includes('Order Confirmed (Buyer)')
+      && onOrderPlaced.includes(TEAM_TEMPLATE),
+      onOrderPlaced.join(' | '));
+
+    // Engine-owned rows must sit on the neutral trigger so the sale-order
+    // service can never select them; they still fire via event_name.
+    const strayEngineRows = await db('notification_templates')
+      .whereIn('event_name', [
+        'payment.failed', 'cart.abandoned', 'contact.submitted',
+        'contact.reply.added', 'contact.sla.breach', 'stock.low', 'stock.out',
+      ])
+      .whereNot({ trigger_event: 'none' })
+      .pluck('name');
+    check('every notification-engine template sits on trigger_event=none',
+      strayEngineRows.length === 0, strayEngineRows.join(' | '));
   } finally {
     if (originalAlertTo === undefined) delete process.env.ORDER_ALERT_EMAIL;
     else process.env.ORDER_ALERT_EMAIL = originalAlertTo;

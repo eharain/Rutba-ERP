@@ -7,6 +7,9 @@ import { NotificationTemplatesEndpoints } from "@rutba/api-provider/endpoints/in
 import Link from "next/link";
 import { useToast } from "../../components/Toast";
 
+// Mirrors the trigger_event enum in pos-strapi notification-template schema.json.
+// "none" means the template is driven by the notification engine's event_name
+// instead — leaving it on a sale-order trigger makes it fire on real orders.
 const TRIGGER_EVENTS = [
   "order_placed",
   "payment_confirmed",
@@ -15,6 +18,13 @@ const TRIGGER_EVENTS = [
   "delivered",
   "cancelled",
   "refund_initiated",
+  "return_requested",
+  "return_approved",
+  "return_rejected",
+  "return_received",
+  "return_completed",
+  "cost_change_approval",
+  "none",
 ];
 
 const CHANNELS = ["email", "sms", "both"];

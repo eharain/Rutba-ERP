@@ -40,6 +40,7 @@ const backfillProductSlugs = require('./product-slug-backfill');
 const { applyReturnPolicy } = require('./seeders/return-policy');
 const { applyCostChangeApprovalTemplate } = require('./seeders/cost-change-approval-template');
 const { applyOrderPlacedTeamAlert } = require('./seeders/order-placed-team-alert');
+const { applyNotificationTemplateRouting } = require('./seeders/notification-template-routing');
 const { seedDefaultWorkflows } = require('./seeders/default-workflows');
 const { backfillInventoryFoundation } = require('./seeders/inventory-foundation');
 const { seedTailoringUnit } = require('./seeders/tailoring-unit-demo');
@@ -281,6 +282,20 @@ const REGISTRY = [
         supportsFull: true,
         hasMigration: false,
         run: (strapi) => runJsonSeedFile(strapi, 'notification-template.json'),
+    },
+    // Must stay immediately after the notification-templates JSON seed: that file
+    // carries revertOnSeed:true, so it rewrites those rows on every run and this
+    // has to get the last word. Essential because the JSON seed is not — on the
+    // deploy path this repair is the only thing that reaches live rows.
+    {
+        key: 'notification-template-routing',
+        title: 'Notification template routing (engine rows off sale-order triggers)',
+        category: 'reference',
+        essential: true,
+        supportsPartial: true,
+        supportsFull: true,
+        hasMigration: true,
+        run: (strapi) => applyNotificationTemplateRouting(strapi.db.connection),
     },
     {
         key: 'cms-pages',
