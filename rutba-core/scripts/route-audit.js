@@ -123,6 +123,14 @@ async function collectCoreRoutes() {
   for (const r of moduleRoutes) {
     mounted.set(normalize(r.method, r.path), { ported: true, detail: r.module });
   }
+  // Platform routes live in src/http/server.js, outside any module's route
+  // table — without these they read as false misses. Keep in sync with
+  // buildRouter() there.
+  for (const [m, p] of [
+    ['get', '/_health'],
+    ['get', '/api/me/permissions'],
+    ['get', '/api/api-pro/me/permissions'],
+  ]) mounted.set(normalize(m, p), { ported: true, detail: 'http/server' });
   // Seeded api-pro table (same query the server uses).
   const reg = getRegistry();
   const interfaces = await documents('plugin::api-pro.api-interface').findMany({
