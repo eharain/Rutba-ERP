@@ -42,6 +42,8 @@ const posModule = (name) => require(path.join(POS_ROOT, 'node_modules', name));
 const bcrypt = posModule('bcryptjs');
 const jwt = require('jsonwebtoken');
 const strapiUtils = posModule('@strapi/utils');
+const { ApplicationError } = strapiUtils.errors;
+const { emailService } = require('../platform/email');
 const upValidators = require(path.join(
   POS_ROOT, 'node_modules', '@strapi', 'plugin-users-permissions',
   'dist', 'server', 'controllers', 'validation', 'auth.js'
@@ -303,6 +305,88 @@ function sanitizeUserRow(row) {
   return out;
 }
 
+// ── transactional mail (reset password / confirm account) ──────────────────
+//
+// Reproduces @strapi/plugin-users-permissions' `forgotPassword` controller and
+// `sendConfirmationEmail` service. The bodies come from the SAME core-store row
+// Strapi admin edits (plugin_users-permissions_email), so whichever server
+// sends, the customer gets the same mail.
+
+const lodash = posModule('lodash');
+
+/**
+ * The plugin's `users-permissions.template` service: lodash interpolation
+ * restricted to the variable names actually passed, so an unrelated `<%= %>`
+ * in an admin-edited template raises instead of executing.
+ */
+function renderUpTemplate(layout, data) {
+  const interpolate = strapiUtils.template.createStrictInterpolationRegExp(
+    strapiUtils.objects.keysDeep(data), 'g'
+  );
+  try {
+    return lodash.template(layout, { interpolate, evaluate: false, escape: false })(data);
+  } catch {
+    throw new ApplicationError('Invalid email template');
+  }
+}
+
+/** `from` assembly, copied from the plugin (name+email → "Name <email>"). */
+function templateFrom(options) {
+  const from = options.from || {};
+  return from.email || from.name ? `${from.name} <${from.email}>` : undefined;
+}
+
+/** The public origin core builds links against (pos-strapi: server.absoluteUrl). */
+function publicUrl() {
+  return String(envGet('PUBLIC_URL', '') || '').replace(/\/+$/, '');
+}
+
+const upEmail = {
+  async sendResetPassword(userRow, resetPasswordToken) {
+    const [emailSettings, advanced] = await Promise.all([upStore.get('email'), upStore.get('advanced')]);
+    const options = (emailSettings || {}).reset_password?.options || {};
+    const vars = {
+      URL: advanced?.email_reset_password || '',
+      SERVER_URL: publicUrl(),
+      ADMIN_URL: publicUrl(),
+      USER: sanitizeUserRow(userRow),
+      TOKEN: resetPasswordToken,
+    };
+    const body = renderUpTemplate(options.message, vars);
+    await emailService.send({
+      to: userRow.email,
+      from: templateFrom(options),
+      replyTo: options.response_email,
+      subject: renderUpTemplate(options.object, { USER: vars.USER }),
+      text: body,
+      html: body,
+    });
+  },
+
+  async sendConfirmation(userRow, confirmationToken) {
+    const emailSettings = await upStore.get('email');
+    const options = (emailSettings || {}).email_confirmation?.options || {};
+    const vars = {
+      // pos-strapi: urlJoin(server.absoluteUrl, api.rest.prefix, '/auth/email-confirmation').
+      // config/api.js sets no rest.prefix, so Strapi's default /api applies.
+      URL: `${publicUrl()}/api/auth/email-confirmation`,
+      SERVER_URL: publicUrl(),
+      ADMIN_URL: publicUrl(),
+      USER: sanitizeUserRow(userRow),
+      CODE: confirmationToken,
+    };
+    const body = renderUpTemplate(options.message, vars);
+    await emailService.send({
+      to: userRow.email,
+      from: templateFrom(options),
+      replyTo: options.response_email,
+      subject: renderUpTemplate(options.object, { USER: vars.USER }),
+      text: body,
+      html: body,
+    });
+  },
+};
+
 async function findUserRow(where) {
   return getDb()('up_users').where(where).first();
 }
@@ -409,6 +493,7 @@ const userService = {
 module.exports = {
   sessionManager,
   upStore,
+  upEmail,
   userService,
   upValidators,
   sanitizeUserRow,

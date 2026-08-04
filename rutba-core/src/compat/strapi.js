@@ -32,6 +32,7 @@ const { REPO_ROOT, get: envGet } = require('../config/env');
 const { withTransaction, getDb } = require('../db/connection');
 const { documents, getRegistry } = require('../documents');
 const { applyFilters } = require('../documents/query');
+const { emailService } = require('../platform/email');
 
 const PLUGIN_ROOT = path.join(REPO_ROOT, 'packages', 'strapi-api-pro', 'server', 'src');
 const POS_SRC = path.join(REPO_ROOT, 'pos-strapi', 'src');
@@ -526,10 +527,13 @@ function buildCompatStrapi(overrides = {}) {
       error: (...a) => console.error('[core]', ...a),
       debug: () => {},
     },
-    // Strapi plugins are not loaded in core. Ported call sites that reach for
-    // one (notification-engine → plugin('email')) wrap the call in try/catch;
-    // throwing here keeps the failure explicit instead of a TypeError.
+    // Strapi plugins are not loaded in core. `email` is reproduced by
+    // platform/email.js because ported call sites (notification-engine,
+    // sale-order/notification-service) send through it unchanged. Every other
+    // name still throws: those call sites wrap in try/catch, and an explicit
+    // error beats a TypeError on undefined.
     plugin(name) {
+      if (name === 'email') return { service: () => emailService };
       throw new Error(`compat: strapi.plugin('${name}') is not available in rutba-core`);
     },
   };

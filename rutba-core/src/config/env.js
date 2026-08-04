@@ -40,6 +40,11 @@ function parseEnvFile(filePath) {
   return out;
 }
 
+// Per-process settings that must NOT inherit pos-strapi's value: both servers
+// run side by side during the strangler migration, so taking POS_STRAPI__PORT
+// would make core try to bind the port Strapi is already listening on.
+const CORE_OWNED = new Set(['PORT', 'HOST']);
+
 let cached = null;
 
 function loadVars() {
@@ -49,12 +54,46 @@ function loadVars() {
     base.ENVIRONMENT || process.env.ENVIRONMENT || 'development';
   const envSpecific = parseEnvFile(path.join(REPO_ROOT, `.env.${environment}`));
   cached = { environment, vars: { ...process.env, ...base, ...envSpecific } };
+  hydrateProcessEnv(cached.vars);
   return cached;
+}
+
+/**
+ * Publish the resolved values back onto process.env under their bare names.
+ *
+ * scripts/js/load-env.js does this for every other app by spawning it with a
+ * merged environment (POS_STRAPI__FRONTEND_URL → FRONTEND_URL). rutba-core is
+ * started directly, so without this step the pos-strapi code it loads zero-copy
+ * reads `process.env.X` and gets nothing — silently, since almost every such
+ * read has a fallback. ORDER_ALERT_EMAIL resolving to '' is the sharp case:
+ * notification-service only sends when it has a recipient, so order alerts
+ * would just never go out.
+ *
+ * Resolution matches get() exactly, so ported code and core code always see
+ * the same value for the same name.
+ */
+function hydrateProcessEnv(vars) {
+  const names = new Set();
+  for (const key of Object.keys(vars)) {
+    const bare = key.replace(/^(?:RUTBA_CORE__|POS_STRAPI__)/, '');
+    if (bare && !CORE_OWNED.has(bare)) names.add(bare);
+  }
+  for (const name of names) {
+    for (const key of [`RUTBA_CORE__${name}`, `POS_STRAPI__${name}`, name]) {
+      if (vars[key] !== undefined && vars[key] !== '') {
+        process.env[name] = vars[key];
+        break;
+      }
+    }
+  }
 }
 
 function get(name, fallback) {
   const { vars } = loadVars();
-  for (const key of [`RUTBA_CORE__${name}`, `POS_STRAPI__${name}`, name]) {
+  const keys = CORE_OWNED.has(name)
+    ? [`RUTBA_CORE__${name}`, name]
+    : [`RUTBA_CORE__${name}`, `POS_STRAPI__${name}`, name];
+  for (const key of keys) {
     if (vars[key] !== undefined && vars[key] !== '') return vars[key];
   }
   return fallback;

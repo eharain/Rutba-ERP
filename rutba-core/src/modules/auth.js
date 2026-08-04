@@ -41,7 +41,7 @@ const crypto = require('crypto');
 const { posRequire } = require('../compat/strapi');
 const { documents } = require('../documents');
 const {
-  sessionManager, upStore, userService, upValidators,
+  sessionManager, upStore, upEmail, userService, upValidators,
   sanitizeUserRow, findUserRow, findUserByIdentifier,
   strapiSessionHelpers,
 } = require('../auth/up');
@@ -204,9 +204,12 @@ function registerAuthModule() {
       await promotePersonForRegisteredUser(created.id);
 
       if (settings.email_confirmation) {
-        // Parity gap: the confirmation email needs the email plugin. The user
-        // row exists and is unconfirmed exactly as under Strapi.
-        strapi.log.warn('[auth] email_confirmation is on but core cannot send mail yet');
+        // Plugin parity: registration stops here and mails a confirmation link
+        // instead of issuing tokens. sendConfirmationEmail mints and stores the
+        // token itself, so do both here.
+        const confirmationToken = crypto.randomBytes(20).toString('hex');
+        await userService.edit(created.id, { confirmationToken });
+        await upEmail.sendConfirmation(await findUserRow({ id: created.id }), confirmationToken);
         ctx.body = { user: created };
         return ctx.body;
       }
@@ -317,19 +320,21 @@ function registerAuthModule() {
       return reissueTokensAfterPasswordChange(ctx, user);
     },
 
-    // POST /auth/forgot-password — token recorded; mail needs the email tranche.
+    // POST /auth/forgot-password
     async forgotPassword(ctx) {
       const { email } = await upValidators.validateForgotPasswordBody(ctx.request.body);
       const user = await findUserRow({ email: String(email).toLowerCase() });
       if (!user || user.blocked) { ctx.body = { ok: true }; return ctx.body; }
       const resetPasswordToken = crypto.randomBytes(64).toString('hex');
+      // Plugin ordering: persist BEFORE sending, so an admin can still build
+      // the link by hand if the mail fails.
       await userService.edit(user.id, { resetPasswordToken });
-      strapi.log.warn('[auth] forgot-password: token stored but no mail sent (no email plugin in core)');
+      await upEmail.sendResetPassword(user, resetPasswordToken);
       ctx.body = { ok: true };
       return ctx.body;
     },
 
-    // POST /auth/send-email-confirmation — same email caveat.
+    // POST /auth/send-email-confirmation
     async sendEmailConfirmation(ctx) {
       const { email } = await upValidators.validateSendEmailConfirmationBody(ctx.request.body);
       const user = await findUserRow({ email: String(email).toLowerCase() });
@@ -338,7 +343,7 @@ function registerAuthModule() {
       if (user.blocked) throw new ApplicationError('User blocked');
       const confirmationToken = crypto.randomBytes(20).toString('hex');
       await userService.edit(user.id, { confirmationToken });
-      strapi.log.warn('[auth] send-email-confirmation: token stored but no mail sent');
+      await upEmail.sendConfirmation(user, confirmationToken);
       ctx.body = { email: user.email, sent: true };
       return ctx.body;
     },

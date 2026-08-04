@@ -39,6 +39,7 @@ const ensureSeoMetaPerEntity = require('./seo-meta-backfill');
 const backfillProductSlugs = require('./product-slug-backfill');
 const { applyReturnPolicy } = require('./seeders/return-policy');
 const { applyCostChangeApprovalTemplate } = require('./seeders/cost-change-approval-template');
+const { applyOrderPlacedTeamAlert } = require('./seeders/order-placed-team-alert');
 const { seedDefaultWorkflows } = require('./seeders/default-workflows');
 const { backfillInventoryFoundation } = require('./seeders/inventory-foundation');
 const { seedTailoringUnit } = require('./seeders/tailoring-unit-demo');
@@ -233,6 +234,16 @@ const REGISTRY = [
         supportsFull: true,
         hasMigration: true,
         run: (strapi) => applyCostChangeApprovalTemplate(strapi.db.connection),
+    },
+    {
+        key: 'order-placed-team-alert',
+        title: 'New-order alert for the order management team',
+        category: 'reference',
+        essential: false,
+        supportsPartial: true,
+        supportsFull: true,
+        hasMigration: true,
+        run: (strapi) => applyOrderPlacedTeamAlert(strapi.db.connection),
     },
     // Definable workflows for manufacturing (work orders) + order management
     // (sale orders, return requests). Essential so a fresh DB comes up with the
