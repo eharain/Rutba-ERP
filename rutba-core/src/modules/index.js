@@ -21,6 +21,7 @@ const { registerCmsSocialModule } = require('./cms-social');
 const { registerMarketplaceModule } = require('./marketplace');
 const { registerSaleStockModule } = require('./sale-stock');
 const { registerAuthModule } = require('./auth');
+const { registerCatalogModule } = require('./catalog');
 
 let initialized = null;
 
@@ -35,6 +36,7 @@ function initModules() {
     registerMarketplaceModule(),
     registerSaleStockModule(),
     registerAuthModule(),
+    registerCatalogModule(),
   ];
   const routes = modules.flatMap((m) => m.routes || []);
   initialized = { modules: modules.map((m) => m.name), routes };
