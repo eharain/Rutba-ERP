@@ -62,7 +62,7 @@ export const BranchesEndpoints = {
         approle: ['admin', 'manager', 'staff'],
         params: listParams(
             { page, pageSize, sort, populate, filters, fields },
-            { sort: ['name:asc'], populate: true },
+            { sort: ['name:asc'], populate: '*' },
         ),
     }),
 
