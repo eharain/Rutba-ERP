@@ -196,8 +196,15 @@ async function main() {
   process.exit(missing.length || notPorted.length ? 1 : 0);
 }
 
-main().catch(async (e) => {
-  console.error('ROUTE AUDIT ERROR:', e.stack);
-  try { await closeDb(); } catch {}
-  process.exit(2);
-});
+// Exported so descriptor-audit.mjs can ask "does pos-strapi serve this at
+// all?" — a descriptor route neither server serves is descriptor drift, not a
+// core gap.
+module.exports = { collectStrapiRoutes, normalize };
+
+if (require.main === module) {
+  main().catch(async (e) => {
+    console.error('ROUTE AUDIT ERROR:', e.stack);
+    try { await closeDb(); } catch {}
+    process.exit(2);
+  });
+}
