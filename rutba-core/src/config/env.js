@@ -53,7 +53,11 @@ function loadVars() {
   const environment =
     base.ENVIRONMENT || process.env.ENVIRONMENT || 'development';
   const envSpecific = parseEnvFile(path.join(REPO_ROOT, `.env.${environment}`));
-  cached = { environment, vars: { ...process.env, ...base, ...envSpecific } };
+  // fileVars = only what the .env files declare. Callers that scan values
+  // rather than look one up (CORS origin discovery) need this: process.env
+  // carries hundreds of unrelated entries, several of which parse as URLs.
+  const fileVars = { ...base, ...envSpecific };
+  cached = { environment, fileVars, vars: { ...process.env, ...fileVars } };
   hydrateProcessEnv(cached.vars);
   return cached;
 }

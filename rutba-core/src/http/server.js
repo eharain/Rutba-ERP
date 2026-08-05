@@ -26,6 +26,7 @@ const { get: envGet } = require('../config/env');
 const { buildCompatStrapi, loadApiProServices } = require('../compat/strapi');
 const { initModules } = require('../modules');
 const { createAuthMiddleware } = require('./auth');
+const { createCorsMiddleware } = require('./cors');
 const { coreHandler, sendError } = require('./rest');
 
 const CORE_ACTIONS = new Set(['find', 'findOne', 'create', 'update', 'delete']);
@@ -106,6 +107,12 @@ async function buildServer() {
   const strapi = buildCompatStrapi();
   const { interceptor } = loadApiProServices();
   const reg = getRegistry();
+
+  // CORS runs outermost, so error responses carry the headers too — otherwise
+  // the browser reports every 401/403/500 as an opaque CORS failure and the
+  // real status never reaches the client's catch block.
+  const { middleware: cors, origins: corsOrigins } = createCorsMiddleware();
+  app.use(cors);
 
   app.use(async (ctx, next) => {
     try {
@@ -263,6 +270,7 @@ async function buildServer() {
 
   app.use(router.routes()).use(router.allowedMethods());
   console.log(`[core] mounted ${mounted} routes (modules: ${modules.join(', ')} — ${ported} custom ported; ${custom} custom → 501)`);
+  console.log(`[core] cors: ${corsOrigins.length} allowed origin(s)`);
   return app;
 }
 

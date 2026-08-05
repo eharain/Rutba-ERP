@@ -131,6 +131,47 @@ async function main() {
       filtered.status === 200 && filtered.body.data.length === 0 &&
       filtered.body.meta.pagination.total === 0,
       filtered.status + ' ' + JSON.stringify(filtered.body && filtered.body.meta));
+
+    // ── CORS ────────────────────────────────────────────────────────────────
+    // Every other check here is server-side and therefore sends no Origin
+    // header, which is exactly how core shipped without CORS at all while the
+    // whole suite stayed green. These four assert the browser's view.
+    const { computeOrigins } = require('../src/http/cors');
+    const appOrigin = computeOrigins()[0];
+    check('CORS allowlist is not empty', Boolean(appOrigin),
+      'no origins resolved — browsers cannot call this server');
+    if (appOrigin) {
+      const preflight = await fetch(`http://127.0.0.1:${PORT}/api/auth/local`, {
+        method: 'OPTIONS',
+        headers: {
+          Origin: appOrigin,
+          'Access-Control-Request-Method': 'POST',
+          'Access-Control-Request-Headers': 'content-type,x-rutba-app,x-rutba-app-role',
+        },
+      });
+      check('preflight approves an app origin',
+        preflight.status === 204
+        && preflight.headers.get('access-control-allow-origin') === appOrigin,
+        `${preflight.status} / ${preflight.headers.get('access-control-allow-origin')}`);
+      check('preflight allows the X-Rutba-App* headers the apps send',
+        /x-rutba-app-role/i.test(preflight.headers.get('access-control-allow-headers') || ''),
+        String(preflight.headers.get('access-control-allow-headers')));
+
+      // A 401 without CORS headers surfaces in the browser as an opaque CORS
+      // error, so the client never sees the status it needs to act on.
+      const denied = await fetch(`http://127.0.0.1:${PORT}/api/me/permissions`,
+        { headers: { Origin: appOrigin } });
+      check('error responses keep the CORS headers',
+        denied.status === 401
+        && denied.headers.get('access-control-allow-origin') === appOrigin,
+        `${denied.status} / ${denied.headers.get('access-control-allow-origin')}`);
+
+      const stranger = await fetch(`http://127.0.0.1:${PORT}/_health`,
+        { headers: { Origin: 'http://not-ours.example' } });
+      check('an unlisted origin is not approved',
+        stranger.headers.get('access-control-allow-origin') === null,
+        String(stranger.headers.get('access-control-allow-origin')));
+    }
   } finally {
     server.close();
   }
