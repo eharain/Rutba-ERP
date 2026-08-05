@@ -57,7 +57,12 @@ function createUploadsMiddleware() {
     if (ctx.path.length <= PREFIX.length || !ctx.path.startsWith(PREFIX)) return next();
     if (ctx.method !== 'GET' && ctx.method !== 'HEAD') return next();
 
-    if (onDisk) {
+    // Tried on every request rather than gated on a startup existence check:
+    // with the local provider the directory is created by the FIRST upload, and
+    // a boot-time flag would keep sending those files to the media host (which
+    // does not have them) until the next restart. koa-send 404s cheaply when
+    // the root is missing.
+    {
       let sent = null;
       try {
         // koa-send handles traversal (..), hidden files, Content-Type,

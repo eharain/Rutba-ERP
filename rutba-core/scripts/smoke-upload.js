@@ -206,6 +206,18 @@ async function main() {
       });
       check('non-multipart body 400', notMultipart.status === 400, `got ${notMultipart.status}`);
 
+      // DELETE answers with the deleted file in API shape, not the raw row.
+      const doomed = createdIds[createdIds.length - 1];
+      const del = await fetch(`http://127.0.0.1:${PORT}/api/upload/files/${doomed}`, {
+        method: 'DELETE', headers: { authorization: `Bearer ${token}` },
+      });
+      const delBody = await del.json().catch(() => null);
+      check('DELETE /api/upload/files/:id returns the file in API shape',
+        del.status === 200 && delBody && delBody.id === doomed
+        && delBody.documentId && delBody.url && delBody.alternative_text === undefined,
+        `${del.status} ${JSON.stringify(delBody).slice(0, 160)}`);
+      if (del.status === 200) createdIds.pop();
+
       const empty = new FormData();
       empty.append('fileInfo', '{}');
       const noFiles = await fetch(`http://127.0.0.1:${PORT}/api/upload`, {

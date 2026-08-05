@@ -75,8 +75,11 @@ function registerUploadsModule() {
     const id = Number(ctx.params.id);
     const file = await getDb()('files').where('id', id).first();
     if (!file) return ctx.notFound('File not found');
+    // Read the entity BEFORE deleting: Strapi answers with the deleted file in
+    // its API shape, and `file` here is the raw snake_case row.
+    const entity = await uploadService.findOne(id);
     await uploadService.remove(file);
-    ctx.body = { id, ...file };
+    ctx.body = entity;
   };
 
   const findOne = async (ctx) => {

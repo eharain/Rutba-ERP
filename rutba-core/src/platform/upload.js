@@ -31,7 +31,6 @@ const path = require('path');
 const fs = require('fs');
 const fsp = require('fs/promises');
 const os = require('os');
-const crypto = require('crypto');
 const { REPO_ROOT, get: envGet } = require('../config/env');
 const { getDb } = require('../db/connection');
 const { documents, mapFileRow } = require('../documents');
@@ -142,7 +141,7 @@ async function formatFileInfo({ filename, type, size }, fileInfo = {}, metas = {
   return entity;
 }
 
-/** Ported from enhanceAndValidateFile — minus the tmp-dir dance core doesn't need. */
+/** Ported from @strapi/upload's enhanceAndValidateFile. */
 async function enhanceFile(file, fileInfo = {}, metas = {}) {
   const declared = file.mimetype || '';
   const mimeType = (declared && declared !== 'application/octet-stream' ? declared : undefined)
@@ -170,10 +169,14 @@ async function enhanceFile(file, fileInfo = {}, metas = {}) {
   return current;
 }
 
-/** Everything image-manipulation attaches that must not reach the DB row. */
+/**
+ * Everything image-manipulation attaches that must not reach the DB row.
+ * `path` is NOT in here: it is the folder key, and Strapi keeps it inside each
+ * stored format (null at the root, the folder path for a filed upload).
+ */
 const TRANSIENT = new Set([
   'filepath', 'getStream', 'stream', 'buffer', 'tmpWorkingDirectory',
-  'related', 'folder', 'path', 'sizeInBytes', 'rawFile',
+  'related', 'folder', 'sizeInBytes', 'rawFile',
 ]);
 
 function toRow(entity) {
@@ -259,7 +262,6 @@ function stripTransient(file) {
     if (TRANSIENT.has(k) || typeof v === 'function') continue;
     out[k] = v;
   }
-  // Strapi stores `path` (the folder key) inside each format, null when unset.
   if (out.path === undefined) out.path = null;
   return out;
 }
@@ -325,14 +327,16 @@ const uploadService = {
     // directory with a thumbnail_/small_/medium_/large_/optimized- set per
     // upload. The HTTP path gets a directory from the multipart parser; direct
     // service callers (the seed runner, media-library) do not, so make one.
-    const tmpWorkingDirectory = fileArray[0] && fileArray[0].tmpWorkingDirectory
-      ? null
-      : await fsp.mkdtemp(path.join(os.tmpdir(), 'rutba-core-upload-'));
+    // Per file, not just the first: a caller can mix files that came from the
+    // multipart parser (which supplies a directory) with ones built by hand.
+    const tmpWorkingDirectory = fileArray.some((f) => f && !f.tmpWorkingDirectory)
+      ? await fsp.mkdtemp(path.join(os.tmpdir(), 'rutba-core-upload-'))
+      : null;
 
     const out = [];
     try {
       for (let i = 0; i < fileArray.length; i += 1) {
-        const file = tmpWorkingDirectory
+        const file = tmpWorkingDirectory && !fileArray[i].tmpWorkingDirectory
           ? { ...fileArray[i], tmpWorkingDirectory }
           : fileArray[i];
         const enhanced = await enhanceFile(file, infoArray[i] || {}, metas);
