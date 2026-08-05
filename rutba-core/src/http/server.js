@@ -28,6 +28,7 @@ const { createAuthMiddleware } = require('./auth');
 const { createCorsMiddleware } = require('./cors');
 const { createUploadsMiddleware } = require('./uploads');
 const { isMultipart, parseMultipart } = require('./multipart');
+const { createRequestLogger } = require('./logger');
 const { coreHandler, sendError } = require('./rest');
 
 const CORE_ACTIONS = new Set(['find', 'findOne', 'create', 'update', 'delete']);
@@ -112,6 +113,12 @@ async function buildServer() {
   // CORS runs outermost, so error responses carry the headers too — otherwise
   // the browser reports every 401/403/500 as an opaque CORS failure and the
   // real status never reaches the client's catch block.
+  // Logging is outermost so the timing covers everything below it, including
+  // CORS and the error handler, and so a request that fails inside them is
+  // still logged.
+  const logger = createRequestLogger();
+  if (logger.middleware) app.use(logger.middleware);
+
   const { middleware: cors, origins: corsOrigins } = createCorsMiddleware();
   app.use(cors);
 
@@ -130,7 +137,9 @@ async function buildServer() {
       const name = err.name && err.name !== 'Error'
         ? err.name
         : (STATUS_ERROR_NAME[status] || 'InternalServerError');
-      if (status >= 500) console.error('[core] unhandled:', err.message);
+      // Stack, not just the message: a 500 is the one case where the line in
+      // the log has to be enough to find the code that threw.
+      if (status >= 500) console.error(`[core] ${ctx.method} ${ctx.path} →`, err.stack || err.message);
       sendError(ctx, status, name, err.message, err.details);
     }
   });
@@ -283,6 +292,7 @@ async function buildServer() {
   app.use(router.routes()).use(router.allowedMethods());
   console.log(`[core] mounted ${mounted} routes (modules: ${modules.join(', ')} — ${ported} custom ported; ${custom} custom → 501)`);
   console.log(`[core] cors: ${corsOrigins.length} allowed origin(s)`);
+  console.log(`[core] logging: ${logger.mode} (RUTBA_CORE_LOG=requests|errors|off)`);
   console.log(`[core] uploads: ${uploads.onDisk ? uploads.uploadsDir : 'no local dir'}`
     + ` -> ${uploads.mediaBaseUrl || 'no media host'}`);
   return app;
@@ -291,7 +301,15 @@ async function buildServer() {
 async function start(port) {
   const app = await buildServer();
   const p = port || parseInt(require('../config/env').get('PORT', '4020'), 10);
-  const server = app.listen(p);
+  // Wait for the listening event instead of assuming: app.listen() reports
+  // failures (EADDRINUSE above all) on the socket's 'error' event, so the old
+  // code logged "listening" and only then crashed with an uncaught exception.
+  // Surfacing it as a rejection lets the entrypoint explain it properly.
+  const server = await new Promise((resolve, reject) => {
+    const s = app.listen(p);
+    s.once('error', reject);
+    s.once('listening', () => { s.removeListener('error', reject); resolve(s); });
+  });
   console.log(`[core] rutba-core listening on :${p}`);
   return server;
 }

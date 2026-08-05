@@ -28,6 +28,7 @@ const { get, loadVars } = require('./config/env');
 const { start } = require('./http/server');
 const { startCrons, stopCrons, tasks } = require('./platform/cron');
 const { closeDb } = require('./db/connection');
+const { flushLogs } = require('./http/logger');
 
 // How long a shutdown may take before we stop being polite. systemd's default
 // TimeoutStopSec is 90s, so this has to fire well before that or the unit gets
@@ -61,6 +62,9 @@ async function shutdown(signal, code = 0) {
     code = code || 1;
   }
   clearTimeout(forced);
+  // Request logs are batched, so the last few live in a queue that the exit
+  // would otherwise discard — exactly the lines that explain why we are exiting.
+  flushLogs();
   process.exit(code);
 }
 
@@ -94,7 +98,17 @@ async function main() {
 }
 
 main().catch(async (err) => {
-  console.error('[core] failed to start:', err.stack || err);
+  // A port clash is the one startup failure with a boring cause and a boring
+  // fix, and under nodemon it happens routinely — a file save restarts the
+  // process before the old one has let go of the socket. A stack trace buries
+  // that; say what it is.
+  if (err && err.code === 'EADDRINUSE') {
+    const port = parseInt(get('PORT', '4020'), 10);
+    console.error(`[core] port ${port} is already in use — another rutba-core is running `
+      + '(or the previous one has not exited yet). Stop it, or set RUTBA_CORE__PORT.');
+  } else {
+    console.error('[core] failed to start:', err.stack || err);
+  }
   try { await closeDb(); } catch {}
   process.exit(1);
 });

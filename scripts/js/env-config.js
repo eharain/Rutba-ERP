@@ -86,6 +86,7 @@ const APP_VARS = {
     { key: 'PORT',              severity: 'warn', default: '4020', description: 'Core API listen port' },
     { key: 'RUTBA_CORE_CRONS',  severity: 'warn', description: 'Set to 1 to run scheduled tasks here. Leave unset while pos-strapi still schedules the same jobs — never run both.' },
     { key: 'RUTBA_CORE_EMAIL',  severity: 'warn', default: 'send', description: 'Outbound mail mode: send | log | off' },
+    { key: 'RUTBA_CORE_LOG',    severity: 'warn', description: 'Request logging: requests | errors | off. Defaults to requests in development, errors elsewhere.' },
   ],
 
   RUTBA_WEB: [
