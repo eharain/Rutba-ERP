@@ -27,6 +27,7 @@
  */
 
 const path = require('path');
+const fs = require('fs');
 const { EventEmitter } = require('events');
 const { REPO_ROOT, get: envGet } = require('../config/env');
 const { withTransaction, getDb } = require('../db/connection');
@@ -573,6 +574,23 @@ function buildCompatStrapi(overrides = {}) {
             }
             return svc;
           },
+        };
+      }
+      if (name === 'api-pro') {
+        // The plugin's services are plain modules taking (strapi, …), already
+        // loaded piecemeal by loadApiProServices for the interceptor. Exposed
+        // under the plugin handle too, because the seeders reach for them that
+        // way (src/seed/api-provider-seed.js → plugin.service('seeder')).
+        return {
+          service(serviceName) {
+            const file = path.join(PLUGIN_ROOT, 'services', `${serviceName}.js`);
+            if (!fs.existsSync(file)) {
+              throw new Error(`compat: strapi.plugin('api-pro').service('${serviceName}') not found`);
+            }
+            // eslint-disable-next-line global-require, import/no-dynamic-require
+            return require(file);
+          },
+          config: (key, fallback) => (key ? (config[key] ?? fallback) : config),
         };
       }
       throw new Error(`compat: strapi.plugin('${name}') is not available in rutba-core`);
