@@ -43,6 +43,7 @@ _RUTBA_APPS_LOADED=1
 
 RUTBA_SERVICES=(
     rutba_pos_strapi
+    rutba_core
     rutba_pos_auth
     rutba_pos_stock
     rutba_pos_sale
@@ -70,6 +71,9 @@ RUTBA_SERVICES=(
 
 declare -A RUTBA_SVC_CMD=(
     [rutba_pos_strapi]="--prefix pos-strapi run start"
+    # rutba-core is not an npm workspace (own install via --prefix, same as
+    # pos-strapi) — see the strangler-migration notes.
+    [rutba_core]="--prefix rutba-core run start"
     [rutba_pos_auth]="run start --workspace=pos-auth"
     [rutba_pos_stock]="run start --workspace=pos-stock"
     [rutba_pos_sale]="run start --workspace=pos-sale"
@@ -97,6 +101,7 @@ declare -A RUTBA_SVC_CMD=(
 
 declare -A RUTBA_SVC_DESC=(
     [rutba_pos_strapi]="Rutba ERP - Strapi API (pos-strapi)"
+    [rutba_core]="Rutba ERP - Core API (rutba-core, strangler replacement for Strapi)"
     [rutba_pos_auth]="Rutba ERP - Auth Portal (pos-auth)"
     [rutba_pos_stock]="Rutba ERP - Stock Management (pos-stock)"
     [rutba_pos_sale]="Rutba ERP - Point of Sale (pos-sale)"
@@ -128,6 +133,7 @@ declare -A RUTBA_SVC_DESC=(
 
 declare -A RUTBA_SVC_PORT=(
     [rutba_pos_strapi]="4010"
+    [rutba_core]="4020"
     [rutba_pos_auth]="4003"
     [rutba_pos_stock]="4001"
     [rutba_pos_sale]="4002"

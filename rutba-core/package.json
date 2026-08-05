@@ -5,6 +5,7 @@
   "description": "In-house backend core replacing pos-strapi: serves the descriptor API from the same database. See docs/todo/core-server-multitenancy-program/.",
   "main": "src/index.js",
   "scripts": {
+    "start": "node src/index.js",
     "validate-schema": "node scripts/validate-schema.js",
     "smoke": "node scripts/smoke-documents.js"
   },

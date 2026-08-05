@@ -112,6 +112,37 @@ services:
     command: ["npm", "run", "seed"]
 
   # --------------------------------------------------------
+  # Core API (rutba-core) — strangler replacement for Strapi
+  # --------------------------------------------------------
+  # Runs ALONGSIDE strapi against the SAME database, sharing its secrets via
+  # the &strapi-env anchor: identical JWT_SECRET and one strapi_sessions table
+  # is what lets tokens, rotations and logouts cross between the two servers,
+  # so traffic can move without signing anyone out.
+  #
+  # Deliberately NOT routed by Caddy yet. It is started first to bake — real
+  # process, real database, no traffic — before any path is pointed at it.
+  #
+  # RUTBA_CORE_CRONS stays unset: pos-strapi still schedules the social and
+  # inventory jobs, and the same cron must never run in both. Flipping it on
+  # here and removing it from pos-strapi's config is one atomic deploy.
+  core:
+    build:
+      context: .
+      target: core
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "${PORT_CORE:-4020}:${PORT_CORE:-4020}"
+    environment:
+      <<: *strapi-env
+      # Must come AFTER the merge: the anchor carries Strapi's port.
+      PORT: ${PORT_CORE:-4020}
+      RUTBA_CORE_CRONS: ${CORE_CRONS:-}
+      RUTBA_CORE_EMAIL: ${CORE_EMAIL_MODE:-send}
+
+  # --------------------------------------------------------
   # Auth Portal
   # --------------------------------------------------------
   auth:

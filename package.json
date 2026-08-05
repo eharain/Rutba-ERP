@@ -26,6 +26,7 @@
   ],
   "scripts": {
     "dev:strapi": "node scripts/js/load-env.js -- npm --prefix pos-strapi run develop",
+    "dev:core": "node scripts/js/load-env.js -- npm --prefix rutba-core run start",
     "seed": "node scripts/js/load-env.js -- npm --prefix pos-strapi run seed --",
     "seed:essential": "node scripts/js/load-env.js -- npm --prefix pos-strapi run seed -- --essential",
     "dev:auth": "node scripts/js/load-env.js -- npm run dev --workspace=pos-auth",
@@ -49,6 +50,7 @@
     "worker:marketplace": "node scripts/js/load-env.js -- npm run worker --workspace=rutba-marketplace",
     "dev:all": "node scripts/js/run-all.js dev",
     "start:strapi": "node scripts/js/load-env.js -- npm --prefix pos-strapi run start",
+    "start:core": "node scripts/js/load-env.js -- npm --prefix rutba-core run start",
     "start:auth": "node scripts/js/load-env.js -- npm run start --workspace=pos-auth",
     "start:stock": "node scripts/js/load-env.js -- npm run start --workspace=pos-stock",
     "start:sale": "node scripts/js/load-env.js -- npm run start --workspace=pos-sale",

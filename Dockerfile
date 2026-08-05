@@ -10,6 +10,7 @@
 #
 # Usage (standalone):
 #   docker build --target strapi  -t rutba/strapi  .
+#   docker build --target core    -t rutba/core    .
 #   docker build --target auth    -t rutba/auth    .
 #
 # Usage (compose):
@@ -63,6 +64,42 @@ COPY --from=strapi-build /app/packages     ./packages
 ENV NODE_ENV=production
 WORKDIR /app/pos-strapi
 CMD ["npx", "strapi", "start"]
+
+# ============================================================
+#  CORE API  (rutba-core — strangler replacement for Strapi)
+# ============================================================
+# Two packaging facts drive this stage:
+#
+#  1. rutba-core is NOT an npm workspace. Like pos-strapi it installs on its
+#     own via --prefix, so the root `npm install` in `deps` does not cover it.
+#  2. It loads pos-strapi ZERO-COPY at runtime — controllers, services and
+#     lifecycles through posRequire(), and bcryptjs / @strapi/utils / nodemailer
+#     / the users-permissions validators through posModule() — plus every
+#     content-type's schema.json for the table registry. So the image has to
+#     carry pos-strapi's source AND its node_modules. That is a strangler
+#     artefact; it goes away with Strapi itself.
+#
+# pos-strapi deps are installed here rather than copied from `strapi-build`
+# because core never serves the admin panel and should not pay for building it.
+FROM source AS core-build
+RUN npm install --prefix pos-strapi --no-audit --no-fund
+RUN npm install --prefix rutba-core --no-audit --no-fund
+
+FROM base AS core
+WORKDIR /app
+COPY --from=core-build /app/rutba-core     ./rutba-core
+COPY --from=core-build /app/pos-strapi     ./pos-strapi
+COPY --from=deps       /app/node_modules   ./node_modules
+COPY --from=deps       /app/packages       ./packages
+# config/env resolves REPO_ROOT three levels up from src/config, i.e. /app —
+# it looks for .env/.env.<environment> there. .dockerignore keeps those out of
+# the image on purpose; compose supplies the values as real environment
+# variables, which get() picks up as the bare-name fallback.
+COPY --from=deps       /app/package.json   ./package.json
+
+ENV NODE_ENV=production
+WORKDIR /app/rutba-core
+CMD ["node", "src/index.js"]
 
 # ============================================================
 #  NEXT.JS BUILD ENV — all NEXT_PUBLIC_* globals declared once

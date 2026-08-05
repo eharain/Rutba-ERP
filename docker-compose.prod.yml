@@ -29,6 +29,13 @@ services:
     networks: [default, edge] # default → mysql; edge → Caddy
     ports: !override []
 
+  # Baking: core reaches mysql on `default` but is deliberately NOT on `edge`,
+  # so Caddy cannot route to it and it serves no traffic. THE FLIP is adding
+  # `edge` here and pointing path handles at core:4020 in deploy/edge/Caddyfile.
+  core:
+    networks: [default]
+    ports: !override []
+
   auth:
     networks: [default, edge]
     ports: !override []
