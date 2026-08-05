@@ -72,6 +72,7 @@ function registerCatalogModule() {
   const enums = posRequire('api/utils/controllers/enums.js');
   const validator = posRequire('api/utils/controllers/validator.js');
   const branchArchive = posRequire('api/branch/controllers/archive.js');
+  const qr = posRequire('api/qr/controllers/qr.js');
 
   const PRODUCT = 'api::product.product';
   const PURCHASE = 'api::purchase.purchase';
@@ -91,6 +92,14 @@ function registerCatalogModule() {
     { method: 'get', path: '/api/products/public/by-id/:documentId', handler: (c) => product.publicDetail(c) },
     { method: 'get', path: '/api/brands/public/list', handler: (c) => brand.publicList(c) },
     { method: 'get', path: '/api/product-groups/by-slug/:slug', handler: (c) => productGroup.findBySlug(c) },
+
+    // ── QR deep links ─────────────────────────────────────────────────────
+    // auth:false in Strapi and, unlike the other public routes, no requireApp
+    // guard: a printed code is scanned by an anonymous phone camera. Landed
+    // after this tranche was written, which is why the descriptor audit had it
+    // as the one route the apps call that core could not serve.
+    { method: 'get', path: '/api/qr/resolve/:code', handler: (c) => qr.resolve(c) },
+    { method: 'get', path: '/api/qr/resolve', handler: (c) => qr.resolve(c) },
 
     // ── catalog draft & publish triads ────────────────────────────────────
     { method: 'post', path: '/api/products/:id/publish', handler: (c) => product.publish(c) },
