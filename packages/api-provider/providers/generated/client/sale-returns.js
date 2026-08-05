@@ -22,16 +22,6 @@ async function update(documentId, data) {
     return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function publish(documentId) {
-    const ep = SaleReturnsEndpointsApi.publish(documentId);
-    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
-}
-
-async function unpublish(documentId) {
-    const ep = SaleReturnsEndpointsApi.unpublish(documentId);
-    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
-}
-
 const endpoints = strictEndpointGuard(
     'SaleReturnsEndpoints',
     {
@@ -39,11 +29,9 @@ const endpoints = strictEndpointGuard(
         create,
         byId,
         update,
-        publish,
-        unpublish,
         meta: SaleReturnsEndpointsApi.meta,
     },
-    ["list","create","byId","update","publish","unpublish","meta"],
+    ["list","create","byId","update","meta"],
 );
 
 export default endpoints;

@@ -38,11 +38,22 @@ export const SiteSettingEndpoints = {
         params: byIdParams({ populate, fields }, {}, { status: 'published', ...(app ? { app } : {}) }),
     }),
 
-    // Reads only — writing to "whichever row resolves" is ambiguous, and the
-    // resolver path is unauthenticated. Editing goes through the collection
-    // methods below, which address a specific row.
-    publishResolved: (data) => ({ path: '/site-setting/publish', action: 'publish', method: 'post', data }),
-    discardResolved: (data) => ({ path: '/site-setting/discard', action: 'discard', method: 'post', data }),
+    // The server resolves WHICH row from the query string (?app=) or the
+    // X-Rutba-App header — see appSlugFrom() in the site-setting controller —
+    // so the slug has to travel as a param. Sent as a body it is ignored and
+    // the call silently acts on the caller's own app row, or the default.
+    publishResolved: ({ app } = {}) => ({
+        path: '/site-setting/publish', action: 'publish', method: 'post',
+        params: app ? { app } : {},
+    }),
+    unpublishResolved: ({ app } = {}) => ({
+        path: '/site-setting/unpublish', action: 'unpublish', method: 'post',
+        params: app ? { app } : {},
+    }),
+    discardResolved: ({ app } = {}) => ({
+        path: '/site-setting/discard', action: 'discard', method: 'post',
+        params: app ? { app } : {},
+    }),
 
     // ── Collection: every app's row, for the CMS list + row editor ────────
     list: ({ populate, fields, sort, pagination } = {}) => ({
@@ -67,8 +78,28 @@ export const SiteSettingEndpoints = {
         },
     }),
 
-    // Per-row create / updateDraft / publish / unpublish / delete, on the same
-    // shape every other CMS collection uses — so the row editor behaves exactly
-    // like the pages / footers editors beside it.
+    // Per-row create / updateDraft / delete, on the same shape every other CMS
+    // collection uses — so the row editor behaves like the pages / footers
+    // editors beside it.
     ...__publish_generic_helper('site-settings'),
+
+    // ...except publish/unpublish, which the helper puts on
+    // /site-settings/:id/publish — a route NEITHER server has. pos-strapi
+    // routes publish at the singular /site-setting/publish and picks the row by
+    // app slug (routes/01-custom-site-setting.js), and core mirrors it; the
+    // per-row form was a deliberate omission, not an oversight, because the
+    // resolver owns "which row is live for this app".
+    //
+    // Overriding AFTER the spread so the helper's broken pair never escapes.
+    // Takes the row's app_slug, not its documentId: pass the slug of the row
+    // being edited and the resolver lands on that row (a row with no slug is
+    // the default row, which is also where an omitted slug resolves).
+    publish: (appSlug) => ({
+        path: '/site-setting/publish', action: 'publish', method: 'post',
+        params: appSlug ? { app: appSlug } : {},
+    }),
+    unpublish: (appSlug) => ({
+        path: '/site-setting/unpublish', action: 'unpublish', method: 'post',
+        params: appSlug ? { app: appSlug } : {},
+    }),
 };

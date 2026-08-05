@@ -2,14 +2,17 @@
  * SuppliersEndpoints
  * Centralised path + params definitions for the /suppliers content-type.
  */
-import __publish_generic_helper from "./__publish_generic_helper.js";
+import { draftMethods, standard } from "./__publish_generic_helper.js";
 
 export const SuppliersEndpoints = {
 
-    // todo: spread adds updateDraft/publish/unpublish/create/del. Verify the
-    // supplier content type supports draft-publish in pos-strapi; if it's a
-    // plain CRUD type, the updateDraft/publish/unpublish methods will 404.
-    ...__publish_generic_helper('suppliers'),
+    // The todo that used to sit here asked whether supplier really supports
+    // draft-publish. It does (draftAndPublish: true in the schema) — but
+    // pos-strapi defines no /suppliers/:id/publish route, so the helper's
+    // publish/unpublish pair was unreachable on either server. Dropped until
+    // someone actually builds supplier publishing; nothing called them.
+    ...draftMethods('suppliers'),
+    ...standard('suppliers'),
 
     meta: {
         uid: 'api::supplier.supplier',

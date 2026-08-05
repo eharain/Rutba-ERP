@@ -42,14 +42,14 @@ async function archiveStats(branchDocumentId) {
     return authApi.fetch(ep.path, ep.params);
 }
 
-async function archiveStock(branchDocumentId) {
-    const ep = BranchesEndpointsApi.archiveStock(branchDocumentId);
-    return authApi.fetch(ep.path, ep.params);
+async function archiveStock(branchDocumentId, data) {
+    const ep = BranchesEndpointsApi.archiveStock(branchDocumentId, data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function unarchiveStock(branchDocumentId) {
-    const ep = BranchesEndpointsApi.unarchiveStock(branchDocumentId);
-    return authApi.fetch(ep.path, ep.params);
+async function unarchiveStock(branchDocumentId, data) {
+    const ep = BranchesEndpointsApi.unarchiveStock(branchDocumentId, data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
 const endpoints = strictEndpointGuard(

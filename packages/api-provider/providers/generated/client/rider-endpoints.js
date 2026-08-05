@@ -9,7 +9,7 @@ async function myProfile() {
 
 async function updateStatus(data) {
     const ep = RiderEndpointsApi.updateStatus(data);
-    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.patch(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
 async function deliveryOffers() {
@@ -34,7 +34,7 @@ async function deliveries(arg1 = {}) {
 
 async function updateDeliveryStatus(orderDocumentId, data) {
     const ep = RiderEndpointsApi.updateDeliveryStatus(orderDocumentId, data);
-    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
 const endpoints = strictEndpointGuard(

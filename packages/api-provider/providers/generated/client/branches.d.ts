@@ -8,8 +8,8 @@ export interface BranchesEndpointsType {
     create(data: any): Promise<any>;
     del(documentId: any): Promise<any>;
     archiveStats(branchDocumentId: any): Promise<any>;
-    archiveStock(branchDocumentId: any): Promise<any>;
-    unarchiveStock(branchDocumentId: any): Promise<any>;
+    archiveStock(branchDocumentId: any, data: any): Promise<any>;
+    unarchiveStock(branchDocumentId: any, data: any): Promise<any>;
     meta: any;
 }
 

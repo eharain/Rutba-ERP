@@ -164,8 +164,11 @@ export default function SiteSettingDetail() {
     const handlePublish = async () => {
         setSaving(true);
         try {
-            const id = await persist();
-            await SiteSettingEndpoints.publish(id);
+            await persist();
+            // Addressed by app slug, not documentId: the server publishes
+            // "the row that resolves for this app". An empty slug is the
+            // default row, which is where an omitted slug resolves anyway.
+            await SiteSettingEndpoints.publish(appSlug);
             setIsPublished(true);
             toast("Site settings saved & published!", "success");
         } catch (err) {
@@ -181,7 +184,7 @@ export default function SiteSettingDetail() {
         if (!confirm("Unpublish these site settings? Apps resolving to this row will fall back to the default.")) return;
         setSaving(true);
         try {
-            await SiteSettingEndpoints.unpublish(record.documentId);
+            await SiteSettingEndpoints.unpublish(appSlug);
             setIsPublished(false);
             toast("Unpublished.", "success");
         } catch (err) {

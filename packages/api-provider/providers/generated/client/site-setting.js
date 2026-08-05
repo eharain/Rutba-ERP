@@ -17,13 +17,18 @@ async function getPublished(arg1 = {}) {
     return authApi.fetch(ep.path, ep.params);
 }
 
-async function publishResolved(data) {
-    const ep = SiteSettingEndpointsApi.publishResolved(data);
+async function publishResolved(arg1 = {}) {
+    const ep = SiteSettingEndpointsApi.publishResolved(arg1);
     return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function discardResolved(data) {
-    const ep = SiteSettingEndpointsApi.discardResolved(data);
+async function unpublishResolved(arg1 = {}) {
+    const ep = SiteSettingEndpointsApi.unpublishResolved(arg1);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
+async function discardResolved(arg1 = {}) {
+    const ep = SiteSettingEndpointsApi.discardResolved(arg1);
     return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
@@ -69,6 +74,7 @@ const endpoints = strictEndpointGuard(
         fetchDraft,
         getPublished,
         publishResolved,
+        unpublishResolved,
         discardResolved,
         list,
         findOne,
@@ -79,7 +85,7 @@ const endpoints = strictEndpointGuard(
         del,
         meta: SiteSettingEndpointsApi.meta,
     },
-    ["getDraft","fetchDraft","getPublished","publishResolved","discardResolved","list","findOne","updateDraft","publish","unpublish","create","del","meta"],
+    ["getDraft","fetchDraft","getPublished","publishResolved","unpublishResolved","discardResolved","list","findOne","updateDraft","publish","unpublish","create","del","meta"],
 );
 
 export default endpoints;

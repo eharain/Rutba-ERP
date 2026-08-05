@@ -100,31 +100,10 @@ export const SaleReturnsEndpoints = {
         data,
     }),
 
-    /**
-     * Publish a sale return (draft → published).
-     * @param {string} documentId
-     */
-    publish: (documentId) => ({
-        path: `/sale-returns/${documentId}/publish`,
-        action: 'publish',
-        method: 'post',
-        apps: ['sale', 'return'],
-        approle: ['admin', 'manager'],
-        scope: ROLE_SCOPES,
-    }),
-
-    /**
-     * Unpublish a sale return.
-     * @param {string} documentId
-     */
-    unpublish: (documentId) => ({
-        path: `/sale-returns/${documentId}/unpublish`,
-        action: 'unpublish',
-        method: 'post',
-        apps: ['sale', 'return'],
-        approle: ['admin', 'manager'],
-        scope: ROLE_SCOPES,
-    }),
+    // No publish/unpublish: sale-return is draftAndPublish: false, so there is
+    // nothing to publish and pos-strapi routes no such endpoint. The pair that
+    // used to be declared here resolved to nothing on either server, and
+    // nothing called them.
 /** Async: fetch a single sale return by documentId. */
 /** Async: update a sale return by documentId. */
 

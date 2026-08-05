@@ -3,8 +3,9 @@ export interface SiteSettingEndpointsType {
     getDraft({ populate, fields, app }?: any): Promise<any>;
     fetchDraft({ populate, fields, app }?: any): Promise<any>;
     getPublished({ populate, fields, app }?: any): Promise<any>;
-    publishResolved(data: any): Promise<any>;
-    discardResolved(data: any): Promise<any>;
+    publishResolved({ app }?: any): Promise<any>;
+    unpublishResolved({ app }?: any): Promise<any>;
+    discardResolved({ app }?: any): Promise<any>;
     list({ populate, fields, sort, pagination }?: any): Promise<any>;
     findOne(documentId: any, { populate, fields, status }?: any): Promise<any>;
     updateDraft(documentId: any, data: any): Promise<any>;

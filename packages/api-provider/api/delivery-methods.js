@@ -1,4 +1,4 @@
-import __publish_generic_helper from "./__publish_generic_helper.js";
+import { draftMethods, standard } from "./__publish_generic_helper.js";
 import { listParams, byIdParams } from './__param_builders.js';
 
 export const DeliveryMethodsEndpoints = {
@@ -8,10 +8,13 @@ export const DeliveryMethodsEndpoints = {
         roles: ['admin', 'manager', 'staff', 'public', 'user'],
     },
 
-    // todo: spread adds updateDraft/publish/unpublish/create/del. Verify the
-    // delivery-method content type has draft-publish enabled; the inline
-    // create/update below will override the helper's versions either way.
-    ...__publish_generic_helper('delivery-methods'),
+    // The todo that used to sit here asked whether delivery-method has
+    // draft-publish. It does not (draftAndPublish: false), and pos-strapi has
+    // no publish route for it — so the helper's publish/unpublish pair could
+    // never resolve. updateDraft stays (rutba-cms/pages/delivery-methods.js
+    // uses it); the inline create/update below still override the rest.
+    ...draftMethods('delivery-methods'),
+    ...standard('delivery-methods'),
     list: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/delivery-methods',
         action: 'find',

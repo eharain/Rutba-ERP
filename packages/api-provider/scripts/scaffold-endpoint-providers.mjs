@@ -672,6 +672,11 @@ const SPREAD_HELPER_SHAPES = {
         { key: 'publish', isFunction: true, params: 'documentId', method: 'post' },
         { key: 'unpublish', isFunction: true, params: 'documentId', method: 'post' },
     ],
+    // Draft editing without publish/unpublish — for content types that have no
+    // /publish route (see the helper's own comment).
+    draftMethods: [
+        { key: 'updateDraft', isFunction: true, params: 'documentId, data', method: 'put' },
+    ],
     standard: [
         { key: 'create', isFunction: true, params: 'data', method: 'post' },
         { key: 'del', isFunction: true, params: 'documentId', method: 'delete' },

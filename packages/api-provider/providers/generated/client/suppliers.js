@@ -7,16 +7,6 @@ async function updateDraft(documentId, data) {
     return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function publish(documentId) {
-    const ep = SuppliersEndpointsApi.publish(documentId);
-    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
-}
-
-async function unpublish(documentId) {
-    const ep = SuppliersEndpointsApi.unpublish(documentId);
-    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
-}
-
 async function create(data) {
     const ep = SuppliersEndpointsApi.create(data);
     return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
@@ -51,8 +41,6 @@ const endpoints = strictEndpointGuard(
     'SuppliersEndpoints',
     {
         updateDraft,
-        publish,
-        unpublish,
         create,
         del,
         listPaged,
@@ -61,7 +49,7 @@ const endpoints = strictEndpointGuard(
         update,
         meta: SuppliersEndpointsApi.meta,
     },
-    ["updateDraft","publish","unpublish","create","del","listPaged","listAll","list","update","meta"],
+    ["updateDraft","create","del","listPaged","listAll","list","update","meta"],
 );
 
 export default endpoints;

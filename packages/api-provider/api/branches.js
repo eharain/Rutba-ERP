@@ -129,16 +129,22 @@ export const BranchesEndpoints = {
      * Archive stock items for a branch.
      * @param {string} branchDocumentId
      */
-    archiveStock: (branchDocumentId) => ({
+    archiveStock: (branchDocumentId, data) => ({
         path: `/branches/${branchDocumentId}/archive-stock`,
+        action: 'archiveStock',
+        method: 'post',
+        data,
     }),
 
     /**
      * Unarchive (restore) stock items for a branch.
      * @param {string} branchDocumentId
      */
-    unarchiveStock: (branchDocumentId) => ({
+    unarchiveStock: (branchDocumentId, data) => ({
         path: `/branches/${branchDocumentId}/unarchive-stock`,
+        action: 'unarchiveStock',
+        method: 'post',
+        data,
     }),
 };
 

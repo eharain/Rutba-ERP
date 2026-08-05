@@ -7,16 +7,6 @@ async function updateDraft(documentId, data) {
     return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function publish(documentId) {
-    const ep = DeliveryMethodsEndpointsApi.publish(documentId);
-    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
-}
-
-async function unpublish(documentId) {
-    const ep = DeliveryMethodsEndpointsApi.unpublish(documentId);
-    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
-}
-
 async function create(data) {
     const ep = DeliveryMethodsEndpointsApi.create(data);
     return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
@@ -56,8 +46,6 @@ const endpoints = strictEndpointGuard(
     'DeliveryMethodsEndpoints',
     {
         updateDraft,
-        publish,
-        unpublish,
         create,
         del,
         list,
@@ -67,7 +55,7 @@ const endpoints = strictEndpointGuard(
         update,
         meta: DeliveryMethodsEndpointsApi.meta,
     },
-    ["updateDraft","publish","unpublish","create","del","list","byId","byIdDraft","byIdPublished","update","meta"],
+    ["updateDraft","create","del","list","byId","byIdDraft","byIdPublished","update","meta"],
 );
 
 export default endpoints;

@@ -4,8 +4,6 @@ export interface SaleReturnsEndpointsType {
     create(data: any): Promise<any>;
     byId(documentId: any, { populate, fields }?: any): Promise<any>;
     update(documentId: any, data: any): Promise<any>;
-    publish(documentId: any): Promise<any>;
-    unpublish(documentId: any): Promise<any>;
     meta: any;
 }
 
