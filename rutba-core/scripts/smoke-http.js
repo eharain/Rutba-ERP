@@ -172,6 +172,26 @@ async function main() {
         stranger.headers.get('access-control-allow-origin') === null,
         String(stranger.headers.get('access-control-allow-origin')));
     }
+
+    // ── /uploads ────────────────────────────────────────────────────────────
+    // `files` rows store relative urls, so the API server is also the image
+    // server. Served from PUBLIC_DIR/uploads, with a 302 to MEDIA_BASE_URL for
+    // files that live only there.
+    const someFiles = await db('files').select('url').whereNotNull('url')
+      .orderByRaw('RAND()').limit(5);
+    const results = await Promise.all(someFiles.map(async (f) => {
+      const res = await fetch(`http://127.0.0.1:${PORT}${f.url}`, { redirect: 'follow' });
+      return { url: f.url, status: res.status, type: res.headers.get('content-type') };
+    }));
+    const broken = results.filter((r) => r.status !== 200);
+    check('files from the table resolve through /uploads', broken.length === 0,
+      broken.map((b) => `${b.url} -> ${b.status}`).join(', '));
+    check('served with an image content-type',
+      results.every((r) => r.status !== 200 || /^(image|video|application)\//.test(r.type || '')),
+      results.map((r) => r.type).join(', '));
+    const traversal = await fetch(`http://127.0.0.1:${PORT}/uploads/../../../package.json`,
+      { redirect: 'manual' });
+    check('/uploads refuses path traversal', traversal.status !== 200, `got ${traversal.status}`);
   } finally {
     server.close();
   }

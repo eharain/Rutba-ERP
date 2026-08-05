@@ -22,11 +22,11 @@ const Router = require('@koa/router');
 const bodyParser = require('koa-bodyparser');
 const qs = require('qs');
 const { documents, getRegistry } = require('../documents');
-const { get: envGet } = require('../config/env');
 const { buildCompatStrapi, loadApiProServices } = require('../compat/strapi');
 const { initModules } = require('../modules');
 const { createAuthMiddleware } = require('./auth');
 const { createCorsMiddleware } = require('./cors');
+const { createUploadsMiddleware } = require('./uploads');
 const { coreHandler, sendError } = require('./rest');
 
 const CORE_ACTIONS = new Set(['find', 'findOne', 'create', 'update', 'delete']);
@@ -114,6 +114,12 @@ async function buildServer() {
   const { middleware: cors, origins: corsOrigins } = createCorsMiddleware();
   app.use(cors);
 
+  // /uploads/* before the body parser and the router: static bytes need none
+  // of that machinery. Serves from PUBLIC_DIR/uploads, falling back to a 302
+  // to MEDIA_BASE_URL for files that only exist there.
+  const uploads = createUploadsMiddleware();
+  app.use(uploads.middleware);
+
   app.use(async (ctx, next) => {
     try {
       installCtxHelpers(ctx);
@@ -151,25 +157,8 @@ async function buildServer() {
 
   router.get('/_health', (ctx) => { ctx.body = { status: 'ok', server: 'rutba-core' }; });
 
-  // /uploads/* — every row in `files` stores a RELATIVE url (/uploads/…), and
-  // the clients build an absolute one by prefixing IMAGE_URL, which
-  // api-url-resolver derives from API_URL. So whichever server the apps point
-  // at also has to answer for uploads.
-  //
-  // Strapi answers them from pos-strapi/public/uploads, but the configured
-  // upload provider is strapi-provider-upload-media — the bytes live on
-  // MEDIA_BASE_URL and that directory is empty, so those requests 404 there
-  // too. Redirecting to the media host is what actually resolves them.
-  // A 302 rather than a proxy: the media host already serves these with its own
-  // caching, and core has no business streaming bytes it doesn't store.
-  const mediaBaseUrl = String(envGet('MEDIA_BASE_URL', '') || '').replace(/\/+$/, '');
-  router.get(/^\/uploads\/.+/, (ctx) => {
-    if (!mediaBaseUrl) {
-      return sendError(ctx, 404, 'NotFoundError',
-        'uploads are served by MEDIA_BASE_URL, which is not configured');
-    }
-    ctx.redirect(`${mediaBaseUrl}${ctx.path}`);
-  });
+  router.get(/^\/uploads\/.+/, (ctx) =>
+    sendError(ctx, 404, 'NotFoundError', 'file not found on disk or on MEDIA_BASE_URL'));
 
   // Prefix-matched bypass paths (same semantics as api-pro's bootstrap matcher):
   // these skip policy enforcement, and — when unauthenticated — skip auth too.
@@ -271,6 +260,8 @@ async function buildServer() {
   app.use(router.routes()).use(router.allowedMethods());
   console.log(`[core] mounted ${mounted} routes (modules: ${modules.join(', ')} — ${ported} custom ported; ${custom} custom → 501)`);
   console.log(`[core] cors: ${corsOrigins.length} allowed origin(s)`);
+  console.log(`[core] uploads: ${uploads.onDisk ? uploads.uploadsDir : 'no local dir'}`
+    + ` -> ${uploads.mediaBaseUrl || 'no media host'}`);
   return app;
 }
 
