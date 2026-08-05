@@ -95,6 +95,9 @@ export default function AccessAssignmentPage() {
 
   function computeBulkArrays(user, kind, mode) {
     const allKeys = apps.map((a) => a.key);
+    // `ess` and `web` ship no *_admin role, so filling admin across every app
+    // would keep asking for something the backend can never grant.
+    const adminCapableKeys = apps.filter((a) => a.hasAdminRole !== false).map((a) => a.key);
     const current = {
       domain_accesses: Array.from(new Set(user.domain_accesses || [])),
       admin_domain_accesses: Array.from(new Set(user.admin_domain_accesses || [])),
@@ -104,8 +107,8 @@ export default function AccessAssignmentPage() {
       if (kind === "user") {
         current.domain_accesses = Array.from(new Set([...current.domain_accesses, ...allKeys]));
       } else {
-        current.admin_domain_accesses = Array.from(new Set([...current.admin_domain_accesses, ...allKeys]));
-        current.domain_accesses = Array.from(new Set([...current.domain_accesses, ...allKeys]));
+        current.admin_domain_accesses = Array.from(new Set([...current.admin_domain_accesses, ...adminCapableKeys]));
+        current.domain_accesses = Array.from(new Set([...current.domain_accesses, ...adminCapableKeys]));
       }
     } else if (mode === "clear") {
       if (kind === "user") {

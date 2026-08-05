@@ -17,7 +17,10 @@ export default function UserAccessCard({
     (k) => k.startsWith(`${user.id}:`) && savingMap[k],
   );
   const userRemaining = Math.max(0, apps.length - userAccessCount);
-  const adminRemaining = Math.max(0, apps.length - adminAccessCount);
+  // Only domains that actually ship a *_admin role can hold admin access, so
+  // "remaining" has to count against those or it never reaches zero.
+  const adminCapableCount = apps.filter((a) => a.hasAdminRole !== false).length;
+  const adminRemaining = Math.max(0, adminCapableCount - adminAccessCount);
 
   return (
     <div className="card mb-3">
@@ -151,7 +154,8 @@ export default function UserAccessCard({
                   const userKey = `${user.id}:${app.key}:user`;
                   const adminKey = `${user.id}:${app.key}:admin`;
                   const userChecked = isChecked(user, app.key, "domain_accesses");
-                  const adminChecked = isChecked(user, app.key, "admin_domain_accesses");
+                  const adminAvailable = app.hasAdminRole !== false;
+                  const adminChecked = adminAvailable && isChecked(user, app.key, "admin_domain_accesses");
                   const saving = !!(savingMap[userKey] || savingMap[adminKey]);
 
                   return (
@@ -183,20 +187,31 @@ export default function UserAccessCard({
                         )}
                       </td>
                       <td className="text-center">
-                        <div className="form-check form-switch d-inline-block">
-                          <input
-                            type="checkbox"
-                            className="form-check-input"
-                            checked={adminChecked}
-                            disabled={saving}
-                            onChange={(e) =>
-                              updateAccess(user, app.key, "admin", e.target.checked)
-                            }
-                            style={{ cursor: saving ? "wait" : "pointer" }}
-                          />
-                        </div>
-                        {adminChecked && (
-                          <i className="fas fa-star text-warning ms-1"></i>
+                        {adminAvailable ? (
+                          <>
+                            <div className="form-check form-switch d-inline-block">
+                              <input
+                                type="checkbox"
+                                className="form-check-input"
+                                checked={adminChecked}
+                                disabled={saving}
+                                onChange={(e) =>
+                                  updateAccess(user, app.key, "admin", e.target.checked)
+                                }
+                                style={{ cursor: saving ? "wait" : "pointer" }}
+                              />
+                            </div>
+                            {adminChecked && (
+                              <i className="fas fa-star text-warning ms-1"></i>
+                            )}
+                          </>
+                        ) : (
+                          <span
+                            className="text-muted small"
+                            title={`No admin role exists for "${app.key}" (roles: ${(app.roleKeys || []).join(", ") || "none"})`}
+                          >
+                            n/a
+                          </span>
                         )}
                       </td>
                     </tr>

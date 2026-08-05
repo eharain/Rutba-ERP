@@ -2,7 +2,7 @@
 'use strict';
 
 const { ensureUser } = require('../../../utils/ensure-user');
-const { resolveGuardRoles } = require('../../../utils/guard-roles');
+const { resolveGuardRoles, isAdminRoleKey } = require('../../../utils/guard-roles');
 
 const AUTH_APP_KEY = 'auth';
 
@@ -26,10 +26,11 @@ function deriveDomainAccessFromUser(user) {
       .filter(Boolean)
   )];
 
-  // AGP roles have no level field; admin roles are identified by key convention (*_admin or *-admin)
+  // AGP roles have no level field; admin roles are identified by key convention
+  // (*_admin or *-admin) — the same rule resolveGuardRoles writes by.
   const adminKeys = [...new Set(
     roles
-      .filter((role) => /admin/i.test(role?.key || ''))
+      .filter((role) => isAdminRoleKey(role?.key))
       .flatMap((role) => (role?.appDomains || []).map((d) => d?.key))
       .filter(Boolean)
   )];
@@ -117,6 +118,7 @@ async function listDomainsWithUserCounts(strapi) {
     where: { isActive: true },
     orderBy: { id: 'asc' },
     select: ['id', 'documentId', 'key', 'name', 'description'],
+    populate: { appRoles: { select: ['key'] } },
   });
 
   const users = await strapi.query('plugin::users-permissions.user').findMany({
@@ -144,10 +146,20 @@ async function listDomainsWithUserCounts(strapi) {
     }
   }
 
-  return (domains || []).map((domain) => ({
-    ...domain,
-    userCount: usersByDomainKey.get(domain.key) || 0,
-  }));
+  return (domains || []).map((domain) => {
+    // Not every domain has all three levels — `ess` ships employee/manager and
+    // `web` ships public/user (see api-provider/config/domains.json). Tell the
+    // caller, so the admin UI doesn't offer an "Admin Access" switch that has
+    // no role to grant and therefore always reads back off.
+    const roleKeys = (domain.appRoles || []).map((r) => r?.key).filter(Boolean);
+    const { appRoles, ...rest } = domain;
+    return {
+      ...rest,
+      roleKeys,
+      hasAdminRole: roleKeys.some(isAdminRoleKey),
+      userCount: usersByDomainKey.get(domain.key) || 0,
+    };
+  });
 }
 
 module.exports = {

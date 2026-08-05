@@ -89,4 +89,4 @@ async function resolveGuardRoles(strapi, { domainKeys = [], roleKeys = [], admin
   };
 }
 
-module.exports = { resolveGuardRoles };
+module.exports = { resolveGuardRoles, isAdminRoleKey };

@@ -250,7 +250,11 @@ export default function EditUserPage() {
                                         <tbody>
                                             {appAccesses.map(aa => {
                                                 const hasUser = form.domain_accesses.includes(aa.key);
-                                                const hasAdmin = form.admin_domain_accesses.includes(aa.key);
+                                                // A domain with no *_admin role can never hold admin access,
+                                                // so treat it as user-only rather than drawing a switch that
+                                                // silently reverts on the next read.
+                                                const adminAvailable = aa.hasAdminRole !== false;
+                                                const hasAdmin = adminAvailable && form.admin_domain_accesses.includes(aa.key);
                                                 return (
                                                     <tr key={aa.id}>
                                                         <td>
@@ -278,17 +282,25 @@ export default function EditUserPage() {
                                                             )}
                                                         </td>
                                                         <td className="text-center">
-                                                            <div className="form-check form-switch d-inline-block">
-                                                                <input
-                                                                    className="form-check-input"
-                                                                    type="checkbox"
-                                                                    id={`aa-admin-${aa.id}`}
-                                                                    checked={hasAdmin}
-                                                                    onChange={() => toggleAppAccess(aa.key, "admin")}
-                                                                />
-                                                            </div>
-                                                            {hasAdmin && (
-                                                                <i className="fas fa-star text-warning ms-1"></i>
+                                                            {adminAvailable ? (
+                                                                <>
+                                                                    <div className="form-check form-switch d-inline-block">
+                                                                        <input
+                                                                            className="form-check-input"
+                                                                            type="checkbox"
+                                                                            id={`aa-admin-${aa.id}`}
+                                                                            checked={hasAdmin}
+                                                                            onChange={() => toggleAppAccess(aa.key, "admin")}
+                                                                        />
+                                                                    </div>
+                                                                    {hasAdmin && (
+                                                                        <i className="fas fa-star text-warning ms-1"></i>
+                                                                    )}
+                                                                </>
+                                                            ) : (
+                                                                <span className="text-muted small" title={`No admin role exists for "${aa.key}" (roles: ${(aa.roleKeys || []).join(", ") || "none"})`}>
+                                                                    n/a
+                                                                </span>
                                                             )}
                                                         </td>
                                                     </tr>
