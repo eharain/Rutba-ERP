@@ -423,4 +423,7 @@ function documents(uid) {
 // (pos-strapi src/index.js style) reads the same in core.
 documents.use = useDocumentMiddleware;
 
-module.exports = { documents, getRegistry, useDocumentMiddleware };
+// mapFileRow is exported for the upload platform: a file it creates must be
+// serialized exactly the way populated media is, since both reach the same
+// frontends.
+module.exports = { documents, getRegistry, useDocumentMiddleware, mapFileRow };

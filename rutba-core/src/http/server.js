@@ -27,6 +27,7 @@ const { initModules } = require('../modules');
 const { createAuthMiddleware } = require('./auth');
 const { createCorsMiddleware } = require('./cors');
 const { createUploadsMiddleware } = require('./uploads');
+const { isMultipart, parseMultipart } = require('./multipart');
 const { coreHandler, sendError } = require('./rest');
 
 const CORE_ACTIONS = new Set(['find', 'findOne', 'create', 'update', 'delete']);
@@ -144,6 +145,28 @@ async function buildServer() {
     await next();
   });
   app.use(bodyParser({ enableTypes: ['json'] }));
+
+  // Multipart, in the same place Strapi puts it (strapi::body) and in the same
+  // shape: fields on ctx.request.body, files on ctx.request.files keyed by
+  // field name. Ported controllers read exactly that — media-library's
+  // uploadToFolder does `files.files || files.file` — so this has to be a
+  // middleware rather than something the upload route does for itself.
+  // Runs after the JSON parser, which ignores multipart bodies entirely.
+  app.use(async (ctx, next) => {
+    if (!isMultipart(ctx)) return next();
+    const parsed = await parseMultipart(ctx, {
+      sizeLimit: strapi.config.get('plugin::upload.sizeLimit'),
+    });
+    ctx.request.body = parsed.fields;
+    ctx.request.files = parsed.keyed;
+    ctx.state.uploadedFiles = parsed.files;
+    try {
+      await next();
+    } finally {
+      // The provider has streamed the bytes by now; the tmp copies go.
+      await parsed.cleanup();
+    }
+  });
   // Strapi's includeUnparsed parity: expose the exact request bytes under the
   // same well-known symbol, for handlers that verify HMAC signatures over the
   // raw body (social webhooks).

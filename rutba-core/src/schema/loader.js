@@ -139,9 +139,48 @@ function loadUpExtensionUser() {
   }];
 }
 
+/**
+ * The upload plugin's own file/folder schemas, as PARTIAL models.
+ *
+ * BUILTIN_MODELS declares these tables so relations can resolve, but with no
+ * attributes — which left two things broken once core started writing media:
+ * documents() returned a file with only its base fields, and
+ * db.query('plugin::upload.file').update({ data: { folder } }) — what
+ * media-library's moveFiles does — rejected `folder` as neither scalar nor
+ * relation. Loading the real schemas fixes both.
+ *
+ * `related` is dropped: it is a morphToMany with no target, which the registry
+ * cannot model, and nothing reads it through the shim — the media populate path
+ * queries files_related_mph directly.
+ */
+function loadUploadPluginModels() {
+  const base = path.join(
+    REPO_ROOT, 'pos-strapi', 'node_modules', '@strapi', 'upload',
+    'dist', 'server', 'content-types'
+  );
+  const out = [];
+  for (const [uid, file] of [
+    ['plugin::upload.file', 'file.js'],
+    ['plugin::upload.folder', 'folder.js'],
+  ]) {
+    const full = path.join(base, file);
+    if (!fs.existsSync(full)) continue;
+    // eslint-disable-next-line global-require, import/no-dynamic-require
+    const { schema } = require(full);
+    const attributes = Object.fromEntries(
+      Object.entries(schema.attributes || {}).filter(([, def]) => def.type !== 'relation' || def.target)
+    );
+    out.push({ uid, source: 'upload-plugin', partial: true, schema: { ...schema, attributes } });
+  }
+  return out;
+}
+
 function loadAllSchemas() {
   return {
-    contentTypes: [...loadApiContentTypes(), ...loadPluginContentTypes(), ...loadUpExtensionUser()],
+    contentTypes: [
+      ...loadApiContentTypes(), ...loadPluginContentTypes(),
+      ...loadUpExtensionUser(), ...loadUploadPluginModels(),
+    ],
     components: loadComponents(),
     builtins: BUILTIN_MODELS,
   };

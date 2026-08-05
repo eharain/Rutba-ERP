@@ -76,9 +76,12 @@ async function main() {
     catch { refused = true; }
     check('a message with no recipient is refused, not silently dropped', refused);
 
+    // `upload` used to be the example here; it is implemented now, so this
+    // asserts the same thing with a plugin core genuinely does not provide —
+    // an unimplemented plugin must fail loudly rather than return undefined.
     let stillThrows = false;
-    try { strapi.plugin('upload'); } catch { stillThrows = true; }
-    check('other plugin names still throw explicitly', stillThrows);
+    try { strapi.plugin('i18n'); } catch { stillThrows = true; }
+    check('an unimplemented plugin still throws explicitly', stillThrows);
 
     // ── B. UP mail ────────────────────────────────────────────────────────
     console.log('B. users-permissions mail');

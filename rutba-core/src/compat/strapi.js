@@ -425,6 +425,7 @@ function buildCompatStrapi(overrides = {}) {
   installStrapiFactoryStub();
   const config = { ...pluginConfig.default, ...(overrides.apiProConfig || {}) };
   let socialConfig; // lazy — evaluated from pos-strapi's own config factory
+  let uploadConfig; // ditto, from config/plugins.js's `upload` block
   let contentTypesCache = null;
   const strapi = {
     config: {
@@ -437,11 +438,30 @@ function buildCompatStrapi(overrides = {}) {
           }
           return socialConfig;
         }
+        // Upload provider choice + options. Read from pos-strapi's own
+        // config/plugins.js rather than re-derived from env here, so core can
+        // never disagree with Strapi about where the bytes land.
+        if (key === 'plugin::upload' || key.startsWith('plugin::upload.')) {
+          if (uploadConfig === undefined) {
+            const factory = require(path.join(REPO_ROOT, 'pos-strapi', 'config', 'plugins.js'));
+            const plugins = factory({ env: makeEnvHelper() }) || {};
+            uploadConfig = ((plugins.upload || {}).config) || {};
+          }
+          if (key === 'plugin::upload') return uploadConfig;
+          const sub = key.slice('plugin::upload.'.length);
+          return uploadConfig[sub] !== undefined ? uploadConfig[sub] : fallback;
+        }
         // config/server.js subset ported code reads (absolute media URLs, …).
         if (key === 'server.url') return envGet('PUBLIC_URL', '');
         if (key === 'server') return { url: envGet('PUBLIC_URL', '') };
         return fallback;
       },
+    },
+    // @strapi/provider-upload-local writes under dirs.static.public/uploads,
+    // and PUBLIC_DIR moves that off pos-strapi/public in this deployment.
+    get dirs() {
+      const pub = path.resolve(REPO_ROOT, 'pos-strapi', envGet('PUBLIC_DIR', './public'));
+      return { public: pub, static: { public: pub } };
     },
     // Attribute metadata view over the registry — enough for ported code that
     // introspects types (cms-bulk's Excel coercion, draftAndPublish checks).
@@ -534,6 +554,27 @@ function buildCompatStrapi(overrides = {}) {
     // error beats a TypeError on undefined.
     plugin(name) {
       if (name === 'email') return { service: () => emailService };
+      if (name === 'upload') {
+        // Lazily required: platform/upload pulls in sharp and the configured
+        // provider, and nothing should pay for that until a file moves.
+        const up = require('../platform/upload');
+        const services = {
+          upload: up.uploadService,
+          folder: up.folderService,
+          file: up.fileService,
+          'image-manipulation': up.imageManipulation,
+        };
+        return {
+          get provider() { return up.getProvider(); },
+          service(serviceName) {
+            const svc = services[serviceName];
+            if (!svc) {
+              throw new Error(`compat: strapi.plugin('upload').service('${serviceName}') is not implemented`);
+            }
+            return svc;
+          },
+        };
+      }
       throw new Error(`compat: strapi.plugin('${name}') is not available in rutba-core`);
     },
   };
