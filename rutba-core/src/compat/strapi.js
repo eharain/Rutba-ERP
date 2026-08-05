@@ -576,6 +576,25 @@ function buildCompatStrapi(overrides = {}) {
           },
         };
       }
+      if (name === 'users-permissions') {
+        // Ported controllers on auth:false routes identify the caller through
+        // this handle (cash-register, sale/search-by-*, reorder-policy), and
+        // auth-admin creates/edits/deletes users through it. Backed by the same
+        // services core's own auth module uses, so there is one implementation.
+        const { userService, upJwt } = require('../auth/up');
+        const services = { user: userService, jwt: upJwt };
+        return {
+          service(serviceName) {
+            const svc = services[serviceName];
+            if (!svc) {
+              throw new Error(
+                `compat: strapi.plugin('users-permissions').service('${serviceName}') is not implemented`
+              );
+            }
+            return svc;
+          },
+        };
+      }
       if (name === 'api-pro') {
         // The plugin's services are plain modules taking (strapi, …), already
         // loaded piecemeal by loadApiProServices for the interceptor. Exposed

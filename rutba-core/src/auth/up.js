@@ -490,10 +490,59 @@ const userService = {
   },
 };
 
+/**
+ * The plugin's `jwt` service, as ported code uses it. Several controllers
+ * (cash-register, sale/search-by-*, reorder-policy) fall back to
+ * plugin('users-permissions').service('jwt').getToken(ctx) on auth:false routes
+ * and then read `token.id`.
+ *
+ * That only works because pos-strapi runs jwtManagement:'refresh', where the
+ * plugin's verify() resolves the session-shaped payload to { id, sessionId }
+ * rather than returning it raw — so the same resolution happens here. Core is
+ * stricter on one point, consistently with its own auth middleware: a session
+ * that was revoked or has expired stops verifying immediately, where Strapi
+ * trusts the access token until it expires on its own.
+ */
+const upJwt = {
+  getToken(ctx) {
+    const header = ctx && ctx.request && ctx.request.header && ctx.request.header.authorization;
+    if (!header) return null;
+    const parts = String(header).split(/\s+/);
+    if (parts.length !== 2 || parts[0].toLowerCase() !== 'bearer') return null;
+    return this.verify(parts[1]);
+  },
+
+  async verify(token) {
+    const config = sessionConfig();
+    const invalid = () => new Error('Invalid token.');
+    let payload;
+    try {
+      payload = jwt.verify(token, config.jwtSecret, { algorithms: [config.algorithm] });
+    } catch {
+      throw invalid();
+    }
+    if (!payload || payload.type !== 'access' || !payload.userId || !payload.sessionId) {
+      throw invalid();
+    }
+    const session = await getDb()(SESSIONS_TABLE)
+      .where({ session_id: payload.sessionId, origin: ORIGIN })
+      .whereIn('status', ['active', 'rotated'])
+      .first('user_id', 'absolute_expires_at');
+    if (!session || String(session.user_id) !== String(payload.userId)) throw invalid();
+    if (session.absolute_expires_at && new Date(session.absolute_expires_at) <= new Date()) {
+      throw invalid();
+    }
+    const user = await findUserRow({ id: payload.userId });
+    if (!user) throw invalid();
+    return { id: user.id, sessionId: payload.sessionId };
+  },
+};
+
 module.exports = {
   sessionManager,
   upStore,
   upEmail,
+  upJwt,
   userService,
   upValidators,
   sanitizeUserRow,

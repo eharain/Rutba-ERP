@@ -42,6 +42,7 @@
 
 const path = require('path');
 const { posRequire, instantiateController } = require('../compat/strapi');
+const { registerLifecycles } = require('./lifecycles');
 
 function ctrl(apiName, file, strapi) {
   return instantiateController(
@@ -52,6 +53,25 @@ function ctrl(apiName, file, strapi) {
 
 function registerCatalogModule() {
   const strapi = global.strapi;
+
+  // ── Document middlewares (lifecycles) ───────────────────────────────────
+  // Missed when this tranche was written: the routes were ported but these
+  // seven lifecycle files were not, so every catalog entity created through
+  // core skipped them. brand/category/product and their *-group siblings all
+  // auto-create the SEO meta row on afterCreate (utils/seo-meta-helper), the
+  // product one also validates relations on write, and workflow keeps at most
+  // one active default per entity_uid.
+  for (const ct of [
+    'product', 'product-group',
+    'brand', 'brand-group',
+    'category', 'category-group',
+    'workflow',
+  ]) {
+    registerLifecycles(
+      `api::${ct}.${ct}`,
+      posRequire(`api/${ct}/content-types/${ct}/lifecycles.js`)
+    );
+  }
 
   // Factory-built controllers (need instantiateController for super.*).
   const product = ctrl('product', null, strapi);
