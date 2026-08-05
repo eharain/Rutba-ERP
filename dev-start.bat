@@ -2,8 +2,22 @@
 title Rutba ERP - Development Environment
 color 0A
 
+REM ── Which backend serves the API ──────────────────────────────────────────
+REM   dev-start.bat          pos-strapi on 4010  (default)
+REM   dev-start.bat core     rutba-core on 4020, no Strapi
+REM
+REM Both serve the same wire contract against the same database, so the apps
+REM do not care which is up. They DO need NEXT_PUBLIC_API_URL in
+REM .env.development to point at the matching port — file values beat process
+REM env in load-env.js, so it cannot be switched from here.
+set "API_SCRIPT=dev:strapi"
+set "API_TITLE=Strapi API"
+set "API_PORT=4010"
+if /i "%~1"=="core" set "API_SCRIPT=dev:core" & set "API_TITLE=Core API" & set "API_PORT=4020"
+
 echo ============================================
 echo   Rutba ERP - Starting Dev Environment
+echo   Backend: %API_TITLE% on port %API_PORT%
 echo ============================================
 echo.
 echo   Rutba Web        : http://localhost:4000
@@ -17,8 +31,7 @@ echo   Employee Self-Svc: http://localhost:4015
 echo   Accounts         : http://localhost:4007
 echo   Payroll          : http://localhost:4008
 echo   CMS              : http://localhost:4009
-echo   Strapi API       : http://localhost:4010
-echo   Core API         : http://localhost:4020
+echo   API backend      : http://localhost:%API_PORT%  (%API_TITLE%)
 echo   Social           : http://localhost:4011
 echo   Rider            : http://localhost:4012
 echo   Order Mgmt       : http://localhost:4013
@@ -30,78 +43,73 @@ echo   Seed Control     : http://localhost:4018
 
 echo.
 
-echo [1/21] Starting Strapi API...
-start "Strapi API" cmd /k "cd /d "%~dp0" && npm run dev:strapi"
+echo [1/20] Starting %API_TITLE%...
+start "%API_TITLE%" cmd /k "cd /d "%~dp0" && npm run %API_SCRIPT%"
 
 timeout /t 3 /nobreak >nul
 
-echo [2/21] Starting Core API...
-start "Core API" cmd /k "cd /d "%~dp0" && npm run dev:core"
-
-timeout /t 3 /nobreak >nul
-
-echo [3/21] Starting Rutba Web...
+echo [2/20] Starting Rutba Web...
 start "Rutba Web" cmd /k "cd /d "%~dp0" && npm run dev:web"
 
-echo [4/21] Starting Auth Portal...
+echo [3/20] Starting Auth Portal...
 start "Auth Portal" cmd /k "cd /d "%~dp0" && npm run dev:auth"
 
-echo [5/21] Starting Stock Management...
+echo [4/20] Starting Stock Management...
 start "Stock Management" cmd /k "cd /d "%~dp0" && npm run dev:stock"
 
-echo [6/21] Starting Point of Sale...
+echo [5/20] Starting Point of Sale...
 start "Point of Sale" cmd /k "cd /d "%~dp0" && npm run dev:sale"
 
-echo [7/21] Starting Web User...
+echo [6/20] Starting Web User...
 start "Web User" cmd /k "cd /d "%~dp0" && npm run dev:web-user"
 
-echo [8/21] Starting Order Management...
+echo [7/20] Starting Order Management...
 start "Order Management" cmd /k "cd /d "%~dp0" && npm run dev:order-management"
 
-echo [9/21] Starting Rider...
+echo [8/20] Starting Rider...
 start "Rider" cmd /k "cd /d "%~dp0" && npm run dev:rider"
 
-echo [10/21] Starting CRM...
+echo [9/20] Starting CRM...
 start "CRM" cmd /k "cd /d "%~dp0" && npm run dev:crm"
 
-echo [11/21] Starting HR...
+echo [10/20] Starting HR...
 start "HR" cmd /k "cd /d "%~dp0" && npm run dev:hr"
 
-echo [12/21] Starting Employee Self-Service...
+echo [11/20] Starting Employee Self-Service...
 start "Employee Self-Service" cmd /k "cd /d "%~dp0" && npm run dev:ess"
 
-echo [13/21] Starting Accounts...
+echo [12/20] Starting Accounts...
 start "Accounts" cmd /k "cd /d "%~dp0" && npm run dev:accounts"
 
-echo [14/21] Starting Payroll...
+echo [13/20] Starting Payroll...
 start "Payroll" cmd /k "cd /d "%~dp0" && npm run dev:payroll"
 
-echo [15/21] Starting CMS...
+echo [14/20] Starting CMS...
 start "CMS" cmd /k "cd /d "%~dp0" && npm run dev:cms"
 
-echo [16/21] Starting Social...
+echo [15/20] Starting Social...
 start "Social" cmd /k "cd /d "%~dp0" && npm run dev:social"
 
-echo [17/21] Starting Manufacturing...
+echo [16/20] Starting Manufacturing...
 start "Manufacturing" cmd /k "cd /d "%~dp0" && npm run dev:manufacturing"
 
-echo [18/21] Starting Inventory...
+echo [17/20] Starting Inventory...
 start "Inventory" cmd /k "cd /d "%~dp0" && npm run dev:inventory"
 
-echo [19/21] Starting Seed Control...
+echo [18/20] Starting Seed Control...
 start "Seed Control" cmd /k "cd /d "%~dp0" && npm run dev:seed"
 
-echo [20/21] Starting Marketplace...
+echo [19/20] Starting Marketplace...
 start "Marketplace" cmd /k "cd /d "%~dp0" && npm run dev:marketplace"
 
-echo [21/21] Starting Marketplace Worker...
+echo [20/20] Starting Marketplace Worker...
 start "Marketplace Worker" cmd /k "cd /d "%~dp0" && npm run worker:marketplace"
 
 echo.
 echo ============================================
 echo   All services launched!
 echo.
-echo   Strapi API   : http://localhost:4010
+echo   Backend      : http://localhost:%API_PORT% (%API_TITLE%)
 echo   Rutba Web    : http://localhost:4000
 echo   Stock Mgmt   : http://localhost:4001
 echo   Point of Sale: http://localhost:4002
@@ -122,7 +130,8 @@ echo   Inventory    : http://localhost:4017
 echo   Seed Control : http://localhost:4018
 echo   Marketplace Wkr: background worker (no port)
 echo.
-echo   Seed the database once Strapi is up:
+echo   Seed the database once the backend is up (needs Strapi - the seed
+echo   engine runs inside it, so start the default backend for this):
 echo     npm run seed              (partial, all entries)
 echo     npm run seed:essential    (essential entries only)
 echo   Or drive it from the Seed Control app on :4018
