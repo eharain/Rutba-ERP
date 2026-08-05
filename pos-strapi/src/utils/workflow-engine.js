@@ -119,6 +119,55 @@ function transitionAllowsRoles(transition, actorLevels) {
   return req.some((r) => have.has(r));
 }
 
+/**
+ * Whether an actor's SPECIFIC claimed role key may take a transition, per
+ * `approver_role` (finer-grained than the `approles` level check above — e.g.
+ * "only payroll_admin" rather than "any admin-level role"). A transition with
+ * no `approver_role` is unrestricted at this level (transitionAllowsRoles is
+ * still the primary gate). `delegate_to_role` is an alternate role key that
+ * also passes — the declarative form of "X can act on Y's behalf while Y is
+ * the assigned approver." Trusted (returns true) for system/internal calls
+ * (actorRoleKey undefined) exactly like transitionAllowsRoles.
+ */
+function transitionAllowsApprover(transition, actorRoleKey) {
+  const required = transition?.approver_role || null;
+  if (!required) return true;                 // unrestricted at this level
+  if (actorRoleKey == null) return true;       // system / internal call — trusted
+  if (actorRoleKey === required) return true;
+  const delegate = transition?.delegate_to_role || null;
+  return !!delegate && actorRoleKey === delegate;
+}
+
+/**
+ * Hours an entity may sit in `fromKey` before its outgoing transitions are
+ * considered overdue — the minimum `sla_hours` set on any transition leaving
+ * that stage, or null if none is configured (no SLA tracked).
+ */
+function stageSlaHours(wf, fromKey) {
+  const withSla = allowedTransitions(wf, fromKey)
+    .map((t) => Number(t.sla_hours))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  return withSla.length ? Math.min(...withSla) : null;
+}
+
+/**
+ * Whether `entity` has overslept its current stage's SLA. Uses `updatedAt` as
+ * the "entered this stage at" timestamp — entities don't universally carry a
+ * dedicated stage-entry field, and a status/stage change always touches
+ * updatedAt, so it's a reasonable proxy. Returns false when the stage has no
+ * SLA configured, the entity has no current stage, or is already terminal.
+ */
+function isStageOverdue(wf, entity, { statusField = 'status', now = new Date() } = {}) {
+  const stage = currentStage(wf, entity, statusField);
+  if (!stage || stage.is_terminal) return false;
+  const slaHours = stageSlaHours(wf, stage.key);
+  if (!slaHours) return false;
+  const enteredAt = entity?.updatedAt ? new Date(entity.updatedAt) : null;
+  if (!enteredAt || Number.isNaN(enteredAt.getTime())) return false;
+  const ageHours = (now.getTime() - enteredAt.getTime()) / (1000 * 60 * 60);
+  return ageHours > slaHours;
+}
+
 module.exports = {
   getWorkflowFor,
   invalidate,
@@ -131,4 +180,7 @@ module.exports = {
   validateTransition,
   findTransition,
   transitionAllowsRoles,
+  transitionAllowsApprover,
+  stageSlaHours,
+  isStageOverdue,
 };

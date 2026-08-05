@@ -1,0 +1,66 @@
+{
+  "kind": "collectionType",
+  "collectionName": "pay_bonuses",
+  "info": {
+    "singularName": "pay-bonus",
+    "pluralName": "pay-bonuses",
+    "displayName": "Pay Bonus",
+    "description": "A bonus/incentive payment for an employee"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "Performance",
+        "Festival",
+        "Annual",
+        "SignOn",
+        "Other"
+      ],
+      "default": "Other"
+    },
+    "amount": {
+      "type": "decimal",
+      "required": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Pending",
+        "Approved",
+        "Paid"
+      ],
+      "default": "Pending"
+    },
+    "payment_date": {
+      "type": "date"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "employee": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee"
+    },
+    "payslip": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::pay-payslip.pay-payslip"
+    },
+    "currency": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::currency.currency"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

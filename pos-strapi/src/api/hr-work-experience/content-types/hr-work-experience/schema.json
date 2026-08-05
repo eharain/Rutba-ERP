@@ -1,0 +1,38 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_work_experiences",
+  "info": {
+    "singularName": "hr-work-experience",
+    "pluralName": "hr-work-experiences",
+    "displayName": "HR Work Experience",
+    "description": "Employee prior work experience"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "company_name": {
+      "type": "string",
+      "required": true
+    },
+    "job_title": {
+      "type": "string"
+    },
+    "start_date": {
+      "type": "date"
+    },
+    "end_date": {
+      "type": "date"
+    },
+    "description": {
+      "type": "text"
+    },
+    "employee": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee",
+      "inversedBy": "work_experiences"
+    }
+  }
+}

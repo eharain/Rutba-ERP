@@ -1,0 +1,98 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_expense_claims",
+  "info": {
+    "singularName": "hr-expense-claim",
+    "pluralName": "hr-expense-claims",
+    "displayName": "HR Expense Claim",
+    "description": "An employee expense reimbursement claim"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "claim_date": {
+      "type": "date",
+      "required": true
+    },
+    "category": {
+      "type": "enumeration",
+      "enum": [
+        "Medical",
+        "Travel",
+        "Fuel",
+        "Entertainment",
+        "Business",
+        "Other"
+      ],
+      "default": "Other"
+    },
+    "description": {
+      "type": "text"
+    },
+    "amount": {
+      "type": "decimal",
+      "required": true
+    },
+    "receipt": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images",
+        "files"
+      ]
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Submitted",
+        "Approved",
+        "Rejected",
+        "Reimbursed"
+      ],
+      "default": "Submitted"
+    },
+    "decided_at": {
+      "type": "datetime"
+    },
+    "decided_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "rejection_reason": {
+      "type": "text"
+    },
+    "employee": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee"
+    },
+    "currency": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::currency.currency"
+    },
+    "account": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::acc-account.acc-account"
+    },
+    "journal_entry": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::acc-journal-entry.acc-journal-entry"
+    },
+    "branch": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::branch.branch"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

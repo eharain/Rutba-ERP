@@ -10,7 +10,7 @@ import Link from "next/link";
 import { useToast } from "../../components/Toast";
 import ProductPickerTabs from "../../components/ProductPickerTabs";
 import PagePickerTabs from "../../components/PagePickerTabs";
-import EnumSelect from "../../components/EnumSelect";
+import EnumSelect from "@rutba/pos-shared/components/EnumSelect";
 import InlineSeoPanel from "../../components/InlineSeoPanel";
 import { persistSeoMeta } from "../../components/SeoMetaFields";
 import { toOrderedRelation } from "../../components/orderedRelation";

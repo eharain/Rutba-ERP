@@ -1,5 +1,7 @@
 // AUTO-GENERATED — do not edit. Source: scaffold-endpoint-providers.mjs
 export interface HrEmployeesEndpointsType {
+    getMyProfile(): Promise<any>;
+    updateMyProfile(data: any): Promise<any>;
     list({ page, pageSize, sort, populate, filters, fields }?: any): Promise<any>;
     byId(documentId: any, { populate, fields }?: any): Promise<any>;
     create(data: any): Promise<any>;

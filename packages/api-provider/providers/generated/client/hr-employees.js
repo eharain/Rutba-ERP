@@ -2,6 +2,16 @@ import { authApi } from '../../../lib/api.js';
 import { withQuery, wrapData, strictEndpointGuard } from './___core__.js';
 import { HrEmployeesEndpoints as HrEmployeesEndpointsApi } from '../../../api/hr-employees.js';
 
+async function getMyProfile() {
+    const ep = HrEmployeesEndpointsApi.getMyProfile();
+    return authApi.fetch(ep.path, ep.params);
+}
+
+async function updateMyProfile(data) {
+    const ep = HrEmployeesEndpointsApi.updateMyProfile(data);
+    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
 async function list(arg1 = {}) {
     const ep = HrEmployeesEndpointsApi.list(arg1);
     return authApi.fetch(ep.path, ep.params);
@@ -25,13 +35,15 @@ async function update(documentId, data) {
 const endpoints = strictEndpointGuard(
     'HrEmployeesEndpoints',
     {
+        getMyProfile,
+        updateMyProfile,
         list,
         byId,
         create,
         update,
         meta: HrEmployeesEndpointsApi.meta,
     },
-    ["list","byId","create","update","meta"],
+    ["getMyProfile","updateMyProfile","list","byId","create","update","meta"],
 );
 
 export default endpoints;

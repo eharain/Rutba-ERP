@@ -481,8 +481,11 @@ export interface WorkflowTransition extends Struct.ComponentSchema {
   };
   attributes: {
     approles: Schema.Attribute.String;
+    approver_role: Schema.Attribute.String;
+    delegate_to_role: Schema.Attribute.String;
     from_key: Schema.Attribute.String & Schema.Attribute.Required;
     label: Schema.Attribute.String;
+    sla_hours: Schema.Attribute.Integer;
     to_key: Schema.Attribute.String & Schema.Attribute.Required;
   };
 }

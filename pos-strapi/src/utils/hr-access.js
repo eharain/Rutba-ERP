@@ -37,6 +37,48 @@ async function resolveEmployeeForUser(strapi, user) {
   return byEmail?.[0] || null;
 }
 
+function deriveEmployeeNameFromUser(user) {
+  const base = String(user?.username || user?.email || 'Employee').split('@')[0];
+  const cleaned = base.replace(/[._-]+/g, ' ').trim().replace(/\b\w/g, (c) => c.toUpperCase());
+  return cleaned || 'Employee';
+}
+
+/**
+ * The caller's hr-employee record, auto-provisioning one on first touch if
+ * none exists. Any authenticated user who reaches an ESS self-service action
+ * (apply for leave, view my attendance/payslips/profile) is, by definition,
+ * an employee — without this, a user with no hr-employee link/email-match
+ * (e.g. an account whose app-roles were granted directly rather than via HR
+ * onboarding) could still pass the api-pro approle gate but silently create
+ * "orphaned" records with no `employee` link, which then can never be found
+ * by myRequests/myAttendance/myPayslips again.
+ *
+ * ONLY call this from actual ESS self-service entry points, never from a
+ * role provider (resolveHrRolesForUser / resolveEssRolesForUser run on every
+ * authenticated request across every app — auto-creating there would spawn
+ * an hr-employee row for every POS/CRM/etc. user in the system) or from a
+ * check that resolves someone else's employee record.
+ */
+async function resolveOrCreateEmployeeForUser(strapi, user) {
+  const existing = await resolveEmployeeForUser(strapi, user);
+  if (existing) return existing;
+  if (!user?.id) return null;
+
+  try {
+    return await strapi.documents(EMP_UID).create({
+      data: { name: deriveEmployeeNameFromUser(user), email: user.email || null, user: user.id },
+      fields: ['documentId', 'name', 'email'],
+    });
+  } catch (err) {
+    // Lost a create race (concurrent first touch) — someone else just linked
+    // this user; re-resolve rather than leaving the caller with nothing.
+    const retried = await resolveEmployeeForUser(strapi, user);
+    if (retried) return retried;
+    strapi.log.error(`[hr-access] auto-provision employee failed for user ${user.id}: ${err.message}`);
+    return null;
+  }
+}
+
 // Active-claim role keys that carry org-wide HR authority.
 const HR_MANAGER_ROLE_KEYS = new Set(['hr_admin', 'hr_manager']);
 
@@ -108,8 +150,67 @@ async function managedReportDocIds(strapi, employeeDocId) {
   return Array.from(reports);
 }
 
+// Normalise however a relation arrives on a write payload -> {id}|{documentId}|null.
+function relTargetKey(v) {
+  if (v == null) return null;
+  if (typeof v === 'number') return { id: v };
+  if (typeof v === 'string') return { documentId: v };
+  if (Array.isArray(v)) return v.length ? relTargetKey(v[0]) : null;
+  if (typeof v === 'object') {
+    if (v.id != null) return { id: v.id };
+    if (v.documentId != null) return { documentId: v.documentId };
+    if (v.connect != null) return relTargetKey(v.connect);
+    if (v.set != null) return relTargetKey(v.set);
+  }
+  return null;
+}
+
+/**
+ * The user id linked to an `employee` relation value as it appears on a raw
+ * write payload (id, documentId, or Strapi 5's {connect:[...]} shape). Used to
+ * mirror the repo-wide `owners` convention onto hr-leave-request/hr-attendance/
+ * pay-payslip without changing how self/report scoping is actually enforced
+ * (that stays on the `employee` relation — see hr-access.js file doc).
+ */
+async function ownerUserIdForEmployeeRef(strapi, employeeRef) {
+  const target = relTargetKey(employeeRef);
+  if (!target) return null;
+  const where = target.id != null ? { id: target.id } : { documentId: target.documentId };
+  const emp = await strapi.db.query(EMP_UID).findOne({
+    where,
+    select: ['id'],
+    populate: { user: { select: ['id'] } },
+  });
+  return emp?.user?.id || null;
+}
+
+/**
+ * User ids of the given employee's direct line manager(s): the `team_manager`
+ * of every team they are a `members` of. Used to route "X submitted for your
+ * approval"-style notifications — not for authorization (see managedReportDocIds
+ * for the enforcement-side check).
+ */
+async function managerUserIdsForEmployee(strapi, employeeDocId) {
+  if (!employeeDocId) return [];
+  const teams = await strapi.documents(TEAM_UID).findMany({
+    filters: { members: { documentId: { $eq: employeeDocId } } },
+    fields: ['documentId'],
+    populate: { team_manager: { fields: ['documentId'], populate: { user: { fields: ['id'] } } } },
+    pagination: { pageSize: 50 },
+  });
+  const userIds = new Set();
+  for (const t of teams || []) {
+    const uid = t.team_manager?.user?.id;
+    if (uid) userIds.add(uid);
+  }
+  return Array.from(userIds);
+}
+
 module.exports = {
   resolveEmployeeForUser,
+  resolveOrCreateEmployeeForUser,
   isHrManager,
   managedReportDocIds,
+  managerUserIdsForEmployee,
+  ownerUserIdForEmployeeRef,
 };

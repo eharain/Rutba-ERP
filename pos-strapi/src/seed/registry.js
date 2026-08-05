@@ -37,6 +37,9 @@ const seedAccounting = require('./accounting-seed');
 const { runJsonSeedFile } = require('./json-seed-runner');
 const ensureSeoMetaPerEntity = require('./seo-meta-backfill');
 const backfillProductSlugs = require('./product-slug-backfill');
+const backfillEssOwners = require('./ess-owners-backfill');
+const provisionEssEmployees = require('./ess-employee-provisioning');
+const repairOrphanedLeaveRequests = require('./ess-orphaned-leave-repair');
 const { applyReturnPolicy } = require('./seeders/return-policy');
 const { applyCostChangeApprovalTemplate } = require('./seeders/cost-change-approval-template');
 const { applyOrderPlacedTeamAlert } = require('./seeders/order-placed-team-alert');
@@ -346,6 +349,36 @@ const REGISTRY = [
         supportsFull: true,
         hasMigration: false,
         run: (strapi) => backfillInventoryFoundation(strapi),
+    },
+    {
+        key: 'ess-employee-provisioning',
+        title: 'ESS employee provisioning (hr-employee per real user account)',
+        category: 'backfill',
+        essential: false,
+        supportsPartial: true,
+        supportsFull: true,
+        hasMigration: false,
+        run: (strapi) => provisionEssEmployees(strapi),
+    },
+    {
+        key: 'ess-orphaned-leave-repair',
+        title: 'ESS orphaned leave-request repair (re-link employee from owners)',
+        category: 'backfill',
+        essential: false,
+        supportsPartial: true,
+        supportsFull: true,
+        hasMigration: false,
+        run: (strapi) => repairOrphanedLeaveRequests(strapi),
+    },
+    {
+        key: 'ess-owners',
+        title: 'ESS owners backfill (hr-leave-request / hr-attendance / pay-payslip)',
+        category: 'backfill',
+        essential: false,
+        supportsPartial: true,
+        supportsFull: true,
+        hasMigration: false,
+        run: (strapi) => backfillEssOwners(strapi),
     },
     // ── Industry onboarding packs ────────────────────────────────────────
     // A tenant runs the ONE pack for their trade: a starter category tree +

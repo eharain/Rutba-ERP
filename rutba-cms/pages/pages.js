@@ -5,7 +5,7 @@ import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { CmsPagesEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 import { useToast } from "../components/Toast";
-import EnumSelect from "../components/EnumSelect";
+import EnumSelect from "@rutba/pos-shared/components/EnumSelect";
 import ListPageLayout, { AddButton } from "@rutba/pos-shared/components/ListPageLayout";
 import ListPagination from "@rutba/pos-shared/components/ListPagination";
 import ExcelIO from "../components/ExcelIO";

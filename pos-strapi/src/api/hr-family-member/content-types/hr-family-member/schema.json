@@ -1,0 +1,47 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_family_members",
+  "info": {
+    "singularName": "hr-family-member",
+    "pluralName": "hr-family-members",
+    "displayName": "HR Family Member",
+    "description": "Spouse / dependents / children"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "relationship": {
+      "type": "enumeration",
+      "enum": [
+        "Spouse",
+        "Son",
+        "Daughter",
+        "Father",
+        "Mother",
+        "Other"
+      ]
+    },
+    "date_of_birth": {
+      "type": "date"
+    },
+    "cnic": {
+      "type": "string"
+    },
+    "is_dependent": {
+      "type": "boolean",
+      "default": true
+    },
+    "employee": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee",
+      "inversedBy": "family_members"
+    }
+  }
+}

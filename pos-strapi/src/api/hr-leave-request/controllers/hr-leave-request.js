@@ -2,9 +2,20 @@
 
 const { createCoreController } = require('@strapi/strapi').factories;
 const stateMachine = require('../services/hr-leave-request-state-machine');
-const { resolveEmployeeForUser, isHrManager, managedReportDocIds } = require('../../../utils/hr-access');
+const { resolveEmployeeForUser, resolveOrCreateEmployeeForUser, isHrManager, managedReportDocIds, managerUserIdsForEmployee, ownerUserIdForEmployeeRef } = require('../../../utils/hr-access');
+const { computeAllLeaveBalances } = require('../../../utils/leave-balance');
 
 const LR_UID = 'api::hr-leave-request.hr-leave-request';
+const EMP_UID = 'api::hr-employee.hr-employee';
+
+/** Best-effort in-app notification — never let a delivery failure fail the request. */
+async function notify(strapi, event) {
+  try {
+    await strapi.service('api::notification.notification-engine').processEvent(event);
+  } catch (err) {
+    strapi.log.warn(`[hr-leave-request/notify] ${event.event_name} failed: ${err.message}`);
+  }
+}
 
 /** Load the caller with the relations the HR auth checks need. */
 async function loadActor(ctx, strapi) {
@@ -38,7 +49,7 @@ async function decide(ctx, strapi, target) {
 
   const current = await strapi.documents(LR_UID).findOne({
     documentId,
-    populate: { employee: { fields: ['documentId', 'name'] } },
+    populate: { employee: { fields: ['documentId', 'name'], populate: { user: { fields: ['id'] } } } },
   });
   if (!current) return ctx.notFound('Leave request not found');
 
@@ -60,6 +71,22 @@ async function decide(ctx, strapi, target) {
 
   try {
     const updated = await stateMachine.executeTransition(documentId, target, { userDocumentId: user.documentId, reason });
+
+    const employeeUserId = current.employee?.user?.id;
+    if (employeeUserId) {
+      await notify(strapi, {
+        event_name: target === 'Approved' ? 'hr.leave.approved' : 'hr.leave.rejected',
+        entity_type: 'hr-leave-request',
+        entity_id: documentId,
+        payload: {
+          user_id: employeeUserId,
+          leave_request_id: documentId,
+          leave_type: current.leave_type,
+          reason: reason || undefined,
+        },
+      });
+    }
+
     return ctx.send({ data: updated });
   } catch (err) {
     strapi.log.warn(`[hr-leave-request/${target}] ${documentId} failed: ${err.message}`);
@@ -83,12 +110,41 @@ module.exports = createCoreController(LR_UID, ({ strapi }) => ({
     // employee. Force the caller's own employee unless they are acting as HR.
     const roleKey = ctx.state?.apiProClaim?.roleKey || '';
     const isHrActor = user.role?.type === 'admin' || roleKey.startsWith('hr_');
+    let resolvedEmployee = null;
     if (!isHrActor || !data.employee) {
-      const emp = await resolveEmployeeForUser(strapi, user);
-      if (emp) data.employee = emp.documentId;
+      resolvedEmployee = await resolveOrCreateEmployeeForUser(strapi, user);
+      if (resolvedEmployee) data.employee = resolvedEmployee.documentId;
+    }
+    // Mirror the repo-wide `owners` ownership convention (data consistency only —
+    // self/report scoping above and in myRequests/teamQueue stays on `employee`).
+    if (!data.owners) {
+      const ownerId = await ownerUserIdForEmployeeRef(strapi, data.employee);
+      if (ownerId) data.owners = [ownerId];
     }
     ctx.request.body.data = data;
-    return super.create(ctx);
+    const response = await super.create(ctx);
+
+    const created = response?.data;
+    if (created?.documentId && typeof data.employee === 'string') {
+      const employeeName = resolvedEmployee?.name
+        || (await strapi.documents(EMP_UID).findOne({ documentId: data.employee, fields: ['name'] }))?.name
+        || 'An employee';
+      const managerUserIds = await managerUserIdsForEmployee(strapi, data.employee);
+      for (const managerUserId of managerUserIds) {
+        await notify(strapi, {
+          event_name: 'hr.leave.submitted',
+          entity_type: 'hr-leave-request',
+          entity_id: created.documentId,
+          payload: {
+            user_id: managerUserId,
+            leave_request_id: created.documentId,
+            leave_type: created.leave_type,
+            employee_name: employeeName,
+          },
+        });
+      }
+    }
+    return response;
   },
 
   /** The caller's own requests (employee self-service, ownership-scoped). */
@@ -96,7 +152,7 @@ module.exports = createCoreController(LR_UID, ({ strapi }) => ({
     const user = await loadActor(ctx, strapi);
     if (!user) return ctx.unauthorized('You must be logged in');
 
-    const employee = await resolveEmployeeForUser(strapi, user);
+    const employee = await resolveOrCreateEmployeeForUser(strapi, user);
     if (!employee) return ctx.send({ data: [] });
 
     const rows = await strapi.documents(LR_UID).findMany({
@@ -106,6 +162,19 @@ module.exports = createCoreController(LR_UID, ({ strapi }) => ({
       pagination: { pageSize: 200 },
     });
     return ctx.send({ data: rows || [] });
+  },
+
+  /** The caller's leave balances for every leave type, for a given year (default: this year). */
+  async myBalances(ctx) {
+    const user = await loadActor(ctx, strapi);
+    if (!user) return ctx.unauthorized('You must be logged in');
+
+    const employee = await resolveOrCreateEmployeeForUser(strapi, user);
+    if (!employee) return ctx.send({ data: [] });
+
+    const year = Number(ctx.query?.year) || new Date().getFullYear();
+    const balances = await computeAllLeaveBalances(strapi, employee.documentId, year);
+    return ctx.send({ data: balances });
   },
 
   /**

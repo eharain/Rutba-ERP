@@ -46,6 +46,7 @@ function registerCrmModule() {
   const lead = ctrl('crm-lead', strapi);
 
   const LEAD = 'api::crm-lead.crm-lead';
+  const TICKET = 'api::contact-ticket.contact-ticket';
 
   const routes = [
     // ── address self-service (auth:false + ensureUser → selfAuth) ─────────
@@ -55,10 +56,16 @@ function registerCrmModule() {
     { method: 'delete', path: '/api/me/addresses/:documentId', selfAuth: true, handler: (c) => address.deleteForMe(c) },
     { method: 'post', path: '/api/me/addresses/:documentId/make-default', selfAuth: true, handler: (c) => address.makeDefault(c) },
 
-    // ── contact tickets (auth:false + ensureUser → selfAuth) ──────────────
+    // ── contact tickets: public storefront flow (auth:false + ensureUser → selfAuth) ──
     { method: 'post', path: '/api/contact-tickets/submit', selfAuth: true, handler: (c) => ticket.submit(c) },
     { method: 'post', path: '/api/contact-tickets/:documentId/reply', selfAuth: true, handler: (c) => ticket.addReply(c) },
     { method: 'post', path: '/api/contact-tickets/:documentId/sla-breach', selfAuth: true, handler: (c) => ticket.reportSlaBreach(c) },
+
+    // ── contact tickets: internal HR/IT/Facilities helpdesk (authenticated, interceptor-gated) ──
+    { method: 'get', path: '/api/contact-tickets/mine', uid: TICKET, action: 'myTickets', handler: (c) => ticket.myTickets(c) },
+    { method: 'post', path: '/api/contact-tickets/submit-internal', uid: TICKET, action: 'submitInternalTicket', handler: (c) => ticket.submitInternalTicket(c) },
+    { method: 'get', path: '/api/contact-tickets/team', uid: TICKET, action: 'teamTickets', handler: (c) => ticket.teamTickets(c) },
+    { method: 'post', path: '/api/contact-tickets/:documentId/resolve', uid: TICKET, action: 'resolveTicket', handler: (c) => ticket.resolveTicket(c) },
 
     // ── crm-lead (interceptor-gated; literal path before :documentId) ─────
     { method: 'get', path: '/api/crm-leads/assignees', uid: LEAD, action: 'assignees', handler: (c) => lead.assignees(c) },

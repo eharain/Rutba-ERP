@@ -6,6 +6,7 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
     "validate-schema": "node scripts/validate-schema.js",
     "smoke": "node scripts/smoke-documents.js"
   },
@@ -22,5 +23,8 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
   }
 }

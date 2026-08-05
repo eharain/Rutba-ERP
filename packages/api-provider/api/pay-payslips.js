@@ -44,6 +44,15 @@ export const PayPayslipsEndpoints = {
         approle: ['admin', 'manager', 'staff', 'user'],
     }),
 
+    /** Payslips for the caller's reports (payroll admin/manager org-wide / line manager -> reports). */
+    listTeamPayslips: () => ({
+        path: '/pay-payslips/team-payslips',
+        action: 'teamPayslips',
+        method: 'get',
+        apps: ['payroll', 'ess'],
+        approle: ['admin', 'manager'],
+    }),
+
     /** Mark a payslip paid + post the payout journal entry. */
     setPaid: (documentId, extra = {}) => ({
         path: `/pay-payslips/${documentId}/mark-paid`,

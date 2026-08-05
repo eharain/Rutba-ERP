@@ -1,0 +1,44 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_shifts",
+  "info": {
+    "singularName": "hr-shift",
+    "pluralName": "hr-shifts",
+    "displayName": "HR Shift",
+    "description": "A shift template (start/end time, break, grace period)"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "start_time": {
+      "type": "time"
+    },
+    "end_time": {
+      "type": "time"
+    },
+    "break_minutes": {
+      "type": "integer",
+      "default": 0
+    },
+    "grace_minutes": {
+      "type": "integer",
+      "default": 0
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "rosters": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::hr-roster.hr-roster",
+      "mappedBy": "shift"
+    }
+  }
+}

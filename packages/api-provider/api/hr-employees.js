@@ -3,9 +3,28 @@ import { listParams, byIdParams } from './__param_builders.js';
 export const HrEmployeesEndpoints = {
     meta: {
         uid: 'api::hr-employee.hr-employee',
-        domains: ['hr'],
+        domains: ['hr', 'ess'],
         roles: ['admin', 'manager', 'staff'],
     },
+
+    /** The logged-in user's own employee profile (self-service). */
+    getMyProfile: () => ({
+        path: '/hr-employees/me',
+        action: 'myProfile',
+        method: 'get',
+        apps: ['hr', 'ess'],
+        approle: ['admin', 'manager', 'staff', 'user'],
+    }),
+
+    /** Self-edit of personal/contact fields only (employment fields stay HR-only). */
+    updateMyProfile: (data) => ({
+        path: '/hr-employees/me',
+        action: 'updateMyProfile',
+        method: 'put',
+        apps: ['hr', 'ess'],
+        approle: ['admin', 'manager', 'staff', 'user'],
+        data,
+    }),
 
     // Read access is shared with the apps that reference employees (assignee /
     // supervisor / worker-profile pickers); writes stay HR-only.

@@ -1,0 +1,47 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_benefit_enrollments",
+  "info": {
+    "singularName": "hr-benefit-enrollment",
+    "pluralName": "hr-benefit-enrollments",
+    "displayName": "HR Benefit Enrollment",
+    "description": "An employee's enrollment in a benefit plan"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "enrollment_date": {
+      "type": "date"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Active",
+        "Suspended",
+        "Terminated"
+      ],
+      "default": "Active"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "employee": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee"
+    },
+    "benefit_plan": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-benefit-plan.hr-benefit-plan",
+      "inversedBy": "enrollments"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_asset_assignments",
+  "info": {
+    "singularName": "hr-asset-assignment",
+    "pluralName": "hr-asset-assignments",
+    "displayName": "HR Asset Assignment",
+    "description": "One employee's assign/return history for an asset"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "assigned_date": {
+      "type": "date",
+      "required": true
+    },
+    "return_date": {
+      "type": "date"
+    },
+    "condition_on_assign": {
+      "type": "string"
+    },
+    "condition_on_return": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "asset": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-asset.hr-asset",
+      "inversedBy": "assignments"
+    },
+    "employee": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

@@ -159,6 +159,12 @@
     },
     "invoiceTerms": {
       "type": "richtext"
+    },
+    "company": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-company.hr-company",
+      "inversedBy": "branches"
     }
   }
 }

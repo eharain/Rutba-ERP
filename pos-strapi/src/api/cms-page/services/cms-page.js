@@ -1,11 +1,20 @@
 'use strict';
 
 const { createCoreService } = require('@strapi/strapi').factories;
+const { ACTIVE_PRODUCT_FILTER } = require('../../../utils/active-product');
 
 // Drafts of nested relations can leak through Strapi 5 populate trees even
 // when the parent is fetched as published, so guard every relation that the
 // storefront renders as a public surface.
 const PUBLISHED_FILTER = { filters: { publishedAt: { $notNull: true } } };
+
+// Products need the active gate on top of publish state. `is_active: false`
+// takes a product off sale without unpublishing it, and the detail endpoint
+// enforces that (findPublicDetail ANDs in the same filter) — so a card that
+// only checks publishedAt renders a link to a page that answers `data: null`.
+const PUBLISHED_ACTIVE_PRODUCT_FILTER = {
+  filters: { $and: [{ publishedAt: { $notNull: true } }, ACTIVE_PRODUCT_FILTER] },
+};
 
 const DETAIL_FIELDS = [
   'title', 'slug', 'excerpt', 'content', 'page_type', 'sort_order',
@@ -25,7 +34,7 @@ const DETAIL_POPULATE = {
       cover_image: true,
       offers: true,
       products: {
-        ...PUBLISHED_FILTER,
+        ...PUBLISHED_ACTIVE_PRODUCT_FILTER,
         populate: {
           gallery: true,
           logo: true,
@@ -48,7 +57,7 @@ const DETAIL_POPULATE = {
       cover_image: true,
       offers: true,
       products: {
-        ...PUBLISHED_FILTER,
+        ...PUBLISHED_ACTIVE_PRODUCT_FILTER,
         populate: {
           gallery: true,
           logo: true,

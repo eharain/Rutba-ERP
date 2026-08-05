@@ -1,0 +1,68 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_lifecycle_events",
+  "info": {
+    "singularName": "hr-lifecycle-event",
+    "pluralName": "hr-lifecycle-events",
+    "displayName": "HR Lifecycle Event",
+    "description": "Onboarding, confirmation, promotion, transfer, salary revision, resignation, exit — one timeline per employee"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "Onboarding",
+        "Confirmation",
+        "Probation",
+        "Promotion",
+        "Transfer",
+        "SalaryRevision",
+        "DepartmentChange",
+        "Resignation",
+        "ExitInterview",
+        "Clearance",
+        "FinalSettlement"
+      ],
+      "required": true
+    },
+    "effective_date": {
+      "type": "date"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Pending",
+        "Approved",
+        "Rejected",
+        "Completed"
+      ],
+      "default": "Completed"
+    },
+    "details": {
+      "type": "json"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "employee": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee",
+      "inversedBy": "lifecycle_events"
+    },
+    "approved_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

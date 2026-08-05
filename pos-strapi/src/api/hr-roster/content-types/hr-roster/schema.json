@@ -1,0 +1,34 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_rosters",
+  "info": {
+    "singularName": "hr-roster",
+    "pluralName": "hr-rosters",
+    "displayName": "HR Roster",
+    "description": "One employee's shift assignment for one date"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "date": {
+      "type": "date",
+      "required": true
+    },
+    "notes": {
+      "type": "text"
+    },
+    "employee": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee"
+    },
+    "shift": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-shift.hr-shift",
+      "inversedBy": "rosters"
+    }
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_business_units",
+  "info": {
+    "singularName": "hr-business-unit",
+    "pluralName": "hr-business-units",
+    "displayName": "HR Business Unit",
+    "description": "Organizational business unit"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "code": {
+      "type": "string"
+    },
+    "company": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-company.hr-company",
+      "inversedBy": "business_units"
+    },
+    "division": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-division.hr-division",
+      "inversedBy": "business_units"
+    },
+    "parent": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-business-unit.hr-business-unit",
+      "inversedBy": "children"
+    },
+    "children": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::hr-business-unit.hr-business-unit",
+      "mappedBy": "parent"
+    },
+    "cost_centers": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::hr-cost-center.hr-cost-center",
+      "mappedBy": "business_unit"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

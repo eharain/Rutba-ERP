@@ -1,0 +1,35 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_job_grades",
+  "info": {
+    "singularName": "hr-job-grade",
+    "pluralName": "hr-job-grades",
+    "displayName": "HR Job Grade",
+    "description": "Seniority/pay grade band"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "code": {
+      "type": "string"
+    },
+    "level": {
+      "type": "integer"
+    },
+    "description": {
+      "type": "text"
+    },
+    "designations": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::hr-designation.hr-designation",
+      "mappedBy": "job_grade"
+    }
+  }
+}

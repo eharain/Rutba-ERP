@@ -3,8 +3,121 @@
 
 const { factories } = require('@strapi/strapi');
 const { ensureUser } = require('../../../utils/ensure-user');
+const { resolveOrCreateEmployeeForUser, resolveEmployeeForUser, isHrManager, managedReportDocIds } = require('../../../utils/hr-access');
 
-module.exports = factories.createCoreController('api::contact-ticket.contact-ticket', (/** @type {{ strapi: any }} */ { strapi }) => ({
+const TICKET_UID = 'api::contact-ticket.contact-ticket';
+const HELPDESK_CATEGORIES = ['IT', 'HR', 'Facilities'];
+
+async function loadActor(ctx, strapi) {
+  const id = ctx.state?.user?.id;
+  if (!id) return null;
+  return strapi.query('plugin::users-permissions.user').findOne({
+    where: { id },
+    populate: { role: { select: ['type'] } },
+  });
+}
+
+async function callerReportDocIds(strapi, user) {
+  const emp = await resolveEmployeeForUser(strapi, user);
+  if (!emp) return [];
+  return managedReportDocIds(strapi, emp.documentId);
+}
+
+module.exports = factories.createCoreController(TICKET_UID, (/** @type {{ strapi: any }} */ { strapi }) => ({
+    /** Submit an internal HR/IT/Facilities helpdesk ticket — authenticated employee self-service. */
+    async submitInternalTicket(ctx) {
+        const user = await loadActor(ctx, strapi);
+        if (!user) return ctx.unauthorized('You must be logged in');
+
+        const employee = await resolveOrCreateEmployeeForUser(strapi, user);
+        if (!employee) return ctx.badRequest('No employee record for this account');
+
+        const body = ctx.request.body?.data ?? ctx.request.body ?? {};
+        const subject = String(body.subject || '').trim();
+        const message = String(body.message || '').trim();
+        const category = HELPDESK_CATEGORIES.includes(body.category) ? body.category : 'IT';
+        if (!subject) return ctx.badRequest('subject is required');
+        if (!message) return ctx.badRequest('message is required');
+
+        const ticket = await strapi.documents(TICKET_UID).create({
+            data: {
+                subject,
+                message,
+                category,
+                status: 'open',
+                user: user.id,
+                employee: employee.documentId,
+                last_reply_by: 'user',
+                last_reply_at: new Date(),
+            },
+        });
+        return ctx.send({ data: ticket });
+    },
+
+    /** The caller's own helpdesk tickets (self-service). */
+    async myTickets(ctx) {
+        const user = await loadActor(ctx, strapi);
+        if (!user) return ctx.unauthorized('You must be logged in');
+
+        const employee = await resolveOrCreateEmployeeForUser(strapi, user);
+        if (!employee) return ctx.send({ data: [] });
+
+        const rows = await strapi.documents(TICKET_UID).findMany({
+            filters: { employee: { documentId: { $eq: employee.documentId } } },
+            sort: ['createdAt:desc'],
+            pagination: { pageSize: 200 },
+        });
+        return ctx.send({ data: rows || [] });
+    },
+
+    /** Open helpdesk tickets the caller may resolve: HR manager/admin -> org-wide; line manager -> their reports. */
+    async teamTickets(ctx) {
+        const user = await loadActor(ctx, strapi);
+        if (!user) return ctx.unauthorized('You must be logged in');
+
+        let filters = { category: { $in: HELPDESK_CATEGORIES }, status: { $ne: 'resolved' } };
+        if (!isHrManager(ctx, user)) {
+            const reports = await callerReportDocIds(strapi, user);
+            if (!reports.length) return ctx.send({ data: [] });
+            filters = { ...filters, employee: { documentId: { $in: reports } } };
+        }
+
+        const rows = await strapi.documents(TICKET_UID).findMany({
+            filters,
+            sort: ['createdAt:desc'],
+            populate: { employee: { fields: ['name'] } },
+            pagination: { pageSize: 200 },
+        });
+        return ctx.send({ data: rows || [] });
+    },
+
+    /** HR/IT resolves a helpdesk ticket. */
+    async resolveTicket(ctx) {
+        const user = await loadActor(ctx, strapi);
+        if (!user) return ctx.unauthorized('You must be logged in');
+
+        const { documentId } = ctx.params;
+        const current = await strapi.documents(TICKET_UID).findOne({
+            documentId,
+            populate: { employee: { fields: ['documentId'] } },
+        });
+        if (!current) return ctx.notFound('Ticket not found');
+
+        if (!isHrManager(ctx, user)) {
+            const reports = await callerReportDocIds(strapi, user);
+            const targetDoc = current.employee?.documentId;
+            if (!targetDoc || !reports.includes(targetDoc)) {
+                return ctx.forbidden('You can only resolve tickets from your team');
+            }
+        }
+
+        const updated = await strapi.documents(TICKET_UID).update({
+            documentId,
+            data: { status: 'resolved', resolved_at: new Date().toISOString() },
+        });
+        return ctx.send({ data: updated });
+    },
+
     async submit(/** @type {any} */ ctx) {
         const user = await ensureUser(ctx, strapi);
         if (!user) return;

@@ -33,6 +33,28 @@
       "relation": "oneToMany",
       "target": "api::hr-team.hr-team",
       "mappedBy": "department"
+    },
+    "parent_department": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-department.hr-department",
+      "inversedBy": "child_departments"
+    },
+    "child_departments": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::hr-department.hr-department",
+      "mappedBy": "parent_department"
+    },
+    "division": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-division.hr-division"
+    },
+    "cost_center": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-cost-center.hr-cost-center"
     }
   }
 }

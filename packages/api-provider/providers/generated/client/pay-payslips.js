@@ -17,6 +17,11 @@ async function listMyPayslips() {
     return authApi.fetch(ep.path, ep.params);
 }
 
+async function listTeamPayslips() {
+    const ep = PayPayslipsEndpointsApi.listTeamPayslips();
+    return authApi.fetch(ep.path, ep.params);
+}
+
 async function setPaid(documentId, extra = {}) {
     const ep = PayPayslipsEndpointsApi.setPaid(documentId, extra);
     return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
@@ -28,10 +33,11 @@ const endpoints = strictEndpointGuard(
         list,
         byId,
         listMyPayslips,
+        listTeamPayslips,
         setPaid,
         meta: PayPayslipsEndpointsApi.meta,
     },
-    ["list","byId","listMyPayslips","setPaid","meta"],
+    ["list","byId","listMyPayslips","listTeamPayslips","setPaid","meta"],
 );
 
 export default endpoints;

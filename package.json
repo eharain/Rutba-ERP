@@ -26,7 +26,7 @@
   ],
   "scripts": {
     "dev:strapi": "node scripts/js/load-env.js -- npm --prefix pos-strapi run develop",
-    "dev:core": "node scripts/js/load-env.js -- npm --prefix rutba-core run start",
+    "dev:core": "node scripts/js/load-env.js -- npm --prefix rutba-core run dev",
     "seed": "node scripts/js/load-env.js -- npm --prefix pos-strapi run seed --",
     "seed:essential": "node scripts/js/load-env.js -- npm --prefix pos-strapi run seed -- --essential",
     "dev:auth": "node scripts/js/load-env.js -- npm run dev --workspace=pos-auth",

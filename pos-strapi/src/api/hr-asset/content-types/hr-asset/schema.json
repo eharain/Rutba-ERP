@@ -1,0 +1,74 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_assets",
+  "info": {
+    "singularName": "hr-asset",
+    "pluralName": "hr-assets",
+    "displayName": "HR Asset",
+    "description": "A company asset (laptop, phone, vehicle, etc.) that can be assigned to employees"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "asset_tag": {
+      "type": "string",
+      "unique": true
+    },
+    "category": {
+      "type": "enumeration",
+      "enum": [
+        "Laptop",
+        "Mobile",
+        "Vehicle",
+        "Furniture",
+        "Equipment",
+        "Other"
+      ],
+      "default": "Other"
+    },
+    "serial_number": {
+      "type": "string"
+    },
+    "purchase_date": {
+      "type": "date"
+    },
+    "purchase_value": {
+      "type": "decimal"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Available",
+        "Assigned",
+        "UnderMaintenance",
+        "Retired"
+      ],
+      "default": "Available"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "account": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::acc-account.acc-account"
+    },
+    "branch": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::branch.branch"
+    },
+    "assignments": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::hr-asset-assignment.hr-asset-assignment",
+      "mappedBy": "asset"
+    }
+  }
+}

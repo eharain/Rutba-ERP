@@ -1,0 +1,41 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_holiday_calendars",
+  "info": {
+    "singularName": "hr-holiday-calendar",
+    "pluralName": "hr-holiday-calendars",
+    "displayName": "HR Holiday",
+    "description": "A public/company holiday"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "date": {
+      "type": "date",
+      "required": true
+    },
+    "is_recurring_yearly": {
+      "type": "boolean",
+      "default": false
+    },
+    "description": {
+      "type": "text"
+    },
+    "company": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-company.hr-company"
+    },
+    "branch": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::branch.branch"
+    }
+  }
+}

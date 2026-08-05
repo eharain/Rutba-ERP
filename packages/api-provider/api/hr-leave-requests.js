@@ -52,6 +52,16 @@ export const HrLeaveRequestsEndpoints = {
         approle: ['admin', 'manager', 'staff', 'user'],
     }),
 
+    /** Current user's leave balances for every leave type (query.year defaults to this year). */
+    listMyBalances: (year) => ({
+        path: '/hr-leave-requests/my-balances',
+        action: 'myBalances',
+        method: 'get',
+        apps: ['hr', 'ess'],
+        approle: ['admin', 'manager', 'staff', 'user'],
+        params: year ? { year } : undefined,
+    }),
+
     /** Pending requests the caller may decide (HR manager org-wide / line manager → reports). */
     listTeamQueue: () => ({
         path: '/hr-leave-requests/team-queue',

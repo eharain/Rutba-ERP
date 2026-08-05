@@ -1,9 +1,10 @@
 import Topbar from "@rutba/pos-shared/components/Topbar";
 
 const SECONDARY = [
-    { href: "/leave",     label: "My Leave",  variant: "primary" },
-    { href: "/payslips",  label: "Payslips",  variant: "success" },
-    { href: "/approvals", label: "Approvals", variant: "warning" },
+    { href: "/leave",      label: "My Leave",   variant: "primary" },
+    { href: "/attendance", label: "Attendance", variant: "info" },
+    { href: "/payslips",   label: "Payslips",   variant: "success" },
+    { href: "/approvals",  label: "Approvals",  variant: "warning" },
 ];
 
 export default function Navigation() {

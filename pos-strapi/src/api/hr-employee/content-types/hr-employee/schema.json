@@ -81,6 +81,129 @@
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::pay-salary-structure.pay-salary-structure"
+    },
+    "reports_to": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee",
+      "inversedBy": "direct_reports"
+    },
+    "direct_reports": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::hr-employee.hr-employee",
+      "mappedBy": "reports_to"
+    },
+    "position": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-position.hr-position",
+      "inversedBy": "employees"
+    },
+    "company": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-company.hr-company",
+      "inversedBy": "employees"
+    },
+    "cnic": {
+      "type": "string"
+    },
+    "passport_number": {
+      "type": "string"
+    },
+    "nationality": {
+      "type": "string"
+    },
+    "religion": {
+      "type": "string"
+    },
+    "gender": {
+      "type": "enumeration",
+      "enum": [
+        "Male",
+        "Female",
+        "Other"
+      ]
+    },
+    "date_of_birth": {
+      "type": "date"
+    },
+    "marital_status": {
+      "type": "enumeration",
+      "enum": [
+        "Single",
+        "Married",
+        "Divorced",
+        "Widowed"
+      ]
+    },
+    "blood_group": {
+      "type": "enumeration",
+      "enum": [
+        "A_Positive",
+        "A_Negative",
+        "B_Positive",
+        "B_Negative",
+        "AB_Positive",
+        "AB_Negative",
+        "O_Positive",
+        "O_Negative"
+      ]
+    },
+    "emergency_contacts": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::hr-emergency-contact.hr-emergency-contact",
+      "mappedBy": "employee"
+    },
+    "bank_accounts": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::hr-bank-account.hr-bank-account",
+      "mappedBy": "employee"
+    },
+    "family_members": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::hr-family-member.hr-family-member",
+      "mappedBy": "employee"
+    },
+    "educations": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::hr-education.hr-education",
+      "mappedBy": "employee"
+    },
+    "work_experiences": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::hr-work-experience.hr-work-experience",
+      "mappedBy": "employee"
+    },
+    "certifications": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::hr-certification.hr-certification",
+      "mappedBy": "employee"
+    },
+    "skills": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::hr-skill.hr-skill",
+      "mappedBy": "employee"
+    },
+    "documents": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::hr-employee-document.hr-employee-document",
+      "mappedBy": "employee"
+    },
+    "lifecycle_events": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::hr-lifecycle-event.hr-lifecycle-event",
+      "mappedBy": "employee"
     }
   }
 }

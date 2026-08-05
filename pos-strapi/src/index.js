@@ -1,6 +1,7 @@
 ﻿'use strict';
 
 const { resolveHrRolesForUser } = require('./utils/hr-role-provider');
+const { resolveEssRolesForUser } = require('./utils/ess-role-provider');
 const { validateBomWrite, BOM_UID: MFG_BOM_UID } = require('./api/mfg-bom/bom-typing-validator');
 const { runPhase2: runWarehouseBranchPhase2 } = require('./utils/warehouse-branch-migration');
 
@@ -60,6 +61,21 @@ module.exports = {
             }
         } catch (err) {
             strapi.log.error('[bootstrap] HR role provider registration failed: ' + err.message);
+        }
+
+        // ─── Register ESS role provider with api-pro ──────────────────
+        // Derives ess_employee/ess_manager live from hr-employee linkage and
+        // hr-team.team_manager position (see utils/ess-role-provider.js) —
+        // same runtime-wiring rationale as the HR provider above.
+        try {
+            if (typeof strapi.apiPro?.registerRoleProvider === 'function') {
+                strapi.apiPro.registerRoleProvider(resolveEssRolesForUser);
+                strapi.log.info('[bootstrap] Registered ESS role provider with api-pro');
+            } else {
+                strapi.log.warn('[bootstrap] api-pro.registerRoleProvider unavailable; ESS roles will not be merged into /me/permissions');
+            }
+        } catch (err) {
+            strapi.log.error('[bootstrap] ESS role provider registration failed: ' + err.message);
         }
     },
 };

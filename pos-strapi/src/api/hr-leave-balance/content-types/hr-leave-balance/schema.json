@@ -1,0 +1,49 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_leave_balances",
+  "info": {
+    "singularName": "hr-leave-balance",
+    "pluralName": "hr-leave-balances",
+    "displayName": "HR Leave Balance",
+    "description": "Opening/brought-forward balance per employee, leave type and year — accrual and usage are computed live from policy + approved requests"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "leave_type": {
+      "type": "enumeration",
+      "enum": [
+        "Annual",
+        "Sick",
+        "Casual",
+        "Maternity",
+        "Paternity",
+        "Unpaid",
+        "Other"
+      ],
+      "required": true
+    },
+    "year": {
+      "type": "integer",
+      "required": true
+    },
+    "opening_balance": {
+      "type": "decimal",
+      "default": 0
+    },
+    "encashed_days": {
+      "type": "decimal",
+      "default": 0
+    },
+    "notes": {
+      "type": "text"
+    },
+    "employee": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee"
+    }
+  }
+}

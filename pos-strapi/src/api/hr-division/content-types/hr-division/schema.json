@@ -1,0 +1,51 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_divisions",
+  "info": {
+    "singularName": "hr-division",
+    "pluralName": "hr-divisions",
+    "displayName": "HR Division",
+    "description": "Organizational division"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "code": {
+      "type": "string"
+    },
+    "company": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-company.hr-company",
+      "inversedBy": "divisions"
+    },
+    "parent": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-division.hr-division",
+      "inversedBy": "children"
+    },
+    "children": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::hr-division.hr-division",
+      "mappedBy": "parent"
+    },
+    "business_units": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::hr-business-unit.hr-business-unit",
+      "mappedBy": "division"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

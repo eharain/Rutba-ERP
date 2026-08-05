@@ -1,0 +1,56 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_benefit_plans",
+  "info": {
+    "singularName": "hr-benefit-plan",
+    "pluralName": "hr-benefit-plans",
+    "displayName": "HR Benefit Plan",
+    "description": "A benefit plan employees can be enrolled in"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "MedicalInsurance",
+        "Retirement",
+        "ProvidentFund",
+        "Gratuity",
+        "Wellness",
+        "Other"
+      ],
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "employer_contribution_pct": {
+      "type": "decimal"
+    },
+    "employee_contribution_pct": {
+      "type": "decimal"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "company": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-company.hr-company"
+    },
+    "enrollments": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::hr-benefit-enrollment.hr-benefit-enrollment",
+      "mappedBy": "benefit_plan"
+    }
+  }
+}

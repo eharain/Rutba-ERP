@@ -1,0 +1,38 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_certifications",
+  "info": {
+    "singularName": "hr-certification",
+    "pluralName": "hr-certifications",
+    "displayName": "HR Certification",
+    "description": "Employee professional certification"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "issuing_organization": {
+      "type": "string"
+    },
+    "issue_date": {
+      "type": "date"
+    },
+    "expiry_date": {
+      "type": "date"
+    },
+    "credential_id": {
+      "type": "string"
+    },
+    "employee": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee",
+      "inversedBy": "certifications"
+    }
+  }
+}

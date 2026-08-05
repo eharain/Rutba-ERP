@@ -1,0 +1,38 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_emergency_contacts",
+  "info": {
+    "singularName": "hr-emergency-contact",
+    "pluralName": "hr-emergency-contacts",
+    "displayName": "HR Emergency Contact",
+    "description": "Employee emergency contact"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "relationship": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "alt_phone": {
+      "type": "string"
+    },
+    "address": {
+      "type": "text"
+    },
+    "employee": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee",
+      "inversedBy": "emergency_contacts"
+    }
+  }
+}

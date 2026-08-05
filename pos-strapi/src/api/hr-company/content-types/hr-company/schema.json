@@ -1,0 +1,67 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_companies",
+  "info": {
+    "singularName": "hr-company",
+    "pluralName": "hr-companies",
+    "displayName": "HR Company",
+    "description": "Lightweight org-structure company grouping (not tenant isolation)"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "code": {
+      "type": "string",
+      "unique": true
+    },
+    "address": {
+      "type": "text"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "divisions": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::hr-division.hr-division",
+      "mappedBy": "company"
+    },
+    "business_units": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::hr-business-unit.hr-business-unit",
+      "mappedBy": "company"
+    },
+    "cost_centers": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::hr-cost-center.hr-cost-center",
+      "mappedBy": "company"
+    },
+    "branches": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::branch.branch",
+      "mappedBy": "company"
+    },
+    "employees": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::hr-employee.hr-employee",
+      "mappedBy": "company"
+    }
+  }
+}

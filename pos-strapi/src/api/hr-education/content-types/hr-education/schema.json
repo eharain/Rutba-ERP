@@ -1,0 +1,41 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_educations",
+  "info": {
+    "singularName": "hr-education",
+    "pluralName": "hr-educations",
+    "displayName": "HR Education",
+    "description": "Employee education record"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "degree_title": {
+      "type": "string",
+      "required": true
+    },
+    "institution": {
+      "type": "string"
+    },
+    "field_of_study": {
+      "type": "string"
+    },
+    "start_year": {
+      "type": "integer"
+    },
+    "end_year": {
+      "type": "integer"
+    },
+    "grade": {
+      "type": "string"
+    },
+    "employee": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee",
+      "inversedBy": "educations"
+    }
+  }
+}

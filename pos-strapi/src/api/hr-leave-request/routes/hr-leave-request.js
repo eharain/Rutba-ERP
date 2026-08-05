@@ -12,6 +12,11 @@ const customRoutes = [
   },
   {
     method: 'GET',
+    path: '/hr-leave-requests/my-balances',
+    handler: 'api::hr-leave-request.hr-leave-request.myBalances',
+  },
+  {
+    method: 'GET',
     path: '/hr-leave-requests/team-queue',
     handler: 'api::hr-leave-request.hr-leave-request.teamQueue',
   },

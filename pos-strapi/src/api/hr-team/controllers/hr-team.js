@@ -2,6 +2,7 @@
 'use strict';
 
 const { createCoreController } = require('@strapi/strapi').factories;
+const { resolveEmployeeForUser } = require('../../../utils/hr-access');
 
 // â”€â”€ Local slug derivation (no external dependency) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function deriveTeamSlugFromData(data) {
@@ -42,25 +43,6 @@ async function getAppRoleOptions(strapi) {
       description: d.description,
       roles: (d.appRoles || []).map((r) => ({ key: r.key, name: r.name || r.key })),
     }));
-}
-
-async function resolveEmployeeForUser(strapi, user) {
-  if (!user?.id) return null;
-
-  const linked = await strapi.documents('api::hr-employee.hr-employee').findMany({
-    filters: { user: { id: { $eq: user.id } } },
-    fields: ['documentId', 'email'],
-    pagination: { pageSize: 1 },
-  });
-  if (linked?.[0]) return linked[0];
-
-  if (!user?.email) return null;
-  const fallback = await strapi.documents('api::hr-employee.hr-employee').findMany({
-    filters: { email: { $eqi: user.email } },
-    fields: ['documentId', 'email'],
-    pagination: { pageSize: 1 },
-  });
-  return fallback?.[0] || null;
 }
 
 function extractHrRolesFromTeam(team) {

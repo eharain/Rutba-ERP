@@ -1,0 +1,47 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_bank_accounts",
+  "info": {
+    "singularName": "hr-bank-account",
+    "pluralName": "hr-bank-accounts",
+    "displayName": "HR Bank Account",
+    "description": "Employee bank account for salary payout"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "bank_name": {
+      "type": "string",
+      "required": true
+    },
+    "account_title": {
+      "type": "string"
+    },
+    "account_number": {
+      "type": "string"
+    },
+    "iban": {
+      "type": "string"
+    },
+    "branch_name": {
+      "type": "string"
+    },
+    "is_primary": {
+      "type": "boolean",
+      "default": false
+    },
+    "currency": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::currency.currency"
+    },
+    "employee": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee",
+      "inversedBy": "bank_accounts"
+    }
+  }
+}

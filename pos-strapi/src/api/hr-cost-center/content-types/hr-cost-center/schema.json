@@ -1,0 +1,51 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_cost_centers",
+  "info": {
+    "singularName": "hr-cost-center",
+    "pluralName": "hr-cost-centers",
+    "displayName": "HR Cost Center",
+    "description": "Cost attribution center"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "code": {
+      "type": "string"
+    },
+    "company": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-company.hr-company",
+      "inversedBy": "cost_centers"
+    },
+    "business_unit": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-business-unit.hr-business-unit",
+      "inversedBy": "cost_centers"
+    },
+    "parent": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-cost-center.hr-cost-center",
+      "inversedBy": "children"
+    },
+    "children": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::hr-cost-center.hr-cost-center",
+      "mappedBy": "parent"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

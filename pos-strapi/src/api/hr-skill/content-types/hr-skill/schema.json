@@ -1,0 +1,43 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_skills",
+  "info": {
+    "singularName": "hr-skill",
+    "pluralName": "hr-skills",
+    "displayName": "HR Skill",
+    "description": "Employee skill or language proficiency"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "category": {
+      "type": "enumeration",
+      "enum": [
+        "Skill",
+        "Language"
+      ],
+      "default": "Skill"
+    },
+    "proficiency": {
+      "type": "enumeration",
+      "enum": [
+        "Beginner",
+        "Intermediate",
+        "Advanced",
+        "Expert"
+      ]
+    },
+    "employee": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee",
+      "inversedBy": "skills"
+    }
+  }
+}

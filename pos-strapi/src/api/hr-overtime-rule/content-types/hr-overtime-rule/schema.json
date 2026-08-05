@@ -1,0 +1,37 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_overtime_rules",
+  "info": {
+    "singularName": "hr-overtime-rule",
+    "pluralName": "hr-overtime-rules",
+    "displayName": "HR Overtime Rule",
+    "description": "Overtime pay multiplier and daily threshold"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "multiplier": {
+      "type": "decimal",
+      "default": 1.5
+    },
+    "applies_after_hours": {
+      "type": "decimal",
+      "default": 8
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "company": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-company.hr-company"
+    }
+  }
+}

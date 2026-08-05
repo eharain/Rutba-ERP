@@ -1,0 +1,67 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_positions",
+  "info": {
+    "singularName": "hr-position",
+    "pluralName": "hr-positions",
+    "displayName": "HR Position",
+    "description": "An org-chart seat, independent of who currently holds it"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "designation": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-designation.hr-designation",
+      "inversedBy": "positions"
+    },
+    "department": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-department.hr-department"
+    },
+    "job_grade": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-job-grade.hr-job-grade"
+    },
+    "cost_center": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-cost-center.hr-cost-center"
+    },
+    "reports_to_position": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-position.hr-position",
+      "inversedBy": "direct_report_positions"
+    },
+    "direct_report_positions": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::hr-position.hr-position",
+      "mappedBy": "reports_to_position"
+    },
+    "headcount_planned": {
+      "type": "integer",
+      "default": 1
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "employees": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::hr-employee.hr-employee",
+      "mappedBy": "position"
+    }
+  }
+}

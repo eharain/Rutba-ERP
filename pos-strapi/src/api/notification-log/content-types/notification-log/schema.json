@@ -19,7 +19,9 @@
         "wishlist_interest",
         "promotions_offers",
         "customer_support",
-        "stock_management"
+        "stock_management",
+        "hr_workflow",
+        "hr_lifecycle"
       ]
     },
     "priority": { "type": "enumeration", "enum": ["critical", "high", "medium"] },

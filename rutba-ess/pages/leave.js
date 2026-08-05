@@ -3,12 +3,12 @@ import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { HrLeaveRequestsEndpoints } from "@rutba/api-provider/endpoints";
-
-const LEAVE_TYPES = ["Annual", "Sick", "Casual", "Maternity", "Paternity", "Unpaid", "Other"];
+import EnumSelect from "@rutba/pos-shared/components/EnumSelect";
 
 export default function MyLeave() {
     const { jwt } = useAuth();
     const [leaves, setLeaves] = useState([]);
+    const [balances, setBalances] = useState([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [actionLoading, setActionLoading] = useState({});
@@ -19,8 +19,12 @@ export default function MyLeave() {
     async function load() {
         setLoading(true);
         try {
-            const res = await HrLeaveRequestsEndpoints.listMyRequests();
-            setLeaves(res?.data || []);
+            const [leaveRes, balanceRes] = await Promise.all([
+                HrLeaveRequestsEndpoints.listMyRequests(),
+                HrLeaveRequestsEndpoints.listMyBalances(),
+            ]);
+            setLeaves(leaveRes?.data || []);
+            setBalances(balanceRes?.data || []);
         } catch (err) {
             console.error("Failed to load leave", err);
         } finally {
@@ -70,6 +74,29 @@ export default function MyLeave() {
             <Layout>
                 <h2 className="mb-3">My Leave</h2>
 
+                {!loading && balances.some((b) => b.policy) && (
+                    <div className="card mb-4">
+                        <div className="card-header bg-light fw-semibold">Leave Balance ({new Date().getFullYear()})</div>
+                        <div className="card-body p-0">
+                            <table className="table table-sm mb-0">
+                                <thead>
+                                    <tr><th>Type</th><th className="text-end">Accrued</th><th className="text-end">Used</th><th className="text-end">Remaining</th></tr>
+                                </thead>
+                                <tbody>
+                                    {balances.filter((b) => b.policy).map((b) => (
+                                        <tr key={b.leave_type}>
+                                            <td>{b.leave_type}</td>
+                                            <td className="text-end">{(b.opening_balance + b.accrued_days).toFixed(1)}</td>
+                                            <td className="text-end">{b.used_days.toFixed(1)}</td>
+                                            <td className="text-end fw-semibold">{b.remaining_days.toFixed(1)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
                 <div className="card mb-4">
                     <div className="card-header bg-light fw-semibold">Apply for Leave</div>
                     <div className="card-body">
@@ -77,9 +104,12 @@ export default function MyLeave() {
                             <div className="row g-2 align-items-end">
                                 <div className="col-md-2">
                                     <label className="form-label">Type</label>
-                                    <select className="form-select" value={form.leave_type} onChange={(e) => setForm((p) => ({ ...p, leave_type: e.target.value }))}>
-                                        {LEAVE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                                    </select>
+                                    <EnumSelect
+                                        name="hr-leave-request"
+                                        field="leave_type"
+                                        value={form.leave_type}
+                                        onChange={(e) => setForm((p) => ({ ...p, leave_type: e.target.value }))}
+                                    />
                                 </div>
                                 <div className="col-md-2">
                                     <label className="form-label">From</label>

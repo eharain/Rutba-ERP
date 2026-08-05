@@ -57,6 +57,19 @@ dependency tree stays isolated from the frontend workspaces.
 ## Commands
 
 ```bash
+npm run dev:core                             # nodemon — restarts on any watched source change
+npm run start:core                           # plain node, no watcher (what deploys run)
+```
+
+`dev` runs under nodemon (`rutba-core/nodemon.json`). The watch list is wider
+than `src/` on purpose: core `require`s pos-strapi controllers/services/utils
+zero-copy through `posRequire()` and loads the api-pro plugin's own service
+modules from `packages/strapi-api-pro/server/src`. Node caches those requires,
+so an edit on either side is invisible until the process restarts — hence they
+are watched too. `pos-strapi/src/admin` and `src/seed/data` are ignored (admin
+panel code core never loads; JSON fixture blobs).
+
+```bash
 node rutba-core/scripts/validate-schema.js   # diff derived schema vs live DB (must stay clean)
 node rutba-core/scripts/smoke-documents.js   # read-path smoke, cross-checked against raw SQL
 node rutba-core/scripts/smoke-writes.js      # write-path smoke, marker rows, self-cleaning

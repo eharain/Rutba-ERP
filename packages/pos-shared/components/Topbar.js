@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { APP_URLS, APP_META } from "../lib/roles";
 import RoleSwitcher from "./RoleSwitcher";
 import NavAppSwitcher from "./NavAppSwitcher";
+import NotificationBell from "./NotificationBell";
 
 /**
  * Shared slim top bar used alongside the left Sidebar rail.
@@ -88,6 +89,7 @@ export default function Topbar({
             <div className="topbar-actions">
                 <NavAppSwitcher currentApp={currentApp} />
                 {showRoleSwitcher && <RoleSwitcher />}
+                <NotificationBell />
 
                 {user ? (
                     <div className="nav-item dropdown topbar-user">

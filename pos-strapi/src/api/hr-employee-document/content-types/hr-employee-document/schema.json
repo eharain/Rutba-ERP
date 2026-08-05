@@ -1,0 +1,53 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_employee_documents",
+  "info": {
+    "singularName": "hr-employee-document",
+    "pluralName": "hr-employee-documents",
+    "displayName": "HR Employee Document",
+    "description": "Typed employee document attachment (resume, CNIC, passport, license, certificate)"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "document_type": {
+      "type": "enumeration",
+      "enum": [
+        "Resume",
+        "CNIC",
+        "Passport",
+        "DrivingLicense",
+        "Certificate",
+        "Other"
+      ],
+      "required": true
+    },
+    "title": {
+      "type": "string"
+    },
+    "file": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images",
+        "files"
+      ]
+    },
+    "expiry_date": {
+      "type": "date"
+    },
+    "employee": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee",
+      "inversedBy": "documents"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

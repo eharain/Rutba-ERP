@@ -41,6 +41,16 @@
       "type": "relation",
       "relation": "manyToOne",
       "target": "plugin::users-permissions.user"
+    },
+    "category": {
+      "type": "enumeration",
+      "enum": ["General", "IT", "HR", "Facilities"],
+      "default": "General"
+    },
+    "employee": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee"
     }
   }
 }

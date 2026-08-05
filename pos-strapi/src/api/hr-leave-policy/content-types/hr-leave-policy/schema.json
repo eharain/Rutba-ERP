@@ -1,0 +1,75 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_leave_policies",
+  "info": {
+    "singularName": "hr-leave-policy",
+    "pluralName": "hr-leave-policies",
+    "displayName": "HR Leave Policy",
+    "description": "Quota, accrual, carry-forward and encashment rules per leave type"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "leave_type": {
+      "type": "enumeration",
+      "enum": [
+        "Annual",
+        "Sick",
+        "Casual",
+        "Maternity",
+        "Paternity",
+        "Unpaid",
+        "Other"
+      ],
+      "required": true
+    },
+    "annual_quota_days": {
+      "type": "decimal",
+      "default": 0
+    },
+    "accrual_method": {
+      "type": "enumeration",
+      "enum": [
+        "Yearly",
+        "Monthly",
+        "None"
+      ],
+      "default": "Yearly"
+    },
+    "accrual_rate_per_period": {
+      "type": "decimal",
+      "default": 0
+    },
+    "carry_forward_allowed": {
+      "type": "boolean",
+      "default": false
+    },
+    "max_carry_forward_days": {
+      "type": "decimal",
+      "default": 0
+    },
+    "encashment_allowed": {
+      "type": "boolean",
+      "default": false
+    },
+    "max_encashment_days": {
+      "type": "decimal",
+      "default": 0
+    },
+    "requires_approval": {
+      "type": "boolean",
+      "default": true
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "company": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-company.hr-company"
+    }
+  }
+}

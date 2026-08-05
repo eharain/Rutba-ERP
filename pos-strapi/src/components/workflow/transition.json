@@ -20,6 +20,15 @@
     },
     "approles": {
       "type": "string"
+    },
+    "approver_role": {
+      "type": "string"
+    },
+    "delegate_to_role": {
+      "type": "string"
+    },
+    "sla_hours": {
+      "type": "integer"
     }
   }
 }

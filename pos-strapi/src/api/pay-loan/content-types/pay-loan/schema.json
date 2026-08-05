@@ -1,0 +1,79 @@
+{
+  "kind": "collectionType",
+  "collectionName": "pay_loans",
+  "info": {
+    "singularName": "pay-loan",
+    "pluralName": "pay-loans",
+    "displayName": "Pay Loan",
+    "description": "An employee loan, repaid via payslip deductions"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "principal_amount": {
+      "type": "decimal",
+      "required": true
+    },
+    "interest_rate": {
+      "type": "decimal",
+      "default": 0
+    },
+    "installments_count": {
+      "type": "integer",
+      "default": 1
+    },
+    "installment_amount": {
+      "type": "decimal",
+      "default": 0
+    },
+    "amount_repaid": {
+      "type": "decimal",
+      "default": 0
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Requested",
+        "Approved",
+        "Rejected",
+        "Active",
+        "Closed"
+      ],
+      "default": "Requested"
+    },
+    "start_date": {
+      "type": "date"
+    },
+    "reason": {
+      "type": "text"
+    },
+    "rejection_reason": {
+      "type": "text"
+    },
+    "decided_at": {
+      "type": "datetime"
+    },
+    "decided_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "employee": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee"
+    },
+    "currency": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::currency.currency"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

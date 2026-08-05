@@ -11,24 +11,7 @@
 // Mirrors the logic in api/hr-team/controllers/hr-team.js:getMembershipContext()
 // but doesn't depend on that file (which is a Strapi-managed controller).
 
-async function resolveEmployeeForUser(strapi, user) {
-  if (!user?.id) return null;
-
-  const linked = await strapi.documents('api::hr-employee.hr-employee').findMany({
-    filters: { user: { id: { $eq: user.id } } },
-    fields: ['documentId'],
-    pagination: { pageSize: 1 },
-  });
-  if (linked?.[0]) return linked[0];
-
-  if (!user?.email) return null;
-  const fallback = await strapi.documents('api::hr-employee.hr-employee').findMany({
-    filters: { email: { $eqi: user.email } },
-    fields: ['documentId'],
-    pagination: { pageSize: 1 },
-  });
-  return fallback?.[0] || null;
-}
+const { resolveEmployeeForUser } = require('./hr-access');
 
 function extractHrRolesFromTeam(team) {
   const roles = Array.isArray(team?.app_roles) ? team.app_roles : [];

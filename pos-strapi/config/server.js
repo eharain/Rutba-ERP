@@ -1,5 +1,7 @@
 const buildSocialCronTasks = require('./cron-tasks');
 const buildInventoryCronTasks = require('./inventory-cron-tasks');
+const buildWorkflowCronTasks = require('./workflow-cron-tasks');
+const buildHrCronTasks = require('./hr-cron-tasks');
 
 module.exports = ({ env }) => ({
     host: env('HOST', '0.0.0.0'),
@@ -49,6 +51,16 @@ module.exports = ({ env }) => ({
                 ? buildInventoryCronTasks({
                     expirySweepRule: env('INVENTORY_EXPIRY_SWEEP_RULE', '15 2 * * *'),
                     lowStockAlertRule: env('INVENTORY_LOW_STOCK_ALERT_RULE', '30 2 * * *'),
+                })
+                : {}),
+            ...(env.bool('WORKFLOW_CRON_ENABLED', true)
+                ? buildWorkflowCronTasks({
+                    slaSweepRule: env('WORKFLOW_SLA_SWEEP_RULE', '*/15 * * * *'),
+                })
+                : {}),
+            ...(env.bool('HR_CRON_ENABLED', true)
+                ? buildHrCronTasks({
+                    birthdayCheckRule: env('HR_BIRTHDAY_CHECK_RULE', '0 7 * * *'),
                 })
                 : {}),
         },

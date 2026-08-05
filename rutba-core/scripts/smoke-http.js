@@ -10,11 +10,14 @@
  * and one that has none (expect 403 via denyByDefault).
  */
 
+const path = require('path');
+const fs = require('fs');
 const jwt = require('jsonwebtoken');
 const { get } = require('../src/config/env');
 const { getDb, closeDb } = require('../src/db/connection');
 const { buildCompatStrapi } = require('../src/compat/strapi');
 const { initModules } = require('../src/modules');
+const { resolvePublicDir } = require('../src/http/uploads');
 const { start } = require('../src/http/server');
 
 const PORT = 4021;
@@ -177,18 +180,66 @@ async function main() {
     // `files` rows store relative urls, so the API server is also the image
     // server. Served from PUBLIC_DIR/uploads, with a 302 to MEDIA_BASE_URL for
     // files that live only there.
-    const someFiles = await db('files').select('url').whereNotNull('url')
-      .orderByRaw('RAND()').limit(5);
-    const results = await Promise.all(someFiles.map(async (f) => {
-      const res = await fetch(`http://127.0.0.1:${PORT}${f.url}`, { redirect: 'follow' });
-      return { url: f.url, status: res.status, type: res.headers.get('content-type') };
+    //
+    // Both the sample and the expectation are pinned, because neither used to
+    // be: RAND() plus redirect:'follow' turned this into an assertion about
+    // what the media host happens to be holding right now, and it failed
+    // whenever the roll picked a row that host has no bytes for. Now the sample
+    // is the oldest and newest rows by id (stable across runs, and spanning
+    // both eras of the upload provider), and each row is checked against the
+    // branch it actually belongs to — on disk → 200, not on disk → the redirect
+    // itself, never followed. Nothing here leaves the machine.
+    const uploadsDir = path.join(resolvePublicDir(), 'uploads');
+    const mediaBaseUrl = String(get('MEDIA_BASE_URL', '') || '').replace(/\/+$/, '');
+    const ends = await Promise.all(['asc', 'desc'].map((dir) =>
+      db('files').select('id', 'url').where('url', 'like', '/uploads/%')
+        .orderBy('id', dir).limit(5)));
+    const sample = ends.flat().filter((f, i, all) => all.findIndex((o) => o.id === f.id) === i);
+    check('sampled `files` rows to serve', sample.length > 0, 'no /uploads rows in `files`');
+
+    const results = await Promise.all(sample.map(async (f) => {
+      // koa-send decodes before hitting the filesystem; mirror it so a url with
+      // escapes is not misfiled as "not on disk".
+      let rel = f.url.slice('/uploads/'.length);
+      try { rel = decodeURIComponent(rel); } catch {}
+      const res = await fetch(`http://127.0.0.1:${PORT}${f.url}`, { redirect: 'manual' });
+      return {
+        url: f.url,
+        local: fs.existsSync(path.join(uploadsDir, rel)),
+        status: res.status,
+        location: res.headers.get('location'),
+        type: res.headers.get('content-type'),
+      };
     }));
-    const broken = results.filter((r) => r.status !== 200);
-    check('files from the table resolve through /uploads', broken.length === 0,
+    const onDisk = results.filter((r) => r.local);
+    const remote = results.filter((r) => !r.local);
+    console.log(`  info  uploads sample: ${onDisk.length} on disk, ${remote.length} not`);
+
+    const broken = onDisk.filter((r) => r.status !== 200);
+    check('files present under PUBLIC_DIR/uploads are served', broken.length === 0,
       broken.map((b) => `${b.url} -> ${b.status}`).join(', '));
     check('served with an image content-type',
-      results.every((r) => r.status !== 200 || /^(image|video|application)\//.test(r.type || '')),
-      results.map((r) => r.type).join(', '));
+      onDisk.every((r) => r.status !== 200 || /^(image|video|application)\//.test(r.type || '')),
+      onDisk.map((r) => r.type).join(', '));
+    // Not on disk: assert the handoff, not the media host's inventory. With no
+    // MEDIA_BASE_URL configured there is nowhere to hand off to, so 404 is the
+    // contract instead.
+    const handedOff = (r) => (mediaBaseUrl
+      ? r.status === 302 && r.location === `${mediaBaseUrl}${r.url}`
+      : r.status === 404);
+    const branch = mediaBaseUrl ? 'redirect to the media host' : '404 (no MEDIA_BASE_URL)';
+    const misrouted = remote.filter((r) => !handedOff(r));
+    check(`sampled files not on disk ${branch}`, misrouted.length === 0,
+      misrouted.map((b) => `${b.url} -> ${b.status} ${b.location || ''}`).join(', '));
+
+    // The sample can legitimately be all-local (it currently is), which would
+    // leave the check above passing on an empty set. This probe covers the
+    // fallback branch itself with a name that cannot be on disk.
+    const absent = '/uploads/__rutba_core_smoke_absent__.png';
+    const miss = await fetch(`http://127.0.0.1:${PORT}${absent}`, { redirect: 'manual' });
+    check(`an unknown /uploads name ${branch}`,
+      handedOff({ url: absent, status: miss.status, location: miss.headers.get('location') }),
+      `${miss.status} ${miss.headers.get('location') || ''}`);
     const traversal = await fetch(`http://127.0.0.1:${PORT}/uploads/../../../package.json`,
       { redirect: 'manual' });
     check('/uploads refuses path traversal', traversal.status !== 200, `got ${traversal.status}`);

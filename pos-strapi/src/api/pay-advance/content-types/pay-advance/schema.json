@@ -1,0 +1,67 @@
+{
+  "kind": "collectionType",
+  "collectionName": "pay_advances",
+  "info": {
+    "singularName": "pay-advance",
+    "pluralName": "pay-advances",
+    "displayName": "Pay Advance",
+    "description": "A salary advance, recovered from a future payslip"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "amount": {
+      "type": "decimal",
+      "required": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Requested",
+        "Approved",
+        "Rejected",
+        "Recovered"
+      ],
+      "default": "Requested"
+    },
+    "requested_date": {
+      "type": "date"
+    },
+    "reason": {
+      "type": "text"
+    },
+    "rejection_reason": {
+      "type": "text"
+    },
+    "decided_at": {
+      "type": "datetime"
+    },
+    "decided_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "recovery_payslip": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::pay-payslip.pay-payslip"
+    },
+    "employee": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee"
+    },
+    "currency": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::currency.currency"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

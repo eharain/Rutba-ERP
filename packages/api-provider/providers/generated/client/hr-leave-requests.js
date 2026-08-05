@@ -17,6 +17,11 @@ async function listMyRequests() {
     return authApi.fetch(ep.path, ep.params);
 }
 
+async function listMyBalances(year) {
+    const ep = HrLeaveRequestsEndpointsApi.listMyBalances(year);
+    return authApi.fetch(ep.path, ep.params);
+}
+
 async function listTeamQueue() {
     const ep = HrLeaveRequestsEndpointsApi.listTeamQueue();
     return authApi.fetch(ep.path, ep.params);
@@ -53,6 +58,7 @@ const endpoints = strictEndpointGuard(
         list,
         byId,
         listMyRequests,
+        listMyBalances,
         listTeamQueue,
         create,
         update,
@@ -61,7 +67,7 @@ const endpoints = strictEndpointGuard(
         cancel,
         meta: HrLeaveRequestsEndpointsApi.meta,
     },
-    ["list","byId","listMyRequests","listTeamQueue","create","update","approve","reject","cancel","meta"],
+    ["list","byId","listMyRequests","listMyBalances","listTeamQueue","create","update","approve","reject","cancel","meta"],
 );
 
 export default endpoints;

@@ -4,6 +4,7 @@ const SECONDARY = [
     { href: "/employees",              label: "Employees",     variant: "primary"   },
     { href: "/departments",            label: "Departments",   variant: "info"      },
     { href: "/teams",                  label: "Teams",         variant: "success"   },
+    { href: "/org-structure",          label: "Org Structure", variant: "light"     },
     { href: "/hr-team-management",     label: "Team Mgmt",     variant: "dark"      },
     { href: "/hr-employee-management", label: "Employee Mgmt", variant: "secondary" },
     { href: "/leave-requests",         label: "Leave Requests",variant: "warning"   },

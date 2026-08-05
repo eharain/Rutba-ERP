@@ -1,0 +1,38 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_designations",
+  "info": {
+    "singularName": "hr-designation",
+    "pluralName": "hr-designations",
+    "displayName": "HR Designation",
+    "description": "Job title / designation"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "code": {
+      "type": "string"
+    },
+    "description": {
+      "type": "text"
+    },
+    "job_grade": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-job-grade.hr-job-grade",
+      "inversedBy": "designations"
+    },
+    "positions": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::hr-position.hr-position",
+      "mappedBy": "designation"
+    }
+  }
+}
