@@ -39,6 +39,54 @@ export const HrEmployeesEndpoints = {
         approle: ['admin', 'manager', 'staff', 'user'],
     }),
 
+    /**
+     * Org chart. `view` is 'reporting' (default) or 'team' — the node shape is
+     * identical, so one component renders both. Open to every level: HR gets the
+     * whole org, anyone else is rooted on themselves server-side. `root` is
+     * honoured for HR only.
+     */
+    getOrgChart: ({ view, root, depth } = {}) => ({
+        path: '/hr-employees/org-chart',
+        action: 'orgChart',
+        method: 'get',
+        apps: ['hr', 'ess'],
+        approle: ['admin', 'manager', 'staff', 'user'],
+        params: {
+            ...(view ? { view } : {}),
+            ...(root ? { root } : {}),
+            ...(depth ? { depth } : {}),
+        },
+    }),
+
+    /** Employees with no `reports_to` yet — the reporting-line backfill gap (HR only). */
+    listWithoutReportingLine: () => ({
+        path: '/hr-employees/without-reporting-line',
+        action: 'withoutReportingLine',
+        method: 'get',
+        apps: ['hr'],
+        approle: ['admin', 'manager'],
+    }),
+
+    /**
+     * Backfill `reports_to` from the team graph where unambiguous. Defaults to
+     * a dry run.
+     *
+     * NOTE the exported name starts with `run`: the api-pro seeder only picks up
+     * descriptor methods whose NAME matches its verb-prefix whitelist, and
+     * "backfill" is not on it. A non-matching name is skipped silently, so the
+     * policy row is never created and the route 403s forever. `action` below
+     * still carries the real controller handler name, which is what api-pro
+     * matches at request time.
+     */
+    runReportingLineBackfill: (dryRun = true) => ({
+        path: '/hr-employees/backfill-reporting-line',
+        action: 'backfillReportingLine',
+        method: 'post',
+        apps: ['hr'],
+        approle: ['admin', 'manager'],
+        params: { dry_run: dryRun ? 'true' : 'false' },
+    }),
+
     // Read access is shared with the apps that reference employees (assignee /
     // supervisor / worker-profile pickers); writes stay HR-only.
     list: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({

@@ -99,13 +99,47 @@ function isHrManager(ctx, user) {
   return roleKey ? HR_MANAGER_ROLE_KEYS.has(roleKey) : false;
 }
 
+const MAX_GRAPH_DEPTH = 10;
+
 /**
- * Employee documentIds the given employee manages as a line manager: members
+ * Employee documentIds below the given employee on the REPORTING LINE, walked
+ * transitively down `direct_reports`. Excludes the employee.
+ *
+ * Depth-bounded and visited-guarded: `reports_to` is HR-editable and nothing
+ * stops someone entering a cycle (A reports to B reports to A). A cycle must
+ * not hang the request that asked "can this person approve?".
+ */
+async function reportingLineDocIds(strapi, employeeDocId) {
+  if (!employeeDocId) return [];
+
+  const seen = new Set();
+  let frontier = [employeeDocId];
+
+  for (let depth = 0; depth < MAX_GRAPH_DEPTH && frontier.length; depth++) {
+    const rows = await strapi.documents(EMP_UID).findMany({
+      filters: { reports_to: { documentId: { $in: frontier } } },
+      fields: ['documentId'],
+      pagination: { pageSize: 1000 },
+    });
+    const next = [];
+    for (const r of rows || []) {
+      if (r.documentId && !seen.has(r.documentId) && r.documentId !== employeeDocId) {
+        seen.add(r.documentId);
+        next.push(r.documentId);
+      }
+    }
+    frontier = next;
+  }
+  return Array.from(seen);
+}
+
+/**
+ * Employee documentIds the given employee manages via the TEAM graph: members
  * (and sub-managers) of every team they are `team_manager` of, transitively
  * down the `parent_team` → `child_teams` hierarchy. Excludes the manager.
- * Returns [] when the employee manages nothing.
+ * Returns [] when the employee manages no team.
  */
-async function managedReportDocIds(strapi, employeeDocId) {
+async function teamManagedDocIds(strapi, employeeDocId) {
   if (!employeeDocId) return [];
 
   const seed = await strapi.documents(TEAM_UID).findMany({
@@ -118,7 +152,7 @@ async function managedReportDocIds(strapi, employeeDocId) {
 
   // Expand descendants (bounded BFS over child_teams).
   let frontier = Array.from(teamDocIds);
-  for (let depth = 0; depth < 10 && frontier.length; depth++) {
+  for (let depth = 0; depth < MAX_GRAPH_DEPTH && frontier.length; depth++) {
     const rows = await strapi.documents(TEAM_UID).findMany({
       filters: { documentId: { $in: frontier } },
       fields: ['documentId'],
@@ -148,6 +182,40 @@ async function managedReportDocIds(strapi, employeeDocId) {
   }
   reports.delete(employeeDocId);
   return Array.from(reports);
+}
+
+/**
+ * Employee documentIds the given employee has line-manager authority over.
+ *
+ * The UNION of the reporting line (`reports_to`/`direct_reports`) and the team
+ * graph (`hr-team.team_manager`). Every "whose records may this person act on?"
+ * check in the HR/pay modules funnels through here — leave, attendance,
+ * payslips, bonuses, loans, advances, expense claims, tickets, appraisals,
+ * training completion, compliance — so this is the single switch that decides
+ * what a line manager can reach.
+ *
+ * Why the union rather than the reporting line alone: `reports_to` shipped as a
+ * schema field that nothing read, so it is only partially populated. Going
+ * reporting-line-only before it is backfilled would leave anyone with a blank
+ * `reports_to` with NO approver at all — their requests would sit in a queue no
+ * one can see. The union means nothing that works today stops working, and the
+ * reporting line starts granting authority the moment HR fills it in.
+ *
+ * Once `hr-employees/without-reporting-line` returns empty, this can collapse to
+ * `reportingLineDocIds` alone. See docs/todo/hr-org-chart-and-reporting-line.md.
+ *
+ * NOTE: grievances deliberately do NOT use this — a grievance is frequently
+ * about the reporting manager, so its queue stays HR-claim only.
+ */
+async function managedReportDocIds(strapi, employeeDocId) {
+  if (!employeeDocId) return [];
+  const [line, team] = await Promise.all([
+    reportingLineDocIds(strapi, employeeDocId),
+    teamManagedDocIds(strapi, employeeDocId),
+  ]);
+  const merged = new Set([...line, ...team]);
+  merged.delete(employeeDocId);
+  return Array.from(merged);
 }
 
 // Normalise however a relation arrives on a write payload -> {id}|{documentId}|null.
@@ -211,6 +279,9 @@ module.exports = {
   resolveOrCreateEmployeeForUser,
   isHrManager,
   managedReportDocIds,
+  reportingLineDocIds,
+  teamManagedDocIds,
   managerUserIdsForEmployee,
   ownerUserIdForEmployeeRef,
+  MAX_GRAPH_DEPTH,
 };

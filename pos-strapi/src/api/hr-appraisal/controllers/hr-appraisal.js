@@ -169,6 +169,16 @@ module.exports = createCoreController(APP_UID, ({ strapi }) => ({
       const ownerId = await ownerUserIdForEmployeeRef(strapi, data.employee);
       if (ownerId) data.owners = [ownerId];
     }
+    // Default the reviewer to the employee's line manager. Still overridable —
+    // skip-level and matrix reviews are legitimate — but the common case
+    // shouldn't need HR to restate what the org chart already says.
+    if (!data.reviewer && typeof data.employee === 'string') {
+      const emp = await strapi.documents('api::hr-employee.hr-employee').findOne({
+        documentId: data.employee,
+        populate: { reports_to: { fields: ['documentId'] } },
+      });
+      if (emp?.reports_to?.documentId) data.reviewer = emp.reports_to.documentId;
+    }
     ctx.request.body.data = data;
     return super.create(ctx);
   },

@@ -5,6 +5,7 @@ const SECTIONS = [
     { href: "/departments",            label: "Departments",         icon: "fa-building" },
     { href: "/teams",                  label: "Teams",               icon: "fa-people-group" },
     { href: "/org-structure",          label: "Org Structure",       icon: "fa-sitemap" },
+    { href: "/org-chart",              label: "Org Chart",           icon: "fa-diagram-project" },
     { href: "/lifecycle-events",       label: "Lifecycle Events",    icon: "fa-timeline" },
     { href: "/assets",                 label: "Assets",              icon: "fa-laptop" },
     { href: "/tickets",                label: "Helpdesk",            icon: "fa-headset" },

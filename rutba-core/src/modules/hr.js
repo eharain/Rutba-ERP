@@ -187,6 +187,9 @@ function registerHrModule() {
     { method: 'get', path: '/api/hr-employees/me', uid: EMP, action: 'myProfile', handler: (c) => employee.myProfile(c) },
     { method: 'put', path: '/api/hr-employees/me', uid: EMP, action: 'updateMyProfile', handler: (c) => employee.updateMyProfile(c) },
     { method: 'get', path: '/api/hr-employees/dashboard', uid: EMP, action: 'dashboard', handler: (c) => employee.dashboard(c) },
+    { method: 'get', path: '/api/hr-employees/org-chart', uid: EMP, action: 'orgChart', handler: (c) => employee.orgChart(c) },
+    { method: 'get', path: '/api/hr-employees/without-reporting-line', uid: EMP, action: 'withoutReportingLine', handler: (c) => employee.withoutReportingLine(c) },
+    { method: 'post', path: '/api/hr-employees/backfill-reporting-line', uid: EMP, action: 'backfillReportingLine', handler: (c) => employee.backfillReportingLine(c) },
 
     { method: 'get', path: '/api/hr-attendances/my-attendance', uid: ATT, action: 'myAttendance', handler: (c) => attendance.myAttendance(c) },
     { method: 'get', path: '/api/hr-attendances/team-attendance', uid: ATT, action: 'teamAttendance', handler: (c) => attendance.teamAttendance(c) },

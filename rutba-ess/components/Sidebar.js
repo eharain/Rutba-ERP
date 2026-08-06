@@ -17,6 +17,7 @@ const SECTIONS = [
     { href: "/wellbeing",  label: "Raise a Concern", icon: "fa-comment-dots" },
     { href: "/profile",    label: "My Profile",    icon: "fa-id-card" },
     { href: "/timeline",   label: "My Timeline",   icon: "fa-timeline" },
+    { href: "/org-chart",  label: "Where I Sit",   icon: "fa-diagram-project" },
     { divider: true },
     { href: "/approvals",  label: "Approvals",     icon: "fa-clipboard-check" },
 ];
