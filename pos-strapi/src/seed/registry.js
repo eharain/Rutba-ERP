@@ -43,6 +43,7 @@ const repairOrphanedLeaveRequests = require('./ess-orphaned-leave-repair');
 const { applyReturnPolicy } = require('./seeders/return-policy');
 const { applyCostChangeApprovalTemplate } = require('./seeders/cost-change-approval-template');
 const { applyOrderPlacedTeamAlert } = require('./seeders/order-placed-team-alert');
+const { applyHrNotificationTemplates } = require('./seeders/hr-notification-templates');
 const { applyNotificationTemplateRouting } = require('./seeders/notification-template-routing');
 const { seedDefaultWorkflows } = require('./seeders/default-workflows');
 const { backfillInventoryFoundation } = require('./seeders/inventory-foundation');
@@ -248,6 +249,22 @@ const REGISTRY = [
         supportsFull: true,
         hasMigration: true,
         run: (strapi) => applyOrderPlacedTeamAlert(strapi.db.connection),
+    },
+    // HR/ESS in-app notification templates. Essential: the HR module's trigger
+    // sites fire against these by name, and with no matching row the engine
+    // resolves no recipients and drops the event silently — so a fresh DB would
+    // look like HR notifications simply don't work. Kept out of
+    // notification-template.json deliberately: that file is revertOnSeed, which
+    // would clobber any wording HR has tuned.
+    {
+        key: 'hr-notification-templates',
+        title: 'HR notification templates (leave, payroll, lifecycle, safety, documents)',
+        category: 'reference',
+        essential: true,
+        supportsPartial: true,
+        supportsFull: true,
+        hasMigration: true,
+        run: (strapi) => applyHrNotificationTemplates(strapi.db.connection),
     },
     // Definable workflows for manufacturing (work orders) + order management
     // (sale orders, return requests). Essential so a fresh DB comes up with the

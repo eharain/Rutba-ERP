@@ -28,16 +28,30 @@
  * @param {import('knex').Knex} knex
  * @returns {Promise<{created:number, skipped:number}>}
  */
+const { generateDocumentId } = require('./hr-notification-templates');
+
 async function applyOrderPlacedTeamAlert(knex) {
     const tableExists = await knex.schema.hasTable('notification_templates');
     if (!tableExists) return { created: 0, skipped: 0 };
 
     const name = 'New Order Placed (Order Management Team)';
     const existing = await knex('notification_templates').where({ name }).limit(1);
-    if (existing.length > 0) return { created: 0, skipped: 1 };
+    if (existing.length > 0) {
+        // A row inserted before document_id was generated is present but cannot
+        // be used as a relation target, so notification-engine.processEvent
+        // throws "Invalid relations" and the alert is silently never delivered.
+        if (existing[0].document_id == null) {
+            await knex('notification_templates')
+                .where({ id: existing[0].id })
+                .update({ document_id: generateDocumentId() });
+            return { created: 0, skipped: 0, repaired: 1 };
+        }
+        return { created: 0, skipped: 1 };
+    }
 
     const now = new Date();
     await knex('notification_templates').insert({
+        document_id: generateDocumentId(),
         name,
         event_name: 'order.placed.internal',
         trigger_event: 'order_placed',

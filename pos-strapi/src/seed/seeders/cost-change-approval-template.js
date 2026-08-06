@@ -15,16 +15,30 @@
  * @param {import('knex').Knex} knex
  * @returns {Promise<{created:number, skipped:number}>}
  */
+const { generateDocumentId } = require('./hr-notification-templates');
+
 async function applyCostChangeApprovalTemplate(knex) {
     const tableExists = await knex.schema.hasTable('notification_templates');
     if (!tableExists) return { created: 0, skipped: 0 };
 
     const name = 'Order Cost Change Approval (Buyer)';
     const existing = await knex('notification_templates').where({ name }).limit(1);
-    if (existing.length > 0) return { created: 0, skipped: 1 };
+    if (existing.length > 0) {
+        // Present but unusable as a relation target if it predates document_id
+        // generation — processEvent then throws "Invalid relations" and the
+        // approval mail is silently never sent.
+        if (existing[0].document_id == null) {
+            await knex('notification_templates')
+                .where({ id: existing[0].id })
+                .update({ document_id: generateDocumentId() });
+            return { created: 0, skipped: 0, repaired: 1 };
+        }
+        return { created: 0, skipped: 1 };
+    }
 
     const now = new Date();
     await knex('notification_templates').insert({
+        document_id: generateDocumentId(),
         name,
         event_name: 'order.cost_change',
         trigger_event: 'cost_change_approval',
