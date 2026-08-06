@@ -56,6 +56,15 @@
       "type": "boolean",
       "default": true
     },
+    "overtime_eligible": {
+      "type": "boolean",
+      "default": true
+    },
+    "overtime_rule": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-overtime-rule.hr-overtime-rule"
+    },
     "branch": {
       "type": "relation",
       "relation": "manyToOne",

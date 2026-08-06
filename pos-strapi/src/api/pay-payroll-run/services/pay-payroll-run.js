@@ -19,6 +19,7 @@
  */
 
 const { createCoreService } = require('@strapi/strapi').factories;
+const { calendarForEmployee, countWorkingDays } = require('../../../utils/working-days');
 
 const PR_UID = 'api::pay-payroll-run.pay-payroll-run';
 const PS_UID = 'api::pay-payslip.pay-payslip';
@@ -27,6 +28,13 @@ const PROFILE_UID = 'api::pay-employee-profile.pay-employee-profile';
 const TASK_UID = 'api::mfg-task.mfg-task';
 const LEAVE_UID = 'api::hr-leave-request.hr-leave-request';
 const ADJ_UID = 'api::pay-adjustment.pay-adjustment';
+const ATT_UID = 'api::hr-attendance.hr-attendance';
+const OT_RULE_UID = 'api::hr-overtime-rule.hr-overtime-rule';
+
+// Hours a full day is assumed to be when an overtime rule leaves the daily
+// threshold blank — also the divisor that turns a daily/monthly rate into an
+// hourly one.
+const DEFAULT_STANDARD_HOURS = 8;
 
 const PAYOUT_METHOD_KEY = {
     Cash: 'CASH_DRAWER',
@@ -283,7 +291,12 @@ module.exports = createCoreService(PR_UID, ({ strapi }) => ({
     async _selectEmployees(branchId) {
         const employees = await strapi.documents(EMP_UID).findMany({
             filters: { status: 'Active' },
-            populate: { salary_structure: { populate: { salary_components: true } } },
+            populate: {
+                salary_structure: { populate: { salary_components: true } },
+                // Scopes the employee's overtime rule (and is cheap here — the
+                // alternative is one lookup per employee inside _gather).
+                company: { fields: ['id'] },
+            },
             pagination: { pageSize: 2000 },
         });
         if (!branchId) return employees;
@@ -299,7 +312,10 @@ module.exports = createCoreService(PR_UID, ({ strapi }) => ({
     async _profileFor(emp) {
         const rows = await strapi.documents(PROFILE_UID).findMany({
             filters: { employee: { documentId: emp.documentId }, is_active: true },
-            populate: { branch: { fields: ['id'] } },
+            populate: {
+                branch: { fields: ['id'] },
+                overtime_rule: { fields: ['id', 'name', 'multiplier', 'applies_after_hours', 'is_active'] },
+            },
             limit: 1,
         });
         return rows[0] || null;
@@ -315,6 +331,13 @@ module.exports = createCoreService(PR_UID, ({ strapi }) => ({
         if (!payType) return null; // no comp setup → not on payroll
 
         const periodDays = daysInclusive(period.start, period.end);
+        // One calendar per employee for the whole run. This is the same helper
+        // the leave lifecycle stamps total_days with, so the days a balance was
+        // charged and the days salary is docked cannot drift apart. Falls back
+        // to calendar days if a period somehow contains no working day at all,
+        // so the proration divisor is never zero.
+        const calendar = await calendarForEmployee(strapi, emp.documentId, period.start, period.end);
+        const workingDaysInPeriod = countWorkingDays(period.start, period.end, calendar) || periodDays;
         const lines = [];
         const taskDocIds = [];
 
@@ -378,6 +401,12 @@ module.exports = createCoreService(PR_UID, ({ strapi }) => ({
             }
         }
 
+        // --- Overtime ---
+        const overtimeLine = await this._computeOvertime({
+            emp, profile, payType, period, workingDaysInPeriod,
+        });
+        if (overtimeLine) lines.push(overtimeLine);
+
         // --- Unpaid leave (salaried / hybrid only) ---
         if (payType === 'monthly_salary' || payType === 'hybrid') {
             const leaves = await strapi.documents(LEAVE_UID).findMany({
@@ -394,10 +423,16 @@ module.exports = createCoreService(PR_UID, ({ strapi }) => ({
                 // periods is only deducted for its in-period days (no double-count).
                 const from = ls > period.start ? ls : period.start;
                 const to = le < period.end ? le : period.end;
-                unpaidDays += daysInclusive(from, to);
+                // WORKING days, not calendar days: an unpaid week spanning a
+                // public holiday docks the days actually owed, matching the
+                // total_days the employee's leave balance was charged.
+                unpaidDays += countWorkingDays(from, to, calendar);
             }
             if (unpaidDays > 0 && base > 0) {
-                const ded = round2(base / periodDays * Math.min(unpaidDays, periodDays));
+                // Divided by working days for the same reason — a monthly salary
+                // buys the period's working days, so one missed working day
+                // costs base/workingDaysInPeriod, not base/calendarDays.
+                const ded = round2(base / workingDaysInPeriod * Math.min(unpaidDays, workingDaysInPeriod));
                 lines.push({ label: `Unpaid leave (${unpaidDays}d)`, kind: 'deduction', category: 'unpaid_leave', amount: ded, quantity: unpaidDays });
             }
         }
@@ -453,6 +488,127 @@ module.exports = createCoreService(PR_UID, ({ strapi }) => ({
         const net = round2(gross - deductions);
 
         return { lines, gross, deductions, net, taskDocIds, adjustmentPlans };
+    },
+
+    /* ──────────────────────────────────────────────────────────────
+     *  Overtime
+     * ────────────────────────────────────────────────────────────── */
+
+    /**
+     * The most specific active hr-overtime-rule for one employee, or null.
+     *
+     * Precedence: the employee's own `overtime_rule` override wins outright;
+     * otherwise the most specific in-scope rule — branch beats company beats
+     * org-wide — following the same "unscoped applies everywhere, scoped applies
+     * only to its own scope" convention as pay-deduction-rule below. An empty
+     * `applies_to_pay_types` means the rule covers every pay type, again as in
+     * pay-deduction-rule, so a rule needs no configuration to start working.
+     */
+    async _overtimeRuleFor(profile, payType, branchId, companyId) {
+        const override = profile?.overtime_rule;
+        if (override?.is_active !== false && override?.id) return override;
+
+        let rules;
+        try {
+            rules = await strapi.documents(OT_RULE_UID).findMany({
+                filters: { is_active: { $eq: true } },
+                populate: { branch: { fields: ['id'] }, company: { fields: ['id'] } },
+                pagination: { pageSize: 200 },
+            });
+        } catch (err) {
+            // Not migrated yet on a fresh boot — a missing rule table must not
+            // fail the run; it just means no overtime.
+            strapi.log.warn(`[payroll] overtime-rule load failed: ${err.message}`);
+            return null;
+        }
+
+        const applicable = (rules || []).filter((r) => {
+            const types = Array.isArray(r.applies_to_pay_types) ? r.applies_to_pay_types : [];
+            if (types.length && !types.includes(payType)) return false;
+            if (r.branch?.id && r.branch.id !== branchId) return false;
+            if (r.company?.id && r.company.id !== companyId) return false;
+            return true;
+        });
+        if (!applicable.length) return null;
+
+        const specificity = (r) => (r.branch?.id ? 2 : 0) + (r.company?.id ? 1 : 0);
+        return applicable.sort((a, b) => specificity(b) - specificity(a))[0];
+    },
+
+    /**
+     * One overtime earning line, or null when none is owed.
+     *
+     * Hours come from hr-attendance.worked_hours, which the attendance
+     * lifecycle derives from the clocked span less the rostered shift's break.
+     * The threshold is per DAY (hr-overtime-rule.applies_after_hours), so each
+     * day's excess is counted on its own — a 12-hour Monday earns overtime even
+     * in a week that is otherwise short. Deliberately not a weekly threshold:
+     * the rule stores one daily number and a run period is not a week.
+     *
+     * Overtime is only ever paid where an hourly rate can be derived from what
+     * the employee is actually paid; piece-rate work has no such basis, so a
+     * piece worker with no daily_rate earns none.
+     */
+    async _computeOvertime({ emp, profile, payType, period, workingDaysInPeriod }) {
+        if (profile && profile.overtime_eligible === false) return null;
+
+        const branchId = profile?.branch?.id || null;
+        const companyId = emp?.company?.id || null;
+        const rule = await this._overtimeRuleFor(profile, payType, branchId, companyId);
+        if (!rule) return null;
+
+        const threshold = Number(rule.applies_after_hours || 0) > 0
+            ? Number(rule.applies_after_hours)
+            : DEFAULT_STANDARD_HOURS;
+        const multiplier = Number(rule.multiplier || 0) > 0 ? Number(rule.multiplier) : 1;
+
+        let attendance;
+        try {
+            attendance = await strapi.documents(ATT_UID).findMany({
+                filters: {
+                    employee: { documentId: emp.documentId },
+                    status: { $in: ['Present', 'Late'] },
+                    date: { $gte: period.start, $lte: period.end },
+                },
+                fields: ['worked_hours'],
+                pagination: { pageSize: 1000 },
+            });
+        } catch (err) {
+            strapi.log.warn(`[payroll] overtime attendance load failed for ${emp.documentId}: ${err.message}`);
+            return null;
+        }
+
+        let hours = 0;
+        for (const a of attendance || []) {
+            const worked = Number(a.worked_hours || 0);
+            if (worked > threshold) hours += worked - threshold;
+        }
+        hours = Math.round(hours * 100) / 100;
+        if (hours <= 0) return null;
+
+        // Hourly rate from whatever this employee is actually paid.
+        const daily = Number(profile?.daily_rate || 0);
+        const base = Number(profile?.base_salary_override ?? emp.salary_structure?.base_salary ?? 0);
+        let hourly = 0;
+        if (payType === 'daily_wage' || payType === 'piece_rate') {
+            hourly = daily > 0 ? daily / threshold : 0;
+        } else {
+            hourly = base > 0 ? (base / workingDaysInPeriod) / threshold : (daily > 0 ? daily / threshold : 0);
+        }
+        if (hourly <= 0) return null;
+
+        const amount = round2(hours * hourly * multiplier);
+        if (amount <= 0) return null;
+
+        return {
+            label: `Overtime (${hours}h @ ${multiplier}×)`,
+            kind: 'earning',
+            category: 'overtime',
+            amount,
+            quantity: hours,
+            rate: round2(hourly * multiplier),
+            source_ref: rule.documentId || String(rule.id),
+        };
     },
 
     async _restoreAdjustments(runDocumentId) {

@@ -27,6 +27,7 @@ export { DeliveryZonesEndpoints } from './delivery-zones.js';
 export { EnumsEndpoints } from './enums.js';
 export { AuthApiEndpoints, PublicApiEndpoints } from '../lib/http-client.js';
 export { HrAppraisalCyclesEndpoints } from './hr-appraisal-cycles.js';
+export { HrAppraisalRatingsEndpoints } from './hr-appraisal-ratings.js';
 export { HrAppraisalsEndpoints } from './hr-appraisals.js';
 export { HrAssetAssignmentsEndpoints } from './hr-asset-assignments.js';
 export { HrAssetsEndpoints } from './hr-assets.js';

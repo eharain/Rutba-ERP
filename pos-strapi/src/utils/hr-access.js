@@ -275,6 +275,7 @@ async function managerUserIdsForEmployee(strapi, employeeDocId) {
 }
 
 module.exports = {
+  relTargetKey,
   resolveEmployeeForUser,
   resolveOrCreateEmployeeForUser,
   isHrManager,

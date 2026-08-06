@@ -35,6 +35,14 @@
     "notes": {
       "type": "text"
     },
+    "worked_hours": {
+      "type": "decimal"
+    },
+    "shift": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-shift.hr-shift"
+    },
     "employee": {
       "type": "relation",
       "relation": "manyToOne",

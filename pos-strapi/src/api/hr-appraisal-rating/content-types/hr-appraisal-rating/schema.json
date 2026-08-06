@@ -1,0 +1,41 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_appraisal_ratings",
+  "info": {
+    "singularName": "hr-appraisal-rating",
+    "pluralName": "hr-appraisal-ratings",
+    "displayName": "HR Appraisal Rating",
+    "description": "One competency scored on one appraisal (self + manager)"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "self_rating": {
+      "type": "decimal"
+    },
+    "manager_rating": {
+      "type": "decimal"
+    },
+    "comments": {
+      "type": "text"
+    },
+    "appraisal": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-appraisal.hr-appraisal",
+      "inversedBy": "ratings"
+    },
+    "competency": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-competency.hr-competency"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

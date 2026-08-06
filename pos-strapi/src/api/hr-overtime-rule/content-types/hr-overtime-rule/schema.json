@@ -28,10 +28,18 @@
       "type": "boolean",
       "default": true
     },
+    "applies_to_pay_types": {
+      "type": "json"
+    },
     "company": {
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::hr-company.hr-company"
+    },
+    "branch": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::branch.branch"
     }
   }
 }

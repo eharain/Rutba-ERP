@@ -29,6 +29,7 @@ export * from './delivery-methods.js';
 export * from './delivery-zones.js';
 export * from './enums.js';
 export * from './hr-appraisal-cycles.js';
+export * from './hr-appraisal-ratings.js';
 export * from './hr-appraisals.js';
 export * from './hr-asset-assignments.js';
 export * from './hr-assets.js';

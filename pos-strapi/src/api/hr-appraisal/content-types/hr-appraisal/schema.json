@@ -58,6 +58,12 @@
       "relation": "manyToOne",
       "target": "api::hr-employee.hr-employee"
     },
+    "ratings": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::hr-appraisal-rating.hr-appraisal-rating",
+      "mappedBy": "appraisal"
+    },
     "owners": {
       "type": "relation",
       "relation": "manyToMany",

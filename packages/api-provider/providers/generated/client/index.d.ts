@@ -29,6 +29,7 @@ export * from './delivery-methods';
 export * from './delivery-zones';
 export * from './enums';
 export * from './hr-appraisal-cycles';
+export * from './hr-appraisal-ratings';
 export * from './hr-appraisals';
 export * from './hr-asset-assignments';
 export * from './hr-assets';

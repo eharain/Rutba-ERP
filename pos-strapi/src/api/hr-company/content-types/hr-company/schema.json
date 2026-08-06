@@ -33,6 +33,10 @@
       "type": "boolean",
       "default": true
     },
+    "weekend_days": {
+      "type": "json",
+      "default": [0]
+    },
     "divisions": {
       "type": "relation",
       "relation": "oneToMany",
