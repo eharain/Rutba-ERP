@@ -56,7 +56,7 @@ Make tenant #1 credible and legal before selling anything. Half-built internals 
 | 0.2 | **Local digital payments** — Raast + JazzCash + Easypaisa + QR acceptance at POS/checkout | ① | 88–92% of PK retail is digital; merchant acceptance is the national gap; cuts COD returns | pos-sale, checkout | M |
 | 0.3 | **Offline-first POS hardening** — graceful degrade + reconcile-on-reconnect | ① | Table stakes for every PK POS; intermittent connectivity is the norm | pos-sale | M |
 | 0.4 | **Finish accounting posting wiring** — web/cash/purchase/payroll → GL | ② | Books must be trustworthy before Rutba is the system of record | acc-* (mostly built) | M |
-| 0.5 | **Payroll engine** — replace the current stub with real calc (attendance→salary→payslip) | ② | rutba.pk payroll can't run on a stub; also a sell-side module | pay-*, hr-* | M |
+| 0.5 | **Payroll engine** — ~~replace the stub~~ **mostly built** (2026-08-06): processRun/previewRun, attendance-driven daily wage, unpaid-leave deduction, statutory calc, GL accrual + payout posting. Remaining gap: **overtime is not wired** — `hr-overtime-rule` exists but the engine never reads it, and hr-attendance stores no hours | ② | rutba.pk payroll no longer blocked; overtime is the last calc gap | pay-*, hr-* | S |
 | 0.6 | **CRM core buildout** — typed activity timeline + saved-segment engine (from CRM plan §5.1/5.3) | ⑤ | Highest-ROI additive work; feeds H1 campaigns | crm-* (exists) | M |
 
 **H0 exit gate:** rutba.pk runs its full sell→fulfil→account cycle on Rutba, issuing FBR-compliant invoices and taking digital payments. _Now it's a real proving ground._
