@@ -1,0 +1,69 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_compliance_items",
+  "info": {
+    "singularName": "hr-compliance-item",
+    "pluralName": "hr-compliance-items",
+    "displayName": "HR Compliance Item",
+    "description": "A tracked expiring document or requirement"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "Contract",
+        "Visa",
+        "WorkPermit",
+        "License",
+        "MandatoryTraining",
+        "Medical",
+        "Other"
+      ],
+      "required": true
+    },
+    "reference": {
+      "type": "string"
+    },
+    "issue_date": {
+      "type": "date"
+    },
+    "expiry_date": {
+      "type": "date"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Valid",
+        "ExpiringSoon",
+        "Expired",
+        "Waived"
+      ],
+      "default": "Valid"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "document": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images",
+        "files"
+      ]
+    },
+    "employee": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

@@ -2137,6 +2137,96 @@ export interface ApiEmployeeEmployee extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiHrAppraisalCycleHrAppraisalCycle
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'hr_appraisal_cycles';
+  info: {
+    description: 'A named review period';
+    displayName: 'HR Appraisal Cycle';
+    pluralName: 'hr-appraisal-cycles';
+    singularName: 'hr-appraisal-cycle';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text;
+    end_date: Schema.Attribute.Date & Schema.Attribute.Required;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::hr-appraisal-cycle.hr-appraisal-cycle'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    start_date: Schema.Attribute.Date & Schema.Attribute.Required;
+    status: Schema.Attribute.Enumeration<['Draft', 'Active', 'Closed']> &
+      Schema.Attribute.DefaultTo<'Draft'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiHrAppraisalHrAppraisal extends Struct.CollectionTypeSchema {
+  collectionName: 'hr_appraisals';
+  info: {
+    description: 'One employee review for one cycle';
+    displayName: 'HR Appraisal';
+    pluralName: 'hr-appraisals';
+    singularName: 'hr-appraisal';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    completed_at: Schema.Attribute.DateTime;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    cycle: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-appraisal-cycle.hr-appraisal-cycle'
+    >;
+    employee: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-employee.hr-employee'
+    >;
+    final_rating: Schema.Attribute.Decimal;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::hr-appraisal.hr-appraisal'
+    > &
+      Schema.Attribute.Private;
+    manager_comments: Schema.Attribute.Text;
+    manager_rating: Schema.Attribute.Decimal;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    reviewer: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-employee.hr-employee'
+    >;
+    self_comments: Schema.Attribute.Text;
+    self_rating: Schema.Attribute.Decimal;
+    status: Schema.Attribute.Enumeration<
+      ['Draft', 'SelfAssessment', 'ManagerReview', 'Completed']
+    > &
+      Schema.Attribute.DefaultTo<'Draft'>;
+    submitted_at: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiHrAssetAssignmentHrAssetAssignment
   extends Struct.CollectionTypeSchema {
   collectionName: 'hr_asset_assignments';
@@ -2468,6 +2558,48 @@ export interface ApiHrBusinessUnitHrBusinessUnit
   };
 }
 
+export interface ApiHrCandidateHrCandidate extends Struct.CollectionTypeSchema {
+  collectionName: 'hr_candidates';
+  info: {
+    description: 'An applicant against a requisition';
+    displayName: 'HR Candidate';
+    pluralName: 'hr-candidates';
+    singularName: 'hr-candidate';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    email: Schema.Attribute.Email;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::hr-candidate.hr-candidate'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    notes: Schema.Attribute.Text;
+    phone: Schema.Attribute.String;
+    publishedAt: Schema.Attribute.DateTime;
+    requisition: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-job-requisition.hr-job-requisition'
+    >;
+    resume: Schema.Attribute.Media<'files'>;
+    source: Schema.Attribute.String;
+    status: Schema.Attribute.Enumeration<
+      ['Applied', 'Screening', 'Interview', 'Offer', 'Hired', 'Rejected']
+    > &
+      Schema.Attribute.DefaultTo<'Applied'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiHrCertificationHrCertification
   extends Struct.CollectionTypeSchema {
   collectionName: 'hr_certifications';
@@ -2557,6 +2689,100 @@ export interface ApiHrCompanyHrCompany extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiHrCompetencyHrCompetency
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'hr_competencies';
+  info: {
+    description: 'A rated skill/behaviour used in appraisals';
+    displayName: 'HR Competency';
+    pluralName: 'hr-competencies';
+    singularName: 'hr-competency';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    category: Schema.Attribute.Enumeration<
+      ['Technical', 'Behavioral', 'Leadership']
+    > &
+      Schema.Attribute.DefaultTo<'Technical'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::hr-competency.hr-competency'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiHrComplianceItemHrComplianceItem
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'hr_compliance_items';
+  info: {
+    description: 'A tracked expiring document or requirement';
+    displayName: 'HR Compliance Item';
+    pluralName: 'hr-compliance-items';
+    singularName: 'hr-compliance-item';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    document: Schema.Attribute.Media<'images' | 'files'>;
+    employee: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-employee.hr-employee'
+    >;
+    expiry_date: Schema.Attribute.Date;
+    issue_date: Schema.Attribute.Date;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::hr-compliance-item.hr-compliance-item'
+    > &
+      Schema.Attribute.Private;
+    notes: Schema.Attribute.Text;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    reference: Schema.Attribute.String;
+    status: Schema.Attribute.Enumeration<
+      ['Valid', 'ExpiringSoon', 'Expired', 'Waived']
+    > &
+      Schema.Attribute.DefaultTo<'Valid'>;
+    type: Schema.Attribute.Enumeration<
+      [
+        'Contract',
+        'Visa',
+        'WorkPermit',
+        'License',
+        'MandatoryTraining',
+        'Medical',
+        'Other',
+      ]
+    > &
+      Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiHrCostCenterHrCostCenter
   extends Struct.CollectionTypeSchema {
   collectionName: 'hr_cost_centers';
@@ -2598,6 +2824,44 @@ export interface ApiHrCostCenterHrCostCenter
       'manyToOne',
       'api::hr-cost-center.hr-cost-center'
     >;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiHrCourseHrCourse extends Struct.CollectionTypeSchema {
+  collectionName: 'hr_courses';
+  info: {
+    description: 'A training course in the catalogue';
+    displayName: 'HR Course';
+    pluralName: 'hr-courses';
+    singularName: 'hr-course';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    category: Schema.Attribute.String;
+    code: Schema.Attribute.String;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    delivery_mode: Schema.Attribute.Enumeration<
+      ['Classroom', 'Online', 'OnTheJob']
+    > &
+      Schema.Attribute.DefaultTo<'Classroom'>;
+    description: Schema.Attribute.Text;
+    duration_hours: Schema.Attribute.Decimal;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::hr-course.hr-course'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
     publishedAt: Schema.Attribute.DateTime;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -2692,6 +2956,55 @@ export interface ApiHrDesignationHrDesignation
       'api::hr-position.hr-position'
     >;
     publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiHrDisciplinaryActionHrDisciplinaryAction
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'hr_disciplinary_actions';
+  info: {
+    description: 'A recorded disciplinary step';
+    displayName: 'HR Disciplinary Action';
+    pluralName: 'hr-disciplinary-actions';
+    singularName: 'hr-disciplinary-action';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    acknowledged_at: Schema.Attribute.DateTime;
+    action_date: Schema.Attribute.Date;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    employee: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-employee.hr-employee'
+    >;
+    issued_by: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::hr-disciplinary-action.hr-disciplinary-action'
+    > &
+      Schema.Attribute.Private;
+    notes: Schema.Attribute.Text;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    reason: Schema.Attribute.Text;
+    type: Schema.Attribute.Enumeration<
+      ['Verbal', 'Written', 'FinalWarning', 'Suspension', 'Termination']
+    > &
+      Schema.Attribute.Required;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -3103,6 +3416,158 @@ export interface ApiHrFamilyMemberHrFamilyMember
   };
 }
 
+export interface ApiHrGeneratedDocumentHrGeneratedDocument
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'hr_generated_documents';
+  info: {
+    description: 'A rendered letter issued to an employee';
+    displayName: 'HR Generated Document';
+    pluralName: 'hr-generated-documents';
+    singularName: 'hr-generated-document';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    content: Schema.Attribute.Text;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    employee: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-employee.hr-employee'
+    >;
+    generated_at: Schema.Attribute.DateTime;
+    generated_by: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::hr-generated-document.hr-generated-document'
+    > &
+      Schema.Attribute.Private;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    reference_no: Schema.Attribute.String;
+    subject: Schema.Attribute.String;
+    template: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-letter-template.hr-letter-template'
+    >;
+    type: Schema.Attribute.String;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiHrGoalHrGoal extends Struct.CollectionTypeSchema {
+  collectionName: 'hr_goals';
+  info: {
+    description: 'An employee objective within an appraisal cycle';
+    displayName: 'HR Goal';
+    pluralName: 'hr-goals';
+    singularName: 'hr-goal';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    cycle: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-appraisal-cycle.hr-appraisal-cycle'
+    >;
+    description: Schema.Attribute.Text;
+    employee: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-employee.hr-employee'
+    >;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::hr-goal.hr-goal'
+    > &
+      Schema.Attribute.Private;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
+    progress_percent: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    publishedAt: Schema.Attribute.DateTime;
+    status: Schema.Attribute.Enumeration<
+      ['NotStarted', 'InProgress', 'Completed', 'Cancelled']
+    > &
+      Schema.Attribute.DefaultTo<'NotStarted'>;
+    target_date: Schema.Attribute.Date;
+    title: Schema.Attribute.String & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    weight: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<1>;
+  };
+}
+
+export interface ApiHrGrievanceHrGrievance extends Struct.CollectionTypeSchema {
+  collectionName: 'hr_grievances';
+  info: {
+    description: 'A confidential employee complaint';
+    displayName: 'HR Grievance';
+    pluralName: 'hr-grievances';
+    singularName: 'hr-grievance';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    category: Schema.Attribute.Enumeration<
+      ['Harassment', 'Discrimination', 'Workload', 'Pay', 'Management', 'Other']
+    > &
+      Schema.Attribute.DefaultTo<'Other'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text;
+    employee: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-employee.hr-employee'
+    >;
+    is_anonymous: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::hr-grievance.hr-grievance'
+    > &
+      Schema.Attribute.Private;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    resolution: Schema.Attribute.Text;
+    resolved_at: Schema.Attribute.DateTime;
+    resolved_by: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    status: Schema.Attribute.Enumeration<
+      ['Open', 'UnderReview', 'Resolved', 'Closed']
+    > &
+      Schema.Attribute.DefaultTo<'Open'>;
+    subject: Schema.Attribute.String & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiHrHolidayCalendarHrHolidayCalendar
   extends Struct.CollectionTypeSchema {
   collectionName: 'hr_holiday_calendars';
@@ -3142,6 +3607,107 @@ export interface ApiHrHolidayCalendarHrHolidayCalendar
   };
 }
 
+export interface ApiHrIncidentReportHrIncidentReport
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'hr_incident_reports';
+  info: {
+    description: 'A health & safety incident';
+    displayName: 'HR Incident Report';
+    pluralName: 'hr-incident-reports';
+    singularName: 'hr-incident-report';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    corrective_action: Schema.Attribute.Text;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text;
+    incident_date: Schema.Attribute.DateTime & Schema.Attribute.Required;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::hr-incident-report.hr-incident-report'
+    > &
+      Schema.Attribute.Private;
+    location: Schema.Attribute.String;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
+    photo: Schema.Attribute.Media<'images', true>;
+    publishedAt: Schema.Attribute.DateTime;
+    reported_by: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-employee.hr-employee'
+    >;
+    severity: Schema.Attribute.Enumeration<
+      ['Low', 'Medium', 'High', 'Critical']
+    > &
+      Schema.Attribute.DefaultTo<'Low'>;
+    status: Schema.Attribute.Enumeration<
+      ['Reported', 'UnderInvestigation', 'Resolved', 'Closed']
+    > &
+      Schema.Attribute.DefaultTo<'Reported'>;
+    type: Schema.Attribute.Enumeration<
+      ['Injury', 'NearMiss', 'PropertyDamage', 'Illness', 'Other']
+    > &
+      Schema.Attribute.DefaultTo<'Other'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiHrInterviewHrInterview extends Struct.CollectionTypeSchema {
+  collectionName: 'hr_interviews';
+  info: {
+    description: 'A scheduled interview and its outcome';
+    displayName: 'HR Interview';
+    pluralName: 'hr-interviews';
+    singularName: 'hr-interview';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    candidate: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-candidate.hr-candidate'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    feedback: Schema.Attribute.Text;
+    interviewer: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-employee.hr-employee'
+    >;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::hr-interview.hr-interview'
+    > &
+      Schema.Attribute.Private;
+    mode: Schema.Attribute.Enumeration<['InPerson', 'Phone', 'Video']> &
+      Schema.Attribute.DefaultTo<'InPerson'>;
+    publishedAt: Schema.Attribute.DateTime;
+    rating: Schema.Attribute.Decimal;
+    recommendation: Schema.Attribute.Enumeration<['Proceed', 'Hold', 'Reject']>;
+    round: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<1>;
+    scheduled_at: Schema.Attribute.DateTime & Schema.Attribute.Required;
+    status: Schema.Attribute.Enumeration<
+      ['Scheduled', 'Completed', 'Cancelled', 'NoShow']
+    > &
+      Schema.Attribute.DefaultTo<'Scheduled'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiHrJobGradeHrJobGrade extends Struct.CollectionTypeSchema {
   collectionName: 'hr_job_grades';
   info: {
@@ -3172,6 +3738,55 @@ export interface ApiHrJobGradeHrJobGrade extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     name: Schema.Attribute.String & Schema.Attribute.Required;
     publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiHrJobRequisitionHrJobRequisition
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'hr_job_requisitions';
+  info: {
+    description: 'A request to hire';
+    displayName: 'HR Job Requisition';
+    pluralName: 'hr-job-requisitions';
+    singularName: 'hr-job-requisition';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    department: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-department.hr-department'
+    >;
+    headcount: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<1>;
+    justification: Schema.Attribute.Text;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::hr-job-requisition.hr-job-requisition'
+    > &
+      Schema.Attribute.Private;
+    position: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-position.hr-position'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    requested_by: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-employee.hr-employee'
+    >;
+    status: Schema.Attribute.Enumeration<
+      ['Draft', 'Approved', 'Open', 'Filled', 'Cancelled']
+    > &
+      Schema.Attribute.DefaultTo<'Draft'>;
+    target_date: Schema.Attribute.Date;
+    title: Schema.Attribute.String & Schema.Attribute.Required;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -3330,6 +3945,52 @@ export interface ApiHrLeaveRequestHrLeaveRequest
   };
 }
 
+export interface ApiHrLetterTemplateHrLetterTemplate
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'hr_letter_templates';
+  info: {
+    description: 'A variable-substituted letter body';
+    displayName: 'HR Letter Template';
+    pluralName: 'hr-letter-templates';
+    singularName: 'hr-letter-template';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    available_variables: Schema.Attribute.JSON;
+    body_template: Schema.Attribute.Text & Schema.Attribute.Required;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::hr-letter-template.hr-letter-template'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    subject: Schema.Attribute.String;
+    type: Schema.Attribute.Enumeration<
+      [
+        'Offer',
+        'Experience',
+        'Salary',
+        'Confirmation',
+        'Warning',
+        'NOC',
+        'Custom',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'Custom'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiHrLifecycleEventHrLifecycleEvent
   extends Struct.CollectionTypeSchema {
   collectionName: 'hr_lifecycle_events';
@@ -3388,6 +4049,51 @@ export interface ApiHrLifecycleEventHrLifecycleEvent
       ]
     > &
       Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiHrOfferHrOffer extends Struct.CollectionTypeSchema {
+  collectionName: 'hr_offers';
+  info: {
+    description: 'An offer extended to a candidate';
+    displayName: 'HR Offer';
+    pluralName: 'hr-offers';
+    singularName: 'hr-offer';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    candidate: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-candidate.hr-candidate'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    currency: Schema.Attribute.Relation<'manyToOne', 'api::currency.currency'>;
+    joining_date: Schema.Attribute.Date;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::hr-offer.hr-offer'
+    > &
+      Schema.Attribute.Private;
+    notes: Schema.Attribute.Text;
+    offer_date: Schema.Attribute.Date;
+    offered_salary: Schema.Attribute.Decimal;
+    publishedAt: Schema.Attribute.DateTime;
+    requisition: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-job-requisition.hr-job-requisition'
+    >;
+    status: Schema.Attribute.Enumeration<
+      ['Draft', 'Sent', 'Accepted', 'Declined', 'Withdrawn']
+    > &
+      Schema.Attribute.DefaultTo<'Draft'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -3642,6 +4348,98 @@ export interface ApiHrTeamHrTeam extends Struct.CollectionTypeSchema {
     team_slug: Schema.Attribute.UID<'name'> &
       Schema.Attribute.Required &
       Schema.Attribute.Unique;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiHrTrainingEnrollmentHrTrainingEnrollment
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'hr_training_enrollments';
+  info: {
+    description: "One employee's place on a session";
+    displayName: 'HR Training Enrollment';
+    pluralName: 'hr-training-enrollments';
+    singularName: 'hr-training-enrollment';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    certificate: Schema.Attribute.Media<'images' | 'files'>;
+    completion_date: Schema.Attribute.Date;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    employee: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-employee.hr-employee'
+    >;
+    feedback: Schema.Attribute.Text;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::hr-training-enrollment.hr-training-enrollment'
+    > &
+      Schema.Attribute.Private;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    score: Schema.Attribute.Decimal;
+    session: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-training-session.hr-training-session'
+    >;
+    status: Schema.Attribute.Enumeration<
+      ['Enrolled', 'Attended', 'Completed', 'Dropped']
+    > &
+      Schema.Attribute.DefaultTo<'Enrolled'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiHrTrainingSessionHrTrainingSession
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'hr_training_sessions';
+  info: {
+    description: 'A scheduled delivery of a course';
+    displayName: 'HR Training Session';
+    pluralName: 'hr-training-sessions';
+    singularName: 'hr-training-session';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    capacity: Schema.Attribute.Integer;
+    course: Schema.Attribute.Relation<'manyToOne', 'api::hr-course.hr-course'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    end_date: Schema.Attribute.DateTime;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::hr-training-session.hr-training-session'
+    > &
+      Schema.Attribute.Private;
+    location: Schema.Attribute.String;
+    notes: Schema.Attribute.Text;
+    publishedAt: Schema.Attribute.DateTime;
+    start_date: Schema.Attribute.DateTime & Schema.Attribute.Required;
+    status: Schema.Attribute.Enumeration<
+      ['Scheduled', 'InProgress', 'Completed', 'Cancelled']
+    > &
+      Schema.Attribute.DefaultTo<'Scheduled'>;
+    trainer: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-employee.hr-employee'
+    >;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -9339,6 +10137,8 @@ declare module '@strapi/strapi' {
       'api::delivery-offer.delivery-offer': ApiDeliveryOfferDeliveryOffer;
       'api::delivery-zone.delivery-zone': ApiDeliveryZoneDeliveryZone;
       'api::employee.employee': ApiEmployeeEmployee;
+      'api::hr-appraisal-cycle.hr-appraisal-cycle': ApiHrAppraisalCycleHrAppraisalCycle;
+      'api::hr-appraisal.hr-appraisal': ApiHrAppraisalHrAppraisal;
       'api::hr-asset-assignment.hr-asset-assignment': ApiHrAssetAssignmentHrAssetAssignment;
       'api::hr-asset.hr-asset': ApiHrAssetHrAsset;
       'api::hr-attendance.hr-attendance': ApiHrAttendanceHrAttendance;
@@ -9346,11 +10146,16 @@ declare module '@strapi/strapi' {
       'api::hr-benefit-enrollment.hr-benefit-enrollment': ApiHrBenefitEnrollmentHrBenefitEnrollment;
       'api::hr-benefit-plan.hr-benefit-plan': ApiHrBenefitPlanHrBenefitPlan;
       'api::hr-business-unit.hr-business-unit': ApiHrBusinessUnitHrBusinessUnit;
+      'api::hr-candidate.hr-candidate': ApiHrCandidateHrCandidate;
       'api::hr-certification.hr-certification': ApiHrCertificationHrCertification;
       'api::hr-company.hr-company': ApiHrCompanyHrCompany;
+      'api::hr-competency.hr-competency': ApiHrCompetencyHrCompetency;
+      'api::hr-compliance-item.hr-compliance-item': ApiHrComplianceItemHrComplianceItem;
       'api::hr-cost-center.hr-cost-center': ApiHrCostCenterHrCostCenter;
+      'api::hr-course.hr-course': ApiHrCourseHrCourse;
       'api::hr-department.hr-department': ApiHrDepartmentHrDepartment;
       'api::hr-designation.hr-designation': ApiHrDesignationHrDesignation;
+      'api::hr-disciplinary-action.hr-disciplinary-action': ApiHrDisciplinaryActionHrDisciplinaryAction;
       'api::hr-division.hr-division': ApiHrDivisionHrDivision;
       'api::hr-education.hr-education': ApiHrEducationHrEducation;
       'api::hr-emergency-contact.hr-emergency-contact': ApiHrEmergencyContactHrEmergencyContact;
@@ -9358,18 +10163,28 @@ declare module '@strapi/strapi' {
       'api::hr-employee.hr-employee': ApiHrEmployeeHrEmployee;
       'api::hr-expense-claim.hr-expense-claim': ApiHrExpenseClaimHrExpenseClaim;
       'api::hr-family-member.hr-family-member': ApiHrFamilyMemberHrFamilyMember;
+      'api::hr-generated-document.hr-generated-document': ApiHrGeneratedDocumentHrGeneratedDocument;
+      'api::hr-goal.hr-goal': ApiHrGoalHrGoal;
+      'api::hr-grievance.hr-grievance': ApiHrGrievanceHrGrievance;
       'api::hr-holiday-calendar.hr-holiday-calendar': ApiHrHolidayCalendarHrHolidayCalendar;
+      'api::hr-incident-report.hr-incident-report': ApiHrIncidentReportHrIncidentReport;
+      'api::hr-interview.hr-interview': ApiHrInterviewHrInterview;
       'api::hr-job-grade.hr-job-grade': ApiHrJobGradeHrJobGrade;
+      'api::hr-job-requisition.hr-job-requisition': ApiHrJobRequisitionHrJobRequisition;
       'api::hr-leave-balance.hr-leave-balance': ApiHrLeaveBalanceHrLeaveBalance;
       'api::hr-leave-policy.hr-leave-policy': ApiHrLeavePolicyHrLeavePolicy;
       'api::hr-leave-request.hr-leave-request': ApiHrLeaveRequestHrLeaveRequest;
+      'api::hr-letter-template.hr-letter-template': ApiHrLetterTemplateHrLetterTemplate;
       'api::hr-lifecycle-event.hr-lifecycle-event': ApiHrLifecycleEventHrLifecycleEvent;
+      'api::hr-offer.hr-offer': ApiHrOfferHrOffer;
       'api::hr-overtime-rule.hr-overtime-rule': ApiHrOvertimeRuleHrOvertimeRule;
       'api::hr-position.hr-position': ApiHrPositionHrPosition;
       'api::hr-roster.hr-roster': ApiHrRosterHrRoster;
       'api::hr-shift.hr-shift': ApiHrShiftHrShift;
       'api::hr-skill.hr-skill': ApiHrSkillHrSkill;
       'api::hr-team.hr-team': ApiHrTeamHrTeam;
+      'api::hr-training-enrollment.hr-training-enrollment': ApiHrTrainingEnrollmentHrTrainingEnrollment;
+      'api::hr-training-session.hr-training-session': ApiHrTrainingSessionHrTrainingSession;
       'api::hr-work-experience.hr-work-experience': ApiHrWorkExperienceHrWorkExperience;
       'api::marketplace-account.marketplace-account': ApiMarketplaceAccountMarketplaceAccount;
       'api::marketplace-listing.marketplace-listing': ApiMarketplaceListingMarketplaceListing;

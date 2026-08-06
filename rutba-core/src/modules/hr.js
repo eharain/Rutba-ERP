@@ -134,6 +134,14 @@ function registerHrModule() {
   const activity = ctrl('work-item-activity', strapi);
   const watch = ctrl('work-item-watch', strapi);
   const comment = ctrl('work-item-comment', strapi);
+  // Phases 10-14: performance, learning, relations/H&S/compliance, documents.
+  const goal = ctrl('hr-goal', strapi);
+  const appraisal = ctrl('hr-appraisal', strapi);
+  const trainingEnrollment = ctrl('hr-training-enrollment', strapi);
+  const grievance = ctrl('hr-grievance', strapi);
+  const incident = ctrl('hr-incident-report', strapi);
+  const complianceItem = ctrl('hr-compliance-item', strapi);
+  const generatedDocument = ctrl('hr-generated-document', strapi);
   const selfOwned = Object.fromEntries(SELF_OWNED_ENTITIES.map((name) => [name, ctrl(name, strapi)]));
 
   const LR = 'api::hr-leave-request.hr-leave-request';
@@ -152,6 +160,13 @@ function registerHrModule() {
   const PR = 'api::pay-payroll-run.pay-payroll-run';
   const PS = 'api::pay-payslip.pay-payslip';
   const RM = 'api::pay-statutory-remittance.pay-statutory-remittance';
+  const GOAL = 'api::hr-goal.hr-goal';
+  const APPRAISAL = 'api::hr-appraisal.hr-appraisal';
+  const TRAIN_ENR = 'api::hr-training-enrollment.hr-training-enrollment';
+  const GRIEVANCE = 'api::hr-grievance.hr-grievance';
+  const INCIDENT = 'api::hr-incident-report.hr-incident-report';
+  const COMPLIANCE = 'api::hr-compliance-item.hr-compliance-item';
+  const GEN_DOC = 'api::hr-generated-document.hr-generated-document';
 
   // /hr-emergency-contacts/mine, /hr-bank-accounts/mine, etc. — literal path
   // must beat the seeded table's :documentId pattern, same as every other
@@ -171,6 +186,7 @@ function registerHrModule() {
   const routes = [
     { method: 'get', path: '/api/hr-employees/me', uid: EMP, action: 'myProfile', handler: (c) => employee.myProfile(c) },
     { method: 'put', path: '/api/hr-employees/me', uid: EMP, action: 'updateMyProfile', handler: (c) => employee.updateMyProfile(c) },
+    { method: 'get', path: '/api/hr-employees/dashboard', uid: EMP, action: 'dashboard', handler: (c) => employee.dashboard(c) },
 
     { method: 'get', path: '/api/hr-attendances/my-attendance', uid: ATT, action: 'myAttendance', handler: (c) => attendance.myAttendance(c) },
     { method: 'get', path: '/api/hr-attendances/team-attendance', uid: ATT, action: 'teamAttendance', handler: (c) => attendance.teamAttendance(c) },
@@ -183,6 +199,36 @@ function registerHrModule() {
     { method: 'get', path: '/api/hr-rosters/mine', uid: ROSTER, action: 'myRoster', handler: (c) => roster.myRoster(c) },
 
     { method: 'get', path: '/api/hr-benefit-enrollments/mine', uid: ENROLL, action: 'myEnrollments', handler: (c) => benefitEnrollment.myEnrollments(c) },
+
+    // Phase 10 — performance
+    { method: 'get', path: '/api/hr-goals/mine', uid: GOAL, action: 'myGoals', handler: (c) => goal.myGoals(c) },
+    { method: 'put', path: '/api/hr-goals/mine/:documentId', uid: GOAL, action: 'updateMyGoal', handler: (c) => goal.updateMyGoal(c) },
+    { method: 'post', path: '/api/hr-goals', uid: GOAL, action: 'create', handler: (c) => goal.create(c) },
+    { method: 'get', path: '/api/hr-appraisals/mine', uid: APPRAISAL, action: 'myAppraisals', handler: (c) => appraisal.myAppraisals(c) },
+    { method: 'get', path: '/api/hr-appraisals/team', uid: APPRAISAL, action: 'teamAppraisals', handler: (c) => appraisal.teamAppraisals(c) },
+    { method: 'post', path: '/api/hr-appraisals/:documentId/self-assessment', uid: APPRAISAL, action: 'submitSelfAssessment', handler: (c) => appraisal.submitSelfAssessment(c) },
+    { method: 'post', path: '/api/hr-appraisals/:documentId/manager-review', uid: APPRAISAL, action: 'submitManagerReview', handler: (c) => appraisal.submitManagerReview(c) },
+    { method: 'post', path: '/api/hr-appraisals', uid: APPRAISAL, action: 'create', handler: (c) => appraisal.create(c) },
+
+    // Phase 11 — learning
+    { method: 'get', path: '/api/hr-training-enrollments/mine', uid: TRAIN_ENR, action: 'myTrainings', handler: (c) => trainingEnrollment.myTrainings(c) },
+    { method: 'post', path: '/api/hr-training-enrollments/enroll', uid: TRAIN_ENR, action: 'enrollMe', handler: (c) => trainingEnrollment.enrollMe(c) },
+    { method: 'post', path: '/api/hr-training-enrollments/:documentId/complete', uid: TRAIN_ENR, action: 'markComplete', handler: (c) => trainingEnrollment.markComplete(c) },
+
+    // Phase 13 — relations, H&S, compliance
+    { method: 'get', path: '/api/hr-grievances/mine', uid: GRIEVANCE, action: 'myGrievances', handler: (c) => grievance.myGrievances(c) },
+    { method: 'post', path: '/api/hr-grievances/submit', uid: GRIEVANCE, action: 'submitGrievance', handler: (c) => grievance.submitGrievance(c) },
+    { method: 'get', path: '/api/hr-grievances/queue', uid: GRIEVANCE, action: 'grievanceQueue', handler: (c) => grievance.grievanceQueue(c) },
+    { method: 'post', path: '/api/hr-grievances/:documentId/resolve', uid: GRIEVANCE, action: 'resolveGrievance', handler: (c) => grievance.resolveGrievance(c) },
+    { method: 'post', path: '/api/hr-incident-reports/report', uid: INCIDENT, action: 'reportIncident', handler: (c) => incident.reportIncident(c) },
+    { method: 'get', path: '/api/hr-incident-reports/mine', uid: INCIDENT, action: 'myIncidents', handler: (c) => incident.myIncidents(c) },
+    { method: 'get', path: '/api/hr-compliance-items/mine', uid: COMPLIANCE, action: 'myComplianceItems', handler: (c) => complianceItem.myComplianceItems(c) },
+    { method: 'get', path: '/api/hr-compliance-items/expiring', uid: COMPLIANCE, action: 'expiringItems', handler: (c) => complianceItem.expiringItems(c) },
+    { method: 'post', path: '/api/hr-compliance-items', uid: COMPLIANCE, action: 'create', handler: (c) => complianceItem.create(c) },
+
+    // Phase 14 — documents
+    { method: 'get', path: '/api/hr-generated-documents/mine', uid: GEN_DOC, action: 'myDocuments', handler: (c) => generatedDocument.myDocuments(c) },
+    { method: 'post', path: '/api/hr-generated-documents/generate', uid: GEN_DOC, action: 'generateDocument', handler: (c) => generatedDocument.generateDocument(c) },
 
     { method: 'get', path: '/api/pay-bonuses/mine', uid: BONUS, action: 'myBonuses', handler: (c) => bonus.myBonuses(c) },
     { method: 'get', path: '/api/pay-bonuses/team', uid: BONUS, action: 'teamBonuses', handler: (c) => bonus.teamBonuses(c) },

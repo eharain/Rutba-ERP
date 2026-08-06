@@ -1,7 +1,13 @@
 'use strict';
 
 const { createCoreController } = require('@strapi/strapi').factories;
-const { resolveOrCreateEmployeeForUser } = require('../../../utils/hr-access');
+const {
+  resolveOrCreateEmployeeForUser,
+  resolveEmployeeForUser,
+  isHrManager,
+  managedReportDocIds,
+} = require('../../../utils/hr-access');
+const { buildDashboard, headcountByDepartment } = require('../../../utils/hr-analytics');
 
 const EMP_UID = 'api::hr-employee.hr-employee';
 
@@ -59,5 +65,39 @@ module.exports = createCoreController(EMP_UID, ({ strapi }) => ({
       populate: { department: { fields: ['name'] } },
     });
     return ctx.send({ data: updated });
+  },
+
+  /**
+   * Role-scoped HR dashboard. The scope is resolved once and every metric is
+   * computed inside it: HR claim → org-wide (null scope), line manager → their
+   * reports plus themselves, plain employee → themselves only. `by_department`
+   * is omitted for a plain employee since a one-row breakdown leaks nothing
+   * useful and invites confusion.
+   */
+  async dashboard(ctx) {
+    const id = ctx.state?.user?.id;
+    if (!id) return ctx.unauthorized('You must be logged in');
+
+    const user = await strapi.query('plugin::users-permissions.user').findOne({
+      where: { id },
+      populate: { role: { select: ['type'] } },
+    });
+
+    let scope = null; // null == org-wide
+    let level = 'hr';
+    if (!isHrManager(ctx, user)) {
+      const employee = await resolveOrCreateEmployeeForUser(strapi, user);
+      if (!employee) return ctx.send({ data: null });
+      const reports = await managedReportDocIds(strapi, employee.documentId);
+      scope = reports.length ? [...reports, employee.documentId] : [employee.documentId];
+      level = reports.length ? 'manager' : 'employee';
+    }
+
+    const data = await buildDashboard(strapi, scope);
+    data.scope = level;
+    if (level !== 'employee') {
+      data.by_department = await headcountByDepartment(strapi, scope);
+    }
+    return ctx.send({ data });
   },
 }));

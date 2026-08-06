@@ -1,0 +1,77 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_incident_reports",
+  "info": {
+    "singularName": "hr-incident-report",
+    "pluralName": "hr-incident-reports",
+    "displayName": "HR Incident Report",
+    "description": "A health & safety incident"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "incident_date": {
+      "type": "datetime",
+      "required": true
+    },
+    "location": {
+      "type": "string"
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "Injury",
+        "NearMiss",
+        "PropertyDamage",
+        "Illness",
+        "Other"
+      ],
+      "default": "Other"
+    },
+    "severity": {
+      "type": "enumeration",
+      "enum": [
+        "Low",
+        "Medium",
+        "High",
+        "Critical"
+      ],
+      "default": "Low"
+    },
+    "description": {
+      "type": "text"
+    },
+    "corrective_action": {
+      "type": "text"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Reported",
+        "UnderInvestigation",
+        "Resolved",
+        "Closed"
+      ],
+      "default": "Reported"
+    },
+    "photo": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "reported_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

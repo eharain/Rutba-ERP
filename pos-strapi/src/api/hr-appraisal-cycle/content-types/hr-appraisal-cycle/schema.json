@@ -1,0 +1,40 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_appraisal_cycles",
+  "info": {
+    "singularName": "hr-appraisal-cycle",
+    "pluralName": "hr-appraisal-cycles",
+    "displayName": "HR Appraisal Cycle",
+    "description": "A named review period"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "start_date": {
+      "type": "date",
+      "required": true
+    },
+    "end_date": {
+      "type": "date",
+      "required": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Draft",
+        "Active",
+        "Closed"
+      ],
+      "default": "Draft"
+    },
+    "description": {
+      "type": "text"
+    }
+  }
+}

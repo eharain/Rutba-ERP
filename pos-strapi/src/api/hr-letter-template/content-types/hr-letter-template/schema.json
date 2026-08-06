@@ -1,0 +1,47 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_letter_templates",
+  "info": {
+    "singularName": "hr-letter-template",
+    "pluralName": "hr-letter-templates",
+    "displayName": "HR Letter Template",
+    "description": "A variable-substituted letter body"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "Offer",
+        "Experience",
+        "Salary",
+        "Confirmation",
+        "Warning",
+        "NOC",
+        "Custom"
+      ],
+      "default": "Custom"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "body_template": {
+      "type": "text",
+      "required": true
+    },
+    "available_variables": {
+      "type": "json"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

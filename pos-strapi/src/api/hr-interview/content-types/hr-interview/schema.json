@@ -1,0 +1,67 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_interviews",
+  "info": {
+    "singularName": "hr-interview",
+    "pluralName": "hr-interviews",
+    "displayName": "HR Interview",
+    "description": "A scheduled interview and its outcome"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "scheduled_at": {
+      "type": "datetime",
+      "required": true
+    },
+    "mode": {
+      "type": "enumeration",
+      "enum": [
+        "InPerson",
+        "Phone",
+        "Video"
+      ],
+      "default": "InPerson"
+    },
+    "round": {
+      "type": "integer",
+      "default": 1
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Scheduled",
+        "Completed",
+        "Cancelled",
+        "NoShow"
+      ],
+      "default": "Scheduled"
+    },
+    "rating": {
+      "type": "decimal"
+    },
+    "feedback": {
+      "type": "text"
+    },
+    "recommendation": {
+      "type": "enumeration",
+      "enum": [
+        "Proceed",
+        "Hold",
+        "Reject"
+      ]
+    },
+    "candidate": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-candidate.hr-candidate"
+    },
+    "interviewer": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee"
+    }
+  }
+}

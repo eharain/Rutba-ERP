@@ -1,0 +1,56 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_candidates",
+  "info": {
+    "singularName": "hr-candidate",
+    "pluralName": "hr-candidates",
+    "displayName": "HR Candidate",
+    "description": "An applicant against a requisition"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "email": {
+      "type": "email"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Applied",
+        "Screening",
+        "Interview",
+        "Offer",
+        "Hired",
+        "Rejected"
+      ],
+      "default": "Applied"
+    },
+    "resume": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "files"
+      ]
+    },
+    "requisition": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-job-requisition.hr-job-requisition"
+    }
+  }
+}

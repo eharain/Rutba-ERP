@@ -3,8 +3,14 @@
   "uid": "api::notification-template.notification-template",
   "records": [
     {
-      "locate": { "by": "name", "value": "Order Confirmed (Buyer)" },
-      "policy": { "editable": true, "revertOnSeed": true },
+      "locate": {
+        "by": "name",
+        "value": "Order Confirmed (Buyer)"
+      },
+      "policy": {
+        "editable": true,
+        "revertOnSeed": true
+      },
       "data": {
         "name": "Order Confirmed (Buyer)",
         "event_name": "order.created",
@@ -15,19 +21,31 @@
         "audience": "user",
         "is_critical": true,
         "send_email": true,
-        "channels": ["in_app", "email"],
+        "channels": [
+          "in_app",
+          "email"
+        ],
         "delay_minutes": 0,
         "dedup_window_minutes": 15,
         "subject": "Order Confirmed",
         "body_template": "Your order #{order.id} has been placed successfully.",
-        "available_variables": ["order.id", "user_id"],
+        "available_variables": [
+          "order.id",
+          "user_id"
+        ],
         "is_active": true,
         "is_enabled": true
       }
     },
     {
-      "locate": { "by": "name", "value": "Payment Failed (Buyer)" },
-      "policy": { "editable": true, "revertOnSeed": true },
+      "locate": {
+        "by": "name",
+        "value": "Payment Failed (Buyer)"
+      },
+      "policy": {
+        "editable": true,
+        "revertOnSeed": true
+      },
       "data": {
         "name": "Payment Failed (Buyer)",
         "event_name": "payment.failed",
@@ -38,19 +56,31 @@
         "audience": "user",
         "is_critical": true,
         "send_email": true,
-        "channels": ["in_app", "email"],
+        "channels": [
+          "in_app",
+          "email"
+        ],
         "delay_minutes": 0,
         "dedup_window_minutes": 10,
         "subject": "Payment Failed",
         "body_template": "Payment failed for order #{order.id}. Please retry.",
-        "available_variables": ["order.id", "user_id"],
+        "available_variables": [
+          "order.id",
+          "user_id"
+        ],
         "is_active": true,
         "is_enabled": true
       }
     },
     {
-      "locate": { "by": "name", "value": "Order Shipped (Buyer)" },
-      "policy": { "editable": true, "revertOnSeed": true },
+      "locate": {
+        "by": "name",
+        "value": "Order Shipped (Buyer)"
+      },
+      "policy": {
+        "editable": true,
+        "revertOnSeed": true
+      },
       "data": {
         "name": "Order Shipped (Buyer)",
         "event_name": "order.shipped",
@@ -61,19 +91,31 @@
         "audience": "user",
         "is_critical": true,
         "send_email": true,
-        "channels": ["in_app", "email"],
+        "channels": [
+          "in_app",
+          "email"
+        ],
         "delay_minutes": 0,
         "dedup_window_minutes": 20,
         "subject": "Order Shipped",
         "body_template": "Your order #{order.id} has been shipped.",
-        "available_variables": ["order.id", "user_id"],
+        "available_variables": [
+          "order.id",
+          "user_id"
+        ],
         "is_active": true,
         "is_enabled": true
       }
     },
     {
-      "locate": { "by": "name", "value": "Cart Abandoned Reminder (Buyer)" },
-      "policy": { "editable": true, "revertOnSeed": true },
+      "locate": {
+        "by": "name",
+        "value": "Cart Abandoned Reminder (Buyer)"
+      },
+      "policy": {
+        "editable": true,
+        "revertOnSeed": true
+      },
       "data": {
         "name": "Cart Abandoned Reminder (Buyer)",
         "event_name": "cart.abandoned",
@@ -84,19 +126,29 @@
         "audience": "user",
         "is_critical": false,
         "send_email": false,
-        "channels": ["in_app"],
+        "channels": [
+          "in_app"
+        ],
         "delay_minutes": 60,
         "dedup_window_minutes": 120,
         "subject": "You left items in your cart",
         "body_template": "Complete your purchase before items go out of stock.",
-        "available_variables": ["user_id"],
+        "available_variables": [
+          "user_id"
+        ],
         "is_active": true,
         "is_enabled": true
       }
     },
     {
-      "locate": { "by": "name", "value": "Support Ticket Submitted (User+Admin)" },
-      "policy": { "editable": true, "revertOnSeed": true },
+      "locate": {
+        "by": "name",
+        "value": "Support Ticket Submitted (User+Admin)"
+      },
+      "policy": {
+        "editable": true,
+        "revertOnSeed": true
+      },
       "data": {
         "name": "Support Ticket Submitted (User+Admin)",
         "event_name": "contact.submitted",
@@ -107,19 +159,32 @@
         "audience": "both",
         "is_critical": true,
         "send_email": true,
-        "channels": ["in_app", "email"],
+        "channels": [
+          "in_app",
+          "email"
+        ],
         "delay_minutes": 0,
         "dedup_window_minutes": 30,
         "subject": "We received your message",
         "body_template": "Our support team will respond shortly.",
-        "available_variables": ["ticket_id", "user_id", "subject"],
+        "available_variables": [
+          "ticket_id",
+          "user_id",
+          "subject"
+        ],
         "is_active": true,
         "is_enabled": true
       }
     },
     {
-      "locate": { "by": "name", "value": "Support Reply Added (Opposite Party)" },
-      "policy": { "editable": true, "revertOnSeed": true },
+      "locate": {
+        "by": "name",
+        "value": "Support Reply Added (Opposite Party)"
+      },
+      "policy": {
+        "editable": true,
+        "revertOnSeed": true
+      },
       "data": {
         "name": "Support Reply Added (Opposite Party)",
         "event_name": "contact.reply.added",
@@ -128,22 +193,38 @@
         "category": "customer_support",
         "priority": "high",
         "audience": "opposite_party",
-        "conditions": { "reply_by": "agent" },
+        "conditions": {
+          "reply_by": "agent"
+        },
         "is_critical": true,
         "send_email": true,
-        "channels": ["in_app", "email"],
+        "channels": [
+          "in_app",
+          "email"
+        ],
         "delay_minutes": 0,
         "dedup_window_minutes": 20,
         "subject": "Support replied",
         "body_template": "You have a new response on your support request.",
-        "available_variables": ["ticket_id", "reply_by", "user_id", "assigned_to"],
+        "available_variables": [
+          "ticket_id",
+          "reply_by",
+          "user_id",
+          "assigned_to"
+        ],
         "is_active": true,
         "is_enabled": true
       }
     },
     {
-      "locate": { "by": "name", "value": "Support SLA Breach (Admin)" },
-      "policy": { "editable": true, "revertOnSeed": true },
+      "locate": {
+        "by": "name",
+        "value": "Support SLA Breach (Admin)"
+      },
+      "policy": {
+        "editable": true,
+        "revertOnSeed": true
+      },
       "data": {
         "name": "Support SLA Breach (Admin)",
         "event_name": "contact.sla.breach",
@@ -154,19 +235,32 @@
         "audience": "admin",
         "is_critical": true,
         "send_email": true,
-        "channels": ["in_app", "email"],
+        "channels": [
+          "in_app",
+          "email"
+        ],
         "delay_minutes": 0,
         "dedup_window_minutes": 15,
         "subject": "SLA Breach Warning",
         "body_template": "A support ticket has not been responded to in time.",
-        "available_variables": ["ticket_id", "status", "sla_due_at"],
+        "available_variables": [
+          "ticket_id",
+          "status",
+          "sla_due_at"
+        ],
         "is_active": true,
         "is_enabled": true
       }
     },
     {
-      "locate": { "by": "name", "value": "Low Stock Alert (Stock Team)" },
-      "policy": { "editable": true, "revertOnSeed": true },
+      "locate": {
+        "by": "name",
+        "value": "Low Stock Alert (Stock Team)"
+      },
+      "policy": {
+        "editable": true,
+        "revertOnSeed": true
+      },
       "data": {
         "name": "Low Stock Alert (Stock Team)",
         "event_name": "stock.low",
@@ -177,19 +271,31 @@
         "audience": "admin",
         "is_critical": false,
         "send_email": false,
-        "channels": ["in_app"],
+        "channels": [
+          "in_app"
+        ],
         "delay_minutes": 0,
         "dedup_window_minutes": 60,
         "subject": "Low Stock Alert",
         "body_template": "{product.name} stock is low at {stock.available_units} units.",
-        "available_variables": ["product.name", "stock.available_units", "branch.name"],
+        "available_variables": [
+          "product.name",
+          "stock.available_units",
+          "branch.name"
+        ],
         "is_active": true,
         "is_enabled": true
       }
     },
     {
-      "locate": { "by": "name", "value": "Stock Out Alert (Stock Team)" },
-      "policy": { "editable": true, "revertOnSeed": true },
+      "locate": {
+        "by": "name",
+        "value": "Stock Out Alert (Stock Team)"
+      },
+      "policy": {
+        "editable": true,
+        "revertOnSeed": true
+      },
       "data": {
         "name": "Stock Out Alert (Stock Team)",
         "event_name": "stock.out",
@@ -200,19 +306,31 @@
         "audience": "admin",
         "is_critical": true,
         "send_email": true,
-        "channels": ["in_app", "email"],
+        "channels": [
+          "in_app",
+          "email"
+        ],
         "delay_minutes": 0,
         "dedup_window_minutes": 30,
         "subject": "Stock Out Alert",
         "body_template": "{product.name} is out of stock and requires replenishment.",
-        "available_variables": ["product.name", "branch.name"],
+        "available_variables": [
+          "product.name",
+          "branch.name"
+        ],
         "is_active": true,
         "is_enabled": true
       }
     },
     {
-      "locate": { "by": "name", "value": "Leave Submitted (Manager)" },
-      "policy": { "editable": true, "revertOnSeed": true },
+      "locate": {
+        "by": "name",
+        "value": "Leave Submitted (Manager)"
+      },
+      "policy": {
+        "editable": true,
+        "revertOnSeed": true
+      },
       "data": {
         "name": "Leave Submitted (Manager)",
         "event_name": "hr.leave.submitted",
@@ -223,19 +341,32 @@
         "audience": "user",
         "is_critical": false,
         "send_email": false,
-        "channels": ["in_app"],
+        "channels": [
+          "in_app"
+        ],
         "delay_minutes": 0,
         "dedup_window_minutes": 5,
         "subject": "Leave request awaiting your approval",
         "body_template": "{employee_name} submitted a {leave_type} leave request.",
-        "available_variables": ["leave_request_id", "leave_type", "employee_name", "user_id"],
+        "available_variables": [
+          "leave_request_id",
+          "leave_type",
+          "employee_name",
+          "user_id"
+        ],
         "is_active": true,
         "is_enabled": true
       }
     },
     {
-      "locate": { "by": "name", "value": "Leave Approved (Employee)" },
-      "policy": { "editable": true, "revertOnSeed": true },
+      "locate": {
+        "by": "name",
+        "value": "Leave Approved (Employee)"
+      },
+      "policy": {
+        "editable": true,
+        "revertOnSeed": true
+      },
       "data": {
         "name": "Leave Approved (Employee)",
         "event_name": "hr.leave.approved",
@@ -246,19 +377,31 @@
         "audience": "user",
         "is_critical": false,
         "send_email": false,
-        "channels": ["in_app"],
+        "channels": [
+          "in_app"
+        ],
         "delay_minutes": 0,
         "dedup_window_minutes": 5,
         "subject": "Leave request approved",
         "body_template": "Your {leave_type} leave request has been approved.",
-        "available_variables": ["leave_request_id", "leave_type", "user_id"],
+        "available_variables": [
+          "leave_request_id",
+          "leave_type",
+          "user_id"
+        ],
         "is_active": true,
         "is_enabled": true
       }
     },
     {
-      "locate": { "by": "name", "value": "Leave Rejected (Employee)" },
-      "policy": { "editable": true, "revertOnSeed": true },
+      "locate": {
+        "by": "name",
+        "value": "Leave Rejected (Employee)"
+      },
+      "policy": {
+        "editable": true,
+        "revertOnSeed": true
+      },
       "data": {
         "name": "Leave Rejected (Employee)",
         "event_name": "hr.leave.rejected",
@@ -269,19 +412,32 @@
         "audience": "user",
         "is_critical": false,
         "send_email": false,
-        "channels": ["in_app"],
+        "channels": [
+          "in_app"
+        ],
         "delay_minutes": 0,
         "dedup_window_minutes": 5,
         "subject": "Leave request rejected",
         "body_template": "Your {leave_type} leave request was rejected.{reason}",
-        "available_variables": ["leave_request_id", "leave_type", "reason", "user_id"],
+        "available_variables": [
+          "leave_request_id",
+          "leave_type",
+          "reason",
+          "user_id"
+        ],
         "is_active": true,
         "is_enabled": true
       }
     },
     {
-      "locate": { "by": "name", "value": "Loan Decided (Employee)" },
-      "policy": { "editable": true, "revertOnSeed": true },
+      "locate": {
+        "by": "name",
+        "value": "Loan Decided (Employee)"
+      },
+      "policy": {
+        "editable": true,
+        "revertOnSeed": true
+      },
       "data": {
         "name": "Loan Decided (Employee)",
         "event_name": "hr.loan.approved",
@@ -292,19 +448,31 @@
         "audience": "user",
         "is_critical": false,
         "send_email": false,
-        "channels": ["in_app"],
+        "channels": [
+          "in_app"
+        ],
         "delay_minutes": 0,
         "dedup_window_minutes": 5,
         "subject": "Loan request approved",
         "body_template": "Your loan request for {principal_amount} has been approved.",
-        "available_variables": ["loan_id", "principal_amount", "user_id"],
+        "available_variables": [
+          "loan_id",
+          "principal_amount",
+          "user_id"
+        ],
         "is_active": true,
         "is_enabled": true
       }
     },
     {
-      "locate": { "by": "name", "value": "Loan Rejected (Employee)" },
-      "policy": { "editable": true, "revertOnSeed": true },
+      "locate": {
+        "by": "name",
+        "value": "Loan Rejected (Employee)"
+      },
+      "policy": {
+        "editable": true,
+        "revertOnSeed": true
+      },
       "data": {
         "name": "Loan Rejected (Employee)",
         "event_name": "hr.loan.rejected",
@@ -315,19 +483,32 @@
         "audience": "user",
         "is_critical": false,
         "send_email": false,
-        "channels": ["in_app"],
+        "channels": [
+          "in_app"
+        ],
         "delay_minutes": 0,
         "dedup_window_minutes": 5,
         "subject": "Loan request rejected",
         "body_template": "Your loan request for {principal_amount} was rejected.{reason}",
-        "available_variables": ["loan_id", "principal_amount", "reason", "user_id"],
+        "available_variables": [
+          "loan_id",
+          "principal_amount",
+          "reason",
+          "user_id"
+        ],
         "is_active": true,
         "is_enabled": true
       }
     },
     {
-      "locate": { "by": "name", "value": "Advance Decided (Employee)" },
-      "policy": { "editable": true, "revertOnSeed": true },
+      "locate": {
+        "by": "name",
+        "value": "Advance Decided (Employee)"
+      },
+      "policy": {
+        "editable": true,
+        "revertOnSeed": true
+      },
       "data": {
         "name": "Advance Decided (Employee)",
         "event_name": "hr.advance.approved",
@@ -338,19 +519,31 @@
         "audience": "user",
         "is_critical": false,
         "send_email": false,
-        "channels": ["in_app"],
+        "channels": [
+          "in_app"
+        ],
         "delay_minutes": 0,
         "dedup_window_minutes": 5,
         "subject": "Salary advance approved",
         "body_template": "Your salary advance request for {amount} has been approved.",
-        "available_variables": ["advance_id", "amount", "user_id"],
+        "available_variables": [
+          "advance_id",
+          "amount",
+          "user_id"
+        ],
         "is_active": true,
         "is_enabled": true
       }
     },
     {
-      "locate": { "by": "name", "value": "Advance Rejected (Employee)" },
-      "policy": { "editable": true, "revertOnSeed": true },
+      "locate": {
+        "by": "name",
+        "value": "Advance Rejected (Employee)"
+      },
+      "policy": {
+        "editable": true,
+        "revertOnSeed": true
+      },
       "data": {
         "name": "Advance Rejected (Employee)",
         "event_name": "hr.advance.rejected",
@@ -361,19 +554,32 @@
         "audience": "user",
         "is_critical": false,
         "send_email": false,
-        "channels": ["in_app"],
+        "channels": [
+          "in_app"
+        ],
         "delay_minutes": 0,
         "dedup_window_minutes": 5,
         "subject": "Salary advance rejected",
         "body_template": "Your salary advance request for {amount} was rejected.{reason}",
-        "available_variables": ["advance_id", "amount", "reason", "user_id"],
+        "available_variables": [
+          "advance_id",
+          "amount",
+          "reason",
+          "user_id"
+        ],
         "is_active": true,
         "is_enabled": true
       }
     },
     {
-      "locate": { "by": "name", "value": "Expense Claim Submitted (Manager)" },
-      "policy": { "editable": true, "revertOnSeed": true },
+      "locate": {
+        "by": "name",
+        "value": "Expense Claim Submitted (Manager)"
+      },
+      "policy": {
+        "editable": true,
+        "revertOnSeed": true
+      },
       "data": {
         "name": "Expense Claim Submitted (Manager)",
         "event_name": "hr.expense.submitted",
@@ -384,19 +590,32 @@
         "audience": "user",
         "is_critical": false,
         "send_email": false,
-        "channels": ["in_app"],
+        "channels": [
+          "in_app"
+        ],
         "delay_minutes": 0,
         "dedup_window_minutes": 5,
         "subject": "Expense claim awaiting your approval",
         "body_template": "{employee_name} submitted an expense claim for {amount}.",
-        "available_variables": ["claim_id", "amount", "employee_name", "user_id"],
+        "available_variables": [
+          "claim_id",
+          "amount",
+          "employee_name",
+          "user_id"
+        ],
         "is_active": true,
         "is_enabled": true
       }
     },
     {
-      "locate": { "by": "name", "value": "Expense Claim Decided (Employee)" },
-      "policy": { "editable": true, "revertOnSeed": true },
+      "locate": {
+        "by": "name",
+        "value": "Expense Claim Decided (Employee)"
+      },
+      "policy": {
+        "editable": true,
+        "revertOnSeed": true
+      },
       "data": {
         "name": "Expense Claim Decided (Employee)",
         "event_name": "hr.expense.approved",
@@ -407,19 +626,31 @@
         "audience": "user",
         "is_critical": false,
         "send_email": false,
-        "channels": ["in_app"],
+        "channels": [
+          "in_app"
+        ],
         "delay_minutes": 0,
         "dedup_window_minutes": 5,
         "subject": "Expense claim approved",
         "body_template": "Your expense claim for {amount} has been approved.",
-        "available_variables": ["claim_id", "amount", "user_id"],
+        "available_variables": [
+          "claim_id",
+          "amount",
+          "user_id"
+        ],
         "is_active": true,
         "is_enabled": true
       }
     },
     {
-      "locate": { "by": "name", "value": "Expense Claim Rejected (Employee)" },
-      "policy": { "editable": true, "revertOnSeed": true },
+      "locate": {
+        "by": "name",
+        "value": "Expense Claim Rejected (Employee)"
+      },
+      "policy": {
+        "editable": true,
+        "revertOnSeed": true
+      },
       "data": {
         "name": "Expense Claim Rejected (Employee)",
         "event_name": "hr.expense.rejected",
@@ -430,19 +661,32 @@
         "audience": "user",
         "is_critical": false,
         "send_email": false,
-        "channels": ["in_app"],
+        "channels": [
+          "in_app"
+        ],
         "delay_minutes": 0,
         "dedup_window_minutes": 5,
         "subject": "Expense claim rejected",
         "body_template": "Your expense claim for {amount} was rejected.{reason}",
-        "available_variables": ["claim_id", "amount", "reason", "user_id"],
+        "available_variables": [
+          "claim_id",
+          "amount",
+          "reason",
+          "user_id"
+        ],
         "is_active": true,
         "is_enabled": true
       }
     },
     {
-      "locate": { "by": "name", "value": "Expense Claim Reimbursed (Employee)" },
-      "policy": { "editable": true, "revertOnSeed": true },
+      "locate": {
+        "by": "name",
+        "value": "Expense Claim Reimbursed (Employee)"
+      },
+      "policy": {
+        "editable": true,
+        "revertOnSeed": true
+      },
       "data": {
         "name": "Expense Claim Reimbursed (Employee)",
         "event_name": "hr.expense.reimbursed",
@@ -453,19 +697,31 @@
         "audience": "user",
         "is_critical": false,
         "send_email": false,
-        "channels": ["in_app"],
+        "channels": [
+          "in_app"
+        ],
         "delay_minutes": 0,
         "dedup_window_minutes": 5,
         "subject": "Expense claim reimbursed",
         "body_template": "Your expense claim for {amount} has been reimbursed.",
-        "available_variables": ["claim_id", "amount", "user_id"],
+        "available_variables": [
+          "claim_id",
+          "amount",
+          "user_id"
+        ],
         "is_active": true,
         "is_enabled": true
       }
     },
     {
-      "locate": { "by": "name", "value": "Lifecycle Event Recorded (Employee)" },
-      "policy": { "editable": true, "revertOnSeed": true },
+      "locate": {
+        "by": "name",
+        "value": "Lifecycle Event Recorded (Employee)"
+      },
+      "policy": {
+        "editable": true,
+        "revertOnSeed": true
+      },
       "data": {
         "name": "Lifecycle Event Recorded (Employee)",
         "event_name": "hr.lifecycle.recorded",
@@ -476,19 +732,32 @@
         "audience": "user",
         "is_critical": false,
         "send_email": false,
-        "channels": ["in_app"],
+        "channels": [
+          "in_app"
+        ],
         "delay_minutes": 0,
         "dedup_window_minutes": 5,
         "subject": "A new record was added to your HR file",
         "body_template": "A {event_type} event was recorded on your HR timeline.",
-        "available_variables": ["lifecycle_event_id", "event_type", "effective_date", "user_id"],
+        "available_variables": [
+          "lifecycle_event_id",
+          "event_type",
+          "effective_date",
+          "user_id"
+        ],
         "is_active": true,
         "is_enabled": true
       }
     },
     {
-      "locate": { "by": "name", "value": "Employee Birthday Today (Manager+Admin)" },
-      "policy": { "editable": true, "revertOnSeed": true },
+      "locate": {
+        "by": "name",
+        "value": "Employee Birthday Today (Manager+Admin)"
+      },
+      "policy": {
+        "editable": true,
+        "revertOnSeed": true
+      },
       "data": {
         "name": "Employee Birthday Today (Manager+Admin)",
         "event_name": "hr.birthday.today",
@@ -499,12 +768,159 @@
         "audience": "both",
         "is_critical": false,
         "send_email": false,
-        "channels": ["in_app"],
+        "channels": [
+          "in_app"
+        ],
         "delay_minutes": 0,
         "dedup_window_minutes": 1440,
         "subject": "Birthday today",
         "body_template": "It's {employee_name}'s birthday today.",
-        "available_variables": ["employee_id", "employee_name", "user_id"],
+        "available_variables": [
+          "employee_id",
+          "employee_name",
+          "user_id"
+        ],
+        "is_active": true,
+        "is_enabled": true
+      }
+    },
+    {
+      "locate": {
+        "by": "name",
+        "value": "Appraisal Completed (Employee)"
+      },
+      "policy": {
+        "editable": true,
+        "revertOnSeed": true
+      },
+      "data": {
+        "name": "Appraisal Completed (Employee)",
+        "event_name": "hr.appraisal.completed",
+        "trigger_event": "none",
+        "send_to": "customer",
+        "category": "hr_workflow",
+        "priority": "medium",
+        "audience": "user",
+        "is_critical": false,
+        "send_email": false,
+        "channels": [
+          "in_app"
+        ],
+        "delay_minutes": 0,
+        "dedup_window_minutes": 5,
+        "subject": "Your appraisal is complete",
+        "body_template": "Your performance review has been completed. Final rating: {final_rating}.",
+        "available_variables": [
+          "appraisal_id",
+          "final_rating",
+          "user_id"
+        ],
+        "is_active": true,
+        "is_enabled": true
+      }
+    },
+    {
+      "locate": {
+        "by": "name",
+        "value": "Training Completed (Employee)"
+      },
+      "policy": {
+        "editable": true,
+        "revertOnSeed": true
+      },
+      "data": {
+        "name": "Training Completed (Employee)",
+        "event_name": "hr.training.completed",
+        "trigger_event": "none",
+        "send_to": "customer",
+        "category": "hr_workflow",
+        "priority": "medium",
+        "audience": "user",
+        "is_critical": false,
+        "send_email": false,
+        "channels": [
+          "in_app"
+        ],
+        "delay_minutes": 0,
+        "dedup_window_minutes": 5,
+        "subject": "Training marked complete",
+        "body_template": "Your training has been marked complete.",
+        "available_variables": [
+          "enrollment_id",
+          "user_id"
+        ],
+        "is_active": true,
+        "is_enabled": true
+      }
+    },
+    {
+      "locate": {
+        "by": "name",
+        "value": "Safety Incident Reported (Admin)"
+      },
+      "policy": {
+        "editable": true,
+        "revertOnSeed": true
+      },
+      "data": {
+        "name": "Safety Incident Reported (Admin)",
+        "event_name": "hr.incident.reported",
+        "trigger_event": "none",
+        "send_to": "admin",
+        "category": "hr_lifecycle",
+        "priority": "medium",
+        "audience": "admin",
+        "is_critical": false,
+        "send_email": false,
+        "channels": [
+          "in_app"
+        ],
+        "delay_minutes": 0,
+        "dedup_window_minutes": 5,
+        "subject": "Safety incident reported",
+        "body_template": "A {severity} severity {incident_type} incident was reported at {location}.",
+        "available_variables": [
+          "incident_id",
+          "severity",
+          "incident_type",
+          "location"
+        ],
+        "is_active": true,
+        "is_enabled": true
+      }
+    },
+    {
+      "locate": {
+        "by": "name",
+        "value": "Document Issued (Employee)"
+      },
+      "policy": {
+        "editable": true,
+        "revertOnSeed": true
+      },
+      "data": {
+        "name": "Document Issued (Employee)",
+        "event_name": "hr.document.issued",
+        "trigger_event": "none",
+        "send_to": "customer",
+        "category": "hr_lifecycle",
+        "priority": "medium",
+        "audience": "user",
+        "is_critical": false,
+        "send_email": false,
+        "channels": [
+          "in_app"
+        ],
+        "delay_minutes": 0,
+        "dedup_window_minutes": 5,
+        "subject": "A document was issued to you",
+        "body_template": "Your {document_type} letter ({reference_no}) is available in My Documents.",
+        "available_variables": [
+          "document_id",
+          "document_type",
+          "reference_no",
+          "user_id"
+        ],
         "is_active": true,
         "is_enabled": true
       }

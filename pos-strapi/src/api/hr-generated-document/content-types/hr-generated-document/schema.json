@@ -1,0 +1,51 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_generated_documents",
+  "info": {
+    "singularName": "hr-generated-document",
+    "pluralName": "hr-generated-documents",
+    "displayName": "HR Generated Document",
+    "description": "A rendered letter issued to an employee"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "reference_no": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "content": {
+      "type": "text"
+    },
+    "generated_at": {
+      "type": "datetime"
+    },
+    "employee": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee"
+    },
+    "template": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-letter-template.hr-letter-template"
+    },
+    "generated_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

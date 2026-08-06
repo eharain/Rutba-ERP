@@ -1,0 +1,56 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_job_requisitions",
+  "info": {
+    "singularName": "hr-job-requisition",
+    "pluralName": "hr-job-requisitions",
+    "displayName": "HR Job Requisition",
+    "description": "A request to hire"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "headcount": {
+      "type": "integer",
+      "default": 1
+    },
+    "justification": {
+      "type": "text"
+    },
+    "target_date": {
+      "type": "date"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Draft",
+        "Approved",
+        "Open",
+        "Filled",
+        "Cancelled"
+      ],
+      "default": "Draft"
+    },
+    "department": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-department.hr-department"
+    },
+    "position": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-position.hr-position"
+    },
+    "requested_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee"
+    }
+  }
+}

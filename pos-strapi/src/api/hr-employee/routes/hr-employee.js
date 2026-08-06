@@ -8,6 +8,7 @@ const defaultRouter = createCoreRouter('api::hr-employee.hr-employee');
 const customRoutes = [
   { method: 'GET', path: '/hr-employees/me', handler: 'api::hr-employee.hr-employee.myProfile' },
   { method: 'PUT', path: '/hr-employees/me', handler: 'api::hr-employee.hr-employee.updateMyProfile' },
+  { method: 'GET', path: '/hr-employees/dashboard', handler: 'api::hr-employee.hr-employee.dashboard' },
 ];
 
 module.exports = {

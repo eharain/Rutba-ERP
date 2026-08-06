@@ -1,0 +1,54 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_disciplinary_actions",
+  "info": {
+    "singularName": "hr-disciplinary-action",
+    "pluralName": "hr-disciplinary-actions",
+    "displayName": "HR Disciplinary Action",
+    "description": "A recorded disciplinary step"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "Verbal",
+        "Written",
+        "FinalWarning",
+        "Suspension",
+        "Termination"
+      ],
+      "required": true
+    },
+    "reason": {
+      "type": "text"
+    },
+    "action_date": {
+      "type": "date"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "acknowledged_at": {
+      "type": "datetime"
+    },
+    "employee": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee"
+    },
+    "issued_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

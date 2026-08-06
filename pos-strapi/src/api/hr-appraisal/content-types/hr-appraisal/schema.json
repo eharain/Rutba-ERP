@@ -1,0 +1,67 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_appraisals",
+  "info": {
+    "singularName": "hr-appraisal",
+    "pluralName": "hr-appraisals",
+    "displayName": "HR Appraisal",
+    "description": "One employee review for one cycle"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Draft",
+        "SelfAssessment",
+        "ManagerReview",
+        "Completed"
+      ],
+      "default": "Draft"
+    },
+    "self_rating": {
+      "type": "decimal"
+    },
+    "manager_rating": {
+      "type": "decimal"
+    },
+    "final_rating": {
+      "type": "decimal"
+    },
+    "self_comments": {
+      "type": "text"
+    },
+    "manager_comments": {
+      "type": "text"
+    },
+    "submitted_at": {
+      "type": "datetime"
+    },
+    "completed_at": {
+      "type": "datetime"
+    },
+    "employee": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee"
+    },
+    "cycle": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-appraisal-cycle.hr-appraisal-cycle"
+    },
+    "reviewer": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

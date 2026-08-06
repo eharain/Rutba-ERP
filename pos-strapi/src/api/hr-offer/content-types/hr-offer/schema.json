@@ -1,0 +1,54 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_offers",
+  "info": {
+    "singularName": "hr-offer",
+    "pluralName": "hr-offers",
+    "displayName": "HR Offer",
+    "description": "An offer extended to a candidate"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "offered_salary": {
+      "type": "decimal"
+    },
+    "offer_date": {
+      "type": "date"
+    },
+    "joining_date": {
+      "type": "date"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Draft",
+        "Sent",
+        "Accepted",
+        "Declined",
+        "Withdrawn"
+      ],
+      "default": "Draft"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "candidate": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-candidate.hr-candidate"
+    },
+    "requisition": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-job-requisition.hr-job-requisition"
+    },
+    "currency": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::currency.currency"
+    }
+  }
+}

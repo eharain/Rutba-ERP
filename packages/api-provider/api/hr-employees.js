@@ -26,6 +26,19 @@ export const HrEmployeesEndpoints = {
         data,
     }),
 
+    /**
+     * Role-scoped HR dashboard aggregates. Open to every level — the server
+     * decides the scope (HR → org-wide, line manager → reports, employee →
+     * self), so the same call returns a different-sized picture per caller.
+     */
+    getDashboard: () => ({
+        path: '/hr-employees/dashboard',
+        action: 'dashboard',
+        method: 'get',
+        apps: ['hr', 'ess'],
+        approle: ['admin', 'manager', 'staff', 'user'],
+    }),
+
     // Read access is shared with the apps that reference employees (assignee /
     // supervisor / worker-profile pickers); writes stay HR-only.
     list: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({

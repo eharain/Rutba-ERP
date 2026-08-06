@@ -1,0 +1,36 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_competencies",
+  "info": {
+    "singularName": "hr-competency",
+    "pluralName": "hr-competencies",
+    "displayName": "HR Competency",
+    "description": "A rated skill/behaviour used in appraisals"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "category": {
+      "type": "enumeration",
+      "enum": [
+        "Technical",
+        "Behavioral",
+        "Leadership"
+      ],
+      "default": "Technical"
+    },
+    "description": {
+      "type": "text"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

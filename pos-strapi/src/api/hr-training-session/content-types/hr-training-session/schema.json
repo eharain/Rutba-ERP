@@ -1,0 +1,52 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_training_sessions",
+  "info": {
+    "singularName": "hr-training-session",
+    "pluralName": "hr-training-sessions",
+    "displayName": "HR Training Session",
+    "description": "A scheduled delivery of a course"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "start_date": {
+      "type": "datetime",
+      "required": true
+    },
+    "end_date": {
+      "type": "datetime"
+    },
+    "location": {
+      "type": "string"
+    },
+    "capacity": {
+      "type": "integer"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Scheduled",
+        "InProgress",
+        "Completed",
+        "Cancelled"
+      ],
+      "default": "Scheduled"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "course": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-course.hr-course"
+    },
+    "trainer": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee"
+    }
+  }
+}

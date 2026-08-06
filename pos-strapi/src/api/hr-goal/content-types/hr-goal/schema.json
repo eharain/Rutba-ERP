@@ -1,0 +1,59 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_goals",
+  "info": {
+    "singularName": "hr-goal",
+    "pluralName": "hr-goals",
+    "displayName": "HR Goal",
+    "description": "An employee objective within an appraisal cycle"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "target_date": {
+      "type": "date"
+    },
+    "weight": {
+      "type": "decimal",
+      "default": 1
+    },
+    "progress_percent": {
+      "type": "integer",
+      "default": 0
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "NotStarted",
+        "InProgress",
+        "Completed",
+        "Cancelled"
+      ],
+      "default": "NotStarted"
+    },
+    "employee": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee"
+    },
+    "cycle": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-appraisal-cycle.hr-appraisal-cycle"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

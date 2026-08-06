@@ -14,6 +14,12 @@ const SECTIONS = [
     { divider: true },
     { href: "/attendance",             label: "Attendance",          icon: "fa-calendar-check" },
     { href: "/leave-requests",         label: "Leave Requests",      icon: "fa-plane-departure" },
+    { divider: true },
+    { href: "/performance",            label: "Performance",         icon: "fa-bullseye" },
+    { href: "/learning",               label: "Learning",            icon: "fa-graduation-cap" },
+    { href: "/recruitment",            label: "Recruitment",         icon: "fa-user-plus" },
+    { href: "/relations",              label: "Employee Relations",  icon: "fa-scale-balanced" },
+    { href: "/letters",                label: "Letters",             icon: "fa-file-signature" },
 ];
 
 export default function Sidebar() {

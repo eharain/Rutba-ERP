@@ -1,0 +1,45 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_courses",
+  "info": {
+    "singularName": "hr-course",
+    "pluralName": "hr-courses",
+    "displayName": "HR Course",
+    "description": "A training course in the catalogue"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "code": {
+      "type": "string"
+    },
+    "description": {
+      "type": "text"
+    },
+    "duration_hours": {
+      "type": "decimal"
+    },
+    "category": {
+      "type": "string"
+    },
+    "delivery_mode": {
+      "type": "enumeration",
+      "enum": [
+        "Classroom",
+        "Online",
+        "OnTheJob"
+      ],
+      "default": "Classroom"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

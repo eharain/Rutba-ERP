@@ -1,0 +1,58 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_training_enrollments",
+  "info": {
+    "singularName": "hr-training-enrollment",
+    "pluralName": "hr-training-enrollments",
+    "displayName": "HR Training Enrollment",
+    "description": "One employee's place on a session"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Enrolled",
+        "Attended",
+        "Completed",
+        "Dropped"
+      ],
+      "default": "Enrolled"
+    },
+    "completion_date": {
+      "type": "date"
+    },
+    "score": {
+      "type": "decimal"
+    },
+    "feedback": {
+      "type": "text"
+    },
+    "certificate": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images",
+        "files"
+      ]
+    },
+    "employee": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee"
+    },
+    "session": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-training-session.hr-training-session"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

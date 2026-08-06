@@ -1,5 +1,6 @@
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
+import HrDashboard from "@rutba/pos-shared/components/HrDashboard";
 import Link from "next/link";
 
 const CARDS = [
@@ -10,9 +11,15 @@ const CARDS = [
     { href: "/expense-claims", icon: "fa-file-invoice-dollar", title: "Expense Claims", text: "Submit expense claims and, if you manage a team, review theirs." },
     { href: "/benefits",   icon: "fa-heart-pulse",     title: "My Benefits",    text: "View your enrolled insurance, retirement and PF plans." },
     { href: "/assets",     icon: "fa-laptop",          title: "My Assets",      text: "View company assets assigned to you." },
+    { href: "/performance", icon: "fa-bullseye",       title: "My Performance", text: "Track your goals and complete your self-assessment." },
+    { href: "/training",   icon: "fa-graduation-cap",  title: "My Training",    text: "See your enrolled courses and sign up for open sessions." },
+    { href: "/documents",  icon: "fa-file-lines",      title: "My Documents",   text: "Print letters issued to you and track expiring documents." },
+    { href: "/schedule",   icon: "fa-calendar-days",   title: "My Schedule",    text: "Your shift roster and the company holiday calendar." },
+    { href: "/timeline",   icon: "fa-timeline",        title: "My Timeline",    text: "Your onboarding, confirmations, promotions and transfers." },
     { href: "/tickets",    icon: "fa-headset",         title: "Helpdesk",       text: "Submit IT/HR/Facilities tickets and, if you manage a team, resolve theirs." },
+    { href: "/wellbeing",  icon: "fa-comment-dots",    title: "Raise a Concern", text: "Raise a grievance with HR or report a safety incident." },
     { href: "/profile",    icon: "fa-id-card",         title: "My Profile",     text: "View your personal and employment details." },
-    { href: "/approvals",  icon: "fa-clipboard-check", title: "Approvals",      text: "If you manage a team, review and decide on their leave." },
+    { href: "/approvals",  icon: "fa-clipboard-check", title: "Approvals",      text: "If you manage a team, decide their leave, claims, loans and advances." },
 ];
 
 export default function Home() {
@@ -21,6 +28,7 @@ export default function Home() {
             <Layout>
                 <h2 className="mb-1">Employee Self-Service 🙋</h2>
                 <p className="text-muted mb-4">Your leave, payslips and team approvals in one place.</p>
+                <HrDashboard />
                 <div className="row g-3">
                     {CARDS.map((c) => (
                         <div className="col-md-4" key={c.href}>

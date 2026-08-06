@@ -12,6 +12,11 @@ async function updateMyProfile(data) {
     return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
+async function getDashboard() {
+    const ep = HrEmployeesEndpointsApi.getDashboard();
+    return authApi.fetch(ep.path, ep.params);
+}
+
 async function list(arg1 = {}) {
     const ep = HrEmployeesEndpointsApi.list(arg1);
     return authApi.fetch(ep.path, ep.params);
@@ -37,13 +42,14 @@ const endpoints = strictEndpointGuard(
     {
         getMyProfile,
         updateMyProfile,
+        getDashboard,
         list,
         byId,
         create,
         update,
         meta: HrEmployeesEndpointsApi.meta,
     },
-    ["getMyProfile","updateMyProfile","list","byId","create","update","meta"],
+    ["getMyProfile","updateMyProfile","getDashboard","list","byId","create","update","meta"],
 );
 
 export default endpoints;

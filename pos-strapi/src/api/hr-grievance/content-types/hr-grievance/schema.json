@@ -1,0 +1,70 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_grievances",
+  "info": {
+    "singularName": "hr-grievance",
+    "pluralName": "hr-grievances",
+    "displayName": "HR Grievance",
+    "description": "A confidential employee complaint"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "subject": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "category": {
+      "type": "enumeration",
+      "enum": [
+        "Harassment",
+        "Discrimination",
+        "Workload",
+        "Pay",
+        "Management",
+        "Other"
+      ],
+      "default": "Other"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Open",
+        "UnderReview",
+        "Resolved",
+        "Closed"
+      ],
+      "default": "Open"
+    },
+    "is_anonymous": {
+      "type": "boolean",
+      "default": false
+    },
+    "resolution": {
+      "type": "text"
+    },
+    "resolved_at": {
+      "type": "datetime"
+    },
+    "employee": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee"
+    },
+    "resolved_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}
