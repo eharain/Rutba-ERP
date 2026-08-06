@@ -1,31 +1,11 @@
 'use strict';
 
 const { createCoreController } = require('@strapi/strapi').factories;
+const { loadActor, isPayrollManager } = require('../../../utils/payroll-access');
 
 const RM_UID = 'api::pay-statutory-remittance.pay-statutory-remittance';
 
 const PAYOUT_METHOD_KEY = { Cash: 'CASH_DRAWER', Bank: 'BANK_PRIMARY', 'Mobile Wallet': 'MOBILE_WALLET' };
-
-async function getAuthUser(ctx, strapi) {
-  const id = ctx.state?.user?.id;
-  if (!id) return null;
-  return strapi.query('plugin::users-permissions.user').findOne({
-    where: { id },
-    populate: {
-      role: { select: ['type'] },
-      permission_roles: { select: ['level'], populate: { domain: { select: ['key'] } } },
-    },
-  });
-}
-
-function isPayrollManager(user) {
-  if (user?.role?.type === 'admin') return true;
-  const domains = (user?.permission_roles || [])
-    .filter((r) => r?.level === 'admin' || r?.level === 'manager')
-    .map((r) => r?.domain?.key)
-    .filter(Boolean);
-  return domains.includes('payroll') || domains.includes('accounts') || domains.includes('auth');
-}
 
 module.exports = createCoreController(RM_UID, ({ strapi }) => ({
   /**
@@ -33,9 +13,12 @@ module.exports = createCoreController(RM_UID, ({ strapi }) => ({
    * credit cash/bank, and mark the remittance Paid. Idempotent + manager-gated.
    */
   async process(ctx) {
-    const user = await getAuthUser(ctx, strapi);
+    // Shared payroll gate. The previous guard populated a `permission_roles`
+    // relation that has no schema, so it always came back empty and every
+    // non-super-admin was refused — nobody could post a remittance.
+    const user = await loadActor(ctx, strapi);
     if (!user) return ctx.unauthorized('You must be logged in');
-    if (!isPayrollManager(user)) return ctx.forbidden('Payroll access is required');
+    if (!isPayrollManager(ctx, user)) return ctx.forbidden('Payroll access is required');
 
     const { documentId } = ctx.params;
     const rm = await strapi.documents(RM_UID).findOne({ documentId, populate: { branch: { fields: ['id'] } } });

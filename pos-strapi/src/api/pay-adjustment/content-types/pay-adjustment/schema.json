@@ -50,6 +50,17 @@
     "effective_date": {
       "type": "date"
     },
+    "disbursed_at": {
+      "type": "datetime"
+    },
+    "disbursement_method": {
+      "type": "enumeration",
+      "enum": [
+        "Cash",
+        "Bank",
+        "Mobile Wallet"
+      ]
+    },
     "employee": {
       "type": "relation",
       "relation": "manyToOne",

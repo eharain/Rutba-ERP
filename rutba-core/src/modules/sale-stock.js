@@ -35,7 +35,9 @@
  *
  * Lifecycles NEW here: sale-item, sale-return, sale-return-item,
  * cash-register-transaction, stock-adjustment, stock-transfer, stock-count,
- * acc-expense, acc-invoice, return-policy. (sale-order + return-request were
+ * acc-expense, acc-invoice, purchase-return, return-policy. (purchase-return
+ * lives here rather than with the purchase routes in catalog because its only
+ * hook is the AP/inventory GL posting this tranche owns.) (sale-order + return-request were
  * registered by hr; stock-item / stock-batch / acc-bill / acc-journal-entry
  * by mfg — cross-module invariants stay single-registration.)
  *
@@ -62,6 +64,7 @@ function registerSaleStockModule() {
     'cash-register-transaction',
     'stock-adjustment', 'stock-transfer', 'stock-count',
     'acc-expense', 'acc-invoice',
+    'purchase-return',
     'return-policy',
   ]) {
     registerLifecycles(

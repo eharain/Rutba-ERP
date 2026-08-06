@@ -8,30 +8,10 @@
  */
 
 const { createCoreController } = require('@strapi/strapi').factories;
+const { requireAppRole } = require('../../../utils/require-admin');
 
 const PURCHASE_UID = 'api::purchase.purchase';
 const BILL_UID = 'api::acc-bill.acc-bill';
-
-async function getAuthUser(ctx, strapi) {
-  const id = ctx.state?.user?.id;
-  if (!id) return null;
-  return strapi.query('plugin::users-permissions.user').findOne({
-    where: { id },
-    populate: {
-      role: { select: ['type'] },
-      permission_roles: { select: ['level'], populate: { domain: { select: ['key'] } } },
-    },
-  });
-}
-
-function canBill(user) {
-  if (user?.role?.type === 'admin') return true;
-  const adminDomains = (user?.permission_roles || [])
-    .filter((r) => r?.level === 'admin')
-    .map((r) => r?.domain?.key)
-    .filter(Boolean);
-  return ['accounts', 'auth', 'stock', 'purchase'].some((d) => adminDomains.includes(d));
-}
 
 const ymd = (d) => d.toISOString().slice(0, 10);
 
@@ -42,9 +22,16 @@ module.exports = createCoreController(PURCHASE_UID, ({ strapi }) => ({
    * Received so the acc-bill lifecycle posts Dr Expense/Inventory · Cr AP.
    */
   async generateBill(ctx) {
-    const user = await getAuthUser(ctx, strapi);
-    if (!user) return ctx.unauthorized('You must be logged in');
-    if (!canBill(user)) return ctx.forbidden('Accounts / purchasing access is required');
+    // requireAppRole reads the caller's REAL app_roles. The previous guard
+    // populated a `permission_roles` relation that has no schema, so it always
+    // came back empty and every non-super-admin — the accountants this action
+    // exists for — was refused. `domains` are role-key prefixes.
+    const user = await requireAppRole(ctx, strapi, {
+      domains: ['accounts', 'ap', 'stock'],
+      levels: ['admin', 'manager'],
+      message: 'Accounts / purchasing access is required',
+    });
+    if (!user) return;
 
     const { documentId } = ctx.params;
     const purchase = await strapi.documents(PURCHASE_UID).findOne({
@@ -89,6 +76,11 @@ module.exports = createCoreController(PURCHASE_UID, ({ strapi }) => ({
         total: subtotal,
         balance_due: subtotal,
         status: 'Draft',
+        // A purchase buys goods, so the bill capitalizes into the inventory
+        // asset — NOT the acc-bill lifecycle's OPERATING_EXPENSES default.
+        // Expensing here would double-count: COGS already credits INVENTORY
+        // when the stock sells, against a debit that never happened.
+        expense_key: 'INVENTORY',
         purchase: purchase.id,
         ...(purchase.suppliers?.[0]?.id ? { supplier: purchase.suppliers[0].id } : {}),
       },

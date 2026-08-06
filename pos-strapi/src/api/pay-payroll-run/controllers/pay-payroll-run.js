@@ -1,34 +1,18 @@
 'use strict';
 
 const { createCoreController } = require('@strapi/strapi').factories;
+const { loadActor, isPayrollManager } = require('../../../utils/payroll-access');
 
 const PR_UID = 'api::pay-payroll-run.pay-payroll-run';
 
-async function getAuthUser(ctx, strapi) {
-  const id = ctx.state?.user?.id;
-  if (!id) return null;
-  return strapi.query('plugin::users-permissions.user').findOne({
-    where: { id },
-    populate: {
-      role: { select: ['type'] },
-      permission_roles: { select: ['level'], populate: { domain: { select: ['key'] } } },
-    },
-  });
-}
-
-function isPayrollManager(user) {
-  if (user?.role?.type === 'admin') return true;
-  const adminDomains = (user?.permission_roles || [])
-    .filter((r) => r?.level === 'admin')
-    .map((r) => r?.domain?.key)
-    .filter(Boolean);
-  return adminDomains.includes('payroll') || adminDomains.includes('auth');
-}
-
+// Shared payroll gate, same as pay-payslip. The previous guard populated a
+// `permission_roles` relation that has no schema, so it always came back empty
+// and every non-super-admin — the payroll managers these actions exist for —
+// was refused, which left the run's GL postings unreachable.
 async function guard(ctx, strapi) {
-  const user = await getAuthUser(ctx, strapi);
+  const user = await loadActor(ctx, strapi);
   if (!user) { ctx.unauthorized('You must be logged in'); return null; }
-  if (!isPayrollManager(user)) { ctx.forbidden('Payroll access is required'); return null; }
+  if (!isPayrollManager(ctx, user)) { ctx.forbidden('Payroll access is required'); return null; }
   return user;
 }
 
