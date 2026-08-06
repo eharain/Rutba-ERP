@@ -24,10 +24,12 @@ async function applyCostChangeApprovalTemplate(knex) {
     const name = 'Order Cost Change Approval (Buyer)';
     const existing = await knex('notification_templates').where({ name }).limit(1);
     if (existing.length > 0) {
-        // Present but unusable as a relation target if it predates document_id
-        // generation — processEvent then throws "Invalid relations" and the
-        // approval mail is silently never sent.
-        if (existing[0].document_id == null) {
+        // Unusable as a relation target if document_id is NULL or starts with a
+        // digit (Strapi coerces a numeric-looking documentId to an integer) —
+        // processEvent then throws "Invalid relations" and the approval mail is
+        // silently never sent.
+        const docId = existing[0].document_id;
+        if (docId == null || /^[0-9]/.test(String(docId))) {
             await knex('notification_templates')
                 .where({ id: existing[0].id })
                 .update({ document_id: generateDocumentId() });

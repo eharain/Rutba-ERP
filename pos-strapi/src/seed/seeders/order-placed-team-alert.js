@@ -37,10 +37,13 @@ async function applyOrderPlacedTeamAlert(knex) {
     const name = 'New Order Placed (Order Management Team)';
     const existing = await knex('notification_templates').where({ name }).limit(1);
     if (existing.length > 0) {
-        // A row inserted before document_id was generated is present but cannot
-        // be used as a relation target, so notification-engine.processEvent
-        // throws "Invalid relations" and the alert is silently never delivered.
-        if (existing[0].document_id == null) {
+        // A row is unusable as a relation target if document_id is NULL, or if
+        // it starts with a digit (Strapi coerces a numeric-looking documentId to
+        // an integer, so the link truncates or resolves to nothing). Either way
+        // processEvent throws "Invalid relations" and the alert is silently
+        // never delivered.
+        const docId = existing[0].document_id;
+        if (docId == null || /^[0-9]/.test(String(docId))) {
             await knex('notification_templates')
                 .where({ id: existing[0].id })
                 .update({ document_id: generateDocumentId() });

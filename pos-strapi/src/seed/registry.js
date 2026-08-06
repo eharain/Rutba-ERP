@@ -44,6 +44,7 @@ const { applyReturnPolicy } = require('./seeders/return-policy');
 const { applyCostChangeApprovalTemplate } = require('./seeders/cost-change-approval-template');
 const { applyOrderPlacedTeamAlert } = require('./seeders/order-placed-team-alert');
 const { applyHrNotificationTemplates } = require('./seeders/hr-notification-templates');
+const { applyHrLetterTemplates } = require('./seeders/hr-letter-templates');
 const { applyNotificationTemplateRouting } = require('./seeders/notification-template-routing');
 const { seedDefaultWorkflows } = require('./seeders/default-workflows');
 const { backfillInventoryFoundation } = require('./seeders/inventory-foundation');
@@ -265,6 +266,19 @@ const REGISTRY = [
         supportsFull: true,
         hasMigration: true,
         run: (strapi) => applyHrNotificationTemplates(strapi.db.connection),
+    },
+    // Standard HR letters. Essential because with no active template the Letters
+    // page has an empty dropdown and nothing can be issued at all — the feature
+    // is unusable until at least one exists.
+    {
+        key: 'hr-letter-templates',
+        title: 'HR letter templates (offer, confirmation, experience, salary, NOC, warning, relieving)',
+        category: 'reference',
+        essential: true,
+        supportsPartial: true,
+        supportsFull: true,
+        hasMigration: true,
+        run: (strapi) => applyHrLetterTemplates(strapi.db.connection),
     },
     // Definable workflows for manufacturing (work orders) + order management
     // (sale orders, return requests). Essential so a fresh DB comes up with the

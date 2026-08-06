@@ -80,21 +80,34 @@ module.exports = createCoreController(DOC_UID, ({ strapi }) => ({
     if (!template) return ctx.notFound('Letter template not found');
     if (template.is_active === false) return ctx.badRequest('This template is inactive.');
 
+    // `designation` is a plain string on hr-employee — populating it throws
+    // "Invalid key designation". The structured job title lives on `position`.
     const employee = await strapi.documents(EMP_UID).findOne({
       documentId: body.employee,
-      populate: { department: { fields: ['name'] }, designation: { fields: ['name'] } },
+      populate: {
+        department: { fields: ['name'] },
+        position: { fields: ['title'] },
+        company: { fields: ['name'] },
+      },
     });
     if (!employee) return ctx.notFound('Employee not found');
 
     const today = new Date();
+    const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '');
+
     const vars = {
       employee,
       employee_name: employee.name,
-      designation: employee.designation?.name || '',
+      designation: employee.position?.title || employee.designation || '',
       department: employee.department?.name || '',
-      date_of_joining: employee.date_of_joining || '',
-      today: today.toISOString().slice(0, 10),
-      // caller-supplied extras (salary figures, dates) override nothing above
+      company: employee.company?.name || '',
+      cnic: employee.cnic || '',
+      email: employee.email || '',
+      date_of_joining: fmtDate(employee.date_of_joining),
+      today: fmtDate(today),
+      today_iso: today.toISOString().slice(0, 10),
+      // Caller-supplied extras (salary figures, last working day, purpose) —
+      // last so a template can be driven entirely from the generate form.
       ...(body.variables && typeof body.variables === 'object' ? body.variables : {}),
     };
 
@@ -107,11 +120,15 @@ module.exports = createCoreController(DOC_UID, ({ strapi }) => ({
       subject: render(template.subject, vars),
       content: render(template.body_template, vars),
       generated_at: today.toISOString(),
-      employee: employee.documentId,
-      template: template.documentId,
+      // Explicit connect rather than a bare documentId: a bare string is not
+      // reliably resolved on create, and MySQL then tries to coerce it into the
+      // numeric id column on the link table — which either truncates (when the
+      // id happens to start with a digit) or silently links to nothing.
+      employee: { connect: [employee.documentId] },
+      template: { connect: [template.documentId] },
       generated_by: user.id,
     };
-    const ownerId = await ownerUserIdForEmployeeRef(strapi, data.employee);
+    const ownerId = await ownerUserIdForEmployeeRef(strapi, employee.documentId);
     if (ownerId) data.owners = [ownerId];
 
     const created = await strapi.documents(DOC_UID).create({ data });

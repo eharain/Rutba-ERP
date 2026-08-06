@@ -445,10 +445,16 @@ const crypto = require('crypto');
  * lowercase-alphanumeric shape Strapi uses.
  */
 function generateDocumentId() {
-    const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    const letters = 'abcdefghijklmnopqrstuvwxyz';
+    const alphabet = letters + '0123456789';
     const bytes = crypto.randomBytes(24);
-    let out = '';
-    for (let i = 0; i < 24; i++) out += alphabet[bytes[i] % alphabet.length];
+    // First character MUST be a letter. Strapi's relation resolver coerces a
+    // numeric-looking documentId to an integer, so an id like "4j83…" is read
+    // as 4 (MySQL then truncates and errors) and "0tgy…" as 0 (the relation
+    // "does not exist"). Letter-initial ids sidestep the coercion entirely and
+    // match the shape Strapi's own generator produces.
+    let out = letters[bytes[0] % letters.length];
+    for (let i = 1; i < 24; i++) out += alphabet[bytes[i] % alphabet.length];
     return out;
 }
 
@@ -497,13 +503,14 @@ async function applyHrNotificationTemplates(knex) {
         await knex('notification_templates').insert(toInsert);
     }
 
-    // Repair rows a previous run inserted before document_id was generated —
-    // they are present (so the skip path above leaves them alone) but unusable
-    // as a relation target, which silently breaks delivery.
-    const orphaned = await knex('notification_templates')
+    // Repair rows that are present (so the skip path above leaves them alone)
+    // but unusable as a relation target, which silently breaks delivery: a NULL
+    // document_id, or one starting with a digit — Strapi coerces those to an
+    // integer, so the link truncates or resolves to nothing.
+    const suspect = await knex('notification_templates')
         .whereIn('name', names)
-        .whereNull('document_id')
-        .select('id');
+        .select('id', 'document_id');
+    const orphaned = suspect.filter((r) => r.document_id == null || /^[0-9]/.test(String(r.document_id)));
     for (const row of orphaned) {
         await knex('notification_templates')
             .where({ id: row.id })
