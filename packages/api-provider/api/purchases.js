@@ -95,12 +95,19 @@ export const PurchasesEndpoints = {
         approle: ['admin', 'manager', 'staff'],
     }),
 
-    /** Generate a supplier bill (acc-bill) from a received purchase → posts AP. */
+    /**
+     * Generate a supplier bill (acc-bill) from a received purchase → posts AP.
+     *
+     * Carries the accounts apps because this is the accountant's action (the
+     * spec's "reconcile to the supplier invoice, then post"). The other methods
+     * here list a `purchase` app that is not in config/domains.json, so it
+     * resolves to no policy — don't copy that pattern.
+     */
     createBill: (documentId) => ({
         path: `/purchases/${documentId}/generate-bill`,
         action: 'generateBill',
         method: 'post',
-        apps: ['purchase', 'stock'],
+        apps: ['accounts', 'accounts-ap', 'stock', 'inventory'],
         approle: ['admin', 'manager'],
     }),
 };

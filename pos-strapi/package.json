@@ -20,7 +20,8 @@
     "link:sync-pro": "npm link ../../strapi-plugins/strapi-content-sync-pro",
     "unlink:sync-pro": "npm unlink strapi-content-sync-pro && npm install",
     "link:api-pro": "npm link ../packages/strapi-api-pro",
-    "unlink:api-pro": "npm unlink api-pro && npm install"
+    "unlink:api-pro": "npm unlink api-pro && npm install",
+    "smoke:accounting-gl": "node scripts/smoke-accounting-gl.js"
   },
   "dependencies": {
     "@easypost/api": "^8.9.0",

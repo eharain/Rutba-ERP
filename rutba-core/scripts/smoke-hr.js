@@ -13,8 +13,9 @@
  *     - approve → idempotent re-approve → cancel → reject-after-cancel 400
  *     - create override (HR actor keeps explicit employee; total_days stamped)
  *     - hr-team app-role-options
- *     - payroll preview 403 (manager gate is super-admin-only via the phantom
- *       permission_roles relation — parity with pos-strapi)
+ *     - payroll preview passes the gate for a payroll_admin claim and 403s for
+ *       a non-payroll claim (utils/payroll-access reads the api-pro claim; the
+ *       old phantom permission_roles gate admitted only Strapi super-admins)
  *     - my-payslips [] for a user with no employee link
  *     - work-item watch toggle on/off, comment create (author stamp + audit),
  *       assign rejects non-allowlisted entity_uid
@@ -155,10 +156,17 @@ async function main() {
     check('app-role-options 200 with domains', options.status === 200 && Array.isArray(options.body.data)
       && options.body.data.every((d) => d.domainKey), `got ${options.status}`);
 
-    // Payroll manager gate: phantom permission_roles → only role.type=admin
-    // passes; our user isn't one → 403 (same outcome on pos-strapi).
+    // Payroll manager gate now reads the api-pro claim (utils/payroll-access),
+    // not the phantom permission_roles relation that made this super-admin-only.
+    // A payroll_admin claim gets PAST authorization, so a nonexistent run fails
+    // on the run itself (5xx from the service) rather than 403.
     const preview = await req('POST', '/api/pay-payroll-runs/xxxxxxxxxxxxxxxxxxxxxxxx/preview', token, {}, payHeaders);
-    check('payroll preview 403 for non-super-admin', preview.status === 403, `got ${preview.status} ${JSON.stringify(preview.body && preview.body.error)}`);
+    check('payroll preview passes the gate for a payroll_admin claim', preview.status !== 403,
+      `got ${preview.status} ${JSON.stringify(preview.body && preview.body.error)}`);
+
+    // …and still refuses a claim from another domain.
+    const previewHr = await req('POST', '/api/pay-payroll-runs/xxxxxxxxxxxxxxxxxxxxxxxx/preview', token, {}, hrHeaders);
+    check('payroll preview 403 for a non-payroll claim', previewHr.status === 403, `got ${previewHr.status}`);
 
     const slips = await req('GET', '/api/pay-payslips/my-payslips', token, undefined, payHeaders);
     check('my-payslips 200 (no employee link → empty)', slips.status === 200 && Array.isArray(slips.body.data), `got ${slips.status}`);

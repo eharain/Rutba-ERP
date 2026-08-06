@@ -27,7 +27,7 @@
  *    gated (isServiceToken inside), like the marketplace worker surface.
  *  - ACCOUNTING REPORTS: trial balance, income statement, balance sheet, cash
  *    flow, AR/AP aging — a tranche-7 miss, they live on acc-journal-entry.
- *  - purchases/:id/generate-bill — also a tranche-7 miss.
+ *  - purchases/:documentId/generate-bill — also a tranche-7 miss.
  *  - MEDIA LIBRARY: folder tree/CRUD and file list/move/update/delete/upload.
  *  - NOTIFICATIONS: /me, mark-as-read, process-event.
  *  - CONTENT-SYNC: config/status/run/cancel.
@@ -170,7 +170,11 @@ function registerCatalogModule() {
     { method: 'get', path: '/api/acc-journal-entries/reports/cash-flow', uid: JOURNAL, action: 'cashFlow', handler: (c) => journal.cashFlow(c) },
     { method: 'get', path: '/api/acc-journal-entries/reports/ar-aging', uid: JOURNAL, action: 'arAging', handler: (c) => journal.arAging(c) },
     { method: 'get', path: '/api/acc-journal-entries/reports/ap-aging', uid: JOURNAL, action: 'apAging', handler: (c) => journal.apAging(c) },
-    { method: 'post', path: '/api/purchases/:id/generate-bill', uid: PURCHASE, action: 'generateBill', handler: (c) => purchase.generateBill(c) },
+    // `:documentId`, not `:id` — the ported controller reads ctx.params.documentId
+    // (as pos-strapi's route declares). Under `:id` it read undefined and the
+    // handler died on "findOne requires a documentId", so generate-bill never
+    // actually worked on core.
+    { method: 'post', path: '/api/purchases/:documentId/generate-bill', uid: PURCHASE, action: 'generateBill', handler: (c) => purchase.generateBill(c) },
 
     // ── media library (literal `tree` and `move` before the :id patterns) ─
     { method: 'get', path: '/api/media-library/folders/tree', uid: MEDIA, action: 'folderTree', handler: (c) => mediaLibrary.folderTree(c) },
