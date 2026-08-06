@@ -67,6 +67,7 @@ function registerHrModule() {
   const payrollRun = ctrl('pay-payroll-run', strapi);
   const payslip = ctrl('pay-payslip', strapi);
   const remittance = ctrl('pay-statutory-remittance', strapi);
+  const adjustment = ctrl('pay-adjustment', strapi);
   const activity = ctrl('work-item-activity', strapi);
   const watch = ctrl('work-item-watch', strapi);
   const comment = ctrl('work-item-comment', strapi);
@@ -76,6 +77,7 @@ function registerHrModule() {
   const PR = 'api::pay-payroll-run.pay-payroll-run';
   const PS = 'api::pay-payslip.pay-payslip';
   const RM = 'api::pay-statutory-remittance.pay-statutory-remittance';
+  const ADJ = 'api::pay-adjustment.pay-adjustment';
 
   const routes = [
     // Literal paths first (they must beat the :documentId patterns).
@@ -99,6 +101,8 @@ function registerHrModule() {
     { method: 'post', path: '/api/pay-payslips/:documentId/mark-paid', uid: PS, action: 'markPaid', handler: (c) => payslip.markPaid(c) },
 
     { method: 'post', path: '/api/pay-statutory-remittances/:documentId/process', uid: RM, action: 'process', handler: (c) => remittance.process(c) },
+
+    { method: 'post', path: '/api/pay-adjustments/:documentId/disburse', uid: ADJ, action: 'disburse', handler: (c) => adjustment.disburse(c) },
 
     // Core-action override: author stamping + audit-trail mirror.
     { method: 'post', path: '/api/work-item-comments', uid: 'api::work-item-comment.work-item-comment', action: 'create', handler: (c) => comment.create(c) },

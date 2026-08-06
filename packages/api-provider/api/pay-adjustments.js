@@ -78,4 +78,25 @@ export const PayAdjustmentsEndpoints = {
         apps: ['payroll'],
         approle: ['admin', 'manager'],
     }),
+
+    /**
+     * Book the cash handed to an employee for an advance or loan:
+     * Dr EMPLOYEE_ADVANCES / Cr cash-or-bank. Idempotent.
+     *
+     * Named `recordDisbursement` because the api-pro seeder only enumerates
+     * descriptor methods whose name starts with a whitelisted verb — a bare
+     * `disburse` would be skipped and every call would 403. The controller
+     * handler is `disburse`, which is what `action` must match.
+     *
+     * @param {string} documentId
+     * @param {{ method?: 'Cash' | 'Bank' | 'Mobile Wallet' }} body
+     */
+    recordDisbursement: (documentId, body = {}) => ({
+        path: `/pay-adjustments/${documentId}/disburse`,
+        action: 'disburse',
+        method: 'post',
+        apps: ['payroll'],
+        approle: ['admin', 'manager'],
+        data: { ...body },
+    }),
 };

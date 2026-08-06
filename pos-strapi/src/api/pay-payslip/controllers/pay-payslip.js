@@ -1,30 +1,10 @@
 'use strict';
 
 const { createCoreController } = require('@strapi/strapi').factories;
+const { requireAppRole } = require('../../../utils/require-admin');
 
 const PS_UID = 'api::pay-payslip.pay-payslip';
 const PR_UID = 'api::pay-payroll-run.pay-payroll-run';
-
-async function getAuthUser(ctx, strapi) {
-  const id = ctx.state?.user?.id;
-  if (!id) return null;
-  return strapi.query('plugin::users-permissions.user').findOne({
-    where: { id },
-    populate: {
-      role: { select: ['type'] },
-      permission_roles: { select: ['level'], populate: { domain: { select: ['key'] } } },
-    },
-  });
-}
-
-function isPayrollManager(user) {
-  if (user?.role?.type === 'admin') return true;
-  const adminDomains = (user?.permission_roles || [])
-    .filter((r) => r?.level === 'admin')
-    .map((r) => r?.domain?.key)
-    .filter(Boolean);
-  return adminDomains.includes('payroll') || adminDomains.includes('auth');
-}
 
 module.exports = createCoreController(PS_UID, ({ strapi }) => ({
   /** Employee self-service: the logged-in user's own payslips. */
@@ -50,9 +30,16 @@ module.exports = createCoreController(PS_UID, ({ strapi }) => ({
 
   /** Mark a payslip paid and post the payout journal entry. */
   async markPaid(ctx) {
-    const user = await getAuthUser(ctx, strapi);
-    if (!user) return ctx.unauthorized('You must be logged in');
-    if (!isPayrollManager(user)) return ctx.forbidden('Payroll access is required');
+    // requireAppRole reads the caller's REAL app_roles. The previous guard
+    // populated a `permission_roles` relation that has no schema, so it always
+    // came back empty and every non-super-admin was refused — meaning nobody
+    // but a Strapi super-admin could ever trigger the payout posting.
+    const user = await requireAppRole(ctx, strapi, {
+      domains: ['payroll', 'auth'],
+      levels: ['admin', 'manager'],
+      message: 'Payroll access is required',
+    });
+    if (!user) return;
 
     const body = ctx.request.body?.data ?? ctx.request.body ?? {};
     try {

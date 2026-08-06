@@ -1,35 +1,23 @@
 'use strict';
 
 const { createCoreController } = require('@strapi/strapi').factories;
+const { requireAppRole } = require('../../../utils/require-admin');
 
 const JE_UID = 'api::acc-journal-entry.acc-journal-entry';
 const REPORTS = 'api::acc-journal-entry.reports';
 
-async function getAuthUser(ctx, strapi) {
-  const id = ctx.state?.user?.id;
-  if (!id) return null;
-  return strapi.query('plugin::users-permissions.user').findOne({
-    where: { id },
-    populate: {
-      role: { select: ['type'] },
-      permission_roles: { select: ['level'], populate: { domain: { select: ['key'] } } },
-    },
-  });
-}
-
-function isAccountant(user) {
-  if (user?.role?.type === 'admin') return true;
-  const adminDomains = (user?.permission_roles || [])
-    .filter((r) => r?.level === 'admin')
-    .map((r) => r?.domain?.key)
-    .filter(Boolean);
-  return adminDomains.includes('accounts') || adminDomains.includes('auth');
-}
-
 async function runReport(ctx, strapi, method, args) {
-  const user = await getAuthUser(ctx, strapi);
-  if (!user) return ctx.unauthorized('You must be logged in');
-  if (!isAccountant(user)) return ctx.forbidden('Accounts access is required');
+  // requireAppRole reads the caller's REAL app_roles. The previous guard
+  // populated a `permission_roles` relation that has no schema, so it always
+  // came back empty and every non-super-admin — the accountants these reports
+  // exist for — was refused. `domains` are role-key prefixes, so 'accounts'
+  // also admits the read-only `accounts_viewer_*` roles.
+  const user = await requireAppRole(ctx, strapi, {
+    domains: ['accounts', 'auth'],
+    levels: ['admin', 'manager'],
+    message: 'Accounts access is required',
+  });
+  if (!user) return;
   try {
     return ctx.send({ data: await strapi.service(REPORTS)[method](args) });
   } catch (e) {

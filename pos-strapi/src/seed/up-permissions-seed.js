@@ -36,6 +36,7 @@ const CUSTOM_ACTIONS = {
   'api::hr-leave-request.hr-leave-request': ['myRequests', 'teamQueue', 'approve', 'reject', 'cancel'],
   'api::hr-team.hr-team': ['appRoleOptions'],
   'api::pay-statutory-remittance.pay-statutory-remittance': ['process'],
+  'api::pay-adjustment.pay-adjustment': ['disburse'],
   'api::acc-journal-entry.acc-journal-entry': ['trialBalance', 'incomeStatement', 'balanceSheet', 'cashFlow', 'arAging', 'apAging'],
   'api::purchase.purchase': ['generateBill'],
   'api::pay-payroll-run.pay-payroll-run': ['preview', 'process', 'cancel'],

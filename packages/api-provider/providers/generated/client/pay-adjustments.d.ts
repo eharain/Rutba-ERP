@@ -6,6 +6,7 @@ export interface PayAdjustmentsEndpointsType {
     create(data: any): Promise<any>;
     update(documentId: any, data: any): Promise<any>;
     del(documentId: any): Promise<any>;
+    recordDisbursement(documentId: any, body?: any): Promise<any>;
     meta: any;
 }
 

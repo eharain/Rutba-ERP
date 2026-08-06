@@ -51,6 +51,7 @@ const DEFAULT_ACCOUNTS = [
   // ── Accounting completion (web/COD orders, cash variance) ──
   { code: '1210', name: 'COD / Rider Float',           account_type: 'Asset',     sub_type: 'Other Current Asset',     normal_balance: 'Debit',  is_system: true },
   { code: '4300', name: 'Shipping Revenue',            account_type: 'Revenue',   sub_type: 'Other Revenue',           normal_balance: 'Credit', is_system: true },
+  { code: '6600', name: 'Inventory Shrinkage',         account_type: 'Expense',   sub_type: 'Operating Expense',       normal_balance: 'Debit',  is_system: true },
   { code: '6700', name: 'Cash Short/Over',             account_type: 'Expense',   sub_type: 'Operating Expense',       normal_balance: 'Debit',  is_system: true },
 
   // ── Payroll ────────────────────────────────────────────────
@@ -85,6 +86,10 @@ const DEFAULT_MAPPINGS = [
   { key: 'COD_CLEARING',       code: '1210', description: 'COD cash collected by rider, not yet deposited' },
   { key: 'SHIPPING_REVENUE',   code: '4300', description: 'Delivery charged to customer (web orders)' },
   { key: 'CASH_SHORT_OVER',    code: '6700', description: 'Cash register count variance (short/over)' },
+  // Resolved by stock-adjustment / stock-count when a Loss is applied. Without
+  // this mapping resolve() throws inside their best-effort try/catch and the
+  // shrinkage silently never reaches the ledger.
+  { key: 'SHRINKAGE_EXPENSE',  code: '6600', description: 'Inventory shrinkage (adjustment / count loss)' },
 
   // ── Payroll ────────────────────────────────────────────────
   { key: 'PAYROLL_EXPENSE',    code: '6300', description: 'Salaries and wages expense' },

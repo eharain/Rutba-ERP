@@ -32,6 +32,11 @@ async function del(documentId) {
     return authApi.del(withQuery(ep.path, ep.params));
 }
 
+async function recordDisbursement(documentId, body = {}) {
+    const ep = PayAdjustmentsEndpointsApi.recordDisbursement(documentId, body);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
 const endpoints = strictEndpointGuard(
     'PayAdjustmentsEndpoints',
     {
@@ -41,9 +46,10 @@ const endpoints = strictEndpointGuard(
         create,
         update,
         del,
+        recordDisbursement,
         meta: PayAdjustmentsEndpointsApi.meta,
     },
-    ["list","byId","byEmployee","create","update","del","meta"],
+    ["list","byId","byEmployee","create","update","del","recordDisbursement","meta"],
 );
 
 export default endpoints;

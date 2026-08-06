@@ -6,4 +6,18 @@
 
 const { createCoreRouter } = require('@strapi/strapi').factories;
 
-module.exports = createCoreRouter('api::pay-adjustment.pay-adjustment');
+const defaultRouter = createCoreRouter('api::pay-adjustment.pay-adjustment');
+
+module.exports = {
+  get routes() {
+    return [
+      {
+        method: 'POST',
+        path: '/pay-adjustments/:documentId/disburse',
+        handler: 'api::pay-adjustment.pay-adjustment.disburse',
+        config: { policies: [] },
+      },
+      ...defaultRouter.routes,
+    ];
+  },
+};
