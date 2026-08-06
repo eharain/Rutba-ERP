@@ -132,6 +132,7 @@ Everything else sequences around these three spines.
 - **Don't chase up-market depth:** the story is "start in minutes, grow for years," not "enterprise ERP." Resist scope that pulls toward NetSuite/SAP territory.
 
 ## Cross-references
+- HR org chart + moving approval authority onto the reporting line → [hr-org-chart-and-reporting-line.md](./hr-org-chart-and-reporting-line.md)
 - Market rationale & competitor benchmark → [market-strategy/README.md](./market-strategy/README.md)
 - App-level gap detail & CRM carry-over → [rightapp-gap-analysis/README.md](./rightapp-gap-analysis/README.md) + [app-feature-map.md](./rightapp-gap-analysis/app-feature-map.md)
 - Standalone-service pattern (Rutba-MTA, Rutba-Media-FileServer) for infra builds → gap-analysis §1/§4a
