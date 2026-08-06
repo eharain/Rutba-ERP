@@ -34,6 +34,10 @@ const CUSTOM_ACTIONS = {
   'api::product.product': ['publishedStatus'],
   'api::stock-item.stock-item': ['resolveBulkStock', 'processBulkStock'],
   'api::hr-leave-request.hr-leave-request': ['myRequests', 'teamQueue', 'approve', 'reject', 'cancel'],
+  // Appraisals carry the per-competency ratings, so these are the routes the
+  // competency breakdown is read and written through. Without the grant every
+  // one of them answers 403 regardless of the caller's HR app-role.
+  'api::hr-appraisal.hr-appraisal': ['myAppraisals', 'teamAppraisals', 'submitSelfAssessment', 'submitManagerReview'],
   'api::hr-team.hr-team': ['appRoleOptions'],
   'api::pay-statutory-remittance.pay-statutory-remittance': ['process'],
   'api::pay-adjustment.pay-adjustment': ['disburse'],

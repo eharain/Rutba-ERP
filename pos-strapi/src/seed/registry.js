@@ -45,6 +45,7 @@ const { applyCostChangeApprovalTemplate } = require('./seeders/cost-change-appro
 const { applyOrderPlacedTeamAlert } = require('./seeders/order-placed-team-alert');
 const { applyHrNotificationTemplates } = require('./seeders/hr-notification-templates');
 const { applyHrLetterTemplates } = require('./seeders/hr-letter-templates');
+const { applyHrWorkCalendar } = require('./seeders/hr-work-calendar');
 const { applyNotificationTemplateRouting } = require('./seeders/notification-template-routing');
 const { seedDefaultWorkflows } = require('./seeders/default-workflows');
 const { backfillInventoryFoundation } = require('./seeders/inventory-foundation');
@@ -279,6 +280,21 @@ const REGISTRY = [
         supportsFull: true,
         hasMigration: true,
         run: (strapi) => applyHrLetterTemplates(strapi.db.connection),
+    },
+    // Shift templates, fixed-date public holidays, a standard overtime rule and
+    // the appraisal competencies. Essential because these tables are read by
+    // real behaviour now — leave-day maths skips holidays, attendance derives
+    // Late from the rostered shift, payroll pays overtime, appraisals score
+    // competencies — so an empty table is a wired feature that does nothing.
+    {
+        key: 'hr-work-calendar',
+        title: 'HR work calendar (shifts, public holidays, overtime rule, appraisal competencies)',
+        category: 'reference',
+        essential: true,
+        supportsPartial: true,
+        supportsFull: true,
+        hasMigration: true,
+        run: (strapi) => applyHrWorkCalendar(strapi.db.connection),
     },
     // Definable workflows for manufacturing (work orders) + order management
     // (sale orders, return requests). Essential so a fresh DB comes up with the

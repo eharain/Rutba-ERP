@@ -886,6 +886,7 @@ export interface ApiAccJournalEntryAccJournalEntry
         'Web Order Payment',
         'Payroll Run',
         'Payroll Payment',
+        'Employee Advance',
         'Production Labor',
         'Statutory Remittance',
         'Manual',
@@ -2172,6 +2173,50 @@ export interface ApiHrAppraisalCycleHrAppraisalCycle
   };
 }
 
+export interface ApiHrAppraisalRatingHrAppraisalRating
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'hr_appraisal_ratings';
+  info: {
+    description: 'One competency scored on one appraisal (self + manager)';
+    displayName: 'HR Appraisal Rating';
+    pluralName: 'hr-appraisal-ratings';
+    singularName: 'hr-appraisal-rating';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    appraisal: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-appraisal.hr-appraisal'
+    >;
+    comments: Schema.Attribute.Text;
+    competency: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-competency.hr-competency'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::hr-appraisal-rating.hr-appraisal-rating'
+    > &
+      Schema.Attribute.Private;
+    manager_rating: Schema.Attribute.Decimal;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    self_rating: Schema.Attribute.Decimal;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiHrAppraisalHrAppraisal extends Struct.CollectionTypeSchema {
   collectionName: 'hr_appraisals';
   info: {
@@ -2210,6 +2255,10 @@ export interface ApiHrAppraisalHrAppraisal extends Struct.CollectionTypeSchema {
       'plugin::users-permissions.user'
     >;
     publishedAt: Schema.Attribute.DateTime;
+    ratings: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::hr-appraisal-rating.hr-appraisal-rating'
+    >;
     reviewer: Schema.Attribute.Relation<
       'manyToOne',
       'api::hr-employee.hr-employee'
@@ -2356,6 +2405,7 @@ export interface ApiHrAttendanceHrAttendance
       'plugin::users-permissions.user'
     >;
     publishedAt: Schema.Attribute.DateTime;
+    shift: Schema.Attribute.Relation<'manyToOne', 'api::hr-shift.hr-shift'>;
     status: Schema.Attribute.Enumeration<
       ['Present', 'Absent', 'Late', 'Leave']
     > &
@@ -2363,6 +2413,7 @@ export interface ApiHrAttendanceHrAttendance
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    worked_hours: Schema.Attribute.Decimal;
   };
 }
 
@@ -2686,6 +2737,7 @@ export interface ApiHrCompanyHrCompany extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    weekend_days: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<[0]>;
   };
 }
 
@@ -4115,6 +4167,8 @@ export interface ApiHrOvertimeRuleHrOvertimeRule
   attributes: {
     applies_after_hours: Schema.Attribute.Decimal &
       Schema.Attribute.DefaultTo<8>;
+    applies_to_pay_types: Schema.Attribute.JSON;
+    branch: Schema.Attribute.Relation<'manyToOne', 'api::branch.branch'>;
     company: Schema.Attribute.Relation<
       'manyToOne',
       'api::hr-company.hr-company'
@@ -6050,6 +6104,10 @@ export interface ApiPayAdjustmentPayAdjustment
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    disbursed_at: Schema.Attribute.DateTime;
+    disbursement_method: Schema.Attribute.Enumeration<
+      ['Cash', 'Bank', 'Mobile Wallet']
+    >;
     effective_date: Schema.Attribute.Date;
     employee: Schema.Attribute.Relation<
       'manyToOne',
@@ -6283,6 +6341,12 @@ export interface ApiPayEmployeeProfilePayEmployeeProfile
       'api::pay-employee-profile.pay-employee-profile'
     > &
       Schema.Attribute.Private;
+    overtime_eligible: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<true>;
+    overtime_rule: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-overtime-rule.hr-overtime-rule'
+    >;
     owners: Schema.Attribute.Relation<
       'manyToMany',
       'plugin::users-permissions.user'
@@ -10138,6 +10202,7 @@ declare module '@strapi/strapi' {
       'api::delivery-zone.delivery-zone': ApiDeliveryZoneDeliveryZone;
       'api::employee.employee': ApiEmployeeEmployee;
       'api::hr-appraisal-cycle.hr-appraisal-cycle': ApiHrAppraisalCycleHrAppraisalCycle;
+      'api::hr-appraisal-rating.hr-appraisal-rating': ApiHrAppraisalRatingHrAppraisalRating;
       'api::hr-appraisal.hr-appraisal': ApiHrAppraisalHrAppraisal;
       'api::hr-asset-assignment.hr-asset-assignment': ApiHrAssetAssignmentHrAssetAssignment;
       'api::hr-asset.hr-asset': ApiHrAssetHrAsset;
