@@ -227,9 +227,9 @@ async function main() {
     const handedOff = (r) => (mediaBaseUrl
       ? r.status === 302 && r.location === `${mediaBaseUrl}${r.url}`
       : r.status === 404);
-    const branch = mediaBaseUrl ? 'redirect to the media host' : '404 (no MEDIA_BASE_URL)';
+    const branch = mediaBaseUrl ? '302 to the media host' : '404 (no MEDIA_BASE_URL)';
     const misrouted = remote.filter((r) => !handedOff(r));
-    check(`sampled files not on disk ${branch}`, misrouted.length === 0,
+    check(`sampled files not on disk -> ${branch}`, misrouted.length === 0,
       misrouted.map((b) => `${b.url} -> ${b.status} ${b.location || ''}`).join(', '));
 
     // The sample can legitimately be all-local (it currently is), which would
@@ -237,7 +237,7 @@ async function main() {
     // fallback branch itself with a name that cannot be on disk.
     const absent = '/uploads/__rutba_core_smoke_absent__.png';
     const miss = await fetch(`http://127.0.0.1:${PORT}${absent}`, { redirect: 'manual' });
-    check(`an unknown /uploads name ${branch}`,
+    check(`an unknown /uploads name -> ${branch}`,
       handedOff({ url: absent, status: miss.status, location: miss.headers.get('location') }),
       `${miss.status} ${miss.headers.get('location') || ''}`);
     const traversal = await fetch(`http://127.0.0.1:${PORT}/uploads/../../../package.json`,
