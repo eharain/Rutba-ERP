@@ -22,9 +22,10 @@ export const PurchasesEndpoints = {
         action: 'find',
         method: 'get',
         // 'purchase' is not a domain key (see config/domains.json) — it granted
-        // nothing. 'cms' and 'inventory' render the "All Purchases" filter cell
-        // on their product lists; without the grant api-pro 403s the lookup.
-        apps: ['stock', 'cms', 'inventory'],
+        // nothing. 'cms', 'order-management' and 'inventory' render the
+        // "All Purchases" filter cell on their product lists (ProductPickerTabs);
+        // without the grant api-pro 403s the lookup.
+        apps: ['stock', 'cms', 'order-management', 'inventory'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['createdAt:desc'],
@@ -43,7 +44,7 @@ export const PurchasesEndpoints = {
         path: '/purchases/',
         action: 'findOne',
         method: 'get',
-        apps: ['purchase', 'stock'],
+        apps: ['stock', 'inventory'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             filters: {
@@ -69,7 +70,7 @@ export const PurchasesEndpoints = {
         path: '/purchases',
         action: 'create',
         method: 'post',
-        apps: ['purchase', 'stock'],
+        apps: ['stock', 'inventory'],
         approle: ['admin', 'manager', 'staff'],
         data,
     }),
@@ -82,7 +83,7 @@ export const PurchasesEndpoints = {
         path: `/purchases/${documentId}`,
         action: 'update',
         method: 'put',
-        apps: ['purchase', 'stock'],
+        apps: ['stock', 'inventory'],
         approle: ['admin', 'manager', 'staff'],
         data,
     }),
@@ -91,7 +92,7 @@ export const PurchasesEndpoints = {
         path: `/purchases/${documentId}`,
         action: 'delete',
         method: 'delete',
-        apps: ['purchase', 'stock'],
+        apps: ['stock', 'inventory'],
         approle: ['admin', 'manager', 'staff'],
     }),
 
@@ -99,9 +100,8 @@ export const PurchasesEndpoints = {
      * Generate a supplier bill (acc-bill) from a received purchase → posts AP.
      *
      * Carries the accounts apps because this is the accountant's action (the
-     * spec's "reconcile to the supplier invoice, then post"). The other methods
-     * here list a `purchase` app that is not in config/domains.json, so it
-     * resolves to no policy — don't copy that pattern.
+     * spec's "reconcile to the supplier invoice, then post") — a wider set than
+     * the stock/inventory pair the rest of this interface grants.
      */
     createBill: (documentId) => ({
         path: `/purchases/${documentId}/generate-bill`,

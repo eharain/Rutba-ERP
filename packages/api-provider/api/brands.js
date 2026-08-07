@@ -25,7 +25,8 @@ export const BrandsEndpoints = {
         path: '/brands',
         action: 'find',
         method: 'get',
-        apps: ['stock', 'brand'],
+        // No caller of its own — falls back to the interface's declared domains.
+        apps: ['stock', 'cms', 'order-management'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['name:asc'],
@@ -49,10 +50,11 @@ export const BrandsEndpoints = {
         path: '/brands',
         action: 'find',
         method: 'get',
-        // 'cms' and 'inventory' render brand filter dropdowns too (rutba-cms
-        // product list, rutba-inventory stock-health). Without them the api-pro
-        // interceptor 403s the lookup and the dropdown comes back empty.
-        apps: ['stock', 'cms', 'inventory', 'social'],
+        // 'cms', 'order-management' and 'inventory' render brand filter dropdowns
+        // too (rutba-cms product list, ProductPickerTabs, rutba-inventory
+        // stock-health). Without them the api-pro interceptor 403s the lookup and
+        // the dropdown comes back empty.
+        apps: ['stock', 'cms', 'order-management', 'inventory', 'social'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['name:asc'],
@@ -69,7 +71,7 @@ export const BrandsEndpoints = {
         path: '/brands',
         action: 'find',
         method: 'get',
-        apps: ['stock', 'brand'],
+        apps: ['stock', 'cms'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['name:asc'],
@@ -88,7 +90,7 @@ export const BrandsEndpoints = {
         path: '/brands',
         action: 'find',
         method: 'get',
-        apps: ['stock', 'brand'],
+        apps: ['stock', 'cms'],
         approle: ['admin', 'manager'],
         params: {
             status: 'draft',
@@ -107,7 +109,7 @@ export const BrandsEndpoints = {
         path: '/brands',
         action: 'find',
         method: 'get',
-        apps: ['stock', 'brand'],
+        apps: ['stock', 'cms'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             status: 'published',
@@ -121,7 +123,7 @@ export const BrandsEndpoints = {
         path: '/brands',
         action: 'create',
         method: 'post',
-        apps: ['stock', 'brand'],
+        apps: ['stock', 'cms'],
         approle: ['admin', 'manager']
     }),
 
@@ -129,11 +131,13 @@ export const BrandsEndpoints = {
      * Update a brand by documentId — body provided by caller as { data }.
      * @param {string} documentId
      */
+    // pos-stock edits brands directly; rutba-cms goes through the draft/publish
+    // pair (updateDraft + publish), so 'cms' is not granted here.
     update: (documentId, data) => ({
         path: `/brands/${documentId}`,
         action: 'update',
         method: 'put',
-        apps: ['stock', 'brand'],
+        apps: ['stock'],
         approle: ['admin', 'manager']
     }),
 
@@ -146,7 +150,7 @@ export const BrandsEndpoints = {
         path: `/brands/${documentId}`,
         action: 'findOne',
         method: 'get',
-        apps: ['stock', 'brand'],
+        apps: ['stock', 'cms'],
         approle: ['admin', 'manager'],
         params: { status: 'draft', ...(populate ? { populate } : {}) },
     }),
@@ -160,7 +164,7 @@ export const BrandsEndpoints = {
         path: `/brands/${documentId}`,
         action: 'findOne',
         method: 'get',
-        apps: ['stock', 'brand'],
+        apps: ['stock', 'cms'],
         approle: ['admin', 'manager', 'staff'],
         params: { status: 'published', ...(fields ? { fields } : {}), ...(populate ? { populate } : {}) },
     }),
@@ -180,11 +184,12 @@ export const BrandsEndpoints = {
      * Delete a brand by documentId.
      * @param {string} documentId
      */
+    // Only the pos-stock brand admin deletes; the rutba-cms screen unpublishes.
     del: (documentId) => ({
         path: `/brands/${documentId}`,
         action: 'delete',
         method: 'delete',
-        apps: ['stock', 'brand'],
+        apps: ['stock'],
         approle: ['admin']
     }),
 
@@ -196,7 +201,7 @@ export const BrandsEndpoints = {
         path: `/brands/${documentId}/publish`,
         action: 'publish',
         method: 'post',
-        apps: ['stock', 'brand'],
+        apps: ['stock', 'cms'],
         approle: ['admin', 'manager']
     }),
 
@@ -208,7 +213,7 @@ export const BrandsEndpoints = {
         path: `/brands/${documentId}/unpublish`,
         action: 'unpublish',
         method: 'post',
-        apps: ['stock', 'brand'],
+        apps: ['stock', 'cms'],
         approle: ['admin', 'manager']
     }),
 };

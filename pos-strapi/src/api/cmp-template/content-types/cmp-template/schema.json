@@ -1,0 +1,85 @@
+{
+  "kind": "collectionType",
+  "collectionName": "cmp_templates",
+  "info": {
+    "singularName": "cmp-template",
+    "pluralName": "cmp-templates",
+    "displayName": "Campaign Template",
+    "description": "Reusable campaign message template. Rutba-MTA does not keep a template library (FUNCTION.md: 'reusable saved template library -> caller app'), so this is the store; templates are rendered here and passed inline to /v1/send/batch."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "folder": {
+      "type": "string",
+      "description": "Flat folder label for grouping in the studio, as RTMPLT did (FLDID)."
+    },
+    "description": {
+      "type": "text"
+    },
+    "channel": {
+      "type": "enumeration",
+      "enum": [
+        "email",
+        "sms",
+        "whatsapp"
+      ],
+      "default": "email",
+      "required": true
+    },
+    "subject": {
+      "type": "string"
+    },
+    "body_html": {
+      "type": "text",
+      "description": "Inlined-CSS HTML produced by the GrapesJS studio (gjs-get-inlined-html). This is what ships to the MTA."
+    },
+    "body_text": {
+      "type": "text",
+      "description": "Plain-text alternative. Also the body for the sms/whatsapp channels."
+    },
+    "design_json": {
+      "type": "json",
+      "description": "GrapesJS editor state, so the design stays re-editable. Never sent to the MTA."
+    },
+    "merge_keys": {
+      "type": "json",
+      "description": "Merge keys this template needs, e.g. ['first_name','company']. Extracted from the body on save and validated against the audience mapping in the composer."
+    },
+    "tracking_enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "append_utm": {
+      "type": "boolean",
+      "default": true,
+      "description": "Append the campaign's UTM parameters to outbound links at render time (RTMPLT's APPEND_IN_LINKS)."
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Draft",
+        "Active",
+        "Archived"
+      ],
+      "default": "Draft"
+    },
+    "campaigns": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::cmp-campaign.cmp-campaign",
+      "mappedBy": "template"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

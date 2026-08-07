@@ -120,6 +120,7 @@ ARG NEXT_PUBLIC_MANUFACTURING_URL
 ARG NEXT_PUBLIC_MARKETPLACE_URL
 ARG NEXT_PUBLIC_INVENTORY_URL
 ARG NEXT_PUBLIC_SEED_URL
+ARG NEXT_PUBLIC_CAMPAIGNS_URL
 ARG NEXT_PUBLIC_RIDER_URL
 ARG NEXT_PUBLIC_SOCIAL_URL
 ARG NEXT_PUBLIC_CRM_URL
@@ -148,6 +149,7 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_PUBLIC_MARKETPLACE_URL=$NEXT_PUBLIC_MARKETPLACE_URL \
     NEXT_PUBLIC_INVENTORY_URL=$NEXT_PUBLIC_INVENTORY_URL \
     NEXT_PUBLIC_SEED_URL=$NEXT_PUBLIC_SEED_URL \
+    NEXT_PUBLIC_CAMPAIGNS_URL=$NEXT_PUBLIC_CAMPAIGNS_URL \
     NEXT_PUBLIC_RIDER_URL=$NEXT_PUBLIC_RIDER_URL \
     NEXT_PUBLIC_SOCIAL_URL=$NEXT_PUBLIC_SOCIAL_URL \
     NEXT_PUBLIC_CRM_URL=$NEXT_PUBLIC_CRM_URL \
@@ -455,3 +457,17 @@ COPY --from=seed-build /app/rutba-seed/.next/standalone ./
 COPY --from=seed-build /app/rutba-seed/.next/static     ./rutba-seed/.next/static
 COPY --from=seed-build /app/rutba-seed/public            ./rutba-seed/public
 CMD ["node", "rutba-seed/server.js"]
+
+# ----------------------------------------------------------
+#  rutba-campaigns (Email marketing UI over Rutba-MTA)
+# ----------------------------------------------------------
+FROM build-env AS campaigns-build
+RUN mkdir -p rutba-campaigns/public && npm run build --workspace=rutba-campaigns
+
+FROM base AS campaigns
+WORKDIR /app
+ENV NODE_ENV=production HOSTNAME=0.0.0.0
+COPY --from=campaigns-build /app/rutba-campaigns/.next/standalone ./
+COPY --from=campaigns-build /app/rutba-campaigns/.next/static     ./rutba-campaigns/.next/static
+COPY --from=campaigns-build /app/rutba-campaigns/public            ./rutba-campaigns/public
+CMD ["node", "rutba-campaigns/server.js"]

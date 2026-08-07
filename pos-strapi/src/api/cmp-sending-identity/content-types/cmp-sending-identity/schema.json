@@ -1,0 +1,82 @@
+{
+  "kind": "collectionType",
+  "collectionName": "cmp_sending_identities",
+  "info": {
+    "singularName": "cmp-sending-identity",
+    "pluralName": "cmp-sending-identities",
+    "displayName": "Campaign Sending Identity",
+    "description": "A registered Rutba-MTA sender: the from-address campaigns send as, plus the trust token and webhook secret the MTA issues once at registration. The RMAILX 'mail agent' equivalent."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "from_email": {
+      "type": "string",
+      "required": true
+    },
+    "from_name": {
+      "type": "string"
+    },
+    "reply_to": {
+      "type": "string"
+    },
+    "webhook_url": {
+      "type": "string",
+      "description": "Where the MTA posts delivery events. Defaults to <STRAPI_PUBLIC_URL>/api/cmp/webhook when left blank at bootstrap."
+    },
+    "smtp_host": {
+      "type": "string",
+      "description": "Echo of the SMTP relay registered with the MTA, for display only."
+    },
+    "smtp_port": {
+      "type": "integer"
+    },
+    "smtp_secure": {
+      "type": "boolean",
+      "default": false
+    },
+    "smtp_username": {
+      "type": "string"
+    },
+    "mta_sender_id": {
+      "type": "string",
+      "description": "Sender uuid returned by POST /v1/senders. Empty until bootstrapped."
+    },
+    "trust_token": {
+      "type": "text",
+      "private": true,
+      "description": "X-Trust-Token for this sender. Returned once by the MTA and unrecoverable — rotate to replace. Stored `private` so it is stripped on serialize, matching marketplace-account credential handling; the column itself is not encrypted at rest."
+    },
+    "webhook_secret": {
+      "type": "text",
+      "private": true,
+      "description": "HMAC secret used to verify X-Mailer-Signature on inbound delivery webhooks. Same storage caveat as trust_token."
+    },
+    "is_default": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "last_verified_at": {
+      "type": "datetime",
+      "description": "Last successful GET /v1/senders/me against the MTA."
+    },
+    "last_error": {
+      "type": "text"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

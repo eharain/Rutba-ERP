@@ -38,6 +38,7 @@ const GLOBAL_VARS = [
   { key: 'NEXT_PUBLIC_MARKETPLACE_URL',      severity: 'warn',  description: 'Marketplace app URL' },
   { key: 'NEXT_PUBLIC_INVENTORY_URL',        severity: 'warn',  description: 'Inventory Management app URL' },
   { key: 'NEXT_PUBLIC_SEED_URL',             severity: 'warn',  description: 'Seeding control app URL' },
+  { key: 'NEXT_PUBLIC_CAMPAIGNS_URL',        severity: 'warn',  description: 'Campaigns app URL' },
   { key: 'NEXT_PUBLIC_IMAGE_HOST_PROTOCOL',  severity: 'error', description: 'Image host protocol (http/https)' },
   { key: 'NEXT_PUBLIC_IMAGE_HOST_NAME',      severity: 'error', description: 'Image host name' },
   { key: 'NEXT_PUBLIC_IMAGE_HOST_PORT',      severity: 'error', description: 'Image host port' },

@@ -1,0 +1,58 @@
+{
+  "kind": "collectionType",
+  "collectionName": "cmp_events",
+  "info": {
+    "singularName": "cmp-event",
+    "pluralName": "cmp-events",
+    "displayName": "Campaign Event",
+    "description": "Delivery events mirrored from Rutba-MTA webhooks. dedup_key is unique because the MTA retries a failed webhook six times — the receiver must be idempotent."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "recipient": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::cmp-recipient.cmp-recipient",
+      "inversedBy": "events"
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "queued",
+        "sent",
+        "deferred",
+        "bounced",
+        "complained",
+        "failed",
+        "dropped",
+        "action_clicked",
+        "unsubscribed",
+        "opened",
+        "clicked"
+      ],
+      "required": true
+    },
+    "occurred_at": {
+      "type": "datetime"
+    },
+    "action_key": {
+      "type": "string",
+      "description": "Which action link was clicked, for type = action_clicked."
+    },
+    "bounce_type": {
+      "type": "string",
+      "description": "hard | soft, as reported by the MTA."
+    },
+    "dedup_key": {
+      "type": "string",
+      "unique": true,
+      "description": "message_uuid + type + occurred_at. Unique so a webhook redelivery is a no-op."
+    },
+    "payload": {
+      "type": "json"
+    }
+  }
+}

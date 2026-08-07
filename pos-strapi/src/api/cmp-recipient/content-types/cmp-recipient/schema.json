@@ -1,0 +1,75 @@
+{
+  "kind": "collectionType",
+  "collectionName": "cmp_recipients",
+  "info": {
+    "singularName": "cmp-recipient",
+    "pluralName": "cmp-recipients",
+    "displayName": "Campaign Recipient",
+    "description": "One row per person per run — the attribution spine. Carries the merge data actually sent and the MTA message_uuid, which is what lets a delivery webhook find its way back to a contact. The volume table: plan retention before it grows."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "run": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::cmp-run.cmp-run",
+      "inversedBy": "recipients"
+    },
+    "crm_contact": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-contact.crm-contact"
+    },
+    "customer": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::customer.customer"
+    },
+    "email": {
+      "type": "string",
+      "required": true
+    },
+    "merge_data": {
+      "type": "json",
+      "description": "The exact per-recipient data handed to the MTA. Kept so a send can be explained after the fact."
+    },
+    "message_uuid": {
+      "type": "string",
+      "description": "MTA message uuid. The join key for inbound delivery webhooks."
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Pending",
+        "Queued",
+        "Sent",
+        "Deferred",
+        "Bounced",
+        "Complained",
+        "Failed",
+        "Dropped",
+        "Suppressed",
+        "Unsubscribed"
+      ],
+      "default": "Pending"
+    },
+    "sent_at": {
+      "type": "datetime"
+    },
+    "last_event_at": {
+      "type": "datetime"
+    },
+    "error": {
+      "type": "text"
+    },
+    "events": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::cmp-event.cmp-event",
+      "mappedBy": "recipient"
+    }
+  }
+}

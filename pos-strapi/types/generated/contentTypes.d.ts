@@ -1391,6 +1391,406 @@ export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiCmpAudienceCmpAudience extends Struct.CollectionTypeSchema {
+  collectionName: 'cmp_audiences';
+  info: {
+    description: "Who a campaign goes to. Resolved through a single service contract \u2014 resolve(audience) -> [{ email, mergeData }] \u2014 so the 'segment' source can later point at a real crm-segment engine (ROADMAP 0.6) without touching the campaign runner.";
+    displayName: 'Campaign Audience';
+    pluralName: 'cmp-audiences';
+    singularName: 'cmp-audience';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    campaigns: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::cmp-campaign.cmp-campaign'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text;
+    entity: Schema.Attribute.Enumeration<
+      ['crm-contact', 'customer', 'person']
+    > &
+      Schema.Attribute.DefaultTo<'crm-contact'>;
+    filter_json: Schema.Attribute.JSON;
+    last_resolved_at: Schema.Attribute.DateTime;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::cmp-audience.cmp-audience'
+    > &
+      Schema.Attribute.Private;
+    member_count: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    merge_mapping: Schema.Attribute.JSON;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    source: Schema.Attribute.Enumeration<['static', 'filter', 'segment']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'filter'>;
+    static_members: Schema.Attribute.JSON;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCmpCampaignCmpCampaign extends Struct.CollectionTypeSchema {
+  collectionName: 'cmp_campaigns';
+  info: {
+    description: "Template + audience + sending identity + schedule. Each execution produces a cmp-run; pacing, suppression and reputation are Rutba-MTA's job, not ours.";
+    displayName: 'Campaign';
+    pluralName: 'cmp-campaigns';
+    singularName: 'cmp-campaign';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    audience: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::cmp-audience.cmp-audience'
+    >;
+    channel: Schema.Attribute.Enumeration<['email', 'sms', 'whatsapp']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'email'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text;
+    failure_count: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    from_email: Schema.Attribute.String;
+    from_name: Schema.Attribute.String;
+    last_error: Schema.Attribute.Text;
+    last_run_at: Schema.Attribute.DateTime;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::cmp-campaign.cmp-campaign'
+    > &
+      Schema.Attribute.Private;
+    max_failures: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<3>;
+    max_runs: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<1>;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    next_run_at: Schema.Attribute.DateTime;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    run_count: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    runs: Schema.Attribute.Relation<'oneToMany', 'api::cmp-run.cmp-run'>;
+    schedule_frequency: Schema.Attribute.Enumeration<
+      ['once', 'hourly', 'daily', 'weekly', 'monthly']
+    > &
+      Schema.Attribute.DefaultTo<'once'>;
+    schedule_interval: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<1>;
+    sending_identity: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::cmp-sending-identity.cmp-sending-identity'
+    >;
+    start_at: Schema.Attribute.DateTime;
+    status: Schema.Attribute.Enumeration<
+      [
+        'Draft',
+        'Scheduled',
+        'Running',
+        'Paused',
+        'Completed',
+        'Failed',
+        'Cancelled',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'Draft'>;
+    subject_override: Schema.Attribute.String;
+    template: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::cmp-template.cmp-template'
+    >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    utm_campaign: Schema.Attribute.String;
+    utm_content: Schema.Attribute.String;
+    utm_medium: Schema.Attribute.String;
+    utm_source: Schema.Attribute.String;
+  };
+}
+
+export interface ApiCmpEventCmpEvent extends Struct.CollectionTypeSchema {
+  collectionName: 'cmp_events';
+  info: {
+    description: 'Delivery events mirrored from Rutba-MTA webhooks. dedup_key is unique because the MTA retries a failed webhook six times \u2014 the receiver must be idempotent.';
+    displayName: 'Campaign Event';
+    pluralName: 'cmp-events';
+    singularName: 'cmp-event';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    action_key: Schema.Attribute.String;
+    bounce_type: Schema.Attribute.String;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    dedup_key: Schema.Attribute.String & Schema.Attribute.Unique;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::cmp-event.cmp-event'
+    > &
+      Schema.Attribute.Private;
+    occurred_at: Schema.Attribute.DateTime;
+    payload: Schema.Attribute.JSON;
+    publishedAt: Schema.Attribute.DateTime;
+    recipient: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::cmp-recipient.cmp-recipient'
+    >;
+    type: Schema.Attribute.Enumeration<
+      [
+        'queued',
+        'sent',
+        'deferred',
+        'bounced',
+        'complained',
+        'failed',
+        'dropped',
+        'action_clicked',
+        'unsubscribed',
+        'opened',
+        'clicked',
+      ]
+    > &
+      Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCmpRecipientCmpRecipient
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'cmp_recipients';
+  info: {
+    description: 'One row per person per run \u2014 the attribution spine. Carries the merge data actually sent and the MTA message_uuid, which is what lets a delivery webhook find its way back to a contact. The volume table: plan retention before it grows.';
+    displayName: 'Campaign Recipient';
+    pluralName: 'cmp-recipients';
+    singularName: 'cmp-recipient';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    crm_contact: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-contact.crm-contact'
+    >;
+    customer: Schema.Attribute.Relation<'manyToOne', 'api::customer.customer'>;
+    email: Schema.Attribute.String & Schema.Attribute.Required;
+    error: Schema.Attribute.Text;
+    events: Schema.Attribute.Relation<'oneToMany', 'api::cmp-event.cmp-event'>;
+    last_event_at: Schema.Attribute.DateTime;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::cmp-recipient.cmp-recipient'
+    > &
+      Schema.Attribute.Private;
+    merge_data: Schema.Attribute.JSON;
+    message_uuid: Schema.Attribute.String;
+    publishedAt: Schema.Attribute.DateTime;
+    run: Schema.Attribute.Relation<'manyToOne', 'api::cmp-run.cmp-run'>;
+    sent_at: Schema.Attribute.DateTime;
+    status: Schema.Attribute.Enumeration<
+      [
+        'Pending',
+        'Queued',
+        'Sent',
+        'Deferred',
+        'Bounced',
+        'Complained',
+        'Failed',
+        'Dropped',
+        'Suppressed',
+        'Unsubscribed',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'Pending'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCmpRunCmpRun extends Struct.CollectionTypeSchema {
+  collectionName: 'cmp_runs';
+  info: {
+    description: "One execution of a campaign. Holds the Rutba-MTA batch_uuid and mirrors that batch's counters, so a run stays readable even if the MTA is unreachable. Engine-written \u2014 no create/update descriptors.";
+    displayName: 'Campaign Run';
+    pluralName: 'cmp-runs';
+    singularName: 'cmp-run';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    actions_clicked: Schema.Attribute.JSON;
+    batch_uuid: Schema.Attribute.String;
+    bounced_hard: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    bounced_soft: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    campaign: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::cmp-campaign.cmp-campaign'
+    >;
+    clicked: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    error: Schema.Attribute.Text;
+    failed: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    finished_at: Schema.Attribute.DateTime;
+    is_test: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::cmp-run.cmp-run'
+    > &
+      Schema.Attribute.Private;
+    opened: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    pending_count: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    publishedAt: Schema.Attribute.DateTime;
+    queued: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    recipients: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::cmp-recipient.cmp-recipient'
+    >;
+    sent: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    started_at: Schema.Attribute.DateTime;
+    state: Schema.Attribute.Enumeration<
+      ['Pending', 'Submitting', 'Sending', 'Completed', 'Failed', 'Cancelled']
+    > &
+      Schema.Attribute.DefaultTo<'Pending'>;
+    suppressed: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    total: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    unsubscribed: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCmpSendingIdentityCmpSendingIdentity
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'cmp_sending_identities';
+  info: {
+    description: "A registered Rutba-MTA sender: the from-address campaigns send as, plus the trust token and webhook secret the MTA issues once at registration. The RMAILX 'mail agent' equivalent.";
+    displayName: 'Campaign Sending Identity';
+    pluralName: 'cmp-sending-identities';
+    singularName: 'cmp-sending-identity';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    from_email: Schema.Attribute.String & Schema.Attribute.Required;
+    from_name: Schema.Attribute.String;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    is_default: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    last_error: Schema.Attribute.Text;
+    last_verified_at: Schema.Attribute.DateTime;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::cmp-sending-identity.cmp-sending-identity'
+    > &
+      Schema.Attribute.Private;
+    mta_sender_id: Schema.Attribute.String;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    reply_to: Schema.Attribute.String;
+    smtp_host: Schema.Attribute.String;
+    smtp_port: Schema.Attribute.Integer;
+    smtp_secure: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    smtp_username: Schema.Attribute.String;
+    trust_token: Schema.Attribute.Text & Schema.Attribute.Private;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    webhook_secret: Schema.Attribute.Text & Schema.Attribute.Private;
+    webhook_url: Schema.Attribute.String;
+  };
+}
+
+export interface ApiCmpTemplateCmpTemplate extends Struct.CollectionTypeSchema {
+  collectionName: 'cmp_templates';
+  info: {
+    description: "Reusable campaign message template. Rutba-MTA does not keep a template library (FUNCTION.md: 'reusable saved template library -> caller app'), so this is the store; templates are rendered here and passed inline to /v1/send/batch.";
+    displayName: 'Campaign Template';
+    pluralName: 'cmp-templates';
+    singularName: 'cmp-template';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    append_utm: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    body_html: Schema.Attribute.Text;
+    body_text: Schema.Attribute.Text;
+    campaigns: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::cmp-campaign.cmp-campaign'
+    >;
+    channel: Schema.Attribute.Enumeration<['email', 'sms', 'whatsapp']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'email'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text;
+    design_json: Schema.Attribute.JSON;
+    folder: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::cmp-template.cmp-template'
+    > &
+      Schema.Attribute.Private;
+    merge_keys: Schema.Attribute.JSON;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    status: Schema.Attribute.Enumeration<['Draft', 'Active', 'Archived']> &
+      Schema.Attribute.DefaultTo<'Draft'>;
+    subject: Schema.Attribute.String;
+    tracking_enabled: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<true>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiCmsFooterCmsFooter extends Struct.CollectionTypeSchema {
   collectionName: 'cms_footers';
   info: {
@@ -10186,6 +10586,13 @@ declare module '@strapi/strapi' {
       'api::cash-register.cash-register': ApiCashRegisterCashRegister;
       'api::category-group.category-group': ApiCategoryGroupCategoryGroup;
       'api::category.category': ApiCategoryCategory;
+      'api::cmp-audience.cmp-audience': ApiCmpAudienceCmpAudience;
+      'api::cmp-campaign.cmp-campaign': ApiCmpCampaignCmpCampaign;
+      'api::cmp-event.cmp-event': ApiCmpEventCmpEvent;
+      'api::cmp-recipient.cmp-recipient': ApiCmpRecipientCmpRecipient;
+      'api::cmp-run.cmp-run': ApiCmpRunCmpRun;
+      'api::cmp-sending-identity.cmp-sending-identity': ApiCmpSendingIdentityCmpSendingIdentity;
+      'api::cmp-template.cmp-template': ApiCmpTemplateCmpTemplate;
       'api::cms-footer.cms-footer': ApiCmsFooterCmsFooter;
       'api::cms-menu-item.cms-menu-item': ApiCmsMenuItemCmsMenuItem;
       'api::cms-menu.cms-menu': ApiCmsMenuCmsMenu;

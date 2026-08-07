@@ -39,7 +39,7 @@ export const ProductsEndpoints = {
         path: '/products',
         action: 'find',
         method: 'get',
-        apps: ['inventory', 'stock', 'product'],
+        apps: ['inventory', 'stock'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['name:asc'],
@@ -87,7 +87,7 @@ export const ProductsEndpoints = {
         path: '/products',
         action: 'find',
         method: 'get',
-        apps: ['inventory', 'stock', 'product'],
+        apps: ['inventory', 'stock'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['name:asc'],

@@ -59,6 +59,18 @@
     "level": "staff",
     "domain": "auth"
   },
+  "campaigns_admin": {
+    "level": "admin",
+    "domain": "campaigns"
+  },
+  "campaigns_manager": {
+    "level": "manager",
+    "domain": "campaigns"
+  },
+  "campaigns_staff": {
+    "level": "staff",
+    "domain": "campaigns"
+  },
   "cms_admin": {
     "level": "admin",
     "domain": "cms"

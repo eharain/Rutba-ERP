@@ -63,6 +63,7 @@ RUTBA_SERVICES=(
     rutba_marketplace_worker
     rutba_inventory
     rutba_seed
+    rutba_campaigns
 )
 
 ###########################################
@@ -93,6 +94,7 @@ declare -A RUTBA_SVC_CMD=(
     [rutba_marketplace_worker]="run worker --workspace=rutba-marketplace"
     [rutba_inventory]="run start --workspace=rutba-inventory"
     [rutba_seed]="run start --workspace=rutba-seed"
+    [rutba_campaigns]="run start --workspace=rutba-campaigns"
 )
 
 ###########################################
@@ -121,6 +123,7 @@ declare -A RUTBA_SVC_DESC=(
     [rutba_marketplace_worker]="Rutba ERP - Marketplace Sync Worker (rutba-marketplace)"
     [rutba_inventory]="Rutba ERP - Inventory Management (rutba-inventory)"
     [rutba_seed]="Rutba ERP - Seeding Control (rutba-seed)"
+    [rutba_campaigns]="Rutba ERP - Campaigns (rutba-campaigns)"
 )
 
 ###########################################
@@ -153,6 +156,7 @@ declare -A RUTBA_SVC_PORT=(
     [rutba_marketplace_worker]="-"
     [rutba_inventory]="4017"
     [rutba_seed]="4018"
+    [rutba_campaigns]="4019"
 )
 
 ###########################################

@@ -1,0 +1,144 @@
+{
+  "kind": "collectionType",
+  "collectionName": "cmp_campaigns",
+  "info": {
+    "singularName": "cmp-campaign",
+    "pluralName": "cmp-campaigns",
+    "displayName": "Campaign",
+    "description": "Template + audience + sending identity + schedule. Each execution produces a cmp-run; pacing, suppression and reputation are Rutba-MTA's job, not ours."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "channel": {
+      "type": "enumeration",
+      "enum": [
+        "email",
+        "sms",
+        "whatsapp"
+      ],
+      "default": "email",
+      "required": true,
+      "description": "Only 'email' has a working adapter today; the field exists so adding SMS/WhatsApp is a new adapter, not a schema migration."
+    },
+    "template": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::cmp-template.cmp-template",
+      "inversedBy": "campaigns"
+    },
+    "audience": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::cmp-audience.cmp-audience",
+      "inversedBy": "campaigns"
+    },
+    "sending_identity": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::cmp-sending-identity.cmp-sending-identity"
+    },
+    "from_email": {
+      "type": "string",
+      "description": "Overrides the sending identity's from_email when set."
+    },
+    "from_name": {
+      "type": "string"
+    },
+    "subject_override": {
+      "type": "string",
+      "description": "Overrides the template subject when set."
+    },
+    "utm_source": {
+      "type": "string"
+    },
+    "utm_medium": {
+      "type": "string"
+    },
+    "utm_campaign": {
+      "type": "string"
+    },
+    "utm_content": {
+      "type": "string"
+    },
+    "schedule_frequency": {
+      "type": "enumeration",
+      "enum": [
+        "once",
+        "hourly",
+        "daily",
+        "weekly",
+        "monthly"
+      ],
+      "default": "once"
+    },
+    "schedule_interval": {
+      "type": "integer",
+      "default": 1,
+      "description": "Every N periods of schedule_frequency."
+    },
+    "start_at": {
+      "type": "datetime"
+    },
+    "next_run_at": {
+      "type": "datetime",
+      "description": "The cron sweep picks up campaigns whose next_run_at has passed."
+    },
+    "last_run_at": {
+      "type": "datetime"
+    },
+    "max_runs": {
+      "type": "integer",
+      "default": 1
+    },
+    "run_count": {
+      "type": "integer",
+      "default": 0
+    },
+    "max_failures": {
+      "type": "integer",
+      "default": 3,
+      "description": "Consecutive failed runs before the campaign is parked in Failed."
+    },
+    "failure_count": {
+      "type": "integer",
+      "default": 0
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Draft",
+        "Scheduled",
+        "Running",
+        "Paused",
+        "Completed",
+        "Failed",
+        "Cancelled"
+      ],
+      "default": "Draft"
+    },
+    "last_error": {
+      "type": "text"
+    },
+    "runs": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::cmp-run.cmp-run",
+      "mappedBy": "campaign"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

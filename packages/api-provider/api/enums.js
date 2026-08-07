@@ -5,9 +5,23 @@
 
 export const EnumsEndpoints = {
 
+    // 'config' was not a domain key (see config/domains.json), so every app here
+    // expanded to zero grants. The domains below are the real callers: reached
+    // via pos-shared's EnumSelect/useEnumValues (cms, ess, hr) and
+    // api-provider/pos fetchEnumsValues (stock). Adding EnumSelect to another
+    // app means adding that app here.
+    //
+    // NOTE: this interface still seeds no policy row, for a second and separate
+    // reason — the seeder only walks methods whose name matches its verb
+    // whitelist (isDescriptorMethodName), and `values` is not on it. Renaming to
+    // `listValues` would make it seedable, but that is a cross-package rename
+    // (pos-shared/lib/use-enum-values.js, api-provider/pos/fetchs.js, plus the
+    // scaffolded client). Harmless today because /enums/:name/:field is declared
+    // `auth: false` in pos-strapi and never reaches the api-pro interceptor —
+    // but the domains above must be right before that route is ever locked down.
     meta: {
         uid: 'api::enum.enum',
-        domains: ['config'],
+        domains: ['cms', 'ess', 'hr', 'stock'],
         roles: ['admin', 'manager', 'staff']
     },
 
@@ -22,7 +36,7 @@ export const EnumsEndpoints = {
         path: `/enums/${name}/${field}`,
         action: 'find',
         method: 'get',
-        apps: ['config'],
+        apps: ['cms', 'ess', 'hr', 'stock'],
         approle: ['admin', 'manager', 'staff']
     }),
 

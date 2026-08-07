@@ -46,6 +46,10 @@ const CUSTOM_ACTIONS = {
   'api::pay-payroll-run.pay-payroll-run': ['preview', 'process', 'cancel'],
   'api::pay-payslip.pay-payslip': ['myPayslips', 'markPaid'],
   'api::seed-run.seed-run': ['runSeed', 'getStatus', 'listRuns'],
+  // Campaigns: the MTA sender lifecycle. These are the routes that hold the
+  // trust token, so the controller re-checks campaigns_admin itself — the UP
+  // grant alone admits every app user.
+  'api::cmp-sending-identity.cmp-sending-identity': ['setupSender', 'validateSender', 'resetToken', 'getMtaHealth'],
 };
 
 function resolveApiProviderRoot(strapi) {

@@ -9,7 +9,8 @@
     "validate:exports": "node ./scripts/validate-exports.mjs",
     "validate:web-proxies": "node ./scripts/validate-web-proxies.mjs",
     "validate:endpoint-usage": "node ./scripts/validate-endpoint-usage.mjs",
-    "validate": "npm run validate:exports && npm run validate:web-proxies && npm run validate:endpoint-usage",
+    "validate:descriptor-apps": "node ./scripts/validate-descriptor-apps.mjs",
+    "validate": "npm run validate:exports && npm run validate:web-proxies && npm run validate:endpoint-usage && npm run validate:descriptor-apps",
     "build": "npm run scaffold:endpoint-providers && npm run validate",
     "watch": "node ./scripts/watch-api.mjs",
     "dev": "node ./scripts/watch-api.mjs"

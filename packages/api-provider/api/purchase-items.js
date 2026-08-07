@@ -8,9 +8,13 @@ export const PurchaseItemsEndpoints = {
 
     meta: {
         uid: 'api::purchase-item.purchase-item',
-        domains: ['stock'],
+        domains: ['stock', 'inventory'],
         roles: ['admin', 'manager', 'staff']
     },
+
+    // The app set below deliberately mirrors PurchasesEndpoints: a line is only
+    // ever written alongside its parent purchase, so granting the two different
+    // sets is the failure mode where the header saves and the lines 403.
 
     /**
      * List purchase items for a given purchase documentId.
@@ -20,7 +24,7 @@ export const PurchaseItemsEndpoints = {
         path: '/purchase-items',
         action: 'find',
         method: 'get',
-        apps: ['purchase', 'stock'],
+        apps: ['stock', 'inventory'],
         approle: ['admin', 'manager', 'staff'],
         params: listParams(
             { page, pageSize, sort, populate, filters, fields },
@@ -36,7 +40,7 @@ export const PurchaseItemsEndpoints = {
         path: '/purchase-items',
         action: 'create',
         method: 'post',
-        apps: ['purchase', 'stock'],
+        apps: ['stock', 'inventory'],
         approle: ['admin', 'manager', 'staff'],
         data,
     }),
@@ -61,7 +65,7 @@ export const PurchaseItemsEndpoints = {
         path: `/purchase-items/${documentId}`,
         action: 'update',
         method: 'put',
-        apps: ['purchase', 'stock'],
+        apps: ['stock', 'inventory'],
         approle: ['admin', 'manager'],
         data,
     }),
@@ -78,7 +82,7 @@ export const PurchaseItemsEndpoints = {
         path: `/purchase-items/${documentId}`,
         action: 'delete',
         method: 'delete',
-        apps: ['purchase', 'stock'],
+        apps: ['stock', 'inventory'],
         approle: ['admin', 'manager'],
     }),
 

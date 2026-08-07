@@ -1,0 +1,75 @@
+{
+  "kind": "collectionType",
+  "collectionName": "cmp_audiences",
+  "info": {
+    "singularName": "cmp-audience",
+    "pluralName": "cmp-audiences",
+    "displayName": "Campaign Audience",
+    "description": "Who a campaign goes to. Resolved through a single service contract — resolve(audience) -> [{ email, mergeData }] — so the 'segment' source can later point at a real crm-segment engine (ROADMAP 0.6) without touching the campaign runner."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "source": {
+      "type": "enumeration",
+      "enum": [
+        "static",
+        "filter",
+        "segment"
+      ],
+      "default": "filter",
+      "required": true,
+      "description": "static = the uploaded list in static_members; filter = filter_json applied to `entity`; segment = a saved crm-segment (not built yet — ROADMAP 0.6)."
+    },
+    "entity": {
+      "type": "enumeration",
+      "enum": [
+        "crm-contact",
+        "customer",
+        "person"
+      ],
+      "default": "crm-contact",
+      "description": "Which collection a `filter` audience resolves over."
+    },
+    "filter_json": {
+      "type": "json",
+      "description": "Strapi filters object applied to `entity`. Recipients without a usable email are dropped by the resolver."
+    },
+    "static_members": {
+      "type": "json",
+      "description": "Uploaded list: [{ email, mergeData: {...} }]. Used when source = 'static'."
+    },
+    "merge_mapping": {
+      "type": "json",
+      "description": "Merge key -> source field, e.g. { first_name: 'name', company: 'company' }. The RMAILX staging-slot idea, with named keys instead of CUSTOM1..9."
+    },
+    "member_count": {
+      "type": "integer",
+      "default": 0,
+      "description": "Cached count from the last resolve. Advisory only — the runner always re-resolves."
+    },
+    "last_resolved_at": {
+      "type": "datetime"
+    },
+    "campaigns": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::cmp-campaign.cmp-campaign",
+      "mappedBy": "audience"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

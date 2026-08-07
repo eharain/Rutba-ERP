@@ -30,7 +30,8 @@ export const SuppliersEndpoints = {
         path: '/suppliers',
         action: 'find',
         method: 'get',
-        apps: ['stock', 'purchase'],
+        // No caller of its own — falls back to the interface's declared domains.
+        apps: ['stock', 'cms', 'order-management'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['name:asc'],
@@ -50,8 +51,9 @@ export const SuppliersEndpoints = {
         action: 'find',
         method: 'get',
         // 'purchase' is not a domain key (see config/domains.json) — it granted
-        // nothing. 'cms' and 'inventory' render supplier filter dropdowns.
-        apps: ['stock', 'cms', 'inventory', 'social'],
+        // nothing. 'cms', 'order-management' and 'inventory' render supplier
+        // filter dropdowns (ProductPickerTabs, stock-health).
+        apps: ['stock', 'cms', 'order-management', 'inventory', 'social'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['name:asc'],
@@ -68,7 +70,7 @@ export const SuppliersEndpoints = {
         path: '/suppliers',
         action: 'find',
         method: 'get',
-        apps: ['stock', 'purchase', 'manufacturing'],
+        apps: ['stock', 'manufacturing'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['name:asc'],
@@ -84,7 +86,7 @@ export const SuppliersEndpoints = {
         path: '/suppliers',
         action: 'create',
         method: 'post',
-        apps: ['stock', 'purchase'],
+        apps: ['stock'],
         approle: ['admin', 'manager', 'staff'],
         data,
     }),
@@ -94,7 +96,7 @@ export const SuppliersEndpoints = {
         path: `/suppliers/${documentId}`,
         action: 'update',
         method: 'put',
-        apps: ['stock', 'purchase'],
+        apps: ['stock'],
         approle: ['admin', 'manager', 'staff'],
         data,
     }),

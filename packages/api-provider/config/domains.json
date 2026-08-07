@@ -44,6 +44,15 @@
       "auth_staff"
     ]
   },
+  "campaigns": {
+    "name": "Campaigns",
+    "description": "Email marketing: templates, audiences, campaigns, and delivery reporting over Rutba-MTA.",
+    "roles": [
+      "campaigns_admin",
+      "campaigns_manager",
+      "campaigns_staff"
+    ]
+  },
   "cms": {
     "name": "Content Management",
     "description": "Storefront pages, navigation menus, and marketing content.",

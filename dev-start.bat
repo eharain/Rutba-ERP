@@ -98,6 +98,7 @@ start "Inventory" cmd /k "cd /d "%~dp0" && npm run dev:inventory"
 
 echo [18/20] Starting Seed Control...
 start "Seed Control" cmd /k "cd /d "%~dp0" && npm run dev:seed"
+start "Campaigns" cmd /k "cd /d "%~dp0" && npm run dev:campaigns"
 
 echo [19/20] Starting Marketplace...
 start "Marketplace" cmd /k "cd /d "%~dp0" && npm run dev:marketplace"
