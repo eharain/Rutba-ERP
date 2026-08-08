@@ -27,6 +27,7 @@
 const ensureSlugIndexes = require('../db/ensure-slug-indexes');
 const {
     ensureUsersPermissionsDefaults,
+    ensurePublicSeoMetaReadGrant,
     ensureUsersPermissionsEmailFrom,
     ensureUsersPermissionsEmailConfirmation,
     ensureSiteSettingSingleton,
@@ -77,6 +78,16 @@ const REGISTRY = [
         supportsFull: true,
         hasMigration: false,
         run: (strapi) => ensureUsersPermissionsDefaults(strapi),
+    },
+    {
+        key: 'up-public-seo-meta',
+        title: 'Public role read grant for seo-meta',
+        category: 'system',
+        essential: true,
+        supportsPartial: true,
+        supportsFull: true,
+        hasMigration: false,
+        run: (strapi) => ensurePublicSeoMetaReadGrant(strapi),
     },
     {
         key: 'up-email-from',

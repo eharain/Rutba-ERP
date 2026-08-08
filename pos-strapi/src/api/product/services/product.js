@@ -40,6 +40,20 @@ const PUBLIC_POPULATE = {
   },
 };
 
+// Detail pages additionally need SEO metadata and the parent (variant pages
+// compose their <title> as "parent — variant"). Kept off PUBLIC_POPULATE so
+// list/search responses stay lean.
+const DETAIL_POPULATE = {
+  ...PUBLIC_POPULATE,
+  seo_meta: { populate: { og_image: true } },
+  parent: { fields: ['name', 'slug'] },
+};
+
+// Colour/design variants live on their parent's page (variant selector); a
+// bare variant card named "Black" in the shop grid or search is never right,
+// even if someone pins one into a product-group by mistake.
+const NOT_A_VARIANT = { is_variant: { $ne: true } };
+
 function buildListFilters(filter = {}) {
   const and = [];
   if (filter.collection) and.push({ collections: { slug: { $eq: filter.collection } } });
@@ -87,7 +101,7 @@ module.exports = createCoreService('api::product.product', ({ strapi }) => ({
   // pre-slug URLs (cached links, sitemaps, recently-viewed entries) working.
   async findPublicDetail(slugOrDocumentId) {
     if (!slugOrDocumentId) return null;
-    const base = { status: 'published', fields: DETAIL_FIELDS, populate: PUBLIC_POPULATE };
+    const base = { status: 'published', fields: DETAIL_FIELDS, populate: DETAIL_POPULATE };
     const bySlug = await strapi.documents('api::product.product').findFirst({
       ...base,
       filters: { $and: [{ slug: { $eq: slugOrDocumentId } }, ACTIVE] },
@@ -126,7 +140,7 @@ module.exports = createCoreService('api::product.product', ({ strapi }) => ({
     if (pinned.length === 0) return [];
     return strapi.documents('api::product.product').findMany({
       status: 'published',
-      filters: { $and: [{ name: { $containsi: q } }, { id: { $in: pinned } }, ACTIVE] },
+      filters: { $and: [{ name: { $containsi: q } }, { id: { $in: pinned } }, ACTIVE, NOT_A_VARIANT] },
       fields: DETAIL_FIELDS,
       populate: PUBLIC_POPULATE,
       pagination: { pageSize },
@@ -156,7 +170,7 @@ module.exports = createCoreService('api::product.product', ({ strapi }) => ({
     }
     // buildListFilters returns either {} or { $and: [...] }, so flattening its
     // clauses alongside the pinned + active gates keeps everything ANDed.
-    const filters = { $and: [{ id: { $in: pinned } }, ACTIVE, ...(baseFilters.$and ?? [])] };
+    const filters = { $and: [{ id: { $in: pinned } }, ACTIVE, NOT_A_VARIANT, ...(baseFilters.$and ?? [])] };
 
     const [data, total] = await Promise.all([
       strapi.documents('api::product.product').findMany({

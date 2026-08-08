@@ -199,9 +199,36 @@ async function ensureUsersPermissionsEmailConfirmation(strapi) {
     return { created, updated };
 }
 
+// The anonymous storefront reads seo_meta as a populated relation on products
+// (rutba-web product pages render meta title/description/og-image from it).
+// Without a public-role find grant, api-pro's relation stripping removes it
+// from every response, so the pages silently fall back to raw names.
+async function ensurePublicSeoMetaReadGrant(strapi) {
+    let created = 0;
+    const publicRole = await strapi
+        .query('plugin::users-permissions.role')
+        .findOne({ where: { type: 'public' }, select: ['id'] });
+    if (!publicRole) return { created, updated: 0 };
+
+    for (const action of ['api::seo-meta.seo-meta.find', 'api::seo-meta.seo-meta.findOne']) {
+        const existing = await strapi.db
+            .query('plugin::users-permissions.permission')
+            .findOne({ where: { action, role: { id: publicRole.id } }, select: ['id'] });
+        if (!existing) {
+            await strapi.db.query('plugin::users-permissions.permission').create({
+                data: { action, role: publicRole.id },
+            });
+            created += 1;
+            strapi.log.info(`[seed] granted public role ${action}`);
+        }
+    }
+    return { created, updated: 0 };
+}
+
 module.exports = {
     ensureSiteSettingSingleton,
     ensureUsersPermissionsEmailFrom,
     ensureUsersPermissionsEmailConfirmation,
     ensureUsersPermissionsDefaults,
+    ensurePublicSeoMetaReadGrant,
 };

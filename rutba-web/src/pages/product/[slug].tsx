@@ -419,6 +419,15 @@ export default function ProductDetail({
       .replace(/\s+/g, " ")
       .trim() || undefined;
 
+  // Variants are often named by their qualifier alone ("Black", "30/34"); a
+  // page titled just "Black" is useless in tabs and search results, so compose
+  // "parent — variant" whenever the parent is known. seo_meta still wins.
+  const seoTitle =
+    product?.seo_meta?.meta_title ||
+    (product?.is_variant && product?.parent?.name && product?.name && !product.name.includes(product.parent.name)
+      ? `${product.parent.name} — ${product.name}`
+      : product?.name);
+
   const seoKeywords = [
     product?.name,
     category?.name,
@@ -440,7 +449,7 @@ export default function ProductDetail({
         </Head>
       )}
       <Seo
-        title={product?.seo_meta?.meta_title || product?.name}
+        title={seoTitle}
         description={product?.seo_meta?.meta_description || seoDescription}
         keywords={(() => {
           const raw = product?.seo_meta?.keywords;
