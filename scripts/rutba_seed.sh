@@ -50,6 +50,10 @@ set -uo pipefail
 
 _RUTBA_SEED_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${_RUTBA_SEED_DIR}/rutba_deployed_environment.sh"
+# For RUTBA_BACKEND. The deploy exports it, but this script is also run by hand
+# after the fact — and then it has to read the master .env for itself rather
+# than assume Strapi is the backend and poll a port nobody is listening on.
+source "${_RUTBA_SEED_DIR}/rutba_apps.sh"
 
 SEED_ENABLED="${RUTBA_SEED_ENABLED:-1}"
 SEED_DELAY="${RUTBA_SEED_DELAY:-20}"
@@ -181,6 +185,22 @@ fi
 if [ ! -f "${SEED_BUILD_DIR}/pos-strapi/scripts/seed.js" ]; then
     log_err "Seed runner not found: ${SEED_BUILD_DIR}/pos-strapi/scripts/seed.js"
     exit 1
+fi
+
+# The seed engine runs INSIDE Strapi (the api-pro seeder writes through the
+# query engine, which rutba-core cannot do yet), so seeding needs the
+# rutba_pos_strapi unit to be running. With RUTBA_BACKEND=core that unit is not
+# started at all, and this would sit here polling a port nobody is listening on
+# until it timed out and failed the deploy.
+#
+# Skip cleanly instead — a deploy that served no new descriptors does not need a
+# reseed, and when one IS needed the operator runs it with Strapi up. Exit 0:
+# this is an expected state, not a failure.
+if [ "${RUTBA_BACKEND:-strapi}" = "core" ]; then
+    log_warn "RUTBA_BACKEND=core - pos-strapi is not running, and the seed engine needs it."
+    log "  Nothing was seeded. If descriptors or seed data changed, re-run with Strapi up:"
+    log "    sudo RUTBA_BACKEND=both bash ${_RUTBA_SEED_DIR}/rutba_seed.sh"
+    exit 0
 fi
 
 STRAPI_PORT=$(resolve_strapi_port "$SEED_BUILD_DIR")

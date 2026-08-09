@@ -64,6 +64,8 @@ RUTBA_SERVICES=(
     rutba_inventory
     rutba_seed
     rutba_campaigns
+    rutba_mail
+    rutba_users
 )
 
 ###########################################
@@ -95,6 +97,8 @@ declare -A RUTBA_SVC_CMD=(
     [rutba_inventory]="run start --workspace=rutba-inventory"
     [rutba_seed]="run start --workspace=rutba-seed"
     [rutba_campaigns]="run start --workspace=rutba-campaigns"
+    [rutba_mail]="run start --workspace=rutba-mail"
+    [rutba_users]="run start --workspace=rutba-users"
 )
 
 ###########################################
@@ -124,6 +128,8 @@ declare -A RUTBA_SVC_DESC=(
     [rutba_inventory]="Rutba ERP - Inventory Management (rutba-inventory)"
     [rutba_seed]="Rutba ERP - Seeding Control (rutba-seed)"
     [rutba_campaigns]="Rutba ERP - Campaigns (rutba-campaigns)"
+    [rutba_mail]="Rutba ERP - Mail (rutba-mail)"
+    [rutba_users]="Rutba ERP - User Management (rutba-users)"
 )
 
 ###########################################
@@ -157,7 +163,76 @@ declare -A RUTBA_SVC_PORT=(
     [rutba_inventory]="4017"
     [rutba_seed]="4018"
     [rutba_campaigns]="4019"
+    [rutba_mail]="4021"
+    [rutba_users]="4022"
 )
+
+###########################################
+# BACKEND SELECTION
+###########################################
+# Which API server this deployment runs. pos-strapi and rutba-core speak the
+# same wire contract against the same database, so this is the only switch that
+# decides which process serves the apps:
+#
+#   strapi  pos-strapi only                    (default — unchanged behaviour)
+#   both    both up, apps still on Strapi      (bake: core runs, serves nobody)
+#   core    rutba-core only
+#
+# Set RUTBA_BACKEND in the master .env at the builds root, or inline for a
+# single run:   RUTBA_BACKEND=both sudo bash scripts/rutba_deploy.sh
+#
+# Filtering here rather than in rutba_deploy.sh keeps the registry the single
+# source: rutba_services.sh, rutba_rollback.sh, setup-systemd-services.sh and
+# rutba_log_rotate.sh all read RUTBA_SERVICES, and all of them must agree about
+# which units exist. A unit dropped here is never written, started or rotated.
+
+# Read a value out of the deployment's env files, newest environment first —
+# the same two files load-env.js reads, and the same lookup rutba_seed.sh
+# already does for the Strapi port.
+rutba_env_value() {
+    local key="$1" dir="${2:-${BUILDS_DIR:-}}" environment="production" value="" envfile from_root
+    [ -n "$dir" ] || return 0
+    if [ -f "${dir}/.env" ]; then
+        from_root=$(grep -E "^[[:space:]]*ENVIRONMENT[[:space:]]*=" "${dir}/.env" 2>/dev/null \
+            | tail -1 | cut -d'=' -f2- | tr -d " \"'")
+        [ -n "$from_root" ] && environment="$from_root"
+    fi
+    for envfile in "${dir}/.env.${environment}" "${dir}/.env"; do
+        [ -f "$envfile" ] || continue
+        value=$(grep -E "^[[:space:]]*${key}[[:space:]]*=" "$envfile" 2>/dev/null \
+            | tail -1 | cut -d'=' -f2- | tr -d " \"'")
+        [ -n "$value" ] && break
+    done
+    echo "$value"
+}
+
+RUTBA_BACKEND="${RUTBA_BACKEND:-$(rutba_env_value RUTBA_BACKEND)}"
+RUTBA_BACKEND="${RUTBA_BACKEND:-strapi}"
+# Exported so child scripts the deploy shells out to (rutba_seed.sh above all)
+# inherit the same answer instead of re-deriving it — or worse, defaulting.
+export RUTBA_BACKEND
+
+case "$RUTBA_BACKEND" in
+    strapi|core|both) ;;
+    *)
+        echo "rutba_apps.sh: RUTBA_BACKEND='${RUTBA_BACKEND}' is not one of strapi|core|both" >&2
+        return 1 2>/dev/null || exit 1
+        ;;
+esac
+
+_rutba_drop_service() {
+    local drop="$1" svc
+    local kept=()
+    for svc in "${RUTBA_SERVICES[@]}"; do
+        [ "$svc" = "$drop" ] || kept+=("$svc")
+    done
+    RUTBA_SERVICES=("${kept[@]}")
+}
+
+case "$RUTBA_BACKEND" in
+    strapi) _rutba_drop_service rutba_core ;;
+    core)   _rutba_drop_service rutba_pos_strapi ;;
+esac
 
 ###########################################
 # SELF-CHECK
@@ -177,5 +252,51 @@ rutba_apps_validate() {
 
 rutba_apps_validate || {
     echo "rutba_apps.sh: registry is incomplete - fix the entries above before deploying." >&2
+    return 1 2>/dev/null || exit 1
+}
+
+# Two mistakes the backend switch makes possible, both of which cost a whole
+# deploy cycle to discover by hand.
+rutba_backend_validate() {
+    local crons api_url api_port want_port strapi_port bad=0
+
+    # 1. Crons must never fire in both servers. Core keeps them dormant unless
+    #    RUTBA_CORE_CRONS=1, so `both` plus that flag is the dangerous pair —
+    #    two processes running the same expiry sweep against one database.
+    crons="$(rutba_env_value RUTBA_CORE__RUTBA_CORE_CRONS)"
+    [ -n "$crons" ] || crons="$(rutba_env_value RUTBA_CORE_CRONS)"
+    if [ "$RUTBA_BACKEND" = "both" ] && [ "$crons" = "1" ]; then
+        echo "rutba_apps.sh: RUTBA_BACKEND=both with RUTBA_CORE_CRONS=1 — both servers would" >&2
+        echo "  schedule the same jobs. Leave crons with Strapi while core bakes." >&2
+        bad=1
+    fi
+    if [ "$RUTBA_BACKEND" = "core" ] && [ "$crons" != "1" ]; then
+        echo "rutba_apps.sh: warning — core is the only backend but RUTBA_CORE_CRONS is not 1," >&2
+        echo "  so nothing will run the scheduled jobs (expiry sweep, low-stock, social, SLA)." >&2
+    fi
+
+    # 2. The apps bake NEXT_PUBLIC_API_URL in at build time, so a mismatch here
+    #    ships nineteen apps pointing at a server this deploy does not start —
+    #    and fixing it means another full rebuild, not an env edit.
+    api_url="$(rutba_env_value NEXT_PUBLIC_API_URL)"
+    api_port=$(printf '%s' "$api_url" | sed -n 's#.*://[^/:]*:\([0-9]\{1,\}\).*#\1#p')
+    if [ -n "$api_port" ]; then
+        strapi_port="$(rutba_env_value POS_STRAPI__PORT)"; strapi_port="${strapi_port:-4010}"
+        case "$RUTBA_BACKEND" in
+            core)   want_port="${RUTBA_SVC_PORT[rutba_core]}" ;;
+            strapi) want_port="$strapi_port" ;;
+            both)   want_port="" ;;
+        esac
+        if [ -n "$want_port" ] && [ "$api_port" != "$want_port" ]; then
+            echo "rutba_apps.sh: NEXT_PUBLIC_API_URL points at port ${api_port}, but RUTBA_BACKEND=${RUTBA_BACKEND}" >&2
+            echo "  serves on ${want_port}. The apps would be built against a server this deploy does not run." >&2
+            bad=1
+        fi
+    fi
+    return $bad
+}
+
+rutba_backend_validate || {
+    echo "rutba_apps.sh: backend selection is inconsistent - fix the above before deploying." >&2
     return 1 2>/dev/null || exit 1
 }
