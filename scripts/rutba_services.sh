@@ -68,6 +68,20 @@ _validate_svc() {
     exit 1
 }
 
+# Project directory a service runs out of, derived from its npm invocation so
+# the registry stays a single list instead of two that drift:
+#   "run start --workspace=rutba-crm"   -> rutba-crm
+#   "--prefix pos-strapi run start"     -> pos-strapi   (not a workspace)
+# Empty for anything that matches neither form.
+_svc_workspace_dir() {
+    local cmd="${SVC_CMD[$1]:-}" rest
+    case "$cmd" in
+        *--workspace=*) rest="${cmd##*--workspace=}"; echo "${rest%% *}" ;;
+        *--prefix\ *)   rest="${cmd#*--prefix }";     echo "${rest%% *}" ;;
+        *)              echo "" ;;
+    esac
+}
+
 ###########################################
 # UNIT WRITER
 ###########################################
@@ -90,7 +104,27 @@ write_all_units() {
     local NODE_BIN; NODE_BIN=$(which node)
     local NPM_BIN;  NPM_BIN=$(which npm)
 
+    # Only write units for apps that actually exist in the build being
+    # activated. The registry is edited by hand and travels with the repo, so
+    # it routinely names an app that is not in the branch yet - either still
+    # uncommitted on someone's machine, or not registered in the root
+    # `workspaces` array. Both produce a unit that starts, fails
+    # ("No workspaces found: --workspace=X"), and restarts forever.
+    #
+    # Skipping them here also lets the retirement pass below clean up a unit
+    # that a previous deploy wrote for an app since removed.
+    local -a WRITE_SERVICES=()
+    local svc_dir
     for svc in "${SERVICES[@]}"; do
+        svc_dir=$(_svc_workspace_dir "$svc")
+        if [ -n "$svc_dir" ] && [ ! -d "${UNIT_DIR}/${svc_dir}" ]; then
+            log_warn "Skipping ${svc}: ${svc_dir}/ is not in this build."
+            continue
+        fi
+        WRITE_SERVICES+=("$svc")
+    done
+
+    for svc in "${WRITE_SERVICES[@]}"; do
         local FILE="${SYSTEMD_DIR}/${svc}.service"
         local DESC="${SVC_DESC[$svc]}"
         local CMD="${SVC_CMD[$svc]}"
@@ -128,7 +162,7 @@ UNIT_EOF
         [ -f "$unit_path" ] || continue
         unit_name=$(basename "$unit_path" .service)
         known=0
-        for svc in "${SERVICES[@]}"; do
+        for svc in "${WRITE_SERVICES[@]}"; do
             [ "$unit_name" = "$svc" ] && { known=1; break; }
         done
         if [ "$known" -eq 0 ]; then
@@ -140,7 +174,7 @@ UNIT_EOF
     done
 
     systemctl daemon-reload
-    log_ok "Systemd units written -> ${UNIT_DIR} (active link) [${#SERVICES[@]} services]"
+    log_ok "Systemd units written -> ${UNIT_DIR} (active link) [${#WRITE_SERVICES[@]} services]"
 }
 
 ###########################################
@@ -187,6 +221,7 @@ start_services() {
                 [ "$svc" = "$backend_svc" ] && { known=1; break; }
             done
             [ "$known" -eq 1 ] || continue
+            [ -f "${SYSTEMD_DIR}/${backend_svc}.service" ] || continue
             systemctl start "${backend_svc}.service" 2>/dev/null \
                 || log_warn "Failed to start ${backend_svc}"
             backend_started=1
@@ -198,6 +233,9 @@ start_services() {
             case "$svc" in
                 rutba_pos_strapi|rutba_core) continue ;;
             esac
+            # No unit = write_all_units skipped it (app not in this build).
+            # Starting it anyway would just log a warning per deploy forever.
+            [ -f "${SYSTEMD_DIR}/${svc}.service" ] || continue
             systemctl start "${svc}.service" 2>/dev/null || log_warn "Failed to start ${svc}"
         done
         log_ok "All services started."

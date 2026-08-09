@@ -6,8 +6,19 @@
 /pos-desk/.vs
 /generators/data
 node
+# The controller below is NO LONGER ignored: it is ordinary source, and
+# rutba-core posRequire()s it at boot (src/modules/catalog.js), so a build
+# without it crash-loops. Strapi was quieter about the same absence - it simply
+# never registered the controller - which is why this went unnoticed for so
+# long.
+#
+# routes/validator.js stays ignored deliberately. Both of its routes are
+# declared `auth: false`, so committing it would publish
+# /api/validator/validate/:uid and /api/validator/content-type-fields/:name as
+# unauthenticated schema introspection on every deploy box - endpoints that
+# have never actually existed there. rutba-core serves the same two handlers
+# from its own descriptors, permission-gated. Add auth before un-ignoring.
 /pos-strapi/src/api/utils/routes/validator.js
-/pos-strapi/src/api/utils/controllers/validator.js
 /pos-strapi/types/generated/*
 /pos-strapi/src/.vs
 /data
