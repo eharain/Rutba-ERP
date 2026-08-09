@@ -175,13 +175,30 @@ start_services() {
         log "Reloading systemd daemon..."
         systemctl daemon-reload
         log "Starting all Rutba services..."
-        # Start Strapi first (other apps may depend on its API)
-        systemctl start rutba_pos_strapi.service
-        sleep 3
+        # Start the API backend first - every other app talks to it. WHICH unit
+        # that is depends on RUTBA_BACKEND, so it cannot be named literally:
+        # under RUTBA_BACKEND=core write_all_units has just retired the
+        # rutba_pos_strapi unit, and `systemctl start` on a unit that no longer
+        # exists is a hard failure that aborts the whole deploy (set -e).
+        local backend_started=0 known
+        for backend_svc in rutba_pos_strapi rutba_core; do
+            known=0
+            for svc in "${SERVICES[@]}"; do
+                [ "$svc" = "$backend_svc" ] && { known=1; break; }
+            done
+            [ "$known" -eq 1 ] || continue
+            systemctl start "${backend_svc}.service" 2>/dev/null \
+                || log_warn "Failed to start ${backend_svc}"
+            backend_started=1
+        done
+        if [ "$backend_started" -eq 1 ]; then
+            sleep 3
+        fi
         for svc in "${SERVICES[@]}"; do
-            if [ "$svc" != "rutba_pos_strapi" ]; then
-                systemctl start "${svc}.service" 2>/dev/null || log_warn "Failed to start ${svc}"
-            fi
+            case "$svc" in
+                rutba_pos_strapi|rutba_core) continue ;;
+            esac
+            systemctl start "${svc}.service" 2>/dev/null || log_warn "Failed to start ${svc}"
         done
         log_ok "All services started."
     fi

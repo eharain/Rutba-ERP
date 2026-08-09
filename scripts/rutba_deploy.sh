@@ -197,14 +197,28 @@ echo "============================================"
 echo "  Rutba ERP — Deployment Script"
 echo "============================================"
 echo ""
-echo "  Which branch do you want to deploy?"
-echo ""
-echo "    1) main     (stable / production)"
-echo "    2) dev      (development / testing)"
-echo "    3) release  (release candidate)"
-echo ""
 
-read -rp "  Enter choice [1/2/3] (default: 1): " branch_choice
+# Both prompts below can be answered up front, so the deploy can be driven from
+# a non-interactive shell (ssh without a TTY, cron, a CI step). Piping answers
+# into the `read`s instead is unreliable: the second prompt only appears when
+# the active build is already on the remote commit, so the number of lines the
+# script consumes depends on state you do not know when you write the pipe.
+#
+#   RUTBA_DEPLOY_BRANCH=dev  RUTBA_DEPLOY_FORCE=1  sudo -E bash scripts/rutba_deploy.sh
+#
+# Unset = ask, exactly as before.
+if [ -n "${RUTBA_DEPLOY_BRANCH:-}" ]; then
+    branch_choice="$RUTBA_DEPLOY_BRANCH"
+    log "Branch from RUTBA_DEPLOY_BRANCH: ${branch_choice}"
+else
+    echo "  Which branch do you want to deploy?"
+    echo ""
+    echo "    1) main     (stable / production)"
+    echo "    2) dev      (development / testing)"
+    echo "    3) release  (release candidate)"
+    echo ""
+    read -rp "  Enter choice [1/2/3] (default: 1): " branch_choice
+fi
 
 case "${branch_choice}" in
     2|dev)      BRANCH="dev"     ;;
@@ -233,8 +247,13 @@ else
         if [ -n "$ACTIVE_COMMIT" ] && [ -n "$REMOTE_COMMIT" ] && [ "$ACTIVE_COMMIT" = "$REMOTE_COMMIT" ]; then
             log_ok "Already running the latest commit on ${BRANCH} (${ACTIVE_COMMIT:0:7}). No deploy needed."
             echo ""
-            read -rp "  Force re-deploy anyway? [y/N]: " force_deploy
-            if [[ ! "$force_deploy" =~ ^[Yy]$ ]]; then
+            if [ -n "${RUTBA_DEPLOY_FORCE:-}" ]; then
+                force_deploy="$RUTBA_DEPLOY_FORCE"
+                log "Force answer from RUTBA_DEPLOY_FORCE: ${force_deploy}"
+            else
+                read -rp "  Force re-deploy anyway? [y/N]: " force_deploy
+            fi
+            if [[ ! "$force_deploy" =~ ^[Yy1]$ ]]; then
                 exit 0
             fi
             log "Force re-deploy requested."
@@ -397,6 +416,26 @@ install_project_deps "monorepo" "$BUILD_DIR"
 unset RUTBA_POSTINSTALL
 
 install_project_deps "pos-strapi" "$BUILD_DIR/pos-strapi"
+
+# rutba-core is not in the root workspaces array either (see rutba_apps.sh), so
+# like pos-strapi it needs its own install or its node_modules is simply absent
+# and the unit dies on the first require.
+#
+# Only when the backend selection actually runs it. Under RUTBA_BACKEND=strapi
+# the core unit is never written or started, and paying for an install nobody
+# uses would also let a core-only dependency failure abort a Strapi deploy.
+# Switching backends is an env edit plus a redeploy, so this always runs before
+# core is first started.
+#
+# NOTE: core resolves a second set of modules (@koa/cors, koa-send, koa-range,
+# formidable, @strapi/upload, ...) out of pos-strapi/node_modules via
+# posModule() rather than declaring them itself. They are transitive deps
+# pinned at top-level paths in pos-strapi's lockfile, so `npm ci` above puts
+# them exactly where posModule looks - but it does mean core cannot run in a
+# build where the pos-strapi install was skipped.
+if [ "${RUTBA_BACKEND:-strapi}" != "strapi" ] && [ -f "$BUILD_DIR/rutba-core/package.json" ]; then
+    install_project_deps "rutba-core" "$BUILD_DIR/rutba-core"
+fi
 
 ###########################################
 # BUILD EVERYTHING

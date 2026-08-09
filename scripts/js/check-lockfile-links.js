@@ -31,7 +31,13 @@ const path = require('path');
 const ROOT = path.resolve(process.argv[2] || path.join(__dirname, '..', '..'));
 
 // Lockfiles that ship with the repo and are consumed by `npm ci` on deploy.
-const LOCKFILES = ['package-lock.json', path.join('pos-strapi', 'package-lock.json')];
+const LOCKFILES = [
+  'package-lock.json',
+  path.join('pos-strapi', 'package-lock.json'),
+  // rutba-core is outside the workspaces array too, so it carries its own
+  // lockfile and gets its own `npm ci` on deploy - same exposure.
+  path.join('rutba-core', 'package-lock.json'),
+];
 
 const problems = [];
 
