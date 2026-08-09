@@ -25,6 +25,10 @@ export const SocialPostsEndpoints = {
     sendReply: (documentId, data) => ({ path: `/social-posts/${documentId}/reply`, action: 'sendReply', method: 'post', data }),
     // Clone a post into a fresh draft, ready to re-publish (repost).
     duplicate: (documentId) => ({ path: `/social-posts/${documentId}/duplicate`, action: 'duplicate', method: 'post' }),
+    // Record one browser-poster attempt (success/failed/unverified) into
+    // platform_results — atomic server-side merge that also mirrors the
+    // published copy. The desktop Social Poster calls this after each attempt.
+    recordResult: (documentId, data) => ({ path: `/social-posts/${documentId}/record-result`, action: 'recordResult', method: 'post', data }),
     // todo: speculative stub — rutba-social/pages/posts/index.js uses this to mark
     // which drafts have a published counterpart. The current implementation returns
     // documentId-only list of published rows; verify the Strapi status filter is

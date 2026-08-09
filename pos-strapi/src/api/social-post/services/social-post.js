@@ -245,6 +245,70 @@ module.exports = createCoreService(POST_UID, ({ strapi }) => ({
     return { platform_results: results };
   },
 
+  // ── browser-poster result recording ────────────────────────────────────────
+
+  /**
+   * Record one browser-driven posting attempt (the desktop Social Poster) into
+   * platform_results. Server-side merge so concurrent writers can't clobber
+   * each other, and the published copy is mirrored row-level — the core PUT
+   * only writes the draft, which silently diverges from what list readers see.
+   * Records failures and unverified attempts too, so the backend can tell
+   * "attempted and failed" from "not attempted yet".
+   */
+  async recordBrowserResult(documentId, { platform, account_id, status, error, note, via }) {
+    if (!platform || typeof platform !== 'string') throw new Error('platform is required');
+    const STATUSES = ['success', 'failed', 'unverified'];
+    if (!STATUSES.includes(status)) throw new Error(`status must be one of: ${STATUSES.join(', ')}`);
+
+    const post = await this._loadPost(documentId); // draft copy holds the canonical results
+    if (!post) throw new Error('Post not found');
+
+    const results = { ...(post.platform_results || {}) };
+    const key = account_id ? resultKey(platform, account_id) : platform;
+    const prev = results[key] || {};
+    results[key] = {
+      status,
+      platform,
+      account_id: account_id || null,
+      error: status === 'success' ? null : error || null,
+      note: note || null,
+      via: via || 'desktop-poster',
+      attempts: (Number(prev.attempts) || 0) + 1,
+      at: new Date().toISOString(),
+    };
+
+    const covered = new Set(Object.entries(results)
+      .filter(([, v]) => v && v.status === 'success')
+      .map(([k]) => String(k).split('#')[0]));
+    const targets = Array.isArray(post.platforms) && post.platforms.length ? post.platforms : [platform];
+    let post_status = post.post_status;
+    if (targets.every((t) => covered.has(t))) post_status = 'published';
+    else if (covered.size > 0) post_status = 'partially_published';
+    else if (status === 'failed') post_status = 'failed';
+
+    const published_at_social = covered.size > 0
+      ? post.published_at_social || new Date().toISOString()
+      : post.published_at_social || null;
+
+    await strapi.documents(POST_UID).update({
+      documentId, data: { platform_results: results, post_status, published_at_social },
+    });
+    // Mirror onto the published row directly (no publish() — that would push
+    // unrelated pending draft edits live as a side effect).
+    const pubRow = await strapi.db.query(POST_UID).findOne({
+      where: { documentId, publishedAt: { $notNull: true } },
+      select: ['id'],
+    });
+    if (pubRow) {
+      await strapi.db.query(POST_UID).update({
+        where: { id: pubRow.id },
+        data: { platform_results: results, post_status, published_at_social },
+      });
+    }
+
+    return { ok: true, post_status, done: covered.size, total: targets.length, key };
+  },
+
   // ── repost: clone a post into a fresh draft (re-publishable) ───────────────
 
   async duplicatePost(documentId) {

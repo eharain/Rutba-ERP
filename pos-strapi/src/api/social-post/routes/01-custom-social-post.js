@@ -81,5 +81,11 @@ module.exports = {
       handler: 'social-post.duplicate',
       config: { auth: false },
     },
+    {
+      method: 'POST',
+      path: '/social-posts/:id/record-result',
+      handler: 'social-post.recordResult',
+      config: { auth: false },
+    },
   ],
 };

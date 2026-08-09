@@ -84,6 +84,28 @@ module.exports = createCoreController(POST_UID, ({ strapi }) => ({
     }
   },
 
+  /** Record one browser-poster attempt (success/failed/unverified) into
+   *  platform_results — atomic server-side merge that also mirrors the
+   *  published copy. Called by the desktop Social Poster after each attempt.
+   *  Body: { data: { platform, account_id, status, error?, note?, via? } }. */
+  async recordResult(ctx) {
+    if (!await requireSocialMember(ctx, strapi)) return;
+    const data = ctx.request.body?.data || ctx.request.body || {};
+    try {
+      const result = await strapi.service(POST_UID).recordBrowserResult(ctx.params.id, {
+        platform: data.platform,
+        account_id: data.account_id || data.accountId || null,
+        status: data.status,
+        error: data.error || null,
+        note: data.note || null,
+        via: data.via || 'desktop-poster',
+      });
+      return ctx.send({ data: result });
+    } catch (e) {
+      return ctx.badRequest(e.message || 'Record failed');
+    }
+  },
+
   /** Clone a post into a fresh draft, ready to re-publish (repost). Writes
    *  brand content, so it needs a social app-role like the other brand-acting
    *  operations — authentication alone admits storefront customers. */
