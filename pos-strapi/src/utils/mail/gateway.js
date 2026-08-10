@@ -74,11 +74,17 @@ function structureHasAttachments(node) {
   return Array.isArray(node.childNodes) && node.childNodes.some(structureHasAttachments);
 }
 
+// Tags are IMAP custom keywords with this prefix — stored ON the mail
+// server, so they survive without import and show in any client. The slug
+// charset keeps them valid IMAP atoms.
+const TAG_KEYWORD_RE = /^rt_[a-z0-9_]{1,40}$/;
+
 function mapEnvelope(msg) {
   const flags = msg.flags || new Set();
   return {
     uid: msg.uid,
     messageId: msg.envelope?.messageId || null,
+    inReplyTo: msg.envelope?.inReplyTo || null,
     from: addr(msg.envelope?.from?.[0]),
     to: addrList(msg.envelope?.to),
     subject: msg.envelope?.subject || '',
@@ -86,9 +92,33 @@ function mapEnvelope(msg) {
     seen: flags.has('\\Seen'),
     flagged: flags.has('\\Flagged'),
     answered: flags.has('\\Answered'),
+    tags: [...flags].filter((f) => TAG_KEYWORD_RE.test(f)),
     hasAttachments: structureHasAttachments(msg.bodyStructure),
     size: msg.size || null,
   };
+}
+
+/**
+ * Build the imapflow SEARCH object from the structured filter set. All
+ * criteria AND together; the free-text term keeps its subject/from/to OR.
+ * Returns null when nothing is filtered (callers then use the cheap
+ * sequence-window path).
+ */
+function buildSearch({ search, unread, flagged, from, to, subject, since, before, tag } = {}) {
+  const q = {};
+  const term = typeof search === 'string' ? search.trim() : '';
+  if (term) q.or = [{ subject: term }, { from: term }, { to: term }];
+  if (unread) q.seen = false;
+  if (flagged) q.flagged = true;
+  if (typeof from === 'string' && from.trim()) q.from = from.trim();
+  if (typeof to === 'string' && to.trim()) q.to = to.trim();
+  if (typeof subject === 'string' && subject.trim()) q.subject = subject.trim();
+  const sinceD = since ? new Date(since) : null;
+  if (sinceD && !Number.isNaN(sinceD.getTime())) q.since = sinceD;
+  const beforeD = before ? new Date(before) : null;
+  if (beforeD && !Number.isNaN(beforeD.getTime())) q.before = beforeD;
+  if (typeof tag === 'string' && TAG_KEYWORD_RE.test(tag)) q.keyword = tag;
+  return Object.keys(q).length ? q : null;
 }
 
 function readStream(stream, maxBytes, label) {
@@ -209,10 +239,11 @@ async function listFolders(strapi, account) {
 }
 
 /**
- * Page a folder newest-first, envelope-only (no bodies). `search` runs
- * server-side (IMAP SEARCH over subject/from/to) and pages over the uid set.
+ * Page a folder newest-first, envelope-only (no bodies). Any filter —
+ * free-text `search`, unread/flagged, from/to/subject, since/before, tag —
+ * runs as ONE server-side IMAP SEARCH and pages over the matched uid set.
  */
-async function listMessages(strapi, account, folder, { page = 1, pageSize = 50, search } = {}) {
+async function listMessages(strapi, account, folder, { page = 1, pageSize = 50, ...filters } = {}) {
   const p = Math.max(1, Number(page) || 1);
   const ps = Math.min(100, Math.max(1, Number(pageSize) || 50));
   const FETCH = { uid: true, envelope: true, flags: true, bodyStructure: true, size: true };
@@ -225,9 +256,9 @@ async function listMessages(strapi, account, folder, { page = 1, pageSize = 50, 
       const messages = [];
       let total;
 
-      const term = typeof search === 'string' ? search.trim() : '';
-      if (term) {
-        let uids = await client.search({ or: [{ subject: term }, { from: term }, { to: term }] }, { uid: true });
+      const query = buildSearch(filters);
+      if (query) {
+        let uids = await client.search(query, { uid: true });
         uids = (uids || []).sort((a, b) => b - a);
         total = uids.length;
         const slice = uids.slice((p - 1) * ps, p * ps);
@@ -324,6 +355,7 @@ async function getMessage(strapi, account, folder, uid) {
           flagged: flags.has('\\Flagged'),
           answered: flags.has('\\Answered'),
         },
+        tags: [...flags].filter((f) => TAG_KEYWORD_RE.test(f)),
         bodyHtml,
         bodyText: parsed.text || '',
         hasRemoteImages,
@@ -370,15 +402,16 @@ async function getAttachment(strapi, account, folder, uid, partId) {
   }, { label: 'IMAP fetch attachment', timeoutMs: DOWNLOAD_TIMEOUT_MS });
 }
 
-/** Move a message to an arbitrary folder (M1 — 'transfer' passes the api-pro verb whitelist). */
+/** Move one message or a uid set to an arbitrary folder (M1 — 'transfer' passes the api-pro verb whitelist). */
 async function transferMessage(strapi, account, folder, uid, toFolder) {
   if (!toFolder || String(toFolder).toLowerCase() === String(folder).toLowerCase()) {
     throw new MailError('A different destination folder is required.', { status: 400, code: 'mail_bad_folder' });
   }
+  const set = uidSet(uid);
   return withAccount(strapi, account, async (client) => {
     const lock = await client.getMailboxLock(folder);
     try {
-      await client.messageMove(String(uid), toFolder, { uid: true });
+      await client.messageMove(set, toFolder, { uid: true });
       return { moved: toFolder };
     } finally {
       lock.release();
@@ -457,6 +490,21 @@ async function fetchFullMessage(strapi, account, folder, uid) {
 
 const FLAG_MAP = { seen: '\\Seen', flagged: '\\Flagged', answered: '\\Answered' };
 
+// One message or many: every flag/move/delete op takes a uid or an array and
+// issues ONE IMAP command over the uid set — bulk actions cost one round-trip.
+function uidSet(uidOrUids) {
+  const list = (Array.isArray(uidOrUids) ? uidOrUids : [uidOrUids])
+    .map((u) => Number(u))
+    .filter((u) => Number.isInteger(u) && u > 0);
+  if (!list.length || list.length > 500) {
+    throw new MailError('Between 1 and 500 message uids are required.', {
+      status: 400,
+      code: 'mail_bad_uids',
+    });
+  }
+  return [...new Set(list)].join(',');
+}
+
 /** Whitelist flag ops — \Seen / \Flagged / \Answered only. */
 async function setFlags(strapi, account, folder, uid, { add = [], remove = [] } = {}) {
   const toImap = (names) => names.map((n) => {
@@ -471,12 +519,13 @@ async function setFlags(strapi, account, folder, uid, { add = [], remove = [] } 
   });
   const addFlags = toImap(add);
   const removeFlags = toImap(remove);
+  const set = uidSet(uid);
 
   return withAccount(strapi, account, async (client) => {
     const lock = await client.getMailboxLock(folder);
     try {
-      if (addFlags.length) await client.messageFlagsAdd(String(uid), addFlags, { uid: true });
-      if (removeFlags.length) await client.messageFlagsRemove(String(uid), removeFlags, { uid: true });
+      if (addFlags.length) await client.messageFlagsAdd(set, addFlags, { uid: true });
+      if (removeFlags.length) await client.messageFlagsRemove(set, removeFlags, { uid: true });
       return { ok: true, added: addFlags, removed: removeFlags };
     } finally {
       lock.release();
@@ -484,8 +533,38 @@ async function setFlags(strapi, account, folder, uid, { add = [], remove = [] } 
   }, { label: 'IMAP set flags' });
 }
 
+/**
+ * Tag ops — IMAP custom keywords (`rt_<slug>`), validated against the
+ * mail-tag registry by the controller. Keywords live on the mail server, so
+ * tags survive without import and appear in other IMAP clients.
+ */
+async function setTags(strapi, account, folder, uid, { add = [], remove = [] } = {}) {
+  const check = (slugs) => slugs.map((s) => {
+    const slug = String(s || '').trim();
+    if (!TAG_KEYWORD_RE.test(slug)) {
+      throw new MailError(`'${s}' is not a valid tag keyword.`, { status: 400, code: 'mail_bad_tag' });
+    }
+    return slug;
+  });
+  const addTags = check(add);
+  const removeTags = check(remove);
+  const set = uidSet(uid);
+
+  return withAccount(strapi, account, async (client) => {
+    const lock = await client.getMailboxLock(folder);
+    try {
+      if (addTags.length) await client.messageFlagsAdd(set, addTags, { uid: true });
+      if (removeTags.length) await client.messageFlagsRemove(set, removeTags, { uid: true });
+      return { ok: true, added: addTags, removed: removeTags };
+    } finally {
+      lock.release();
+    }
+  }, { label: 'IMAP set tags' });
+}
+
 /** Move to Trash; already in Trash (or no Trash exists) → expunge. */
 async function removeMessage(strapi, account, folder, uid) {
+  const set = uidSet(uid);
   return withAccount(strapi, account, async (client) => {
     let trash = account.special_folders?.trash || null;
     if (!trash) {
@@ -497,10 +576,10 @@ async function removeMessage(strapi, account, folder, uid) {
     try {
       const inTrash = trash && trash.toLowerCase() === String(folder).toLowerCase();
       if (!trash || inTrash) {
-        await client.messageDelete(String(uid), { uid: true });
+        await client.messageDelete(set, { uid: true });
         return { deleted: true };
       }
-      await client.messageMove(String(uid), trash, { uid: true });
+      await client.messageMove(set, trash, { uid: true });
       return { moved: trash };
     } finally {
       lock.release();
@@ -619,10 +698,15 @@ module.exports = {
   getMessage,
   getAttachment,
   setFlags,
+  setTags,
   removeMessage,
   sendMessage,
   transferMessage,
   saveDraft,
   getUnseenCounts,
   fetchFullMessage,
+  TAG_KEYWORD_RE,
+  // exported for direct verification — pure, no IMAP needed
+  buildSearch,
+  uidSet,
 };

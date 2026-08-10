@@ -1,5 +1,10 @@
-import { useMemo, useState, useEffect } from "react";
-import { MailAccountsEndpoints } from "@rutba/api-provider/endpoints";
+import { useMemo, useState, useEffect, useCallback } from "react";
+import {
+    MailAccountsEndpoints,
+    MailContactsEndpoints,
+    MailMessagesEndpoints,
+    WorkItemCommentsEndpoints,
+} from "@rutba/api-provider/endpoints";
 import LinkPicker from "./LinkPicker";
 
 // Reading pane. The body is server-sanitized AND rendered inside a fully
@@ -10,14 +15,23 @@ import LinkPicker from "./LinkPicker";
 const addrText = (a) => (a ? (a.name ? `${a.name} <${a.address}>` : a.address) : "");
 const listText = (list) => (list || []).map(addrText).join(", ");
 
-export default function MessageView({ account, folder, folders, message, onReply, onDeleted, onMoved, onFlagChanged, onClose }) {
+export default function MessageView({ account, folder, folders, message, tags = [], onReply, onDeleted, onMoved, onFlagChanged, onClose }) {
     const [showRemote, setShowRemote] = useState(false);
     const [busy, setBusy] = useState(null);
     const [error, setError] = useState(null);
     const [linking, setLinking] = useState(false);
     const [linkedNote, setLinkedNote] = useState(null);
+    const [msgTags, setMsgTags] = useState([]);
+    const [savedSender, setSavedSender] = useState(false);
 
-    useEffect(() => { setShowRemote(false); setError(null); setLinking(false); setLinkedNote(null); }, [message?.uid]);
+    useEffect(() => {
+        setShowRemote(false);
+        setError(null);
+        setLinking(false);
+        setLinkedNote(null);
+        setMsgTags(message?.tags || []);
+        setSavedSender(false);
+    }, [message?.uid]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const srcDoc = useMemo(() => {
         if (!message) return "";
@@ -96,6 +110,35 @@ img{max-width:100%;height:auto;} pre{white-space:pre-wrap;}</style>
         }
     };
 
+    const toggleTag = async (slug) => {
+        const has = msgTags.includes(slug);
+        setBusy("tag");
+        try {
+            await MailAccountsEndpoints.setTags(account.documentId, {
+                folder, uids: [message.uid], ...(has ? { remove: [slug] } : { add: [slug] }),
+            });
+            setMsgTags((t) => (has ? t.filter((s) => s !== slug) : [...t, slug]));
+        } catch (err) {
+            setError(`Tag failed: ${err.message}`);
+        } finally {
+            setBusy(null);
+        }
+    };
+
+    const saveSender = async () => {
+        const from = message.envelope?.from;
+        if (!from?.address) return;
+        setBusy("contact");
+        try {
+            await MailContactsEndpoints.create({ name: from.name || from.address, email: from.address, scope: "personal" });
+            setSavedSender(true);
+        } catch (err) {
+            setError(`Could not save the contact: ${err.message}`);
+        } finally {
+            setBusy(null);
+        }
+    };
+
     return (
         <div className="d-flex flex-column h-100">
             <div className="border-bottom p-2">
@@ -135,11 +178,40 @@ img{max-width:100%;height:auto;} pre{white-space:pre-wrap;}</style>
                     </div>
                 </div>
                 <div className="small text-muted">
-                    <div><strong>From:</strong> {addrText(message.envelope?.from)}</div>
+                    <div>
+                        <strong>From:</strong> {addrText(message.envelope?.from)}
+                        {message.envelope?.from?.address && !savedSender && (
+                            <button className="btn btn-link btn-sm p-0 ms-2 align-baseline" title="Add sender to your address book"
+                                disabled={busy === "contact"} onClick={saveSender}>
+                                <i className="fa-solid fa-address-book me-1"></i>Save contact
+                            </button>
+                        )}
+                        {savedSender && <span className="text-success ms-2"><i className="fa-solid fa-check"></i> saved</span>}
+                    </div>
                     <div><strong>To:</strong> {listText(message.envelope?.to)}</div>
                     {(message.envelope?.cc || []).length > 0 && <div><strong>Cc:</strong> {listText(message.envelope?.cc)}</div>}
                     <div>{message.envelope?.date ? new Date(message.envelope.date).toLocaleString() : ""}</div>
                 </div>
+                {tags.length > 0 && (
+                    <div className="mt-1 d-flex flex-wrap gap-1 align-items-center">
+                        {tags.map((t) => {
+                            const on = msgTags.includes(t.slug);
+                            return (
+                                <button key={t.slug} type="button" disabled={busy === "tag"}
+                                    className="badge border-0"
+                                    style={{
+                                        backgroundColor: on ? (t.color || "#6c757d") : "#e9ecef",
+                                        color: on ? "#fff" : "#495057",
+                                        cursor: "pointer",
+                                    }}
+                                    title={on ? "Remove tag" : "Add tag"}
+                                    onClick={() => toggleTag(t.slug)}>
+                                    {t.name}
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
                 {(message.attachments || []).length > 0 && (
                     <div className="mt-2 d-flex flex-wrap gap-2">
                         {message.attachments.map((att) => (
@@ -185,6 +257,105 @@ img{max-width:100%;height:auto;} pre{white-space:pre-wrap;}</style>
             {error && <div className="alert alert-warning rounded-0 mb-0 py-1 px-2 small">{error}</div>}
 
             <iframe className="mail-body-frame flex-grow-1" sandbox="" srcDoc={srcDoc} title="Message body" />
+
+            {account?.kind === "shared" && <NotesPanel account={account} folder={folder} message={message} />}
+        </div>
+    );
+}
+
+const MSG_UID = "api::mail-message.mail-message";
+
+/**
+ * Internal notes on a shared-inbox message, inline in the reading pane (the
+ * Front/Missive essential). Notes hang off the IMPORTED copy — the first
+ * note on a live-only message quietly imports it (link-less), which is
+ * exactly the import-on-demand rule: a message becomes a DB row when the
+ * team starts working on it.
+ */
+function NotesPanel({ account, folder, message }) {
+    const [open, setOpen] = useState(false);
+    const [docId, setDocId] = useState(null);
+    const [comments, setComments] = useState([]);
+    const [draft, setDraft] = useState("");
+    const [busy, setBusy] = useState(false);
+    const [noteError, setNoteError] = useState(null);
+
+    const loadComments = useCallback((targetDocumentId) => {
+        if (!targetDocumentId) { setComments([]); return; }
+        WorkItemCommentsEndpoints.list({ entityUid: MSG_UID, targetDocumentId, pageSize: 50 })
+            .then((res) => setComments(res?.data || []))
+            .catch(() => setComments([]));
+    }, []);
+
+    useEffect(() => {
+        setOpen(false);
+        setDocId(null);
+        setComments([]);
+        setDraft("");
+        setNoteError(null);
+        if (!message?.messageId) return;
+        MailMessagesEndpoints.list({ filters: { message_id: { $eq: message.messageId } }, pageSize: 1 })
+            .then((res) => {
+                const row = res?.data?.[0] || null;
+                setDocId(row?.documentId || null);
+                if (row?.documentId) loadComments(row.documentId);
+            })
+            .catch(() => {});
+    }, [message?.uid, message?.messageId, loadComments]);
+
+    const addNote = async (e) => {
+        e.preventDefault();
+        if (!draft.trim()) return;
+        setBusy(true);
+        setNoteError(null);
+        try {
+            let target = docId;
+            if (!target) {
+                const res = await MailAccountsEndpoints.createImport(account.documentId, message.uid, { folder });
+                target = res?.message?.documentId;
+                setDocId(target || null);
+            }
+            if (!target) throw new Error("Could not attach the message.");
+            await WorkItemCommentsEndpoints.create({
+                entity_uid: MSG_UID,
+                target_document_id: target,
+                body: draft.trim(),
+            });
+            setDraft("");
+            loadComments(target);
+        } catch (err) {
+            setNoteError(err.message);
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    return (
+        <div className="border-top">
+            <button type="button" className="btn btn-sm btn-link text-decoration-none w-100 text-start px-2 py-1"
+                onClick={() => setOpen((v) => !v)}>
+                <i className={`fa-solid fa-chevron-${open ? "down" : "right"} me-1`}></i>
+                Internal notes{comments.length ? ` (${comments.length})` : ""}
+                <span className="text-muted small ms-2">visible to the team, never emailed</span>
+            </button>
+            {open && (
+                <div className="px-2 pb-2" style={{ maxHeight: "14rem", overflowY: "auto" }}>
+                    {comments.map((c) => (
+                        <div key={c.documentId} className="mb-1 small">
+                            <strong>{c.author_label || "someone"}</strong>
+                            <span className="text-muted ms-1">{new Date(c.createdAt).toLocaleString()}</span>
+                            <div>{c.body}</div>
+                        </div>
+                    ))}
+                    {!comments.length && <div className="text-muted small mb-1">No notes yet.</div>}
+                    {noteError && <div className="alert alert-warning py-1 px-2 small">{noteError}</div>}
+                    <form onSubmit={addNote} className="d-flex gap-1">
+                        <input className="form-control form-control-sm" value={draft} placeholder="Add a note…"
+                            onChange={(e) => setDraft(e.target.value)} />
+                        <button className="btn btn-sm btn-outline-primary" disabled={busy || !draft.trim()}>Add</button>
+                    </form>
+                </div>
+            )}
         </div>
     );
 }

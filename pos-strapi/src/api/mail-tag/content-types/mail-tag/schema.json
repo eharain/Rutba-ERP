@@ -1,0 +1,31 @@
+{
+  "kind": "collectionType",
+  "collectionName": "mail_tags",
+  "info": {
+    "singularName": "mail-tag",
+    "pluralName": "mail-tags",
+    "displayName": "Mail Tag",
+    "description": "Tag registry for the mail client. The slug is the IMAP custom keyword (rt_*) actually stored on messages — tags live on the mail server, survive without import, and appear in other IMAP clients. Manager-maintained; everyone reads."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "slug": {
+      "type": "string",
+      "unique": true,
+      "description": "IMAP keyword atom, generated from the name on create (rt_<slug>). Immutable — renaming a tag keeps the keyword so existing messages stay tagged."
+    },
+    "color": {
+      "type": "string",
+      "description": "CSS color for chips, e.g. #0d6efd."
+    },
+    "description": {
+      "type": "text"
+    }
+  }
+}

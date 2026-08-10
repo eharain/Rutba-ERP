@@ -1,0 +1,44 @@
+{
+  "kind": "collectionType",
+  "collectionName": "mail_contacts",
+  "info": {
+    "singularName": "mail-contact",
+    "pluralName": "mail-contacts",
+    "displayName": "Mail Contact",
+    "description": "Address-book entry. scope 'personal' rows belong to their owner alone; 'global' rows are the company directory (Outlook GAL model) and are manager-maintained. Compose autocomplete merges these with the person spine and CRM contacts."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "email": {
+      "type": "email",
+      "required": true
+    },
+    "phone": {
+      "type": "string"
+    },
+    "organization": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "scope": {
+      "type": "enumeration",
+      "enum": ["personal", "global"],
+      "default": "personal",
+      "required": true
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user",
+      "description": "Personal entries: exactly the creating user. Global entries carry no owners."
+    }
+  }
+}

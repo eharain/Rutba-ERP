@@ -3,8 +3,9 @@ import Link from "next/link";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { MailAccountsEndpoints } from "@rutba/api-provider/endpoints";
+import { MailAccountsEndpoints, MailTagsEndpoints } from "@rutba/api-provider/endpoints";
 import FolderTree from "../components/FolderTree";
+import FilterBar from "../components/FilterBar";
 import MessageList from "../components/MessageList";
 import MessageView from "../components/MessageView";
 import ComposeDialog, { composeDraftFrom } from "../components/ComposeDialog";
@@ -27,6 +28,8 @@ export default function MailClientPage() {
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState("");
     const [searchDraft, setSearchDraft] = useState("");
+    const [filters, setFilters] = useState(null);
+    const [tags, setTags] = useState([]);
     const [listLoading, setListLoading] = useState(false);
     const [listError, setListError] = useState(null);
 
@@ -61,24 +64,51 @@ export default function MailClientPage() {
             .catch((err) => setNotice({ type: "warning", text: `${account.name}: ${err.message}` }));
     }, [account]);
 
-    /* messages per folder/page/search */
+    /* tag registry (chips + filters everywhere) */
+    useEffect(() => {
+        if (!jwt) return;
+        MailTagsEndpoints.list()
+            .then((res) => setTags(res?.data || []))
+            .catch(() => setTags([]));
+    }, [jwt]);
+
+    /* messages per folder/page/search/filters */
     const loadMessages = useCallback(() => {
         if (!account) return;
         setListLoading(true);
         setListError(null);
-        MailAccountsEndpoints.listMessages(account.documentId, { folder, page, pageSize: 50, search: search || undefined })
+        MailAccountsEndpoints.listMessages(account.documentId, {
+            folder, page, pageSize: 50, search: search || undefined, ...(filters || {}),
+        })
             .then(setListing)
             .catch((err) => { setListing(null); setListError(err.message); })
             .finally(() => setListLoading(false));
-    }, [account, folder, page, search]);
+    }, [account, folder, page, search, filters]);
 
     useEffect(() => { loadMessages(); }, [loadMessages]);
+
+    /* bulk actions from the list toolbar — one IMAP round-trip per action */
+    const onBulk = async (action, { uids, targetFolder, add }) => {
+        if (!account || !uids?.length) return;
+        try {
+            if (action === "read") await MailAccountsEndpoints.setBulkFlags(account.documentId, { folder, uids, add: ["seen"] });
+            else if (action === "unread") await MailAccountsEndpoints.setBulkFlags(account.documentId, { folder, uids, remove: ["seen"] });
+            else if (action === "delete") await MailAccountsEndpoints.removeBulkMessages(account.documentId, { folder, uids });
+            else if (action === "move") await MailAccountsEndpoints.transferBulkMessages(account.documentId, { folder, uids, targetFolder });
+            else if (action === "tag") await MailAccountsEndpoints.setTags(account.documentId, { folder, uids, add });
+            setMessage(null);
+            loadMessages();
+        } catch (err) {
+            setNotice({ type: "warning", text: `Bulk ${action} failed: ${err.message}` });
+        }
+    };
 
     const selectFolder = (path) => {
         setFolder(path);
         setPage(1);
         setSearch("");
         setSearchDraft("");
+        setFilters(null);
         setMessage(null);
     };
 
@@ -184,17 +214,24 @@ export default function MailClientPage() {
                             <FolderTree folders={folders} activeFolder={folder}
                                 unseenCounts={account?.unseen_counts} onSelect={selectFolder} />
                         </div>
-                        <div className="mail-list">
-                            <MessageList
-                                listing={listing}
-                                activeUid={message?.uid}
-                                loading={listLoading}
-                                error={listError}
-                                page={page}
-                                onOpen={openMessage}
-                                onPage={(p) => { setPage(p); setMessage(null); }}
-                                onRefresh={loadMessages}
-                            />
+                        <div className="mail-list d-flex flex-column">
+                            <FilterBar filters={filters} tags={tags}
+                                onChange={(f) => { setFilters(f); setPage(1); setMessage(null); }} />
+                            <div className="flex-grow-1 overflow-auto">
+                                <MessageList
+                                    listing={listing}
+                                    activeUid={message?.uid}
+                                    loading={listLoading}
+                                    error={listError}
+                                    page={page}
+                                    tags={tags}
+                                    folders={folders}
+                                    onOpen={openMessage}
+                                    onPage={(p) => { setPage(p); setMessage(null); }}
+                                    onRefresh={loadMessages}
+                                    onBulk={onBulk}
+                                />
+                            </div>
                         </div>
                         <div className="mail-reading">
                             {messageLoading ? (
@@ -205,6 +242,7 @@ export default function MailClientPage() {
                                     folder={folder}
                                     folders={folders}
                                     message={message}
+                                    tags={tags}
                                     onReply={onReply}
                                     onDeleted={onDeleted}
                                     onMoved={(toFolder) => {

@@ -5041,6 +5041,46 @@ export interface ApiMailAttachmentMailAttachment
   };
 }
 
+export interface ApiMailContactMailContact extends Struct.CollectionTypeSchema {
+  collectionName: 'mail_contacts';
+  info: {
+    description: "Address-book entry. scope 'personal' rows belong to their owner alone; 'global' rows are the company directory (Outlook GAL model) and are manager-maintained. Compose autocomplete merges these with the person spine and CRM contacts.";
+    displayName: 'Mail Contact';
+    pluralName: 'mail-contacts';
+    singularName: 'mail-contact';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    email: Schema.Attribute.Email & Schema.Attribute.Required;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::mail-contact.mail-contact'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    notes: Schema.Attribute.Text;
+    organization: Schema.Attribute.String;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
+    phone: Schema.Attribute.String;
+    publishedAt: Schema.Attribute.DateTime;
+    scope: Schema.Attribute.Enumeration<['personal', 'global']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'personal'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiMailLinkMailLink extends Struct.CollectionTypeSchema {
   collectionName: 'mail_links';
   info: {
@@ -5189,6 +5229,75 @@ export interface ApiMailServerMailServer extends Struct.CollectionTypeSchema {
     name: Schema.Attribute.String & Schema.Attribute.Required;
     publishedAt: Schema.Attribute.DateTime;
     smtp_host: Schema.Attribute.String;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiMailSnippetMailSnippet extends Struct.CollectionTypeSchema {
+  collectionName: 'mail_snippets';
+  info: {
+    description: "Canned reply fragment for compose (the Front/Missive 'snippets' feature shared inboxes live on). scope 'personal' rows belong to their owner; 'global' rows are manager-maintained team snippets. body_html is sanitized on write.";
+    displayName: 'Mail Snippet';
+    pluralName: 'mail-snippets';
+    singularName: 'mail-snippet';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    body_html: Schema.Attribute.Text & Schema.Attribute.Required;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::mail-snippet.mail-snippet'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    scope: Schema.Attribute.Enumeration<['personal', 'global']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'personal'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiMailTagMailTag extends Struct.CollectionTypeSchema {
+  collectionName: 'mail_tags';
+  info: {
+    description: 'Tag registry for the mail client. The slug is the IMAP custom keyword (rt_*) actually stored on messages \u2014 tags live on the mail server, survive without import, and appear in other IMAP clients. Manager-maintained; everyone reads.';
+    displayName: 'Mail Tag';
+    pluralName: 'mail-tags';
+    singularName: 'mail-tag';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    color: Schema.Attribute.String;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::mail-tag.mail-tag'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    slug: Schema.Attribute.String & Schema.Attribute.Unique;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -10971,9 +11080,12 @@ declare module '@strapi/strapi' {
       'api::hr-work-experience.hr-work-experience': ApiHrWorkExperienceHrWorkExperience;
       'api::mail-account.mail-account': ApiMailAccountMailAccount;
       'api::mail-attachment.mail-attachment': ApiMailAttachmentMailAttachment;
+      'api::mail-contact.mail-contact': ApiMailContactMailContact;
       'api::mail-link.mail-link': ApiMailLinkMailLink;
       'api::mail-message.mail-message': ApiMailMessageMailMessage;
       'api::mail-server.mail-server': ApiMailServerMailServer;
+      'api::mail-snippet.mail-snippet': ApiMailSnippetMailSnippet;
+      'api::mail-tag.mail-tag': ApiMailTagMailTag;
       'api::marketplace-account.marketplace-account': ApiMarketplaceAccountMarketplaceAccount;
       'api::marketplace-listing.marketplace-listing': ApiMarketplaceListingMarketplaceListing;
       'api::marketplace-mapping.marketplace-mapping': ApiMarketplaceMappingMarketplaceMapping;

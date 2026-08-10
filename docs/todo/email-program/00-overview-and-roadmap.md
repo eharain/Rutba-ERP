@@ -1,5 +1,15 @@
 # Email Program — Overview & Roadmap
 
+> **Status (2026-08-10): ✅ M0–M6 + the usability P0 wave built.** The P0
+> wave (from `09-usability-gap-analysis.md`, all smoke-verified 21/21):
+> personal + company address books (`mail-contact`), tag registry
+> (`mail-tag` → IMAP keywords, so tags live on the mail server), snippets
+> (`mail-snippet`), advanced filters as one structured IMAP SEARCH,
+> conversation grouping, uid-set bulk actions, rich-text compose with
+> ERP-wide recipient autocomplete, inline shared-inbox notes
+> (import-on-first-note), and one-click mailbox password reset through the
+> mail-server registry. Earlier status history follows.
+
 > **Status (2026-08): ✅ M0–M6 built** (M0 + the same-day continuation).
 > M6 (campaigns Phases 4–5 + identity layer): local open/click tracking —
 > the §5 decision taken as **option (b)** since Rutba-MTA scopes generic

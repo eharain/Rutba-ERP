@@ -7,7 +7,10 @@ export interface MailAccountsEndpointsType {
     del(documentId: any): Promise<any>;
     validateConnection({ documentId, settings }?: any): Promise<any>;
     listFolders(documentId: any): Promise<any>;
-    listMessages(documentId: any, { folder = 'INBOX', page, pageSize, search }?: any): Promise<any>;
+    listMessages(documentId: any, {
+        folder = 'INBOX', page, pageSize, search,
+        unread, flagged, from, to, subject, since, before, tag,
+    }?: any): Promise<any>;
     getMessage(documentId: any, uid: any, { folder = 'INBOX' }?: any): Promise<any>;
     getAttachment(documentId: any, uid: any, { folder = 'INBOX', part }?: any): Promise<any>;
     setFlags(documentId: any, uid: any, { folder = 'INBOX', add = [], remove = [] }?: any): Promise<any>;
@@ -16,6 +19,11 @@ export interface MailAccountsEndpointsType {
     createDraft(documentId: any, { to, cc, bcc, subject, html, text }?: any): Promise<any>;
     createImport(documentId: any, uid: any, { folder = 'INBOX', links, triage }?: any): Promise<any>;
     createProvision({ localPart, domain, name, kind, quotaMb, serverId, access_roles }?: any): Promise<any>;
+    setBulkFlags(documentId: any, { folder, uids, add, remove }?: any): Promise<any>;
+    removeBulkMessages(documentId: any, { folder, uids }?: any): Promise<any>;
+    transferBulkMessages(documentId: any, { folder, uids, targetFolder }?: any): Promise<any>;
+    setTags(documentId: any, { folder, uids, add, remove }?: any): Promise<any>;
+    setMailboxPassword(documentId: any): Promise<any>;
     getServerDefaults(domain: any): Promise<any>;
     listAccess(): Promise<any>;
     setAccess(documentId: any, { owners, access_roles }?: any): Promise<any>;

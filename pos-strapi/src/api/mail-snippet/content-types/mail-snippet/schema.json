@@ -1,0 +1,34 @@
+{
+  "kind": "collectionType",
+  "collectionName": "mail_snippets",
+  "info": {
+    "singularName": "mail-snippet",
+    "pluralName": "mail-snippets",
+    "displayName": "Mail Snippet",
+    "description": "Canned reply fragment for compose (the Front/Missive 'snippets' feature shared inboxes live on). scope 'personal' rows belong to their owner; 'global' rows are manager-maintained team snippets. body_html is sanitized on write."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "body_html": {
+      "type": "text",
+      "required": true
+    },
+    "scope": {
+      "type": "enumeration",
+      "enum": ["personal", "global"],
+      "default": "personal",
+      "required": true
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

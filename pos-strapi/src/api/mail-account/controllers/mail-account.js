@@ -305,15 +305,28 @@ module.exports = createCoreController(UID, ({ strapi }) => {
       }
     },
 
-    /** GET /mail-accounts/:documentId/messages?folder=&page=&pageSize=&search= */
+    /**
+     * GET /mail-accounts/:documentId/messages
+     * ?folder=&page=&pageSize=&search=  plus the advanced filters:
+     * &unread=1&flagged=1&from=&to=&subject=&since=&before=&tag=rt_x —
+     * all AND-combined into one server-side IMAP SEARCH.
+     */
     async listMessages(ctx) {
       const user = await gate(ctx, strapi, ALL_LEVELS);
       if (!user) return;
       const account = await ensureAccess(ctx, user, ctx.params.documentId);
       if (!account) return;
-      const { folder = 'INBOX', page, pageSize, search } = ctx.query || {};
+      const {
+        folder = 'INBOX', page, pageSize, search,
+        unread, flagged, from, to, subject, since, before, tag,
+      } = ctx.query || {};
+      const truthy = (v) => v === '1' || v === 'true' || v === true;
       try {
-        return ctx.send(await gateway.listMessages(strapi, account, folder, { page, pageSize, search }));
+        return ctx.send(await gateway.listMessages(strapi, account, folder, {
+          page, pageSize, search,
+          unread: truthy(unread), flagged: truthy(flagged),
+          from, to, subject, since, before, tag,
+        }));
       } catch (e) {
         return fail(ctx, e);
       }
@@ -373,6 +386,125 @@ module.exports = createCoreController(UID, ({ strapi }) => {
       const { folder = 'INBOX' } = ctx.request.body || {};
       try {
         return ctx.send(await gateway.removeMessage(strapi, account, folder, ctx.params.uid));
+      } catch (e) {
+        return fail(ctx, e);
+      }
+    },
+
+    /* -------------------------------------------- bulk ops + tags (P0) */
+
+    /** POST /mail-accounts/:documentId/messages/bulk-flags  Body: {folder, uids, add, remove} */
+    async setBulkFlags(ctx) {
+      const user = await gate(ctx, strapi, ALL_LEVELS);
+      if (!user) return;
+      const account = await ensureAccess(ctx, user, ctx.params.documentId);
+      if (!account) return;
+      const { folder = 'INBOX', uids, add = [], remove = [] } = ctx.request.body || {};
+      try {
+        return ctx.send(await gateway.setFlags(strapi, account, folder, uids, { add, remove }));
+      } catch (e) {
+        return fail(ctx, e);
+      }
+    },
+
+    /** POST /mail-accounts/:documentId/messages/bulk-remove  Body: {folder, uids} */
+    async removeBulkMessages(ctx) {
+      const user = await gate(ctx, strapi, ALL_LEVELS);
+      if (!user) return;
+      const account = await ensureAccess(ctx, user, ctx.params.documentId);
+      if (!account) return;
+      const { folder = 'INBOX', uids } = ctx.request.body || {};
+      try {
+        return ctx.send(await gateway.removeMessage(strapi, account, folder, uids));
+      } catch (e) {
+        return fail(ctx, e);
+      }
+    },
+
+    /** POST /mail-accounts/:documentId/messages/bulk-transfer  Body: {folder, uids, targetFolder} */
+    async transferBulkMessages(ctx) {
+      const user = await gate(ctx, strapi, ALL_LEVELS);
+      if (!user) return;
+      const account = await ensureAccess(ctx, user, ctx.params.documentId);
+      if (!account) return;
+      const { folder = 'INBOX', uids, targetFolder } = ctx.request.body || {};
+      try {
+        return ctx.send(await gateway.transferMessage(strapi, account, folder, uids, targetFolder));
+      } catch (e) {
+        return fail(ctx, e);
+      }
+    },
+
+    /**
+     * POST /mail-accounts/:documentId/messages/tags
+     * Body: {folder, uids, add: [slug], remove: [slug]} — slugs must exist in
+     * the mail-tag registry; the keyword then lives on the mail server.
+     */
+    async setTags(ctx) {
+      const user = await gate(ctx, strapi, ALL_LEVELS);
+      if (!user) return;
+      const account = await ensureAccess(ctx, user, ctx.params.documentId);
+      if (!account) return;
+      const { folder = 'INBOX', uids, add = [], remove = [] } = ctx.request.body || {};
+      const wanted = [...add, ...remove].map((s) => String(s || '').trim()).filter(Boolean);
+      if (wanted.length) {
+        const known = await strapi.db.query('api::mail-tag.mail-tag').findMany({
+          where: { slug: { $in: wanted } },
+          select: ['slug'],
+        });
+        const have = new Set(known.map((r) => r.slug));
+        const missing = wanted.filter((s) => !have.has(s));
+        if (missing.length) {
+          return ctx.send({ error: 'mail_bad_tag', message: `Unknown tags: ${missing.join(', ')}` }, 400);
+        }
+      }
+      try {
+        return ctx.send(await gateway.setTags(strapi, account, folder, uids, { add, remove }));
+      } catch (e) {
+        return fail(ctx, e);
+      }
+    },
+
+    /**
+     * POST /mail-accounts/:documentId/mailbox-password — regenerate the
+     * mailbox password on its mail server (the 06 custody rule: shown ONCE
+     * for webmail/phone use, stored only as ciphertext for the gateway).
+     * Owners and mail admins only — provisioned (mailcow) accounts only,
+     * resolved through the registry like every provisioning call.
+     */
+    async setMailboxPassword(ctx) {
+      const user = await gate(ctx, strapi, ALL_LEVELS);
+      if (!user) return;
+      const documentId = docIdParam(ctx);
+      const account = await strapi.service(UID).loadWithOwners(documentId);
+      if (!account) return ctx.send({ error: 'not_found', message: 'Mail account not found.' }, 404);
+      const owner = (account.owners || []).some((o) => o.id === user.id);
+      if (!owner && !(await isMailAdmin(user.id))) {
+        return ctx.forbidden('Only the mailbox owner or a mail admin can reset its password.');
+      }
+      if (account.provisioning_source !== 'mailcow') {
+        return ctx.send({
+          error: 'mail_not_provisioned',
+          message: 'This mailbox is connected, not provisioned — reset its password with the provider, then update the connection here.',
+        }, 400);
+      }
+      const mailcow = require('../../../utils/mailcow-client');
+      const domain = String(account.email || '').split('@')[1] || '';
+      const serverConfig = await strapi.service('api::mail-server.mail-server').resolveForEmailDomain(domain);
+      const cfg = serverConfig ? { baseUrl: serverConfig.baseUrl, apiKey: serverConfig.apiKey } : undefined;
+      try {
+        const password = require('crypto').randomBytes(18).toString('base64url');
+        await mailcow.request('POST', '/api/v1/edit/mailbox', {
+          items: [account.email],
+          attr: { password, password2: password },
+        }, cfg);
+        await strapi.db.query(UID).update({
+          where: { documentId },
+          data: { imap_password_enc: encrypt(password), smtp_password_enc: null },
+        });
+        gateway.evictAccount(documentId);
+        // The ONE place a mailbox password is ever shown — to its owner, once.
+        return ctx.send({ ok: true, email: account.email, password });
       } catch (e) {
         return fail(ctx, e);
       }

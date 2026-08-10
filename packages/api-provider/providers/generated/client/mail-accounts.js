@@ -82,6 +82,31 @@ async function createProvision(arg1 = {}) {
     return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
+async function setBulkFlags(documentId, arg2 = {}) {
+    const ep = MailAccountsEndpointsApi.setBulkFlags(documentId, arg2);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
+async function removeBulkMessages(documentId, arg2 = {}) {
+    const ep = MailAccountsEndpointsApi.removeBulkMessages(documentId, arg2);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
+async function transferBulkMessages(documentId, arg2 = {}) {
+    const ep = MailAccountsEndpointsApi.transferBulkMessages(documentId, arg2);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
+async function setTags(documentId, arg2 = {}) {
+    const ep = MailAccountsEndpointsApi.setTags(documentId, arg2);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
+async function setMailboxPassword(documentId) {
+    const ep = MailAccountsEndpointsApi.setMailboxPassword(documentId);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
 async function getServerDefaults(domain) {
     const ep = MailAccountsEndpointsApi.getServerDefaults(domain);
     return authApi.fetch(ep.path, ep.params);
@@ -126,6 +151,11 @@ const endpoints = strictEndpointGuard(
         createDraft,
         createImport,
         createProvision,
+        setBulkFlags,
+        removeBulkMessages,
+        transferBulkMessages,
+        setTags,
+        setMailboxPassword,
         getServerDefaults,
         listAccess,
         setAccess,
@@ -133,7 +163,7 @@ const endpoints = strictEndpointGuard(
         sendMessage,
         meta: MailAccountsEndpointsApi.meta,
     },
-    ["list","byId","create","update","del","validateConnection","listFolders","listMessages","getMessage","getAttachment","setFlags","removeMessage","transferMessage","createDraft","createImport","createProvision","getServerDefaults","listAccess","setAccess","listAssignees","sendMessage","meta"],
+    ["list","byId","create","update","del","validateConnection","listFolders","listMessages","getMessage","getAttachment","setFlags","removeMessage","transferMessage","createDraft","createImport","createProvision","setBulkFlags","removeBulkMessages","transferBulkMessages","setTags","setMailboxPassword","getServerDefaults","listAccess","setAccess","listAssignees","sendMessage","meta"],
 );
 
 export default endpoints;

@@ -109,7 +109,10 @@ export const MailAccountsEndpoints = {
      * server-side over subject/from/to. Folder goes in the QUERY — IMAP paths
      * carry delimiters and UTF-7, so they never ride the URL path.
      */
-    listMessages: (documentId, { folder = 'INBOX', page, pageSize, search } = {}) => ({
+    listMessages: (documentId, {
+        folder = 'INBOX', page, pageSize, search,
+        unread, flagged, from, to, subject, since, before, tag,
+    } = {}) => ({
         path: `/mail-accounts/${documentId}/messages`,
         action: 'listMessages',
         method: 'get',
@@ -120,6 +123,14 @@ export const MailAccountsEndpoints = {
             ...(page !== undefined ? { page } : {}),
             ...(pageSize !== undefined ? { pageSize } : {}),
             ...(search ? { search } : {}),
+            ...(unread ? { unread: 1 } : {}),
+            ...(flagged ? { flagged: 1 } : {}),
+            ...(from ? { from } : {}),
+            ...(to ? { to } : {}),
+            ...(subject ? { subject } : {}),
+            ...(since ? { since } : {}),
+            ...(before ? { before } : {}),
+            ...(tag ? { tag } : {}),
         },
     }),
 
@@ -225,6 +236,63 @@ export const MailAccountsEndpoints = {
             ...(serverId ? { serverId } : {}),
             ...(access_roles !== undefined ? { access_roles } : {}),
         },
+    }),
+
+    /** One IMAP round-trip over a uid set: mark many read/unread/flagged. */
+    setBulkFlags: (documentId, { folder, uids, add, remove } = {}) => ({
+        path: `/mail-accounts/${documentId}/messages/bulk-flags`,
+        action: 'setBulkFlags',
+        method: 'post',
+        apps: ['mail'],
+        approle: ['admin', 'manager', 'staff'],
+        data: { folder, uids, ...(add ? { add } : {}), ...(remove ? { remove } : {}) },
+    }),
+
+    /** Bulk delete (move to Trash) over a uid set. */
+    removeBulkMessages: (documentId, { folder, uids } = {}) => ({
+        path: `/mail-accounts/${documentId}/messages/bulk-remove`,
+        action: 'removeBulkMessages',
+        method: 'post',
+        apps: ['mail'],
+        approle: ['admin', 'manager', 'staff'],
+        data: { folder, uids },
+    }),
+
+    /** Bulk move over a uid set. */
+    transferBulkMessages: (documentId, { folder, uids, targetFolder } = {}) => ({
+        path: `/mail-accounts/${documentId}/messages/bulk-transfer`,
+        action: 'transferBulkMessages',
+        method: 'post',
+        apps: ['mail'],
+        approle: ['admin', 'manager', 'staff'],
+        data: { folder, uids, targetFolder },
+    }),
+
+    /**
+     * Tag/untag messages (single uid or a set). Tags are registry slugs
+     * (mail-tags) stored as IMAP keywords on the mail server itself.
+     */
+    setTags: (documentId, { folder, uids, add, remove } = {}) => ({
+        path: `/mail-accounts/${documentId}/messages/tags`,
+        action: 'setTags',
+        method: 'post',
+        apps: ['mail'],
+        approle: ['admin', 'manager', 'staff'],
+        data: { folder, uids, ...(add ? { add } : {}), ...(remove ? { remove } : {}) },
+    }),
+
+    /**
+     * Regenerate a provisioned mailbox's password on its mail server and
+     * re-encrypt the stored credential. Returns the new password ONCE (the
+     * 06 custody rule) — owners and mail admins only.
+     */
+    setMailboxPassword: (documentId) => ({
+        path: `/mail-accounts/${documentId}/mailbox-password`,
+        action: 'setMailboxPassword',
+        method: 'post',
+        apps: ['mail', 'users'],
+        approle: ['admin', 'manager', 'staff'],
+        data: {},
     }),
 
     /**

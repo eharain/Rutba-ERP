@@ -1,5 +1,18 @@
 # Email Program — Usability Gap Analysis vs Market Leaders
 
+> **Status update (2026-08-10, later): the P0 wave + the named must-haves are
+> BUILT** (21/21 smoke, production build green). Address books (personal +
+> company directory, `mail-contact`), tags (`mail-tag` registry → IMAP
+> keywords, chips/filter/bulk-tag), advanced filters (structured IMAP SEARCH:
+> unread/flagged/from/to/subject/dates/tag + filter bar), conversation
+> threading v1 (normalized-subject groups), bulk actions (one uid-set IMAP
+> round-trip), rich-text compose (dependency-free contentEditable editor),
+> recipient autocomplete (address book + person spine + CRM, deduped),
+> snippets (`mail-snippet`, personal + team, insert-in-compose), inline
+> shared-inbox notes (work-item comments, import-on-first-note), and mailbox
+> password reset (mailcow edit via registry, shown once). Still open below:
+> the P1/P2 tiers, and the backend-split decision.
+
 > Written 2026-08-10, after M0–M6 + the User-Management marriage. Method:
 > feature-by-feature walk of every built screen against the tools users will
 > compare us to. **Caveat: this is a code-level review; the human browser
@@ -99,10 +112,15 @@ access, CRM linkage on every message.
 
 ## Priority summary
 
-**P0 (make daily use survivable):** threading in the message list · rich-text
-compose (PrimeReact Editor) · person-spine recipient autocomplete · bulk
-actions · internal notes inline in shared MessageView · canned snippets ·
-mailbox password reset · backend-split decision.
+**P0 (make daily use survivable): ✅ ALL BUILT 2026-08-10** — threading in
+the message list (subject-group v1; References-chain upgrade recorded) ·
+rich-text compose (custom contentEditable, not PrimeReact Editor — avoids the
+quill dependency and its SSR gate) · recipient autocomplete (address book +
+person spine + CRM) · bulk actions · internal notes inline in shared
+MessageView · canned snippets · mailbox password reset · plus the user-named
+must-haves: personal/global address books, tags, advanced filters.
+**Still open from P0: the backend-split decision** (core `mail` module vs
+pinning rutba-mail at pos-strapi).
 
 **P1 (retention):** unified inbox · archive/unread verbs · shortcuts ·
 attachment preview · new-mail notifications · collision banner · per-user

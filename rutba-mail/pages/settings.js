@@ -2,9 +2,15 @@ import { useState, useEffect, useCallback } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { MailAccountsEndpoints, MailServersEndpoints } from "@rutba/api-provider/endpoints";
+import {
+    MailAccountsEndpoints,
+    MailServersEndpoints,
+    MailTagsEndpoints,
+    MailSnippetsEndpoints,
+} from "@rutba/api-provider/endpoints";
 import { APP_URLS } from "@rutba/pos-shared/lib/roles";
 import AccountDialog from "../components/AccountDialog";
+import RichTextArea from "../components/RichTextArea";
 
 // Connected mailboxes. Staff see the accounts they own (personal + shared they
 // belong to); mail_admin sees everything. Passwords are write-only — the API
@@ -40,6 +46,26 @@ export default function SettingsPage() {
             load();
         } catch (err) {
             setNotice({ type: "danger", text: `Check failed: ${err.message}` });
+        } finally {
+            setBusy(null);
+        }
+    };
+
+    const [resetResult, setResetResult] = useState(null);
+
+    const resetPassword = async (account) => {
+        if (!window.confirm(
+            `Generate a NEW password for ${account.email} on its mail server?\n\n`
+            + "The old password stops working immediately (webmail, phones, other "
+            + "clients). The new one is shown ONCE — the ERP keeps only an "
+            + "encrypted copy for its own connection."
+        )) return;
+        setBusy(`reset:${account.documentId}`);
+        try {
+            const res = await MailAccountsEndpoints.setMailboxPassword(account.documentId);
+            setResetResult({ email: res.email, password: res.password });
+        } catch (err) {
+            setNotice({ type: "danger", text: `Password reset failed: ${err.message}` });
         } finally {
             setBusy(null);
         }
@@ -96,6 +122,27 @@ export default function SettingsPage() {
                     </div>
                 )}
 
+                {resetResult && (
+                    <div className="alert alert-warning">
+                        <div className="d-flex justify-content-between align-items-start">
+                            <div>
+                                <strong>New password for {resetResult.email}</strong> — copy it now; it is shown only once.
+                                <div className="mt-1">
+                                    <code className="fs-6 user-select-all">{resetResult.password}</code>
+                                    <button className="btn btn-sm btn-outline-secondary ms-2"
+                                        onClick={() => navigator.clipboard?.writeText(resetResult.password)}>
+                                        <i className="fa-regular fa-copy me-1"></i>Copy
+                                    </button>
+                                </div>
+                                <div className="small text-muted mt-1">
+                                    Use it in webmail or on a phone. The ERP's own connection was updated automatically.
+                                </div>
+                            </div>
+                            <button type="button" className="btn-close" onClick={() => setResetResult(null)}></button>
+                        </div>
+                    </div>
+                )}
+
                 {editing !== undefined && (
                     <AccountDialog
                         account={editing}
@@ -147,6 +194,14 @@ export default function SettingsPage() {
                                             <button className="btn btn-sm btn-outline-primary me-2" onClick={() => setEditing(a)}>
                                                 Edit
                                             </button>
+                                            {a.provisioning_source === "mailcow" && (
+                                                <button className="btn btn-sm btn-outline-warning me-2"
+                                                    title="Generate a new mailbox password (for webmail / phones)"
+                                                    disabled={busy === `reset:${a.documentId}`}
+                                                    onClick={() => resetPassword(a)}>
+                                                    {busy === `reset:${a.documentId}` ? "…" : "Reset password"}
+                                                </button>
+                                            )}
                                             <button className="btn btn-sm btn-outline-danger"
                                                 disabled={busy === `delete:${a.documentId}`}
                                                 onClick={() => remove(a)}>
@@ -159,8 +214,180 @@ export default function SettingsPage() {
                         </table>
                     </div>
                 )}
+
+                <div className="row g-3 mt-1">
+                    <div className="col-lg-6"><TagsPanel /></div>
+                    <div className="col-lg-6"><SnippetsPanel /></div>
+                </div>
             </Layout>
         </ProtectedRoute>
+    );
+}
+
+const TAG_COLORS = ["#0d6efd", "#6610f2", "#d63384", "#dc3545", "#fd7e14", "#198754", "#20c997", "#6c757d"];
+
+/**
+ * Tag registry admin. Tags are stored on messages as IMAP keywords, so they
+ * survive without import and show in any mail client; the registry maps the
+ * keyword to a name + color. Writes need mail admin/manager (API-enforced).
+ */
+function TagsPanel() {
+    const [tags, setTags] = useState([]);
+    const [draft, setDraft] = useState({ name: "", color: TAG_COLORS[0] });
+    const [error, setError] = useState(null);
+    const [busy, setBusy] = useState(false);
+
+    const load = () => MailTagsEndpoints.list().then((res) => setTags(res?.data || [])).catch(() => {});
+    useEffect(() => { load(); }, []);
+
+    const add = async (e) => {
+        e.preventDefault();
+        if (!draft.name.trim()) return;
+        setBusy(true);
+        setError(null);
+        try {
+            await MailTagsEndpoints.create({ name: draft.name.trim(), color: draft.color });
+            setDraft({ name: "", color: TAG_COLORS[(tags.length + 1) % TAG_COLORS.length] });
+            load();
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const remove = async (tag) => {
+        if (!window.confirm(`Delete the tag "${tag.name}"? Messages keep the keyword but it stops rendering.`)) return;
+        try {
+            await MailTagsEndpoints.del(tag.documentId);
+            load();
+        } catch (err) {
+            setError(err.message);
+        }
+    };
+
+    return (
+        <div className="card h-100">
+            <div className="card-header py-2"><strong><i className="fa-solid fa-tags me-2"></i>Tags</strong></div>
+            <div className="card-body py-2">
+                <p className="text-muted small mb-2">
+                    Label messages across every mailbox. Tags live on the mail server itself,
+                    so they survive in webmail and other clients too.
+                </p>
+                <div className="d-flex flex-wrap gap-1 mb-2">
+                    {tags.map((t) => (
+                        <span key={t.documentId} className="badge" style={{ backgroundColor: t.color || "#6c757d" }}>
+                            {t.name}
+                            <i className="fa-solid fa-xmark ms-1" role="button" onClick={() => remove(t)}></i>
+                        </span>
+                    ))}
+                    {!tags.length && <span className="text-muted small">No tags yet.</span>}
+                </div>
+                <form className="d-flex gap-1" onSubmit={add}>
+                    <input className="form-control form-control-sm" placeholder="New tag name…"
+                        value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
+                    <input type="color" className="form-control form-control-sm form-control-color"
+                        value={draft.color} onChange={(e) => setDraft({ ...draft, color: e.target.value })} />
+                    <button className="btn btn-sm btn-outline-primary" disabled={busy || !draft.name.trim()}>Add</button>
+                </form>
+                {error && <div className="alert alert-warning py-1 px-2 small mt-2 mb-0">{error}</div>}
+            </div>
+        </div>
+    );
+}
+
+/** Canned replies. Personal by default; managers can publish team snippets. */
+function SnippetsPanel() {
+    const [snippets, setSnippets] = useState([]);
+    const [editing, setEditing] = useState(undefined); // undefined closed; null new; row edit
+    const [draft, setDraft] = useState({ name: "", body_html: "", scope: "personal" });
+    const [error, setError] = useState(null);
+    const [busy, setBusy] = useState(false);
+
+    const load = () => MailSnippetsEndpoints.list({ pageSize: 100 }).then((res) => setSnippets(res?.data || [])).catch(() => {});
+    useEffect(() => { load(); }, []);
+
+    const openEditor = (row) => {
+        setEditing(row);
+        setDraft(row ? { name: row.name, body_html: row.body_html, scope: row.scope } : { name: "", body_html: "", scope: "personal" });
+        setError(null);
+    };
+
+    const save = async (e) => {
+        e.preventDefault();
+        setBusy(true);
+        setError(null);
+        try {
+            if (editing?.documentId) await MailSnippetsEndpoints.update(editing.documentId, draft);
+            else await MailSnippetsEndpoints.create(draft);
+            setEditing(undefined);
+            load();
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const remove = async (row) => {
+        if (!window.confirm(`Delete the snippet "${row.name}"?`)) return;
+        try {
+            await MailSnippetsEndpoints.del(row.documentId);
+            load();
+        } catch (err) {
+            setError(err.message);
+        }
+    };
+
+    return (
+        <div className="card h-100">
+            <div className="card-header py-2 d-flex justify-content-between align-items-center">
+                <strong><i className="fa-solid fa-clipboard me-2"></i>Snippets (canned replies)</strong>
+                <button className="btn btn-sm btn-outline-primary" onClick={() => openEditor(null)}>
+                    <i className="fa-solid fa-plus me-1"></i>New
+                </button>
+            </div>
+            <div className="card-body py-2">
+                {editing !== undefined ? (
+                    <form onSubmit={save}>
+                        <div className="d-flex gap-1 mb-2">
+                            <input className="form-control form-control-sm" required placeholder="Snippet name…"
+                                value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
+                            <select className="form-select form-select-sm" style={{ width: "9rem" }} value={draft.scope}
+                                onChange={(e) => setDraft({ ...draft, scope: e.target.value })}>
+                                <option value="personal">Personal</option>
+                                <option value="global">Team (shared)</option>
+                            </select>
+                        </div>
+                        <RichTextArea value={draft.body_html} onChange={(v) => setDraft((d) => ({ ...d, body_html: v }))} minHeight="6rem" />
+                        {error && <div className="alert alert-warning py-1 px-2 small mt-2 mb-0">{error}</div>}
+                        <div className="mt-2">
+                            <button className="btn btn-sm btn-primary me-2" disabled={busy}>{busy ? "Saving…" : "Save"}</button>
+                            <button type="button" className="btn btn-sm btn-link" onClick={() => setEditing(undefined)}>Cancel</button>
+                        </div>
+                    </form>
+                ) : (
+                    <>
+                        <p className="text-muted small mb-2">
+                            Reusable answers, one click away in compose. Shared inboxes live on these.
+                        </p>
+                        {snippets.map((s) => (
+                            <div key={s.documentId} className="d-flex justify-content-between align-items-center border-bottom py-1">
+                                <span className="small">
+                                    {s.scope === "global" && <span className="badge bg-info me-1">team</span>}
+                                    {s.name}
+                                </span>
+                                <span>
+                                    <button className="btn btn-sm btn-link py-0" onClick={() => openEditor(s)}>Edit</button>
+                                    <button className="btn btn-sm btn-link text-danger py-0" onClick={() => remove(s)}>Delete</button>
+                                </span>
+                            </div>
+                        ))}
+                        {!snippets.length && <div className="text-muted small">No snippets yet.</div>}
+                    </>
+                )}
+            </div>
+        </div>
     );
 }
 

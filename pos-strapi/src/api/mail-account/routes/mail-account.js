@@ -46,6 +46,32 @@ const customRoutes = [
     handler: 'api::mail-account.mail-account.listFolders',
   },
   {
+    // Literal /messages/* paths precede /messages/:uid — koa-router order.
+    method: 'POST',
+    path: '/mail-accounts/:documentId/messages/bulk-flags',
+    handler: 'api::mail-account.mail-account.setBulkFlags',
+  },
+  {
+    method: 'POST',
+    path: '/mail-accounts/:documentId/messages/bulk-remove',
+    handler: 'api::mail-account.mail-account.removeBulkMessages',
+  },
+  {
+    method: 'POST',
+    path: '/mail-accounts/:documentId/messages/bulk-transfer',
+    handler: 'api::mail-account.mail-account.transferBulkMessages',
+  },
+  {
+    method: 'POST',
+    path: '/mail-accounts/:documentId/messages/tags',
+    handler: 'api::mail-account.mail-account.setTags',
+  },
+  {
+    method: 'POST',
+    path: '/mail-accounts/:documentId/mailbox-password',
+    handler: 'api::mail-account.mail-account.setMailboxPassword',
+  },
+  {
     method: 'GET',
     path: '/mail-accounts/:documentId/messages',
     handler: 'api::mail-account.mail-account.listMessages',

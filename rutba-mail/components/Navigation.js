@@ -3,6 +3,7 @@ import Topbar from "@rutba/pos-shared/components/Topbar";
 const SECONDARY = [
     { href: "/", label: "Mailboxes", variant: "primary" },
     { href: "/shared", label: "Shared Queues", variant: "info" },
+    { href: "/contacts", label: "Contacts", variant: "success" },
     { href: "/settings", label: "Accounts", variant: "secondary" },
 ];
 
