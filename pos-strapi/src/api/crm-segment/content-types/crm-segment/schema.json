@@ -1,0 +1,57 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_segments",
+  "info": {
+    "singularName": "crm-segment",
+    "pluralName": "crm-segments",
+    "displayName": "CRM Segment",
+    "description": "A saved, re-runnable audience definition over people / CRM contacts / leads. Filters compile through the whitelisted field catalog in src/utils/crm-segment-engine.js; results resolve to canonical person identity so a segment can drive a campaign audience. `owners` records the creator only — segments are deliberately team-visible and carry no owner scope; it is stamped server-side and never accepted from the client."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "folder": {
+      "type": "string"
+    },
+    "entity": {
+      "type": "enumeration",
+      "enum": [
+        "person",
+        "crm-contact",
+        "crm-lead"
+      ],
+      "default": "person",
+      "required": true
+    },
+    "definition": {
+      "type": "json"
+    },
+    "columns": {
+      "type": "json"
+    },
+    "sort": {
+      "type": "json"
+    },
+    "member_count": {
+      "type": "integer",
+      "default": 0
+    },
+    "last_run_at": {
+      "type": "datetime"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

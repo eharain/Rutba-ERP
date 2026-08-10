@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
 import { CustomersEndpoints, CrmLeadsEndpoints, CrmContactsEndpoints } from '@rutba/api-provider/endpoints';
+import EnumSelect from '@rutba/pos-shared/components/EnumSelect';
 import ContactPicker from './ContactPicker';
-
-const SOURCES = ['Website', 'Referral', 'Social Media', 'Cold Call', 'Advertisement', 'Other'];
-const STATUSES = ['New', 'Contacted', 'Qualified', 'Negotiation', 'Won', 'Lost'];
 
 export default function LeadForm({ lead, contact: presetContact, onSaved, onCancel }) {
     const [name, setName] = useState('');
@@ -183,28 +181,23 @@ export default function LeadForm({ lead, contact: presetContact, onSaved, onCanc
                 </div>
                 <div className="col-md-4">
                     <label className="form-label">Source</label>
-                    <select
-                        className="form-select"
+                    {/* Values come from the schema via /enums/crm-lead/source. */}
+                    <EnumSelect
+                        name="crm-lead"
+                        field="source"
                         value={source}
                         onChange={(e) => setSource(e.target.value)}
-                    >
-                        <option value="">— Select —</option>
-                        {SOURCES.map((s) => (
-                            <option key={s} value={s}>{s}</option>
-                        ))}
-                    </select>
+                        includeBlank="— Select —"
+                    />
                 </div>
                 <div className="col-md-4">
                     <label className="form-label">Status</label>
-                    <select
-                        className="form-select"
+                    <EnumSelect
+                        name="crm-lead"
+                        field="status"
                         value={status}
                         onChange={(e) => setStatus(e.target.value)}
-                    >
-                        {STATUSES.map((s) => (
-                            <option key={s} value={s}>{s}</option>
-                        ))}
-                    </select>
+                    />
                 </div>
                 <div className="col-md-4">
                     <label className="form-label">Value</label>

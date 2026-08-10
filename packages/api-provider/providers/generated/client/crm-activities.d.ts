@@ -5,6 +5,9 @@ export interface CrmActivitiesEndpointsType {
     create(data: any): Promise<any>;
     update(documentId: any, data: any): Promise<any>;
     del(documentId: any): Promise<any>;
+    getTimeline({ contact, lead, person, limit }?: any): Promise<any>;
+    listFollowups({ window = 'week', page = 1, pageSize = 50, mine }?: any): Promise<any>;
+    markFollowupDone(documentId: any, data?: any): Promise<any>;
     meta: any;
 }
 

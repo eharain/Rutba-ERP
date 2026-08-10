@@ -23,6 +23,7 @@ export * from './content-sync';
 export * from './crm-activities';
 export * from './crm-contacts';
 export * from './crm-leads';
+export * from './crm-segments';
 export * from './customers';
 export * from './delivery-methods';
 export * from './delivery-zones';

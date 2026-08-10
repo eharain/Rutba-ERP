@@ -4,6 +4,8 @@ const SECONDARY = [
     { href: "/contacts",   label: "Contacts",   variant: "primary" },
     { href: "/leads",      label: "Leads",      variant: "info" },
     { href: "/activities", label: "Activities", variant: "secondary" },
+    { href: "/followups",  label: "Follow-ups", variant: "warning" },
+    { href: "/segments",   label: "Segments",   variant: "success" },
 ];
 
 export default function Navigation() {

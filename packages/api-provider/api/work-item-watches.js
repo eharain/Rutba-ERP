@@ -2,13 +2,13 @@
  * WorkItemWatchesEndpoints
  * Generic watchers for workflow-driven work items (keyed by entity_uid +
  * target_document_id). `toggle` watches/unwatches for the authenticated user.
- * Shared by the manufacturing and order-management apps.
+ * Shared by the manufacturing, order-management and CRM apps.
  */
 export const WorkItemWatchesEndpoints = {
 
     meta: {
         uid: 'api::work-item-watch.work-item-watch',
-        domains: ['manufacturing', 'order-management'],
+        domains: ['manufacturing', 'order-management', 'crm'],
         roles: ['admin', 'manager', 'staff'],
     },
 
@@ -16,7 +16,7 @@ export const WorkItemWatchesEndpoints = {
         path: '/work-item-watches',
         action: 'find',
         method: 'get',
-        apps: ['manufacturing', 'order-management'],
+        apps: ['manufacturing', 'order-management', 'crm'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             filters: {
@@ -35,7 +35,7 @@ export const WorkItemWatchesEndpoints = {
         path: '/work-item-watches/toggle',
         action: 'toggle',
         method: 'post',
-        apps: ['manufacturing', 'order-management'],
+        apps: ['manufacturing', 'order-management', 'crm'],
         approle: ['admin', 'manager', 'staff'],
         data,
     }),

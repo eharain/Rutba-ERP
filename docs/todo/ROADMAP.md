@@ -57,7 +57,7 @@ Make tenant #1 credible and legal before selling anything. Half-built internals 
 | 0.3 | **Offline-first POS hardening** — graceful degrade + reconcile-on-reconnect | ① | Table stakes for every PK POS; intermittent connectivity is the norm | pos-sale | M |
 | 0.4 | **Finish accounting posting wiring** — web/cash/purchase/payroll → GL | ② | Books must be trustworthy before Rutba is the system of record | acc-* (mostly built) | M |
 | 0.5 | **Payroll engine** — replace the current stub with real calc (attendance→salary→payslip) | ② | rutba.pk payroll can't run on a stub; also a sell-side module | pay-*, hr-* | M |
-| 0.6 | **CRM core buildout** — typed activity timeline + saved-segment engine (from CRM plan §5.1/5.3) | ⑤ | Highest-ROI additive work; feeds H1 campaigns | crm-* (exists) | M |
+| 0.6 ✅ | **CRM core buildout** — typed activity timeline + saved-segment engine (from CRM plan §5.1/5.3). _Shipped — see [crm-core-buildout.md](./crm-core-buildout.md). Also completed contact-unification Phase 1C.1 (`crm-contact` → `person`, dual-write + backfill seed), which the segment engine depends on._ | ⑤ | Highest-ROI additive work; feeds H1 campaigns | crm-* (exists) | M |
 
 **H0 exit gate:** rutba.pk runs its full sell→fulfil→account cycle on Rutba, issuing FBR-compliant invoices and taking digital payments. _Now it's a real proving ground._
 

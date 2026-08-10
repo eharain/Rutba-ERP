@@ -2,13 +2,14 @@
  * WorkItemCommentsEndpoints
  * Generic discussion thread for workflow-driven work items (keyed by
  * entity_uid + target_document_id). Author is stamped server-side from the
- * authenticated user. Shared by the manufacturing and order-management apps.
+ * authenticated user. Shared by the manufacturing, order-management and CRM
+ * apps — CRM contacts use it instead of carrying their own comment table.
  */
 export const WorkItemCommentsEndpoints = {
 
     meta: {
         uid: 'api::work-item-comment.work-item-comment',
-        domains: ['manufacturing', 'order-management'],
+        domains: ['manufacturing', 'order-management', 'crm'],
         roles: ['admin', 'manager', 'staff'],
     },
 
@@ -16,7 +17,7 @@ export const WorkItemCommentsEndpoints = {
         path: '/work-item-comments',
         action: 'find',
         method: 'get',
-        apps: ['manufacturing', 'order-management'],
+        apps: ['manufacturing', 'order-management', 'crm'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             filters: {
@@ -34,7 +35,7 @@ export const WorkItemCommentsEndpoints = {
         path: '/work-item-comments',
         action: 'create',
         method: 'post',
-        apps: ['manufacturing', 'order-management'],
+        apps: ['manufacturing', 'order-management', 'crm'],
         approle: ['admin', 'manager', 'staff'],
         data,
     }),

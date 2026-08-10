@@ -405,17 +405,40 @@ Run this against a prod-data snapshot before flipping the real env var on.
 Each entity below follows the same recipe as Phase 1B, simpler because the
 row counts are small and the dedup risk is lower. Each one is its own PR.
 
-### 1C.1 — crm-contact
+### 1C.1 — crm-contact  ✓ Landed
 
-- Add `person` FK on `api::crm-contact.crm-contact`.
-- Backfill seed: dedup against persons by email/phone like customer.
-  CRM contacts are the entity most likely to overlap with customers
-  (same human bought retail AND is a CRM lead), so this seed will surface
-  the most cross-domain matches.
-- Controller dual-write on create/update.
-- Keep `company`, `notes`, `address` for now (only contact fields fold into
-  person; `company` is a CRM-specific attribute that stays).
-- Effort: 0.5 day.
+Landed with roadmap item 0.6 (see [crm-core-buildout.md](./crm-core-buildout.md)),
+because the CRM saved-segment engine has to resolve audiences to person
+identity — a segment returning CRM-local rows would be a parallel contact
+entity.
+
+- ✓ `person` FK on `api::crm-contact.crm-contact`, plus the
+  `person.crm_contacts` inverse (person-based segments filter through it).
+- ✓ Controller dual-write on create/update, via the new shared
+  `pos-strapi/src/utils/person-link.js`. Ambiguous matches go to
+  `person-dedup-audit`; an already-linked contact whose email/phone changes is
+  never silently re-pointed (that's a merge — Phase 3.1).
+- ✓ `company`, `notes`, `address` kept as planned.
+- ✓ Backfill seed — registry entry `crm-contact-person`
+  (`src/seed/seeders/crm-contact-person-backfill.js`), category `backfill`,
+  non-essential. `RUTBA_PERSON_BACKFILL_DRY_RUN=1` plans without writing.
+
+**Two deviations from the recipe above, both deliberate — apply the same
+choices to the remaining 1C entities:**
+
+1. **Match rule.** "1 candidate → require BOTH email and phone" audits every
+   email-only contact, which is the common case, and a pile that size is a
+   pile nobody triages. Implemented rule: *every identifier the source row
+   actually carries must match.*
+2. **No fingerprint checkpoint.** The recipe stores
+   `{ last_max_id, last_count, last_run_at }` in `strapi.store`. Unnecessary
+   here and slightly wrong: the seeder's work-remaining query (`person` FK is
+   null) is already a one-query short-circuit, and unlike a stored fingerprint
+   it can't go stale against rows edited outside the seeder.
+
+Also fixed while writing the seed: `recordAudit` now de-duplicates on
+unresolved rows, so neither the backfill re-running nor the controller firing
+on every edit can grow duplicate audit entries for the same finding.
 
 ### 1C.2 — hr-employee
 
@@ -616,7 +639,7 @@ demands it.
 | 1A ✓ | sale-order, customer-address, order-contact component | pos-strapi/api/sale-order/*, pos-strapi/api/address/* (new), api-provider/api/addresses.js, rutba-web checkout + profile | No (pre-launch) |
 | pre-1B ✓ | person-dedup-audit | pos-strapi/api/person-dedup-audit/* (new) | n/a |
 | 1B | customer | pos-strapi/api/customer/*, pos-strapi/src/seed/person-backfill-customer-seed.js | **Yes (POS)** |
-| 1C.1 | crm-contact | pos-strapi/api/crm-contact/*, seed | No (in-house only) |
+| 1C.1 ✓ | crm-contact | pos-strapi/api/crm-contact/*, pos-strapi/src/utils/person-link.js (new), pos-strapi/src/seed/seeders/crm-contact-person-backfill.js (new) | No (in-house only) |
 | 1C.2 | hr-employee | pos-strapi/api/hr-employee/*, seed | Maybe (HR dogfood) |
 | 1C.3 | rider | pos-strapi/api/rider/*, seed, notification-service | No (in-house only) |
 | 1C.4 | supplier | pos-strapi/api/supplier/*, seed | Maybe (POS supplier list) |

@@ -11,7 +11,7 @@ import { useToast } from "../../components/Toast";
 import GroupPickerTabs from "../../components/GroupPickerTabs";
 import PagePickerTabs from "../../components/PagePickerTabs";
 import RelationPickerTabs from "../../components/RelationPickerTabs";
-import EnumSelect from "../../components/EnumSelect";
+import EnumSelect from "@rutba/pos-shared/components/EnumSelect";
 import InlineSeoPanel from "../../components/InlineSeoPanel";
 import PageLayoutEditor from "../../components/PageLayoutEditor";
 import { persistSeoMeta } from "../../components/SeoMetaFields";

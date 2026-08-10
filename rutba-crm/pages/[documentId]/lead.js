@@ -7,38 +7,48 @@ import { CrmLeadsEndpoints, CrmActivitiesEndpoints, CustomersEndpoints } from "@
 import Link from "next/link";
 import LeadForm from "../../components/form/LeadForm";
 import ActivityForm from "../../components/form/ActivityForm";
-import { LEAD_STATUSES, leadStatusColor } from "../../components/leadStatus";
+import ActivityTimeline from "../../components/ActivityTimeline";
+import { useLeadStatuses, leadStatusColor } from "../../components/leadStatus";
 
 export default function LeadDetail() {
     const router = useRouter();
     const { documentId } = router.query;
     const { jwt } = useAuth();
     const [lead, setLead] = useState(null);
-    const [activities, setActivities] = useState([]);
+    const [timelineKey, setTimelineKey] = useState(0);
+    const [editingActivity, setEditingActivity] = useState(null);
     const [loading, setLoading] = useState(true);
     const [editing, setEditing] = useState(false);
     const [loggingActivity, setLoggingActivity] = useState(false);
     const [converting, setConverting] = useState(false);
+    const { statuses } = useLeadStatuses();
 
     const loadLead = () => {
         if (!jwt || !documentId) return;
         setLoading(true);
         CrmLeadsEndpoints.byId(documentId, { populate: ["contact", "customer"] })
-            .then((res) => {
-                const data = res.data || res;
-                setLead(data);
-                const contactId = data?.contact?.documentId;
-                if (contactId) {
-                    return CrmActivitiesEndpoints.list({
-                        filters: { contact: { documentId: { $eq: contactId } } },
-                        sort: ["date:desc"],
-                        pageSize: 50,
-                    }).then((actRes) => setActivities(actRes.data || []));
-                }
-                setActivities([]);
-            })
+            .then((res) => setLead(res.data || res))
             .catch((err) => console.error("Failed to load lead", err))
             .finally(() => setLoading(false));
+    };
+
+    // ActivityTimeline owns its own fetch — bump this to make it re-run after
+    // an activity is logged, instead of reloading the whole lead.
+    const refreshTimeline = () => setTimelineKey((k) => k + 1);
+
+    // Timeline entries are normalised, not raw rows — fetch the full activity
+    // before handing it to the form.
+    const openActivityForEdit = async (activityDocumentId) => {
+        try {
+            const res = await CrmActivitiesEndpoints.byId(activityDocumentId, {
+                populate: ["contact", "attachments"],
+            });
+            setEditingActivity(res.data || res);
+            setLoggingActivity(false);
+        } catch (err) {
+            console.error("Failed to load the activity", err);
+            alert("Could not open that activity for editing.");
+        }
     };
 
     useEffect(() => {
@@ -117,6 +127,23 @@ export default function LeadDetail() {
                     <div className="alert alert-warning">Lead not found.</div>
                 )}
 
+                {!loading && lead && editingActivity && (
+                    <div className="card mb-4">
+                        <div className="card-header d-flex justify-content-between align-items-center">
+                            <strong>Edit Activity</strong>
+                            <button className="btn-close" onClick={() => setEditingActivity(null)}></button>
+                        </div>
+                        <div className="card-body">
+                            <ActivityForm
+                                activity={editingActivity}
+                                contact={lead.contact || undefined}
+                                onSaved={() => { setEditingActivity(null); refreshTimeline(); }}
+                                onCancel={() => setEditingActivity(null)}
+                            />
+                        </div>
+                    </div>
+                )}
+
                 {!loading && lead && loggingActivity && (
                     <div className="card mb-4">
                         <div className="card-header d-flex justify-content-between align-items-center">
@@ -124,11 +151,15 @@ export default function LeadDetail() {
                             <button className="btn-close" onClick={() => setLoggingActivity(false)}></button>
                         </div>
                         <div className="card-body">
+                            {/* Passing the lead links the activity to both the
+                                contact and the lead, so it shows on either
+                                timeline and in lead-scoped segment rules. */}
                             <ActivityForm
                                 contact={lead.contact || undefined}
+                                lead={lead}
                                 onSaved={() => {
                                     setLoggingActivity(false);
-                                    loadLead();
+                                    refreshTimeline();
                                 }}
                                 onCancel={() => setLoggingActivity(false)}
                             />
@@ -165,7 +196,7 @@ export default function LeadDetail() {
                                         value={lead.status || "New"}
                                         onChange={(e) => handleStatusChange(e.target.value)}
                                     >
-                                        {LEAD_STATUSES.map((s) => (
+                                        {statuses.map((s) => (
                                             <option key={s} value={s}>{s}</option>
                                         ))}
                                     </select>
@@ -186,34 +217,25 @@ export default function LeadDetail() {
                                 </div>
                             </div>
 
-                            <div className="card">
-                                <div className="card-header d-flex justify-content-between">
-                                    <strong>Activity Timeline</strong>
-                                    <span className="badge bg-secondary">{activities.length}</span>
-                                </div>
-                                {activities.length === 0 ? (
+                            {/* Key the timeline on the linked contact: it's the
+                                richer subject (contact touches + lead touches +
+                                collaboration), and a lead-only feed would hide
+                                everything logged before the lead existed. */}
+                            {lead.contact ? (
+                                <ActivityTimeline
+                                    contactId={lead.contact.documentId || lead.contact.id}
+                                    jwt={jwt}
+                                    refreshKey={timelineKey}
+                                    onEdit={openActivityForEdit}
+                                />
+                            ) : (
+                                <div className="card">
+                                    <div className="card-header"><strong>Timeline</strong></div>
                                     <div className="card-body text-muted">
-                                        {lead.contact
-                                            ? "No activities recorded for the linked contact."
-                                            : "Link a contact to this lead to track activities."}
+                                        Link a contact to this lead to track activities.
                                     </div>
-                                ) : (
-                                    <ul className="list-group list-group-flush">
-                                        {activities.map((a) => (
-                                            <li key={a.documentId || a.id} className="list-group-item">
-                                                <div className="d-flex justify-content-between">
-                                                    <strong>{a.subject}</strong>
-                                                    <small className="text-muted">{new Date(a.date).toLocaleString()}</small>
-                                                </div>
-                                                <div className="mt-1">
-                                                    <span className="badge bg-secondary me-2">{a.type || "Note"}</span>
-                                                    {a.description && <small className="text-muted">{a.description}</small>}
-                                                </div>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
-                            </div>
+                                </div>
+                            )}
                         </div>
 
                         <div className="col-md-5">

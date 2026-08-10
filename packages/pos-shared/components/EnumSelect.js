@@ -1,4 +1,4 @@
-import { useEnumValues } from "../lib/use-enum-values";
+import { useEnumValues } from "../hooks/use-enum-values";
 
 const defaultHumanize = (s) =>
     String(s)

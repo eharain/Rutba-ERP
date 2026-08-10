@@ -43,6 +43,7 @@ const { applyOrderPlacedTeamAlert } = require('./seeders/order-placed-team-alert
 const { applyNotificationTemplateRouting } = require('./seeders/notification-template-routing');
 const { seedDefaultWorkflows } = require('./seeders/default-workflows');
 const { backfillInventoryFoundation } = require('./seeders/inventory-foundation');
+const { backfillCrmContactPersons } = require('./seeders/crm-contact-person-backfill');
 const { seedTailoringUnit } = require('./seeders/tailoring-unit-demo');
 const tax = require('./seeders/tax-profiles');
 const shipping = require('./seeders/shipping');
@@ -346,6 +347,21 @@ const REGISTRY = [
         supportsFull: true,
         hasMigration: false,
         run: (strapi) => backfillInventoryFoundation(strapi),
+    },
+    // Contact-unification Phase 1C.1. Not essential: a fresh DB has no legacy
+    // contacts to link, and the crm-contact controller dual-writes every new
+    // row. This exists for databases that predate the dual-write. Idempotent
+    // and non-destructive; `RUTBA_PERSON_BACKFILL_DRY_RUN=1` plans without
+    // writing. Ambiguous matches go to person-dedup-audit for a human.
+    {
+        key: 'crm-contact-person',
+        title: 'CRM contact → person backfill (contact unification 1C.1)',
+        category: 'backfill',
+        essential: false,
+        supportsPartial: true,
+        supportsFull: false,
+        hasMigration: false,
+        run: (strapi) => backfillCrmContactPersons(strapi),
     },
     // ── Industry onboarding packs ────────────────────────────────────────
     // A tenant runs the ONE pack for their trade: a starter category tree +

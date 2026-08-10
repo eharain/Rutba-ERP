@@ -5,7 +5,7 @@
     "singularName": "crm-activity",
     "pluralName": "crm-activities",
     "displayName": "CRM Activity",
-    "description": "Interaction logs — calls, emails, meetings, notes"
+    "description": "Typed customer-touch timeline — calls, emails, meetings, notes, site visits. One row per touch, carrying direction, outcome, duration, follow-up reminder and attachments. Distinct from work-item-activity, which is the system-generated audit trail for workflow transitions."
   },
   "options": {
     "draftAndPublish": false
@@ -23,7 +23,9 @@
         "Email",
         "Meeting",
         "Note",
-        "Follow-up"
+        "Follow-up",
+        "WhatsApp",
+        "Site"
       ],
       "default": "Note"
     },
@@ -34,11 +36,70 @@
     "description": {
       "type": "text"
     },
+    "direction": {
+      "type": "enumeration",
+      "enum": [
+        "Inbound",
+        "Outbound",
+        "Internal"
+      ],
+      "default": "Internal"
+    },
+    "outcome": {
+      "type": "enumeration",
+      "enum": [
+        "Connected",
+        "No Answer",
+        "Busy",
+        "Voicemail",
+        "Wrong Number",
+        "Callback Requested",
+        "Not Interested",
+        "Completed",
+        "Cancelled"
+      ]
+    },
+    "duration_minutes": {
+      "type": "integer",
+      "min": 0
+    },
+    "followup_at": {
+      "type": "datetime"
+    },
+    "followup_note": {
+      "type": "string"
+    },
+    "followup_done_at": {
+      "type": "datetime"
+    },
+    "attachments": {
+      "type": "media",
+      "multiple": true
+    },
+    "actor_label": {
+      "type": "string"
+    },
+    "actor": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
     "contact": {
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::crm-contact.crm-contact",
       "inversedBy": "activities"
+    },
+    "lead": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-lead.crm-lead",
+      "inversedBy": "activities"
+    },
+    "person": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::person.person"
     },
     "owners": {
       "type": "relation",
