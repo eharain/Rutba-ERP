@@ -119,6 +119,9 @@ function registerAuthModule() {
 
   // auth-admin is repo code → zero-copy, same as every earlier tranche.
   const authAdmin = posRequire(path.join('api', 'auth-admin', 'controllers', 'auth-admin.js'));
+  // user-admin is the carved-out user-management console behind rutba-users;
+  // auth-admin above is now a re-export of the same controller (alias paths).
+  const userAdmin = posRequire(path.join('api', 'user-admin', 'controllers', 'user-admin.js'));
 
   const auth = {
     // POST /auth/local  ·  GET /auth/:provider/callback
@@ -400,6 +403,25 @@ function registerAuthModule() {
     { method: 'get', path: '/api/auth-admin/domains', handler: (c) => authAdmin.listDomains(c) },
     { method: 'post', path: '/api/auth-admin/domains', handler: (c) => authAdmin.createDomain(c) },
     { method: 'delete', path: '/api/auth-admin/domains/:id', handler: (c) => authAdmin.deleteDomain(c) },
+
+    // user-admin console (rutba-users; auth:false in Strapi, requireAppRole
+    // inside). Literal paths before parameterised ones, like the Strapi routes.
+    { method: 'get', path: '/api/user-admin/users', handler: (c) => userAdmin.listUsers(c) },
+    { method: 'post', path: '/api/user-admin/users', handler: (c) => userAdmin.createUser(c) },
+    { method: 'post', path: '/api/user-admin/users/bulk-access', handler: (c) => userAdmin.setBulkAccess(c) },
+    { method: 'get', path: '/api/user-admin/directory', handler: (c) => userAdmin.listDirectory(c) },
+    { method: 'get', path: '/api/user-admin/employees', handler: (c) => userAdmin.listEmployees(c) },
+    { method: 'get', path: '/api/user-admin/roles', handler: (c) => userAdmin.listRoles(c) },
+    { method: 'get', path: '/api/user-admin/domains', handler: (c) => userAdmin.listDomains(c) },
+    { method: 'post', path: '/api/user-admin/domains', handler: (c) => userAdmin.createDomain(c) },
+    { method: 'delete', path: '/api/user-admin/domains/:id', handler: (c) => userAdmin.deleteDomain(c) },
+    { method: 'put', path: '/api/user-admin/users/:id/app-roles', handler: (c) => userAdmin.setAppRoles(c) },
+    { method: 'post', path: '/api/user-admin/users/:id/mailbox', handler: (c) => userAdmin.createMailbox(c) },
+    { method: 'post', path: '/api/user-admin/invites', handler: (c) => userAdmin.createInvite(c) },
+    { method: 'post', path: '/api/user-admin/users/:id/invite', handler: (c) => userAdmin.sendInvite(c) },
+    { method: 'get', path: '/api/user-admin/users/:id', handler: (c) => userAdmin.getUser(c) },
+    { method: 'put', path: '/api/user-admin/users/:id', handler: (c) => userAdmin.updateUser(c) },
+    { method: 'delete', path: '/api/user-admin/users/:id', handler: (c) => userAdmin.deleteUser(c) },
   ].map((r) => ({ ...r, selfAuth: true, module: 'auth' }));
 
   return { name: 'auth', routes };

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { AuthAdminEndpoints, HrDepartmentsEndpoints, HrEmployeesEndpoints } from "@rutba/api-provider/endpoints";
+import { HrDepartmentsEndpoints, HrEmployeesEndpoints, UsersEndpoints } from "@rutba/api-provider/endpoints";
 
 const STATUS_OPTIONS = ["Active", "Inactive", "Terminated", "On Leave"];
 
@@ -37,11 +37,10 @@ export default function HrEmployeeManagementPage() {
             const [empRes, depRes, usersRes] = await Promise.all([
                 HrEmployeesEndpoints.list({ sort: ["name:asc"], populate: ["department", "user"] }),
                 HrDepartmentsEndpoints.list({ sort: ["name:asc"] }),
-                // The user list comes from the auth-admin API, which is gated to
-                // the auth app context (X-Rutba-App: auth) — from HR it returns
-                // 403. Best-effort so it never blocks the page; the employee↔user
-                // link picker simply stays empty unless auth-admin is opened to HR.
-                AuthAdminEndpoints.users().catch(() => ({ data: [] })),
+                // Sanitized user directory from the user-admin API — open to
+                // hr admins/managers. Still best-effort so a 403 (hr_staff)
+                // never blocks the page; the picker just stays empty.
+                UsersEndpoints.listDirectory().catch(() => ({ data: [] })),
             ]);
             setEmployees(empRes?.data || []);
             setDepartments(depRes?.data || []);

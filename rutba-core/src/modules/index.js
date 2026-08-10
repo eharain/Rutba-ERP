@@ -23,6 +23,7 @@ const { registerSaleStockModule } = require('./sale-stock');
 const { registerAuthModule } = require('./auth');
 const { registerCatalogModule } = require('./catalog');
 const { registerUploadsModule } = require('./uploads');
+const { registerUserMgmtModule } = require('./user-mgmt');
 
 let initialized = null;
 
@@ -39,6 +40,7 @@ function initModules() {
     registerAuthModule(),
     registerCatalogModule(),
     registerUploadsModule(),
+    registerUserMgmtModule(),
   ];
   const routes = modules.flatMap((m) => m.routes || []);
   initialized = { modules: modules.map((m) => m.name), routes };

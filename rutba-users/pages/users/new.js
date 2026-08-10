@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import AppAccessGate from "../../components/AppAccessGate";
-import { AuthAdminEndpoints, AppAccessesEndpoints } from "../../lib/endpoints";
+import { UsersEndpoints, AppDomainsEndpoints } from "@rutba/api-provider/endpoints";
 
 export default function NewUserPage() {
     const router = useRouter();
@@ -23,6 +23,10 @@ export default function NewUserPage() {
         domain_accesses: [],
         admin_domain_accesses: [],
     });
+    // Invite-first: default is emailing a set-your-password link; typing a
+    // password manually is the collapsed fallback.
+    const [manualPassword, setManualPassword] = useState(false);
+    const [notice, setNotice] = useState("");
 
     useEffect(() => {
         loadOptions();
@@ -31,8 +35,8 @@ export default function NewUserPage() {
     async function loadOptions() {
         try {
             const [rolesRes, aaRes] = await Promise.all([
-                AuthAdminEndpoints.fetchRoles(),
-                AppAccessesEndpoints.fetchList(),
+                UsersEndpoints.listRoles(),
+                AppDomainsEndpoints.list(),
             ]);
             setRoles(rolesRes?.roles || []);
             setAppAccesses(aaRes?.data || aaRes || []);
@@ -79,28 +83,49 @@ export default function NewUserPage() {
     async function handleSubmit(e) {
         e.preventDefault();
         setError("");
-        if (!form.username || !form.email || !form.password) {
-            setError("Username, email and password are required.");
+        setNotice("");
+        if (!form.email) {
+            setError("Email is required.");
+            return;
+        }
+        if (manualPassword && (!form.username || !form.password)) {
+            setError("Username and password are required when setting a password manually.");
             return;
         }
         setSaving(true);
         try {
-            const payload = {
-                username: form.username,
-                displayName: form.displayName,
-                email: form.email,
-                password: form.password,
-                confirmed: form.confirmed,
-                blocked: form.blocked,
-                role: form.role || undefined,
-                domain_accesses: form.domain_accesses,
-                admin_domain_accesses: form.admin_domain_accesses,
-            };
-            await AuthAdminEndpoints.postCreateUser(payload);
+            if (manualPassword) {
+                await UsersEndpoints.create({
+                    username: form.username,
+                    displayName: form.displayName,
+                    email: form.email,
+                    password: form.password,
+                    confirmed: form.confirmed,
+                    blocked: form.blocked,
+                    role: form.role || undefined,
+                    domain_accesses: form.domain_accesses,
+                    admin_domain_accesses: form.admin_domain_accesses,
+                });
+            } else {
+                await UsersEndpoints.createInvite({
+                    username: form.username || undefined,
+                    displayName: form.displayName,
+                    email: form.email,
+                    role: form.role || undefined,
+                    domain_accesses: form.domain_accesses,
+                    admin_domain_accesses: form.admin_domain_accesses,
+                });
+            }
             router.push("/users");
         } catch (err) {
-            const msg = err?.response?.data?.error?.message || err.message || "Failed to create user";
-            setError(msg);
+            const data = err?.response?.data;
+            // 502 with emailError = the account exists but the mail failed;
+            // don't let the admin re-submit a duplicate.
+            if (data?.emailError) {
+                setNotice(`Account created, but the invite email failed to send (${data.emailError}). Use "Resend invite" from the users list once email is working.`);
+            } else {
+                setError(data?.error?.message || data?.message || err.message || "Failed to create user");
+            }
         } finally {
             setSaving(false);
         }
@@ -109,28 +134,40 @@ export default function NewUserPage() {
     return (
         <Layout>
             <ProtectedRoute>
-                <AppAccessGate appKey="auth">
+                <AppAccessGate>
                 <h2 className="mb-3"><i className="fas fa-user-plus me-2"></i>New User</h2>
 
                 {error && <div className="alert alert-danger">{error}</div>}
+                {notice && <div className="alert alert-warning">{notice}</div>}
+
+                <div className="alert alert-info">
+                    <i className="fas fa-envelope me-2"></i>
+                    The user will receive an <strong>invite email</strong> with a set-your-password link.
+                    The account activates when they set their password.
+                </div>
 
                 <form onSubmit={handleSubmit}>
                     <div className="row g-3">
                         <div className="col-md-6">
-                            <label className="form-label">Username *</label>
-                            <input className="form-control" value={form.username} onChange={e => setField("username", e.target.value)} required />
+                            <label className="form-label">Email *</label>
+                            <input className="form-control" type="email" value={form.email} onChange={e => setField("email", e.target.value)} required />
                         </div>
                         <div className="col-md-6">
                             <label className="form-label">Display Name</label>
                             <input className="form-control" value={form.displayName} onChange={e => setField("displayName", e.target.value)} />
                         </div>
                         <div className="col-md-6">
-                            <label className="form-label">Email *</label>
-                            <input className="form-control" type="email" value={form.email} onChange={e => setField("email", e.target.value)} required />
+                            <label className="form-label">Username {manualPassword ? "*" : <small className="text-muted">(defaults to email)</small>}</label>
+                            <input className="form-control" value={form.username} onChange={e => setField("username", e.target.value)} required={manualPassword} />
                         </div>
                         <div className="col-md-6">
-                            <label className="form-label">Password *</label>
-                            <input className="form-control" type="password" value={form.password} onChange={e => setField("password", e.target.value)} required minLength={6} />
+                            <label className="form-label d-block">
+                                <span className="me-2">Set password manually</span>
+                                <input className="form-check-input" type="checkbox" checked={manualPassword} onChange={e => setManualPassword(e.target.checked)} />
+                            </label>
+                            {manualPassword && (
+                                <input className="form-control" type="password" placeholder="Password *" value={form.password} onChange={e => setField("password", e.target.value)} required minLength={6} />
+                            )}
                         </div>
 
                         {/* Role */}
@@ -144,23 +181,28 @@ export default function NewUserPage() {
                             </select>
                         </div>
 
-                        {/* Status */}
-                        <div className="col-md-3">
-                            <label className="form-label">Confirmed</label>
-                            <div className="form-check form-switch mt-1">
-                                <input className="form-check-input" type="checkbox" checked={form.confirmed} onChange={e => setField("confirmed", e.target.checked)} />
-                            </div>
-                        </div>
-                        <div className="col-md-3">
-                            <label className="form-label">Blocked</label>
-                            <div className="form-check form-switch mt-1">
-                                <input className="form-check-input" type="checkbox" checked={form.blocked} onChange={e => setField("blocked", e.target.checked)} />
-                            </div>
-                        </div>
+                        {/* Status — only meaningful with a manual password; invited
+                            accounts start unconfirmed and activate on redemption. */}
+                        {manualPassword && (
+                            <>
+                                <div className="col-md-3">
+                                    <label className="form-label">Confirmed</label>
+                                    <div className="form-check form-switch mt-1">
+                                        <input className="form-check-input" type="checkbox" checked={form.confirmed} onChange={e => setField("confirmed", e.target.checked)} />
+                                    </div>
+                                </div>
+                                <div className="col-md-3">
+                                    <label className="form-label">Blocked</label>
+                                    <div className="form-check form-switch mt-1">
+                                        <input className="form-check-input" type="checkbox" checked={form.blocked} onChange={e => setField("blocked", e.target.checked)} />
+                                    </div>
+                                </div>
+                            </>
+                        )}
 
                         {/* App Access */}
                         <div className="col-12">
-                            <label className="form-label">Domain Access (AGP)</label>
+                            <label className="form-label">Application Access</label>
                             {appAccesses.length === 0 ? (
                                 <span className="text-muted">No applications configured</span>
                             ) : (
@@ -176,7 +218,8 @@ export default function NewUserPage() {
                                         <tbody>
                                             {appAccesses.map((aa) => {
                                                 const hasUser = form.domain_accesses.includes(aa.key);
-                                                const hasAdmin = form.admin_domain_accesses.includes(aa.key);
+                                                const adminAvailable = aa.hasAdminRole !== false;
+                                                const hasAdmin = adminAvailable && form.admin_domain_accesses.includes(aa.key);
 
                                                 return (
                                                     <tr key={aa.id}>
@@ -198,15 +241,19 @@ export default function NewUserPage() {
                                                             </div>
                                                         </td>
                                                         <td className="text-center">
-                                                            <div className="form-check form-switch d-inline-block">
-                                                                <input
-                                                                    className="form-check-input"
-                                                                    type="checkbox"
-                                                                    id={`aa-admin-${aa.id}`}
-                                                                    checked={hasAdmin}
-                                                                    onChange={() => toggleAppAccess(aa.key, "admin")}
-                                                                />
-                                                            </div>
+                                                            {adminAvailable ? (
+                                                                <div className="form-check form-switch d-inline-block">
+                                                                    <input
+                                                                        className="form-check-input"
+                                                                        type="checkbox"
+                                                                        id={`aa-admin-${aa.id}`}
+                                                                        checked={hasAdmin}
+                                                                        onChange={() => toggleAppAccess(aa.key, "admin")}
+                                                                    />
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-muted small" title={`No admin role exists for "${aa.key}"`}>n/a</span>
+                                                            )}
                                                         </td>
                                                     </tr>
                                                 );
@@ -220,7 +267,7 @@ export default function NewUserPage() {
 
                     <div className="d-flex gap-2 mt-4">
                         <button type="submit" className="btn btn-success" disabled={saving}>
-                            {saving ? "Creating..." : "Create User"}
+                            {saving ? "Creating..." : (manualPassword ? "Create User" : "Create & Send Invite")}
                         </button>
                         <button type="button" className="btn btn-outline-secondary" onClick={() => router.push("/users")}>
                             Cancel
@@ -232,4 +279,3 @@ export default function NewUserPage() {
             </Layout>
     );
 }
-

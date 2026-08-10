@@ -3,7 +3,7 @@ import Link from "next/link";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import AppAccessGate from "../../components/AppAccessGate";
-import { AuthAdminEndpoints, AppAccessesEndpoints } from "../../lib/endpoints";
+import { UsersEndpoints, AppDomainsEndpoints } from "@rutba/api-provider/endpoints";
 
 export default function UsersPage() {
     const [users, setUsers] = useState([]);
@@ -12,6 +12,21 @@ export default function UsersPage() {
     const [search, setSearch] = useState("");
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
+    const [notice, setNotice] = useState("");
+    const [resendingId, setResendingId] = useState(null);
+
+    async function resendInvite(u) {
+        setResendingId(u.id);
+        setNotice("");
+        try {
+            await UsersEndpoints.sendInvite(u.id);
+            setNotice(`Invite re-sent to ${u.email}.`);
+        } catch (err) {
+            setNotice(`Resend failed for ${u.email}: ${err?.response?.data?.emailError || err?.response?.data?.message || err.message}`);
+        } finally {
+            setResendingId(null);
+        }
+    }
 
     useEffect(() => { loadUsers(); }, []);
 
@@ -19,8 +34,8 @@ export default function UsersPage() {
         setLoading(true);
         try {
             const [usersRes, domainsRes] = await Promise.all([
-                AuthAdminEndpoints.fetchUsers(),
-                AppAccessesEndpoints.fetchList(),
+                UsersEndpoints.list(),
+                AppDomainsEndpoints.list(),
             ]);
 
             const userData = Array.isArray(usersRes) ? usersRes : usersRes?.data || [];
@@ -57,7 +72,7 @@ export default function UsersPage() {
     return (
         <Layout>
             <ProtectedRoute>
-                <AppAccessGate appKey="auth">
+                <AppAccessGate>
                 <div className="d-flex justify-content-between align-items-center mb-3">
                     <h2><i className="fas fa-users me-2"></i>Users</h2>
                     <div className="d-flex gap-2">
@@ -69,6 +84,8 @@ export default function UsersPage() {
                         </Link>
                     </div>
                 </div>
+
+                {notice && <div className="alert alert-info py-2">{notice}</div>}
 
                 <div className="mb-3">
                     <input
@@ -176,7 +193,7 @@ export default function UsersPage() {
                                                     ? <span className="badge bg-danger"><i className="fas fa-ban me-1"></i>Blocked</span>
                                                     : u.confirmed
                                                         ? <span className="badge bg-success"><i className="fas fa-check-circle me-1"></i>Active</span>
-                                                        : <span className="badge bg-warning text-dark"><i className="fas fa-exclamation-circle me-1"></i>Unconfirmed</span>
+                                                        : <span className="badge bg-warning text-dark" title="Awaiting first sign-in"><i className="fas fa-envelope me-1"></i>Invited</span>
                                                 }
                                             </td>
                                             <td>
@@ -184,6 +201,17 @@ export default function UsersPage() {
                                                     <i className="fas fa-edit me-1"></i>
                                                     Edit
                                                 </Link>
+                                                {!u.blocked && !u.confirmed && (
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-sm btn-outline-warning ms-1"
+                                                        title="Re-send the set-your-password invite email"
+                                                        disabled={resendingId === u.id}
+                                                        onClick={() => resendInvite(u)}
+                                                    >
+                                                        <i className="fas fa-paper-plane"></i>
+                                                    </button>
+                                                )}
                                             </td>
                                         </tr>
                                     );
@@ -220,4 +248,3 @@ export default function UsersPage() {
             </Layout>
     );
 }
-

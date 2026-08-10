@@ -1,17 +1,7 @@
 import SharedSidebar from "@rutba/pos-shared/components/Sidebar";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { canAccessApp } from "@rutba/pos-shared/lib/roles";
 
+// pos-auth is the pure SSO portal — user administration moved to rutba-users
+// (APP_URLS.users), which appears as a normal launcher card on the home page.
 export default function Sidebar() {
-    const { appAccess } = useAuth();
-    const hasAuthAccess = canAccessApp(appAccess, 'auth');
-
-    const sections = hasAuthAccess
-        ? [
-            { href: "/users",                   label: "Users",             icon: "fa-users" },
-            { href: "/users/access-assignment", label: "Access Assignment", icon: "fa-key" },
-        ]
-        : [];
-
-    return <SharedSidebar sections={sections} storageKey="pos-auth-sidebar-pinned" />;
+    return <SharedSidebar sections={[]} storageKey="pos-auth-sidebar-pinned" />;
 }

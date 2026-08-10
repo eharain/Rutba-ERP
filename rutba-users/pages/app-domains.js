@@ -3,9 +3,9 @@ import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import AppAccessGate from "../components/AppAccessGate";
 import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
-import { AppAccessesEndpoints } from "../lib/endpoints";
+import { AppDomainsEndpoints } from "@rutba/api-provider/endpoints";
 
-export default function AppAccessPage() {
+export default function AppDomainsPage() {
     const [entries, setEntries] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
@@ -23,7 +23,7 @@ export default function AppAccessPage() {
     async function loadEntries() {
         setLoading(true);
         try {
-            const res = await AppAccessesEndpoints.fetchList();
+            const res = await AppDomainsEndpoints.list();
             setEntries(res?.data || res || []);
         } catch (err) {
             setError("Failed to load app domains");
@@ -43,9 +43,7 @@ export default function AppAccessPage() {
         }
         setSaving(true);
         try {
-            await AppAccessesEndpoints.postCreate({
-                data: { key: newKey, name: newName, description: newDesc }
-            });
+            await AppDomainsEndpoints.create({ key: newKey, name: newName, description: newDesc });
             setNewKey("");
             setNewName("");
             setNewDesc("");
@@ -65,7 +63,7 @@ export default function AppAccessPage() {
         setError("");
         setSuccess("");
         try {
-            await AppAccessesEndpoints.del(entry.id);
+            await AppDomainsEndpoints.del(entry.id);
             setSuccess(`"${entry.key}" disabled.`);
             await loadEntries();
         } catch (err) {
@@ -76,8 +74,8 @@ export default function AppAccessPage() {
     return (
         <Layout>
             <ProtectedRoute>
-                <AppAccessGate appKey="auth">
-                <PermissionCheck adminOnly appKey="auth" required="auth">
+                <AppAccessGate>
+                <PermissionCheck adminOnly appKey="users" required="users">
                 <div className="d-flex justify-content-between align-items-center mb-3">
                     <h2><i className="fas fa-key me-2"></i>App Domains</h2>
                     <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
@@ -88,7 +86,7 @@ export default function AppAccessPage() {
 
                 <div className="alert alert-info">
                     For user assignment, use <strong>Users → Access Assignment</strong>.
-                    This page manages plugin-backed app domains used by api-guard roles.
+                    This page manages plugin-backed app domains used by api-pro roles.
                 </div>
 
                 {error && <div className="alert alert-danger">{error}</div>}
@@ -132,19 +130,25 @@ export default function AppAccessPage() {
                                     <th>Key</th>
                                     <th>Name</th>
                                     <th>Description</th>
+                                    <th>Roles</th>
                                     <th>Users</th>
                                     <th></th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {entries.length === 0 && (
-                                    <tr><td colSpan="5" className="text-center text-muted py-4">No app domains</td></tr>
+                                    <tr><td colSpan="6" className="text-center text-muted py-4">No app domains</td></tr>
                                 )}
                                 {entries.map(e => (
                                     <tr key={e.id}>
                                         <td><code>{e.key}</code></td>
                                         <td>{e.name}</td>
                                         <td className="text-muted">{e.description || '—'}</td>
+                                        <td>
+                                            {(e.roleKeys || []).map((rk) => (
+                                                <span key={rk} className="badge bg-light text-dark border me-1 mb-1"><code>{rk}</code></span>
+                                            ))}
+                                        </td>
                                         <td>
                                             <span className="badge bg-secondary">
                                                 {(e.userCount || 0)} user{(e.userCount || 0) !== 1 ? 's' : ''}
@@ -165,7 +169,7 @@ export default function AppAccessPage() {
                 <div className="mt-4 p-3 bg-light rounded">
                     <h6>How it works</h6>
                     <ul className="mb-0 small text-muted">
-                        <li>Each entry represents an app domain used by api-guard.</li>
+                        <li>Each entry represents an app domain used by api-pro.</li>
                         <li>Assign domain roles to users via <strong>Users → Access Assignment</strong>.</li>
                         <li>The <code>key</code> should match the app key sent in <code>x-rutba-app</code>.</li>
                         <li>Core domains like <code>web</code> and <code>web-user</code> are seeded and protected.</li>
@@ -177,4 +181,3 @@ export default function AppAccessPage() {
             </Layout>
     );
 }
-

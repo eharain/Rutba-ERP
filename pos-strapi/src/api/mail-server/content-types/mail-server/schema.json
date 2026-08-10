@@ -1,0 +1,55 @@
+{
+  "kind": "collectionType",
+  "collectionName": "mail_servers",
+  "info": {
+    "singularName": "mail-server",
+    "pluralName": "mail-servers",
+    "displayName": "Mail Server",
+    "description": "Registered mail-server admin endpoints (mailcow-type first). Assigning an email to a user in rutba-users provisions the mailbox here automatically. The admin API key is stored encrypted (api_key_enc, AES-256-GCM via MAIL_CRED_KEY) and never returned."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "kind": {
+      "type": "enumeration",
+      "enum": ["mailcow"],
+      "default": "mailcow",
+      "required": true
+    },
+    "base_url": {
+      "type": "string",
+      "required": true
+    },
+    "api_key_enc": {
+      "type": "text",
+      "private": true
+    },
+    "mail_domains": {
+      "type": "json",
+      "description": "Email domains this server hosts, e.g. [\"rutba.pk\", \"trustlist.uk\"]. Drives the domain picker when assigning an address."
+    },
+    "imap_host": {
+      "type": "string",
+      "description": "Override for provisioned accounts; defaults to the base_url hostname."
+    },
+    "smtp_host": {
+      "type": "string",
+      "description": "Override for provisioned accounts; defaults to the base_url hostname."
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "last_checked_at": {
+      "type": "datetime"
+    },
+    "last_error": {
+      "type": "text"
+    }
+  }
+}

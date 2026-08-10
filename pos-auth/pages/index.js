@@ -1,20 +1,15 @@
-import { useEffect } from "react";
-import { useRouter } from "next/router";
-import Link from "next/link";
 import Layout from "../components/Layout";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { getAllowedApps, APP_URLS, APP_META, isAppAdmin } from "@rutba/pos-shared/lib/roles";
+import { getAllowedApps, APP_URLS, APP_META } from "@rutba/pos-shared/lib/roles";
 
 export default function Home() {
     const { user, role, appAccess, adminAppAccess, loading } = useAuth();
-    const router = useRouter();
 
     if (loading) return <p className="text-center mt-5">Loading...</p>;
 
     const effectiveAccess = [...new Set([...(appAccess || []), ...(adminAppAccess || [])])];
     const apps = getAllowedApps(effectiveAccess);
-    const hasAuthAdminAccess = isAppAdmin(adminAppAccess || [], 'auth');
 
     // App keys that should show as launchable cards (exclude 'auth' itself)
     const launchableApps = apps.filter(k => k !== 'auth' && APP_META[k]);
@@ -58,31 +53,6 @@ export default function Home() {
                     </div>
                 )}
 
-                {/* Admin quick links — only if user has auth admin access */}
-                {hasAuthAdminAccess && (
-                    <div className="row justify-content-center g-3">
-                        <div className="col-md-4">
-                            <Link href="/users" className="text-decoration-none">
-                                <div className="card shadow-sm">
-                                    <div className="card-body text-center p-3">
-                                        <i className="fas fa-users fa-2x text-dark mb-2"></i>
-                                        <h5>Manage Users</h5>
-                                    </div>
-                                </div>
-                            </Link>
-                        </div>
-                        <div className="col-md-4">
-                            <Link href="/users/access-assignment" className="text-decoration-none">
-                                <div className="card shadow-sm">
-                                    <div className="card-body text-center p-3">
-                                        <i className="fas fa-user-shield fa-2x text-dark mb-2"></i>
-                                        <h5>Access Assignment</h5>
-                                    </div>
-                                </div>
-                            </Link>
-                        </div>
-                    </div>
-                )}
             </ProtectedRoute>
         </Layout>
     );

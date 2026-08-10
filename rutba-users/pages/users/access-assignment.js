@@ -4,7 +4,7 @@ import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import AppAccessGate from "../../components/AppAccessGate";
 import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
-import { AuthAdminEndpoints, AppAccessesEndpoints } from "../../lib/endpoints";
+import { UsersEndpoints, AppDomainsEndpoints } from "@rutba/api-provider/endpoints";
 import UserAccessFilters from "../../components/UserAccessFilters";
 import UserAccessCard from "../../components/UserAccessCard";
 
@@ -37,8 +37,8 @@ export default function AccessAssignmentPage() {
     setError("");
     try {
       const [usersRes, appsRes] = await Promise.all([
-        AuthAdminEndpoints.fetchUsers(),
-        AppAccessesEndpoints.fetchList(),
+        UsersEndpoints.list(),
+        AppDomainsEndpoints.list(),
       ]);
 
       const userData = Array.isArray(usersRes) ? usersRes : usersRes?.data || [];
@@ -122,6 +122,16 @@ export default function AccessAssignmentPage() {
     return current;
   }
 
+  // All saves go through the server-side bulk endpoint — one request whether
+  // it's a single toggle or the whole filtered list (the old page issued N
+  // sequential PUTs of the entire user record).
+  async function saveAccessChanges(changes) {
+    const res = await UsersEndpoints.setBulkAccess(changes);
+    const results = res?.results || [];
+    const failed = results.filter((r) => !r.ok);
+    return { results, failed };
+  }
+
   async function bulkUpdateUser(user, kind, mode) {
     const prevUsers = users;
     const next = computeBulkArrays(user, kind, mode);
@@ -132,16 +142,8 @@ export default function AccessAssignmentPage() {
     setError("");
 
     try {
-      await AuthAdminEndpoints.putUpdateUser(user.id, {
-        username: user.username,
-        email: user.email,
-        displayName: user.displayName,
-        confirmed: user.confirmed,
-        blocked: user.blocked,
-        role: user.role?.id || undefined,
-        domain_accesses: next.domain_accesses,
-        admin_domain_accesses: next.admin_domain_accesses,
-      });
+      const { failed } = await saveAccessChanges([{ userId: user.id, ...next }]);
+      if (failed.length) throw new Error(failed[0].error || "save failed");
     } catch (err) {
       setUsers(prevUsers);
       setError(`Failed bulk updating access for ${user.displayName || user.username || user.email}.`);
@@ -165,38 +167,30 @@ export default function AccessAssignmentPage() {
     setError("");
 
     const targets = filteredUsers.slice();
-    let done = 0;
-    let failed = 0;
-    const failures = [];
+    const changes = targets.map((u) => ({ userId: u.id, ...computeBulkArrays(u, kind, mode) }));
 
-    for (const u of targets) {
-      try {
-        const next = computeBulkArrays(u, kind, mode);
-        await AuthAdminEndpoints.putUpdateUser(u.id, {
-          username: u.username,
-          email: u.email,
-          displayName: u.displayName,
-          confirmed: u.confirmed,
-          blocked: u.blocked,
-          role: u.role?.id || undefined,
-          domain_accesses: next.domain_accesses,
-          admin_domain_accesses: next.admin_domain_accesses,
+    try {
+      const { results, failed } = await saveAccessChanges(changes);
+      const okIds = new Set(results.filter((r) => r.ok).map((r) => r.userId));
+      setUsers((prev) => prev.map((u) => {
+        if (!okIds.has(u.id)) return u;
+        const change = changes.find((c) => c.userId === u.id);
+        return change ? { ...u, domain_accesses: change.domain_accesses, admin_domain_accesses: change.admin_domain_accesses } : u;
+      }));
+      setBulkProgress({ done: results.length, total: targets.length, failed: failed.length });
+      if (failed.length > 0) {
+        const names = failed.slice(0, 5).map((f) => {
+          const u = targets.find((t) => t.id === f.userId);
+          return u?.displayName || u?.username || u?.email || f.userId;
         });
-        setUsers((prev) => prev.map((x) => (x.id === u.id ? { ...x, ...next } : x)));
-      } catch (err) {
-        failed += 1;
-        failures.push(u.displayName || u.username || u.email || u.id);
-        console.error(`Bulk update failed for user ${u.id}:`, err);
-      } finally {
-        done += 1;
-        setBulkProgress({ done, total: targets.length, failed });
+        setError(`Bulk update finished with ${failed.length} failure(s): ${names.join(", ")}${failed.length > 5 ? "…" : ""}`);
       }
-    }
-
-    setBulkBusy(false);
-    setBulkProgress(null);
-    if (failed > 0) {
-      setError(`Bulk update finished with ${failed} failure(s): ${failures.slice(0, 5).join(", ")}${failures.length > 5 ? "…" : ""}`);
+    } catch (err) {
+      setError("Bulk update failed.");
+      console.error(err);
+    } finally {
+      setBulkBusy(false);
+      setBulkProgress(null);
     }
   }
 
@@ -240,17 +234,12 @@ export default function AccessAssignmentPage() {
 
     try {
       const current = nextUsers.find((u) => u.id === user.id);
-
-      await AuthAdminEndpoints.putUpdateUser(user.id, {
-        username: current?.username,
-        email: current?.email,
-        displayName: current?.displayName,
-        confirmed: current?.confirmed,
-        blocked: current?.blocked,
-        role: current?.role?.id || undefined,
+      const { failed } = await saveAccessChanges([{
+        userId: user.id,
         domain_accesses: current?.domain_accesses || [],
         admin_domain_accesses: current?.admin_domain_accesses || [],
-      });
+      }]);
+      if (failed.length) throw new Error(failed[0].error || "save failed");
     } catch (err) {
       setUsers(prevUsers);
       setError(`Failed updating access for ${user.displayName || user.username || user.email}.`);
@@ -263,8 +252,8 @@ export default function AccessAssignmentPage() {
   return (
     <Layout fullWidth>
       <ProtectedRoute>
-        <AppAccessGate appKey="auth">
-          <PermissionCheck adminOnly appKey="auth" required="auth">
+        <AppAccessGate>
+          <PermissionCheck adminOnly appKey="users" required="users">
           <div className="d-flex align-items-center justify-content-between mb-3">
             <h2 className="mb-0"><i className="fas fa-user-shield me-2"></i>User Access Assignment</h2>
             <div className="d-flex gap-2">
@@ -311,7 +300,7 @@ export default function AccessAssignmentPage() {
                     Bulk apply to <span className="badge bg-info text-dark">{filteredUsers.length}</span> filtered user{filteredUsers.length === 1 ? "" : "s"}
                   </span>
                   <span className="small text-muted me-2">
-                    (uses current Search / Role / Status filters &middot; {apps.length} app{apps.length === 1 ? "" : "s"})
+                    (uses current Search / Role / Status filters &middot; {apps.length} app{apps.length === 1 ? "" : "s"} &middot; saves in one request)
                   </span>
                   <div className="btn-group btn-group-sm" role="group" aria-label="Bulk add">
                     <button
