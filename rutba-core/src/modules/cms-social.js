@@ -152,6 +152,7 @@ function registerCmsSocialModule() {
     { method: 'post', path: '/api/social-posts/:documentId/reply', handler: (c) => post.sendReply(c) },
     { method: 'get', path: '/api/social-posts/:documentId/replies', handler: (c) => post.listReplies(c) },
     { method: 'post', path: '/api/social-posts/:documentId/duplicate', handler: (c) => post.duplicate(c) },
+    { method: 'post', path: '/api/social-posts/:documentId/record-result', handler: (c) => post.recordResult(c) },
   ].map((r) => ({ ...r, selfAuth: true }));
 
   const gated = [
