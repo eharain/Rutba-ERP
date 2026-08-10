@@ -3,9 +3,9 @@ import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { MediaUtilsEndpoints, SocialPostsEndpoints } from "@rutba/api-provider/endpoints";
+import { MediaUtilsEndpoints, SocialPostsEndpoints, SocialAccountsEndpoints } from "@rutba/api-provider/endpoints";
 import { useToast } from "../../components/Toast";
-import { PlatformBadge } from "../../components/PlatformBadge";
+import PLATFORMS, { PlatformBadge } from "../../components/PlatformBadge";
 import ExcelIO from "../../components/ExcelIO";
 import Link from "next/link";
 
@@ -61,6 +61,58 @@ const POST_EXCEL_COLUMNS = [
     },
 ];
 
+// Per-destination outcome, as recorded in platform_results under
+// `<platform>#<accountDocumentId>`. `pending` = handed to the Rutba Social
+// Poster desktop app and not yet confirmed, which is progress, not failure.
+const RESULT_STATE = {
+    success: { cls: "bg-success", icon: "fa-check", label: "posted" },
+    pending: { cls: "bg-info", icon: "fa-hourglass-half", label: "queued for the Social Poster app" },
+    unverified: { cls: "bg-warning text-dark", icon: "fa-question", label: "clicked but not confirmed — check the platform" },
+    error: { cls: "bg-danger", icon: "fa-xmark", label: "failed" },
+    failed: { cls: "bg-danger", icon: "fa-xmark", label: "failed" },
+    removed: { cls: "bg-secondary", icon: "fa-eraser", label: "removed from the platform" },
+};
+
+// One chip per social account this post is meant to reach, flagged with whether
+// it actually went out there. The link is platform_results' per-account key, so
+// two accounts on the same platform are tracked separately.
+function AccountFlags({ post, accounts }) {
+    const results = post.platform_results || {};
+    const targeted = Array.isArray(post.platforms) && post.platforms.length ? post.platforms : null;
+    const rows = accounts.filter((a) => !targeted || targeted.includes(a.platform));
+
+    // No account exists for these platforms yet — show what it targets instead.
+    if (!rows.length) {
+        return (post.platforms || []).map((p) => <PlatformBadge key={p} platform={p} />);
+    }
+    const done = rows.filter((a) => results[`${a.platform}#${a.documentId}`]?.status === "success").length;
+    return (
+        <div className="d-flex flex-wrap gap-1 align-items-center">
+            <span className="badge bg-light text-dark border" title="Accounts posted / accounts targeted">
+                {done}/{rows.length}
+            </span>
+            {rows.map((a) => {
+                const r = results[`${a.platform}#${a.documentId}`];
+                const st = r && RESULT_STATE[r.status];
+                const p = PLATFORMS[a.platform] || {};
+                const detail = r?.error || r?.note || "";
+                return (
+                    <span
+                        key={a.documentId}
+                        className={`badge ${st ? st.cls : "bg-light text-muted border"} d-inline-flex align-items-center`}
+                        style={{ maxWidth: 190 }}
+                        title={`${a.account_name} (${a.platform}) — ${st ? st.label : "not posted yet"}${detail ? ": " + detail : ""}`}
+                    >
+                        <i className={`${p.icon || "fas fa-share-nodes"} me-1`}></i>
+                        <i className={`fas ${st ? st.icon : "fa-minus"} me-1`}></i>
+                        <span className="text-truncate">{a.account_name}</span>
+                    </span>
+                );
+            })}
+        </div>
+    );
+}
+
 const POST_STATUS_BADGES = {
     draft: "bg-secondary",
     scheduled: "bg-warning text-dark",
@@ -84,6 +136,15 @@ export default function PostsPage() {
     const [statusFilter, setStatusFilter] = useState("all");
     const [selectedIds, setSelectedIds] = useState(new Set());
     const [publishing, setPublishing] = useState({});
+    // Active accounts drive the per-account "posted / not posted" flags.
+    const [accounts, setAccounts] = useState([]);
+
+    useEffect(() => {
+        if (!jwt) return;
+        SocialAccountsEndpoints.list({ filters: { is_active: { $eq: true } }, sort: ['platform:asc'] })
+            .then((res) => setAccounts(res.data || []))
+            .catch((err) => console.error("Failed to load accounts", err));
+    }, [jwt]);
 
     const toggleSelected = (docId) => {
         setSelectedIds(prev => {
@@ -330,7 +391,7 @@ export default function PostsPage() {
                                         </th>
                                         <th style={{ width: 50 }}></th>
                                         <th>Title</th>
-                                        <th>Platforms</th>
+                                        <th>Accounts posted</th>
                                         <th>Post Status</th>
                                         <th>CMS</th>
                                         <th>Created</th>
@@ -362,10 +423,8 @@ export default function PostsPage() {
                                                     </span>
                                                 )}
                                             </td>
-                                            <td>
-                                                {(post.platforms || []).map((p) => (
-                                                    <PlatformBadge key={p} platform={p} />
-                                                ))}
+                                            <td style={{ minWidth: 220 }}>
+                                                <AccountFlags post={post} accounts={accounts} />
                                             </td>
                                             <td>
                                                 <span className={`badge ${POST_STATUS_BADGES[post.post_status] || "bg-secondary"}`}>
