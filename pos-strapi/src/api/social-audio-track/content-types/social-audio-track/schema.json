@@ -1,0 +1,51 @@
+{
+  "kind": "collectionType",
+  "collectionName": "social_audio_tracks",
+  "info": {
+    "singularName": "social-audio-track",
+    "pluralName": "social-audio-tracks",
+    "displayName": "Social Audio Track",
+    "description": "Music bed for generated social videos. A track is either a foreign URL or a file on the media server; both are playable from `url`, so consumers never branch on where it came from."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "url": {
+      "type": "string",
+      "required": true
+    },
+    "audio_file": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "audios",
+        "files"
+      ]
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "credit": {
+      "type": "string"
+    },
+    "tags": {
+      "type": "json"
+    },
+    "volume": {
+      "type": "decimal"
+    },
+    "duration_seconds": {
+      "type": "decimal"
+    },
+    "notes": {
+      "type": "text"
+    }
+  }
+}

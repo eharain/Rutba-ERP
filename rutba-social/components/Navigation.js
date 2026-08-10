@@ -2,6 +2,8 @@ import Topbar from "@rutba/pos-shared/components/Topbar";
 
 const SECONDARY = [
     { href: "/posts",    label: "Posts",    variant: "primary" },
+    { href: "/posts/video-studio", label: "Video Studio", variant: "warning" },
+    { href: "/audio",    label: "Audio",    variant: "info" },
     { href: "/products", label: "Products", variant: "success" },
     { href: "/replies",  label: "Replies",  variant: "info" },
     { href: "/accounts", label: "Accounts", variant: "secondary" },

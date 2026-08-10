@@ -8,6 +8,7 @@ import { useToast } from "../../components/Toast";
 import PLATFORMS, { PlatformBadge } from "../../components/PlatformBadge";
 import FileView from "@rutba/pos-shared/components/FileView";
 import Link from "next/link";
+import { imageItems, isImageOnly } from "../../lib/video-maker";
 
 const WEB_URL = process.env.NEXT_PUBLIC_WEB_URL || "http://localhost:4000";
 
@@ -449,8 +450,23 @@ export default function PostDetailPage() {
                         </div>
 
                         <div className="card mb-3">
-                            <div className="card-header"><i className="fas fa-video me-2"></i>Videos</div>
+                            <div className="card-header d-flex align-items-center">
+                                <span><i className="fas fa-video me-2"></i>Videos</span>
+                                {imageItems(post).length > 0 && (
+                                    <Link className={`btn btn-sm ms-auto ${isImageOnly(post) ? "btn-warning" : "btn-outline-secondary"}`}
+                                        href={`/posts/video-studio?post=${documentId}`}
+                                        title="Stitch this post's images into a video with the text typed over it">
+                                        <i className="fas fa-film me-1"></i>Make video from images
+                                    </Link>
+                                )}
+                            </div>
                             <div className="card-body">
+                                {isImageOnly(post) && (post.platforms || []).includes("tiktok") && (
+                                    <div className="alert alert-warning py-2 small">
+                                        <i className="fas fa-triangle-exclamation me-1"></i>
+                                        TikTok takes video only — this post cannot go out there until it has one.
+                                    </div>
+                                )}
                                 <FileView
                                     gallery={post.video || []}
                                     multiple

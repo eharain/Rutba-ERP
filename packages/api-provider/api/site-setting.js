@@ -18,7 +18,8 @@ import { byIdParams } from './__param_builders.js';
 export const SiteSettingEndpoints = {
     meta: {
         uid: 'api::site-setting.site-setting',
-        domains: ['cms', 'order-management', 'web', 'web-user'],
+        // 'social' reads site_logo to brand the videos the Video Studio renders.
+        domains: ['cms', 'order-management', 'social', 'web', 'web-user'],
         roles: ['admin', 'manager', 'staff', 'public', 'user'],
     },
 
