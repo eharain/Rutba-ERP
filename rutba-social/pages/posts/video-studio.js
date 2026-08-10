@@ -19,7 +19,7 @@ import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import {
     MediaUtilsEndpoints, SocialPostsEndpoints, UploadEndpoints,
-    SiteSettingEndpoints, SocialAudioTracksEndpoints,
+    SiteSettingEndpoints, SocialAudioTracksEndpoints, SocialVideoTemplatesEndpoints,
 } from "@rutba/api-provider/endpoints";
 import { useToast } from "../../components/Toast";
 import PLATFORMS from "../../components/PlatformBadge";
@@ -70,6 +70,14 @@ export default function VideoStudioPage() {
     const [options, setOptions] = useState(DEFAULTS);
     const [bodyOverride, setBodyOverride] = useState(null); // edited caption, not saved to the post
     const [plan, setPlan] = useState(null);
+
+    // Templates: named looks stored server-side, shared with the Social Poster.
+    // templateId is provenance; the options snapshot is what actually renders,
+    // so editing a template later never silently changes an old post's recipe.
+    const [templates, setTemplates] = useState([]);
+    const [templateId, setTemplateId] = useState(null);
+    const [layerPatches, setLayerPatches] = useState(null);
+    const [savingTemplate, setSavingTemplate] = useState(false);
 
     const [previewTime, setPreviewTime] = useState(0);
     const [playing, setPlaying] = useState(false);
@@ -208,6 +216,73 @@ export default function VideoStudioPage() {
 
     useEffect(() => { loadTracks(); }, [loadTracks]);
 
+    // ── video templates ─────────────────────────────────────
+    const loadTemplates = useCallback(async () => {
+        if (!jwt) return;
+        try {
+            const res = await SocialVideoTemplatesEndpoints.list();
+            setTemplates(res.data || []);
+        } catch (err) {
+            // A 404 just means the schema is newer than the running server —
+            // the studio works fine without templates.
+            console.error("Failed to load video templates", err);
+        }
+    }, [jwt]);
+
+    useEffect(() => { loadTemplates(); }, [loadTemplates]);
+
+    const applyTemplate = (t) => {
+        if (!t) { setTemplateId(null); return; }
+        setTemplateId(t.documentId);
+        setOptions((o) => ({ ...o, ...(t.options || {}), ...(t.aspect ? { aspect: t.aspect } : {}) }));
+        setLayerPatches(Array.isArray(t.layers) && t.layers.length ? t.layers : null);
+    };
+
+    // The three built-in looks. Created from here rather than seeded so the
+    // layer format they carry is always the one THIS renderer understands.
+    const BUILTINS = [
+        { name: "Classic", description: "Bottom caption panel over the whole photo, blurred fill.", is_default: true, aspect: "vertical", options: { textPosition: "bottom", captionStyle: "box", fit: "blur", theme: "dark", showTitle: true, showProgress: true } },
+        { name: "Card", description: "Centered caption card over full-frame photos.", is_default: false, aspect: "vertical", options: { textPosition: "middle", captionStyle: "box", fit: "cover", theme: "dark", showTitle: false, showProgress: true } },
+        { name: "Minimal", description: "Bare shadowed text, no panels, no progress bar.", is_default: false, aspect: "vertical", options: { textPosition: "bottom", captionStyle: "bare", fit: "cover", theme: "dark", showTitle: false, showProgress: false } },
+    ];
+
+    const createBuiltins = async () => {
+        setSavingTemplate(true);
+        try {
+            for (const b of BUILTINS) await SocialVideoTemplatesEndpoints.create({ ...b, layers: [], tags: [] });
+            toast("Created the three built-in templates.", "success");
+            await loadTemplates();
+        } catch (err) {
+            console.error("Failed to create built-ins", err);
+            toast(err?.response?.data?.error?.message || "Failed to create the templates (server may need a restart for the new route).", "danger");
+        } finally {
+            setSavingTemplate(false);
+        }
+    };
+
+    const saveAsTemplate = async () => {
+        const name = prompt("Template name:");
+        if (!name?.trim()) return;
+        setSavingTemplate(true);
+        try {
+            await SocialVideoTemplatesEndpoints.create({
+                name: name.trim(),
+                options: { ...options },
+                layers: layerPatches || [],
+                aspect: options.aspect,
+                is_default: false,
+                tags: [],
+            });
+            toast(`Template “${name.trim()}” saved.`, "success");
+            await loadTemplates();
+        } catch (err) {
+            console.error("Failed to save template", err);
+            toast("Failed to save the template.", "danger");
+        } finally {
+            setSavingTemplate(false);
+        }
+    };
+
     const trackUrl = (t) => MediaUtilsEndpoints.strapiImageUrl(t.audio_file || t.url);
 
     // Plain <audio> for auditioning — no need to decode a whole buffer to hear it.
@@ -302,6 +377,15 @@ export default function VideoStudioPage() {
         setSelected(post);
         if (!post) return;
 
+        // A post that has been rendered before carries its full recipe —
+        // restore it, so a re-render reproduces the video it already has.
+        const vs = post.video_settings;
+        if (vs && typeof vs === "object" && vs.options) {
+            setOptions((o) => ({ ...o, ...vs.options }));
+            setTemplateId(vs.template || null);
+            setLayerPatches(Array.isArray(vs.layers) && vs.layers.length ? vs.layers : null);
+        }
+
         const urls = imageItems(post).map((m) => MediaUtilsEndpoints.strapiImageUrl(m));
         if (!urls.length) { toast("That post has no images to work with.", "warning"); return; }
 
@@ -346,6 +430,7 @@ export default function VideoStudioPage() {
             body: captionText,
             logo,
             options,
+            layerPatches,
         });
         setPlan(p);
         paintFrame(canvas.getContext("2d"), p, Math.min(previewTime, p.duration));
@@ -353,7 +438,7 @@ export default function VideoStudioPage() {
         // scrub tick would rebuild the whole plan (and re-wrap the text) 60
         // times a second. The scrub effect below repaints on its own.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selected, images, captionText, options, logo]);
+    }, [selected, images, captionText, options, logo, layerPatches]);
 
     useEffect(() => {
         if (!plan || playing || rendering) return;
@@ -454,7 +539,17 @@ export default function VideoStudioPage() {
         if (!ids.length) throw new Error("Upload returned no file id.");
 
         const existing = (post.video || []).map((v) => v.id).filter(Boolean);
-        await SocialPostsEndpoints.updateDraft(post.documentId, { data: { video: [...existing, ...ids] } });
+        // The recipe rides along with the video: a FULL options snapshot (so a
+        // later template edit never changes what this post renders), the
+        // template id for provenance, and any layer patches. The poster reads
+        // this back to render exactly what the studio previewed.
+        const video_settings = {
+            template: templateId || null,
+            options: { ...options },
+            layers: layerPatches || [],
+            renderedAt: new Date().toISOString(),
+        };
+        await SocialPostsEndpoints.updateDraft(post.documentId, { data: { video: [...existing, ...ids], video_settings } });
         // The draft is what we just wrote; the poster and the public API read the
         // PUBLISHED copy, so a post that is already live needs re-publishing or
         // the video it now owns is invisible to everything downstream. A post
@@ -520,7 +615,7 @@ export default function VideoStudioPage() {
                 const { images: imgs } = await loadImages(urls);
                 loaded = imgs;
                 if (!imgs.length) throw new Error("no images could be loaded");
-                const p = buildPlan({ canvas: canvasRef.current, images: imgs, title: post.title, body: post.body, logo, options });
+                const p = buildPlan({ canvas: canvasRef.current, images: imgs, title: post.title, body: post.body, logo, options, layerPatches });
                 const out = await doRender(p);
                 const { ids } = await attachToPost(post, out, alsoPublish);
                 URL.revokeObjectURL(out.url);
@@ -777,8 +872,34 @@ export default function VideoStudioPage() {
                             {/* ── settings ── */}
                             <div className="col-xl-6">
                                 <div className="card mb-3">
-                                    <div className="card-header py-2"><i className="fas fa-sliders me-2" />Look</div>
+                                    <div className="card-header py-2 d-flex align-items-center">
+                                        <i className="fas fa-sliders me-2" />Look
+                                        <button className="btn btn-sm btn-link ms-auto p-0" onClick={saveAsTemplate}
+                                            disabled={busy || savingTemplate} title="Save the current look as a reusable template">
+                                            Save as template
+                                        </button>
+                                    </div>
                                     <div className="card-body">
+                                        <label className="form-label small mb-1">Template</label>
+                                        {templates.length === 0 ? (
+                                            <div className="d-grid mb-3">
+                                                <button className="btn btn-sm btn-outline-primary" onClick={createBuiltins} disabled={busy || savingTemplate}>
+                                                    <i className="fas fa-wand-magic-sparkles me-1" />
+                                                    {savingTemplate ? "Creating…" : "Create the built-in templates (Classic · Card · Minimal)"}
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <select className="form-select form-select-sm mb-3" disabled={busy}
+                                                value={templateId || ""}
+                                                onChange={(e) => applyTemplate(templates.find((t) => t.documentId === e.target.value) || null)}>
+                                                <option value="">Custom (no template)</option>
+                                                {templates.map((t) => (
+                                                    <option key={t.documentId} value={t.documentId}>
+                                                        {t.name}{t.is_default ? " (default)" : ""}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        )}
                                         <label className="form-label small mb-1">Shape</label>
                                         <div className="btn-group btn-group-sm w-100 mb-3">
                                             {Object.values(ASPECTS).map((a) => (
@@ -810,6 +931,14 @@ export default function VideoStudioPage() {
                                                     onChange={(e) => setOpt({ textPosition: e.target.value })}>
                                                     <option value="bottom">Bottom</option>
                                                     <option value="middle">Middle</option>
+                                                </select>
+                                            </div>
+                                            <div className="col-6">
+                                                <label className="form-label small mb-1">Caption style</label>
+                                                <select className="form-select form-select-sm" value={options.captionStyle || "box"} disabled={busy}
+                                                    onChange={(e) => setOpt({ captionStyle: e.target.value })}>
+                                                    <option value="box">Panel behind text</option>
+                                                    <option value="bare">Bare shadowed text</option>
                                                 </select>
                                             </div>
                                             <div className="col-6">

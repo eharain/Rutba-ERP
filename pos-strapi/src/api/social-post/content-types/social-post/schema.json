@@ -48,6 +48,9 @@
     "platform_results": {
       "type": "json"
     },
+    "video_settings": {
+      "type": "json"
+    },
     "cover": {
       "type": "media",
       "multiple": false,

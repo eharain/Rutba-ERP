@@ -1,0 +1,46 @@
+{
+  "kind": "collectionType",
+  "collectionName": "social_video_templates",
+  "info": {
+    "singularName": "social-video-template",
+    "pluralName": "social-video-templates",
+    "displayName": "Social Video Template",
+    "description": "A named look for generated social videos: a layer stack plus renderer options. Read by the Video Studio and the Social Poster so both produce the same picture from the same recipe."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "layers": {
+      "type": "json"
+    },
+    "options": {
+      "type": "json"
+    },
+    "aspect": {
+      "type": "string"
+    },
+    "is_default": {
+      "type": "boolean",
+      "default": false
+    },
+    "preview_image": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "tags": {
+      "type": "json"
+    }
+  }
+}

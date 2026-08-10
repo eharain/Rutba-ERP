@@ -54,6 +54,7 @@ export const DEFAULTS = {
     titleSeconds: 3.2,
     showProgress: true,
     textPosition: 'bottom', // 'bottom' | 'middle'
+    captionStyle: 'box', // 'box' (scrim panel) | 'bare' (shadowed text, no panel)
     fontScale: 1,
     quality: 'high', // 'high' | 'medium' | 'low'
     footer: '',
@@ -357,7 +358,7 @@ function layoutLines(ctx, text, maxWidth) {
  * blow past maxSeconds the typing speeds up to fit rather than getting cut off
  * mid-sentence — `plan.spedUp` says so, and the UI reports it.
  */
-export function buildPlan({ canvas, images, title, body, logo, options }) {
+export function buildPlan({ canvas, images, title, body, logo, options, layerPatches }) {
     const opts = { ...DEFAULTS, ...(options || {}) };
     const aspect = ASPECTS[opts.aspect] || ASPECTS.vertical;
     const W = aspect.width;
@@ -407,7 +408,7 @@ export function buildPlan({ canvas, images, title, body, logo, options }) {
 
     const bitrate = Math.round(W * H * opts.fps * (QUALITY_BPP[opts.quality] ?? QUALITY_BPP.high));
 
-    return {
+    const plan = {
         opts, theme, W, H, fps: opts.fps, duration, bitrate,
         images, slots, fade,
         logo: opts.showLogo ? (logo || null) : null,
@@ -417,6 +418,80 @@ export function buildPlan({ canvas, images, title, body, logo, options }) {
         spedUp,
         secondsPerImageEffective: slot,
     };
+
+    // Shared geometry the slideshow and gradient painters both need: the band
+    // the caption owns, and the stage the photos are fitted into above it.
+    plan.captionBandH = Math.round(maxVisibleLines * lineHeight + pad * 2 + margin);
+    plan.stageRect = opts.textPosition === 'middle'
+        ? { x: margin * 0.4, y: margin * 0.6, w: W - margin * 0.8, h: H - margin * 1.2 }
+        : { x: margin * 0.4, y: margin * 0.6, w: W - margin * 0.8, h: H - plan.captionBandH - margin * 0.6 };
+
+    plan.layers = compileLayers(plan);
+    if (Array.isArray(layerPatches) && layerPatches.length) applyLayerPatches(plan, layerPatches);
+    return plan;
+}
+
+/**
+ * Apply stored layer customizations to a compiled plan — the persistence
+ * format templates and per-post recipes use. Two kinds of entry:
+ *
+ *   { id: 'logo', visible: false }            — patch a compiled layer by id
+ *   { id: 'promo', type: 'text', text: 'SALE',
+ *     fx: 0.5, fy: 0.08, sizeFrac: 0.05, ... } — append a new layer
+ *
+ * Stored geometry is FRACTIONAL (fx/fy/fw of the frame, sizeFrac of the
+ * width) so one recipe renders correctly at any aspect; it resolves to pixels
+ * here, keeping the painters' compile-time-pixels contract. Color accepts the
+ * theme tokens 'text' | 'dim' | 'accent' or any CSS color. Unknown types are
+ * kept but skipped by paintFrame, so a recipe from a NEWER renderer degrades
+ * to "that layer doesn't draw" instead of breaking the whole video.
+ */
+export function applyLayerPatches(plan, patches) {
+    const { W, H, theme } = plan;
+    const themeColor = (c, fallback) => (c === 'text' ? theme.text : c === 'dim' ? theme.dim : c === 'accent' ? theme.accent : (c || fallback));
+
+    for (const patch of patches) {
+        if (!patch || !patch.id) continue;
+        const existing = plan.layers.find((l) => l.id === patch.id);
+
+        if (existing) {
+            const { id, type, ...rest } = patch;
+            Object.assign(existing, rest);
+            // Fractional geometry on a patched image layer (e.g. a dragged
+            // logo) re-resolves against this frame's size.
+            if (existing.type === 'image') {
+                if (patch.fw !== undefined) {
+                    existing.w = W * patch.fw;
+                    const srcH = existing.src?.height || 1;
+                    const srcW = existing.src?.width || 1;
+                    existing.h = existing.w * (srcH / srcW);
+                }
+                if (patch.fx !== undefined) existing.x = W * patch.fx;
+                if (patch.fy !== undefined) existing.y = H * patch.fy;
+            }
+            continue;
+        }
+
+        if (patch.type === 'text' && patch.text) {
+            const sizePx = Math.max(10, Math.round(W * (patch.sizeFrac || 0.035)));
+            plan.layers.push({
+                id: patch.id, type: 'text', text: patch.text,
+                visible: patch.visible !== false,
+                timing: patch.timing || null,
+                font: `${patch.weight || 600} ${sizePx}px ${FONT_STACK}`,
+                color: themeColor(patch.color, theme.text),
+                align: patch.align || 'center',
+                baseline: patch.baseline || 'top',
+                x: W * (patch.fx ?? 0.5),
+                y: H * (patch.fy ?? 0.1),
+            });
+            continue;
+        }
+
+        // Anything else (a layer type this renderer version doesn't know) is
+        // kept for round-tripping; paintFrame skips what it can't paint.
+        plan.layers.push({ ...patch, visible: patch.visible !== false });
+    }
 }
 
 // ── painting ─────────────────────────────────────────────────────────────────
@@ -531,24 +606,13 @@ function revealPosition(lines, n) {
     return lines.length - 1;
 }
 
-/**
- * Paint the frame at time `t`. Pure: same t always gives the same picture, so
- * the preview scrubber and the recorder share one code path.
- */
-export function paintFrame(ctx, plan, t) {
-    const { W, H, theme, opts, lines, lineHeight, bodySize, margin, pad, maxVisibleLines } = plan;
-    const time = Math.max(0, Math.min(plan.duration, t));
+// ── layer painters ───────────────────────────────────────────────────────────
+// A video is a STACK of layers painted in order; each painter is pure in `t`.
+// This is the seam the v2 editor builds on: templates store a stack, the
+// editor manipulates plan.layers, and every painter stays oblivious to both.
 
-    ctx.save();
-    ctx.fillStyle = theme.bg;
-    ctx.fillRect(0, 0, W, H);
-
-    // The band the caption owns; in blur mode the photo is fitted above it.
-    const captionBandH = Math.round(maxVisibleLines * lineHeight + pad * 2 + margin);
-    const stageRect = opts.textPosition === 'middle'
-        ? { x: margin * 0.4, y: margin * 0.6, w: W - margin * 0.8, h: H - margin * 1.2 }
-        : { x: margin * 0.4, y: margin * 0.6, w: W - margin * 0.8, h: H - captionBandH - margin * 0.6 };
-
+function paintSlideshow(ctx, plan, layer, time) {
+    const stageRect = plan.stageRect;
     for (let i = 0; i < plan.images.length; i++) {
         const s = plan.slots[i];
         if (time < s.start || time > s.end) continue;
@@ -558,99 +622,192 @@ export function paintFrame(ctx, plan, t) {
             : 1;
         drawImageLayer(ctx, plan, plan.images[i], i, local, Math.max(0, Math.min(1, alpha)), stageRect);
     }
+}
 
-    // Legibility gradient under the caption band.
-    if (opts.textPosition === 'bottom') {
-        const g = ctx.createLinearGradient(0, H - captionBandH * 1.5, 0, H);
-        g.addColorStop(0, theme.key === 'light' ? 'rgba(244,244,246,0)' : 'rgba(8,6,14,0)');
-        g.addColorStop(1, theme.key === 'light' ? 'rgba(244,244,246,0.9)' : 'rgba(8,6,14,0.85)');
-        ctx.fillStyle = g;
-        ctx.fillRect(0, H - captionBandH * 1.5, W, captionBandH * 1.5);
-    }
+// Legibility gradient under the caption band.
+function paintGradient(ctx, plan) {
+    const { W, H, theme, captionBandH } = plan;
+    const g = ctx.createLinearGradient(0, H - captionBandH * 1.5, 0, H);
+    g.addColorStop(0, theme.key === 'light' ? 'rgba(244,244,246,0)' : 'rgba(8,6,14,0)');
+    g.addColorStop(1, theme.key === 'light' ? 'rgba(244,244,246,0.9)' : 'rgba(8,6,14,0.85)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, H - captionBandH * 1.5, W, captionBandH * 1.5);
+}
 
-    // ── typed caption ──
+// The typewriter caption.
+function paintCaption(ctx, plan, layer, time) {
+    const { W, H, theme, opts, lines, lineHeight, bodySize, margin, pad, maxVisibleLines } = plan;
     const revealed = Math.max(0, Math.floor((time - opts.leadInSeconds) * plan.cps));
     const n = Math.min(plan.totalChars, revealed);
     const typing = n < plan.totalChars && time > opts.leadInSeconds;
+    if (n <= 0 && !typing) return;
 
-    if (n > 0 || typing) {
-        ctx.font = `500 ${bodySize}px ${FONT_STACK}`;
-        ctx.textBaseline = 'top';
-        ctx.textAlign = 'left';
+    ctx.font = `500 ${bodySize}px ${FONT_STACK}`;
+    ctx.textBaseline = 'top';
+    ctx.textAlign = 'left';
 
-        const posF = revealPosition(lines, n);
-        const shownLines = Math.max(1, Math.min(maxVisibleLines, posF + 1));
-        const boxH = Math.round(shownLines * lineHeight + pad * 2);
-        const boxW = W - margin * 2;
-        const boxX = margin;
-        const boxY = opts.textPosition === 'middle'
-            ? Math.round((H - boxH) / 2)
-            : Math.round(H - margin - boxH);
+    const posF = revealPosition(lines, n);
+    const shownLines = Math.max(1, Math.min(maxVisibleLines, posF + 1));
+    const boxH = Math.round(shownLines * lineHeight + pad * 2);
+    const boxW = W - margin * 2;
+    const boxX = margin;
+    const boxY = opts.textPosition === 'middle'
+        ? Math.round((H - boxH) / 2)
+        : Math.round(H - margin - boxH);
 
-        ctx.save();
+    ctx.save();
+    if (opts.captionStyle !== 'bare') {
         ctx.fillStyle = theme.scrim;
         roundRect(ctx, boxX, boxY, boxW, boxH, Math.round(W * 0.028));
         ctx.fill();
         ctx.strokeStyle = theme.key === 'light' ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.10)';
         ctx.lineWidth = 2;
         ctx.stroke();
-
-        // Clip so scrolled-off lines vanish at the box edge instead of bleeding.
-        roundRect(ctx, boxX, boxY, boxW, boxH, Math.round(W * 0.028));
-        ctx.clip();
-
-        const scroll = Math.max(0, posF - (maxVisibleLines - 1)) * lineHeight;
-        const textX = boxX + pad;
-        const textTop = boxY + pad - scroll;
-
-        ctx.fillStyle = theme.text;
-        let caret = null;
-        for (let i = 0; i < lines.length; i++) {
-            const l = lines[i];
-            if (n < l.start) break; // `<` not `<=`: at n === start the caret has just landed on this line
-            const y = textTop + i * lineHeight;
-            if (y > boxY + boxH || y + lineHeight < boxY - lineHeight) continue;
-            const slice = plan.text.slice(l.start, Math.min(l.end, n)).replace(/\s+$/, '');
-            if (slice) ctx.fillText(slice, textX, y);
-            if (n <= l.end) caret = { x: textX + ctx.measureText(slice).width + Math.round(bodySize * 0.14), y };
-        }
-
-        if (typing && caret && (time * 2) % 1 < 0.62) {
-            ctx.fillStyle = theme.accent;
-            ctx.fillRect(caret.x, caret.y + Math.round(bodySize * 0.12), Math.round(bodySize * 0.09), bodySize);
-        }
-        ctx.restore();
     }
 
-    // ── title card ──
-    if (opts.showTitle && plan.title && time < opts.titleSeconds) {
-        const fadeIn = Math.min(1, time / 0.45);
-        const fadeOut = Math.min(1, Math.max(0, (opts.titleSeconds - time) / 0.6));
-        const a = Math.min(fadeIn, fadeOut);
-        ctx.save();
-        ctx.globalAlpha = a;
-        ctx.font = `700 ${plan.titleSize}px ${FONT_STACK}`;
-        ctx.textBaseline = 'top';
-        ctx.textAlign = 'left';
-        const tLines = layoutLines(ctx, plan.title, W - margin * 2 - pad * 2).slice(0, 3);
-        const boxH = tLines.length * Math.round(plan.titleSize * 1.28) + pad * 1.6;
-        ctx.fillStyle = theme.scrim;
-        roundRect(ctx, margin, margin, W - margin * 2, boxH, Math.round(W * 0.028));
-        ctx.fill();
-        ctx.fillStyle = theme.text;
-        tLines.forEach((l, i) => {
-            ctx.fillText(plan.title.slice(l.start, l.end).replace(/\s+$/, ''),
-                margin + pad, margin + pad * 0.8 + i * Math.round(plan.titleSize * 1.28));
-        });
-        ctx.restore();
+    // Clip so scrolled-off lines vanish at the box edge instead of bleeding —
+    // the clip stays in 'bare' mode too, or a long caption scrolls out of its
+    // band and over the photos.
+    roundRect(ctx, boxX, boxY, boxW, boxH, Math.round(W * 0.028));
+    ctx.clip();
+    if (opts.captionStyle === 'bare') {
+        // No panel behind the text, so the text itself has to carry the
+        // separation from a busy photo.
+        ctx.shadowColor = theme.key === 'light' ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.75)';
+        ctx.shadowBlur = Math.round(W * 0.008);
     }
 
-    // ── brand mark ──
-    // Anchored to where the caption box sits at its FULL height, not its current
-    // one. Tied to the growing box it would creep up the frame as the text
-    // typed, which reads as a wobble rather than a watermark.
+    const scroll = Math.max(0, posF - (maxVisibleLines - 1)) * lineHeight;
+    const textX = boxX + pad;
+    const textTop = boxY + pad - scroll;
+
+    ctx.fillStyle = theme.text;
+    let caret = null;
+    for (let i = 0; i < lines.length; i++) {
+        const l = lines[i];
+        if (n < l.start) break; // `<` not `<=`: at n === start the caret has just landed on this line
+        const y = textTop + i * lineHeight;
+        if (y > boxY + boxH || y + lineHeight < boxY - lineHeight) continue;
+        const slice = plan.text.slice(l.start, Math.min(l.end, n)).replace(/\s+$/, '');
+        if (slice) ctx.fillText(slice, textX, y);
+        if (n <= l.end) caret = { x: textX + ctx.measureText(slice).width + Math.round(bodySize * 0.14), y };
+    }
+
+    if (typing && caret && (time * 2) % 1 < 0.62) {
+        ctx.fillStyle = theme.accent;
+        ctx.fillRect(caret.x, caret.y + Math.round(bodySize * 0.12), Math.round(bodySize * 0.09), bodySize);
+    }
+    ctx.restore();
+}
+
+// The opening title card. Its own fades live here; the layer's timing window
+// only gates when the painter runs at all.
+function paintTitle(ctx, plan, layer, time) {
+    const { W, theme, opts, margin, pad } = plan;
+    if (!plan.title) return;
+    const fadeIn = Math.min(1, time / 0.45);
+    const fadeOut = Math.min(1, Math.max(0, (opts.titleSeconds - time) / 0.6));
+    const a = Math.min(fadeIn, fadeOut);
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.font = `700 ${plan.titleSize}px ${FONT_STACK}`;
+    ctx.textBaseline = 'top';
+    ctx.textAlign = 'left';
+    const tLines = layoutLines(ctx, plan.title, W - margin * 2 - pad * 2).slice(0, 3);
+    const boxH = tLines.length * Math.round(plan.titleSize * 1.28) + pad * 1.6;
+    ctx.fillStyle = theme.scrim;
+    roundRect(ctx, margin, margin, W - margin * 2, boxH, Math.round(W * 0.028));
+    ctx.fill();
+    ctx.fillStyle = theme.text;
+    tLines.forEach((l, i) => {
+        ctx.fillText(plan.title.slice(l.start, l.end).replace(/\s+$/, ''),
+            margin + pad, margin + pad * 0.8 + i * Math.round(plan.titleSize * 1.28));
+    });
+    ctx.restore();
+}
+
+// A static image overlay (the brand mark today; any watermark/sticker later).
+// Geometry is resolved to pixels at compile time, so this stays a dumb draw.
+function paintImage(ctx, plan, layer) {
+    const entry = layer.src;
+    if (!entry?.img) return;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, Math.min(1, layer.opacity ?? 1));
+    if (layer.shadow) {
+        // Most brand marks are transparent PNGs; over a busy photo they vanish
+        // without something to lift them off it.
+        ctx.shadowColor = 'rgba(0,0,0,0.45)';
+        ctx.shadowBlur = Math.round(plan.W * 0.012);
+    }
+    ctx.drawImage(entry.img, layer.x, layer.y, layer.w, layer.h);
+    ctx.restore();
+}
+
+// A static text overlay (the footer today). Same compile-time-pixels contract.
+function paintText(ctx, plan, layer) {
+    ctx.save();
+    ctx.font = layer.font;
+    ctx.textAlign = layer.align || 'left';
+    ctx.textBaseline = layer.baseline || 'top';
+    ctx.fillStyle = layer.color;
+    ctx.fillText(layer.text, layer.x, layer.y);
+    ctx.restore();
+}
+
+function paintProgress(ctx, plan, layer, time) {
+    const { W, H, theme } = plan;
+    const h = Math.max(4, Math.round(H * 0.004));
+    ctx.fillStyle = theme.key === 'light' ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.16)';
+    ctx.fillRect(0, H - h, W, h);
+    ctx.fillStyle = theme.accent;
+    ctx.fillRect(0, H - h, W * (time / plan.duration), h);
+}
+
+// Open and close on black — a hard cut from frame zero looks like a glitch.
+function paintEdges(ctx, plan, layer, time) {
+    const { W, H, theme } = plan;
+    const edge = 0.45;
+    const dip = time < edge ? 1 - time / edge : (time > plan.duration - edge ? 1 - (plan.duration - time) / edge : 0);
+    if (dip > 0) {
+        ctx.fillStyle = theme.key === 'light' ? `rgba(255,255,255,${dip})` : `rgba(0,0,0,${dip})`;
+        ctx.fillRect(0, 0, W, H);
+    }
+}
+
+const PAINTERS = {
+    slideshow: paintSlideshow,
+    gradient: paintGradient,
+    caption: paintCaption,
+    title: paintTitle,
+    image: paintImage,
+    text: paintText,
+    progress: paintProgress,
+    edges: paintEdges,
+};
+
+/**
+ * The default stack, compiled from the legacy options — which is why every
+ * pre-layer caller keeps working: options are sugar, layers are truth.
+ * Geometry for the static overlays (logo, footer) resolves to pixels HERE,
+ * once, so their painters stay trivially dumb and templates can later swap in
+ * fractional coordinates at the same spot.
+ */
+export function compileLayers(plan) {
+    const { W, H, opts, margin, pad, lineHeight, maxVisibleLines } = plan;
+    const layers = [];
+
+    layers.push({ id: 'slideshow', type: 'slideshow' });
+    if (opts.textPosition === 'bottom') layers.push({ id: 'gradient', type: 'gradient' });
+    layers.push({ id: 'caption', type: 'caption' });
+
+    if (opts.showTitle && plan.title) {
+        layers.push({ id: 'title', type: 'title', timing: { start: 0, end: opts.titleSeconds } });
+    }
+
     if (plan.logo?.img) {
-        const li = plan.logo.img;
+        // Anchored to where the caption box sits at its FULL height, not its
+        // current one. Tied to the growing box it would creep up the frame as
+        // the text typed, which reads as a wobble rather than a watermark.
         const lw = W * Math.max(0.04, Math.min(0.4, opts.logoScale));
         const lh = lw * (plan.logo.height / Math.max(1, plan.logo.width));
         const fullBoxH = maxVisibleLines * lineHeight + pad * 2;
@@ -659,44 +816,51 @@ export function paintFrame(ctx, plan, t) {
             : H - margin - fullBoxH;
         const bottomY = Math.max(margin, captionTopFull - margin * 0.45 - lh);
         const pos = opts.logoPosition || 'top-right';
-        const x = pos.endsWith('left') ? margin : W - margin - lw;
-        const y = pos.startsWith('top') ? margin : bottomY;
-
-        ctx.save();
-        ctx.globalAlpha = Math.max(0, Math.min(1, opts.logoOpacity));
-        // Most brand marks are transparent PNGs; over a busy photo they vanish
-        // without something to lift them off it.
-        ctx.shadowColor = 'rgba(0,0,0,0.45)';
-        ctx.shadowBlur = Math.round(W * 0.012);
-        ctx.drawImage(li, x, y, lw, lh);
-        ctx.restore();
+        layers.push({
+            id: 'logo', type: 'image', src: plan.logo,
+            x: pos.endsWith('left') ? margin : W - margin - lw,
+            y: pos.startsWith('top') ? margin : bottomY,
+            w: lw, h: lh,
+            opacity: opts.logoOpacity, shadow: true,
+        });
     }
 
-    // ── footer + progress ──
     if (opts.footer) {
+        layers.push({
+            id: 'footer', type: 'text', text: opts.footer,
+            font: `600 ${Math.round(plan.bodySize * 0.62)}px ${FONT_STACK}`,
+            color: plan.theme.dim, align: 'center', baseline: 'bottom',
+            x: W / 2, y: H - Math.round(margin * 0.28),
+        });
+    }
+
+    if (opts.showProgress) layers.push({ id: 'progress', type: 'progress' });
+    layers.push({ id: 'edges', type: 'edges' });
+
+    return layers;
+}
+
+/**
+ * Paint the frame at time `t`. Pure: same t always gives the same picture, so
+ * the preview scrubber and the recorder share one code path. The frame is the
+ * background plus plan.layers painted in stack order; a layer skips when
+ * hidden or outside its timing window.
+ */
+export function paintFrame(ctx, plan, t) {
+    const time = Math.max(0, Math.min(plan.duration, t));
+
+    ctx.save();
+    ctx.fillStyle = plan.theme.bg;
+    ctx.fillRect(0, 0, plan.W, plan.H);
+
+    for (const layer of plan.layers) {
+        if (layer.visible === false) continue;
+        if (layer.timing && (time < layer.timing.start || time >= layer.timing.end)) continue;
+        const painter = PAINTERS[layer.type];
+        if (!painter) continue;
         ctx.save();
-        ctx.font = `600 ${Math.round(plan.bodySize * 0.62)}px ${FONT_STACK}`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'bottom';
-        ctx.fillStyle = theme.dim;
-        ctx.fillText(opts.footer, W / 2, H - Math.round(margin * 0.28));
+        painter(ctx, plan, layer, time);
         ctx.restore();
-    }
-
-    if (opts.showProgress) {
-        const h = Math.max(4, Math.round(H * 0.004));
-        ctx.fillStyle = theme.key === 'light' ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.16)';
-        ctx.fillRect(0, H - h, W, h);
-        ctx.fillStyle = theme.accent;
-        ctx.fillRect(0, H - h, W * (time / plan.duration), h);
-    }
-
-    // Open and close on black — a hard cut from frame zero looks like a glitch.
-    const edge = 0.45;
-    const dip = time < edge ? 1 - time / edge : (time > plan.duration - edge ? 1 - (plan.duration - time) / edge : 0);
-    if (dip > 0) {
-        ctx.fillStyle = theme.key === 'light' ? `rgba(255,255,255,${dip})` : `rgba(0,0,0,${dip})`;
-        ctx.fillRect(0, 0, W, H);
     }
 
     ctx.restore();
@@ -718,19 +882,34 @@ export function paintFrame(ctx, plan, t) {
  * take starts against a pipeline that is already running. Best-effort: if any
  * of it throws, the real recording still goes ahead.
  */
-async function primeEncoder(ctx, plan, stream, mimeType, pushFrame) {
+async function primeEncoder(plan, mimeType) {
     try {
-        const primer = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: plan.bitrate });
+        // The primer records ITS OWN small canvas, never the real stream. An
+        // earlier version primed on the same stream the real recorder then
+        // started on — and a track handed from a just-stopped recorder to a new
+        // one is itself a race, which occasionally reproduced the exact empty
+        // file the primer exists to prevent.
+        const c = document.createElement('canvas');
+        c.width = 480;
+        c.height = 270;
+        const cctx = c.getContext('2d');
+        const s = c.captureStream(0);
+        const track = s.getVideoTracks()[0];
+        const push = track && typeof track.requestFrame === 'function' ? () => track.requestFrame() : () => {};
+
+        const primer = new MediaRecorder(s, { mimeType, videoBitsPerSecond: 500000 });
         const done = new Promise((resolve) => { primer.onstop = resolve; primer.onerror = resolve; });
         primer.ondataavailable = () => { /* deliberately discarded */ };
         primer.start(PRIME_SLICE_MS);
         for (let i = 0; i < PRIME_FRAMES; i++) {
-            paintFrame(ctx, plan, 0);
-            pushFrame();
+            cctx.fillStyle = i % 2 ? '#222' : '#444';
+            cctx.fillRect(0, 0, c.width, c.height);
+            push();
             await new Promise((r) => setTimeout(r, Math.max(16, 1000 / plan.fps)));
         }
         primer.stop();
         await Promise.race([done, new Promise((r) => setTimeout(r, 1500))]);
+        s.getTracks().forEach((t) => t.stop());
     } catch { /* the real recording is what matters */ }
 }
 
@@ -815,9 +994,9 @@ export async function renderVideo({ canvas, plan, audio, onProgress, signal }) {
         rec.onerror = (e) => reject(e?.error || new Error('The recorder failed mid-render.'));
     });
 
+    await primeEncoder(plan, mimeType);
     paintFrame(ctx, plan, 0);
     pushFrame();
-    await primeEncoder(ctx, plan, stream, mimeType, pushFrame);
     rec.start(1000);
 
     // Music starts in the same tick the recorder does, and its envelope is

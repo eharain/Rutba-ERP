@@ -44,6 +44,9 @@
     "duration_seconds": {
       "type": "decimal"
     },
+    "start_offset": {
+      "type": "decimal"
+    },
     "notes": {
       "type": "text"
     }

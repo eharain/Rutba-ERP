@@ -1,6 +1,15 @@
 # Video Studio v2 — layers, editing, customization
 
-**Status:** planned · 2026-08-11
+**Status:** M0–M2 done · 2026-08-11 · next: M3 (layer editor)
+- M0 ✔ schema landed + seeded (`social-video-templates` table, `social_posts.video_settings`,
+  `social_audio_tracks.start_offset`). Core needs a restart to mount the new route.
+- M1 ✔ scene graph: `plan.layers` + per-type painters; A/B-verified pixel-identical
+  across 3 looks × 10 timestamps; stack is live (layer toggles change output).
+- M2 ✔ templates + recipes: `applyLayerPatches` (fractional→px, unknown types kept),
+  `captionStyle: box|bare`, studio template picker + save-as + built-ins button,
+  full-snapshot `video_settings` written on attach, poster resolves recipe →
+  default template → config. Encoder cold-start empty-file race fixed for real
+  (primer records its own canvas, never the live stream) + one job-level retry.
 **Builds on:** `packages/video-maker` (shared renderer), rutba-social Video Studio +
 Audio Library, Social Poster unattended generation — all shipped 2026-08-10.
 
