@@ -143,16 +143,20 @@ const PLATFORM_FIELDS = {
     },
     youtube: {
         help: {
-            accountType: "A YouTube channel owned by a Google account (a Brand-account channel works too).",
+            accountType: "A YouTube channel owned by a Google account (a Brand-account channel works too). Posts with a video go to Studio as an upload; text and image posts go to the channel's community tab.",
             account: "Set up a Google Cloud project with the YouTube Data API v3 enabled and an OAuth consent screen for that Google account.",
             api: "YouTube Data API v3. Uploads cost ~1600 quota units each; the default 10,000/day quota is roughly 6 uploads per day.",
             how: "Set the Google OAuth Client ID + Secret and click Connect, then choose the channel. Scopes: youtube.upload, youtube.force-ssl.",
             note: "Request a quota increase in Google Cloud if you plan to upload more than a few videos per day.",
             docs: "https://developers.google.com/youtube/v3/getting-started",
         },
-        destination: { key: "target_name", label: "Channel URL", placeholder: "https://www.youtube.com/channel/UC… (or @handle)" },
+        // YouTube has two destinations on one channel and they live on
+        // different hosts: community posts on youtube.com/…/community, video
+        // uploads in Studio. Both are recorded so neither has to be guessed.
+        destination: { key: "target_name", label: "Community URL", placeholder: "https://www.youtube.com/channel/UC…/community" },
         ids: [
-            { key: "platform_user_id", label: "Channel ID", placeholder: "UC… — Studio uploads need this form" },
+            { key: "page_id", label: "Studio channel URL", placeholder: "https://studio.youtube.com/channel/UC… — used for video uploads" },
+            { key: "platform_user_id", label: "Channel ID", placeholder: "UC…" },
         ],
         fields: [
             { key: "api_key", label: "Google OAuth Client ID", type: "password" },
