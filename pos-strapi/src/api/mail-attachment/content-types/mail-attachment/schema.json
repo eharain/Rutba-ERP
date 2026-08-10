@@ -1,0 +1,43 @@
+{
+  "kind": "collectionType",
+  "collectionName": "mail_attachments",
+  "info": {
+    "singularName": "mail-attachment",
+    "pluralName": "mail-attachments",
+    "displayName": "Mail Attachment",
+    "description": "Attachment METADATA for an imported message. M2 deliberately stores no binary — the live gateway can still fetch the part from the mailbox while it exists; binary snapshots via the upload provider are the recorded M3+ upgrade (docs/todo/email-program/01-data-model.md)."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "mail_message": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::mail-message.mail-message",
+      "inversedBy": "attachments"
+    },
+    "filename": {
+      "type": "string"
+    },
+    "content_type": {
+      "type": "string"
+    },
+    "size_bytes": {
+      "type": "integer"
+    },
+    "checksum": {
+      "type": "string",
+      "description": "sha256 of the decoded part."
+    },
+    "cid": {
+      "type": "string",
+      "description": "Inline content-id, when the part is referenced from the HTML body."
+    },
+    "part_id": {
+      "type": "integer",
+      "description": "Index into the parsed attachment list at import time — the live getAttachment key."
+    }
+  }
+}

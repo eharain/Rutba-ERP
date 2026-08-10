@@ -2,6 +2,8 @@ const buildSocialCronTasks = require('./cron-tasks');
 const buildInventoryCronTasks = require('./inventory-cron-tasks');
 const buildWorkflowCronTasks = require('./workflow-cron-tasks');
 const buildHrCronTasks = require('./hr-cron-tasks');
+const buildMailCronTasks = require('./mail-cron-tasks');
+const buildCampaignCronTasks = require('./campaign-cron-tasks');
 
 module.exports = ({ env }) => ({
     host: env('HOST', '0.0.0.0'),
@@ -61,6 +63,17 @@ module.exports = ({ env }) => ({
             ...(env.bool('HR_CRON_ENABLED', true)
                 ? buildHrCronTasks({
                     birthdayCheckRule: env('HR_BIRTHDAY_CHECK_RULE', '0 7 * * *'),
+                })
+                : {}),
+            ...(env.bool('MAIL_CRON_ENABLED', true)
+                ? buildMailCronTasks({
+                    unseenPollRule: env('MAIL_UNSEEN_POLL_RULE', '*/2 * * * *'),
+                })
+                : {}),
+            ...(env.bool('CAMPAIGNS_CRON_ENABLED', true)
+                ? buildCampaignCronTasks({
+                    dueSweepRule: env('CAMPAIGNS_DUE_SWEEP_RULE', '* * * * *'),
+                    reportPollRule: env('CAMPAIGNS_REPORT_POLL_RULE', '*/5 * * * *'),
                 })
                 : {}),
         },

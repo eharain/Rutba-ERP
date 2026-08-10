@@ -1,0 +1,121 @@
+{
+  "kind": "collectionType",
+  "collectionName": "mail_messages",
+  "info": {
+    "singularName": "mail-message",
+    "pluralName": "mail-messages",
+    "displayName": "Mail Message",
+    "description": "A materialized email — created ONLY via import-on-link or a shared-inbox triage action (docs/todo/email-program/01-data-model.md). The mailbox stays the source of truth for everything else."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "account": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::mail-account.mail-account"
+    },
+    "message_id": {
+      "type": "string",
+      "description": "RFC 5322 Message-ID — the durable identity. Idempotency: unique per (account, message_id), falling back to (account, dedupe_hash); enforced in the service, not the DB (duplicates exist in the wild)."
+    },
+    "dedupe_hash": {
+      "type": "string",
+      "description": "sha256(date|from|subject|size) — identity fallback when Message-ID is absent."
+    },
+    "folder": {
+      "type": "string",
+      "description": "Last-known IMAP folder — advisory, can go stale."
+    },
+    "imap_uid": {
+      "type": "biginteger",
+      "description": "Advisory; only valid together with uidvalidity."
+    },
+    "uidvalidity": {
+      "type": "biginteger"
+    },
+    "direction": {
+      "type": "enumeration",
+      "enum": ["inbound", "outbound"],
+      "default": "inbound"
+    },
+    "from_email": {
+      "type": "string"
+    },
+    "from_name": {
+      "type": "string"
+    },
+    "to_json": {
+      "type": "json"
+    },
+    "cc_json": {
+      "type": "json"
+    },
+    "bcc_json": {
+      "type": "json"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "date": {
+      "type": "datetime"
+    },
+    "snippet": {
+      "type": "string",
+      "description": "First ~200 chars of the text body."
+    },
+    "body_html": {
+      "type": "text",
+      "description": "Sanitized at import (same pipeline as the live reading pane)."
+    },
+    "body_text": {
+      "type": "text"
+    },
+    "headers_json": {
+      "type": "json",
+      "description": "Selected headers only (References, In-Reply-To, List-Id, ...)."
+    },
+    "has_attachments": {
+      "type": "boolean",
+      "default": false
+    },
+    "size_bytes": {
+      "type": "integer"
+    },
+    "triage_status": {
+      "type": "enumeration",
+      "enum": ["none", "open", "assigned", "awaiting", "closed", "spam"],
+      "default": "none",
+      "description": "none = personal/linked-only import (not a queue item). Shared-inbox triage lifecycle: open → assigned → awaiting → closed."
+    },
+    "assigned_to": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "imported_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "links": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::mail-link.mail-link",
+      "mappedBy": "mail_message"
+    },
+    "attachments": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::mail-attachment.mail-attachment",
+      "mappedBy": "mail_message"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

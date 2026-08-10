@@ -1,0 +1,118 @@
+{
+  "kind": "collectionType",
+  "collectionName": "mail_accounts",
+  "info": {
+    "singularName": "mail-account",
+    "pluralName": "mail-accounts",
+    "displayName": "Mail Account",
+    "description": "A connected mailbox (personal or shared), read LIVE over IMAP — no sync, no mirror. Messages are only persisted when linked (import-on-demand, see docs/todo/email-program/). Credentials are AES-256-GCM ciphertext, never plaintext."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "kind": {
+      "type": "enumeration",
+      "enum": ["personal", "shared"],
+      "default": "personal",
+      "required": true
+    },
+    "email": {
+      "type": "email",
+      "required": true,
+      "description": "The mailbox address; also the default From."
+    },
+    "from_name": {
+      "type": "string"
+    },
+    "reply_to": {
+      "type": "string"
+    },
+    "imap_host": {
+      "type": "string",
+      "required": true
+    },
+    "imap_port": {
+      "type": "integer",
+      "default": 993
+    },
+    "imap_secure": {
+      "type": "boolean",
+      "default": true,
+      "description": "true = implicit TLS; false = STARTTLS upgrade."
+    },
+    "imap_username": {
+      "type": "string",
+      "description": "Falls back to `email` when blank."
+    },
+    "imap_password_enc": {
+      "type": "text",
+      "private": true,
+      "description": "AES-256-GCM ciphertext (v1:iv:tag:ct) keyed by MAIL_CRED_KEY. Written only by the controller; read only via the service's raw query."
+    },
+    "smtp_host": {
+      "type": "string",
+      "required": true
+    },
+    "smtp_port": {
+      "type": "integer",
+      "default": 465
+    },
+    "smtp_secure": {
+      "type": "boolean",
+      "default": true
+    },
+    "smtp_username": {
+      "type": "string",
+      "description": "Falls back to imap_username, then `email`."
+    },
+    "smtp_password_enc": {
+      "type": "text",
+      "private": true,
+      "description": "Same crypto as imap_password_enc. Blank = reuse the IMAP password."
+    },
+    "signature_html": {
+      "type": "text",
+      "description": "Sanitized on save (sanitizeSignature)."
+    },
+    "provisioning_source": {
+      "type": "enumeration",
+      "enum": ["byo", "mailcow"],
+      "default": "byo",
+      "description": "mailcow rows are managed by the M5 provisioning flow."
+    },
+    "special_folders": {
+      "type": "json",
+      "description": "Detected SPECIAL-USE map {sent, drafts, trash, junk, archive} — cached at validate/first connect."
+    },
+    "unseen_counts": {
+      "type": "json",
+      "description": "Written by the M1 unseen-count poller: {\"INBOX\": 4, ..., \"checked_at\": ISO}."
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "last_checked_at": {
+      "type": "datetime",
+      "description": "Last successful IMAP operation."
+    },
+    "last_error": {
+      "type": "text"
+    },
+    "access_roles": {
+      "type": "json",
+      "description": "Shared accounts only: app-role KEYS (e.g. [\"crm_staff\"]) whose holders may use this inbox without being listed in owners. Checked by ensureAccountAccess alongside owners."
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

@@ -7,6 +7,7 @@ import { CrmContactsEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 import ContactForm from "../../components/form/ContactForm";
 import ActivityForm from "../../components/form/ActivityForm";
+import MailTimeline from "../../components/MailTimeline";
 import LeadForm from "../../components/form/LeadForm";
 
 const ACTIVITY_ICONS = {
@@ -197,6 +198,7 @@ export default function ContactDetail() {
                                     </ul>
                                 )}
                             </div>
+                            <MailTimeline entityUid="api::crm-contact.crm-contact" targetDocumentId={documentId} />
                         </div>
                     </div>
                 )}

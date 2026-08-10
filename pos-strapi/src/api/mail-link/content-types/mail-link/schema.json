@@ -1,0 +1,41 @@
+{
+  "kind": "collectionType",
+  "collectionName": "mail_links",
+  "info": {
+    "singularName": "mail-link",
+    "pluralName": "mail-links",
+    "displayName": "Mail Link",
+    "description": "Polymorphic link between an imported mail-message and any ERP record (entity_uid + target_document_id — the work-item-* pattern). One row per attachment of a message to a person, contact, order, or ticket."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "mail_message": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::mail-message.mail-message",
+      "inversedBy": "links"
+    },
+    "entity_uid": {
+      "type": "string",
+      "required": true,
+      "description": "e.g. api::crm-contact.crm-contact, api::sale-order.sale-order, api::contact-ticket.contact-ticket, api::person.person"
+    },
+    "target_document_id": {
+      "type": "string",
+      "required": true
+    },
+    "link_kind": {
+      "type": "enumeration",
+      "enum": ["manual", "auto", "triage"],
+      "default": "manual"
+    },
+    "linked_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

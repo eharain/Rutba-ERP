@@ -62,6 +62,7 @@ const CUSTOM_ACTIONS = {
     'validateConnection', 'listFolders', 'listMessages', 'getMessage',
     'getAttachment', 'setFlags', 'removeMessage', 'sendMessage',
     'transferMessage', 'createDraft', 'createImport', 'listAssignees', 'createProvision',
+    'getServerDefaults',
     'listAccess', 'setAccess',
   ],
   // Mail-server registry (rutba-users): controller re-checks users/mail admin.
