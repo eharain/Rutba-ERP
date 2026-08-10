@@ -4,19 +4,14 @@ import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { SocialRepliesEndpoints, SocialAccountsEndpoints, SocialPostsEndpoints } from "@rutba/api-provider/endpoints";
 import { useToast } from "../components/Toast";
-import { PlatformBadge } from "../components/PlatformBadge";
+import PLATFORMS, { PlatformBadge } from "../components/PlatformBadge";
 import Link from "next/link";
 
 const PAGE_SIZE = 25;
 
-const PLATFORM_COLORS = {
-    instagram: "#E1306C",
-    facebook: "#1877F2",
-    x: "#000000",
-    linkedin: "#0A66C2",
-    tiktok: "#010101",
-    youtube: "#FF0000",
-};
+// One registry: PlatformBadge already carries every platform's label + colour,
+// and a second copy here only drifts (this one was missing LinkedIn/WhatsApp).
+const platformColor = (p) => PLATFORMS[p]?.color || "#6c757d";
 
 export default function RepliesPage() {
     const { jwt } = useAuth();
@@ -126,11 +121,9 @@ export default function RepliesPage() {
                     <div className="col-md-3">
                         <select className="form-select form-select-sm" value={platformFilter} onChange={(e) => { setPlatformFilter(e.target.value); setPage(1); }}>
                             <option value="all">All Platforms</option>
-                            <option value="instagram">Instagram</option>
-                            <option value="facebook">Facebook</option>
-                            <option value="x">X</option>
-                            <option value="tiktok">TikTok</option>
-                            <option value="youtube">YouTube</option>
+                            {Object.entries(PLATFORMS).map(([key, p]) => (
+                                <option key={key} value={key}>{p.label}</option>
+                            ))}
                         </select>
                     </div>
                     <div className="col-md-3">
@@ -184,7 +177,7 @@ export default function RepliesPage() {
                                             <span
                                                 className="badge"
                                                 style={{
-                                                    backgroundColor: PLATFORM_COLORS[reply.platform] || "#6c757d",
+                                                    backgroundColor: platformColor(reply.platform),
                                                     color: reply.platform === "x" ? "#fff" : "#fff",
                                                     fontSize: 10,
                                                 }}

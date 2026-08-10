@@ -20,14 +20,9 @@ const STATUS_BADGES = {
     failed: "bg-danger",
 };
 
-const PLATFORM_COLORS = {
-    instagram: "#E1306C",
-    facebook: "#1877F2",
-    x: "#000000",
-    linkedin: "#0A66C2",
-    tiktok: "#010101",
-    youtube: "#FF0000",
-};
+// One registry: PlatformBadge already carries every platform's label + colour,
+// and a second copy here only drifts (this one was missing LinkedIn/WhatsApp).
+const platformColor = (p) => PLATFORMS[p]?.color || "#6c757d";
 
 export default function PostDetailPage() {
     const { jwt } = useAuth();
@@ -629,7 +624,7 @@ export default function PostDetailPage() {
                                                         <small className="text-muted">
                                                             {r.replied_at ? new Date(r.replied_at).toLocaleString() : r.createdAt ? new Date(r.createdAt).toLocaleString() : ""}
                                                         </small>
-                                                        <span className="badge" style={{ backgroundColor: PLATFORM_COLORS[r.platform] || "#6c757d", color: "#fff", fontSize: 10 }}>
+                                                        <span className="badge" style={{ backgroundColor: platformColor(r.platform), color: "#fff", fontSize: 10 }}>
                                                             {r.platform}
                                                         </span>
                                                     </div>
