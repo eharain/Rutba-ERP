@@ -68,11 +68,40 @@ export default function AudioLibraryPage() {
 
     const playable = (t) => MediaUtilsEndpoints.strapiImageUrl(t.audio_file || t.url);
 
+    // Track length, read off a metadata-only <audio> load. Media elements read
+    // duration cross-origin without CORS, so this works for foreign URLs too.
+    // Null on anything that will not load within the timeout — the field is
+    // cosmetic and must never block adding a track.
+    const probeDuration = (src) => new Promise((resolve) => {
+        const a = document.createElement("audio");
+        const finish = (v) => { a.src = ""; resolve(v); };
+        const timer = setTimeout(() => finish(null), 5000);
+        a.onloadedmetadata = () => {
+            clearTimeout(timer);
+            finish(Number.isFinite(a.duration) && a.duration > 0 ? Math.round(a.duration * 100) / 100 : null);
+        };
+        a.onerror = () => { clearTimeout(timer); finish(null); };
+        a.preload = "metadata";
+        a.src = src;
+    });
+
     const preview = (t) => {
         const el = audioRef.current;
         if (!el) return;
         if (playingId === t.documentId) { el.pause(); setPlayingId(null); return; }
         el.src = playable(t);
+        // Self-heal: rows created before duration was recorded (or whose URL
+        // could not be probed at add time) pick it up the first time anyone
+        // listens. Cosmetic — failures are swallowed.
+        el.onloadedmetadata = async () => {
+            const d = el.duration;
+            if (t.duration_seconds || !Number.isFinite(d) || d <= 0) return;
+            const rounded = Math.round(d * 100) / 100;
+            try {
+                await SocialAudioTracksEndpoints.update(t.documentId, { duration_seconds: rounded });
+                setTracks((list) => list.map((x) => (x.documentId === t.documentId ? { ...x, duration_seconds: rounded } : x)));
+            } catch { /* next listen retries */ }
+        };
         el.play().then(() => setPlayingId(t.documentId))
             .catch(() => toast("That URL would not play — check it is a direct link to an audio file.", "warning"));
     };
@@ -110,6 +139,10 @@ export default function AudioLibraryPage() {
                     : null,
                 ...(form.audioFileId ? { audio_file: form.audioFileId } : {}),
             };
+            if (!editing) {
+                const duration = await probeDuration(url);
+                if (duration) payload.duration_seconds = duration;
+            }
             if (editing) {
                 await SocialAudioTracksEndpoints.update(editing, payload);
                 toast("Track updated.", "success");
@@ -144,12 +177,18 @@ export default function AudioLibraryPage() {
                 });
                 const rec = (Array.isArray(uploaded) ? uploaded : [uploaded])[0];
                 if (!rec?.id || !rec?.url) continue;
+                // Probe the local bytes, not the uploaded URL — no round trip,
+                // and it works before the media host has the file visible.
+                const blobUrl = URL.createObjectURL(file);
+                const duration = await probeDuration(blobUrl);
+                URL.revokeObjectURL(blobUrl);
                 await SocialAudioTracksEndpoints.create({
                     name: file.name.replace(/\.[^.]+$/, ""),
                     url: rec.url,
                     audio_file: rec.id,
                     is_active: true,
                     tags: [],
+                    ...(duration ? { duration_seconds: duration } : {}),
                 });
                 added++;
             }
