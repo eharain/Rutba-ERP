@@ -80,10 +80,21 @@ function inferAction(method, endpointPath, methodName) {
   return null;
 }
 
+/**
+ * Name pre-filter for descriptor members.
+ *
+ * NOTE: this is only a pre-filter — the loop below still invokes each method
+ * and drops anything that is not an object carrying a `path`, a resolvable uid,
+ * an action and at least one grant. A name that is NOT matched here is skipped
+ * silently and never seeded, which means the endpoint has no policy and answers
+ * 403 forever; so a missing prefix is a bug that presents as a permission
+ * problem, not as a seeding error. Audit with the scan described in
+ * docs/todo/api-pro-descriptor-whitelist-gap.md before adding a verb.
+ */
 function isDescriptorMethodName(methodName) {
   const name = String(methodName || '').toLowerCase();
   if (!name || name === 'meta') return false;
-  return /^(list|by|get|find|search|create|update|del|delete|remove|publish|unpublish|archive|unarchive|assign|process|open|close|transfer|validate|shipping|tracking|messages|send|make|mark|unlock|checkout|record|set|toggle|reset|approve|reject|accept|cancel|reorder|merge|resolve|recompute|sync|run|rebuild|sell|duplicate)/.test(name);
+  return /^(list|by|get|find|search|create|update|del|delete|remove|publish|unpublish|archive|unarchive|assign|process|open|close|transfer|validate|shipping|tracking|messages|send|make|mark|unlock|checkout|record|set|toggle|reset|approve|reject|accept|cancel|reorder|merge|resolve|recompute|sync|run|rebuild|sell|duplicate|submit)/.test(name);
 }
 
 function createInvocationArgs(fn) {

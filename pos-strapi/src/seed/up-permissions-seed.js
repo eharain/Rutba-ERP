@@ -38,6 +38,12 @@ const CUSTOM_ACTIONS = {
   // competency breakdown is read and written through. Without the grant every
   // one of them answers 403 regardless of the caller's HR app-role.
   'api::hr-appraisal.hr-appraisal': ['myAppraisals', 'teamAppraisals', 'submitSelfAssessment', 'submitManagerReview'],
+  // The other actions api-pro only started seeding once its descriptor
+  // whitelist learned the `submit` prefix — granted here too, since api-pro and
+  // UP are independent gates and an endpoint needs to clear both.
+  'api::hr-expense-claim.hr-expense-claim': ['submitClaim'],
+  'api::hr-grievance.hr-grievance': ['submitGrievance'],
+  'api::contact-ticket.contact-ticket': ['submitInternalTicket'],
   'api::hr-team.hr-team': ['appRoleOptions'],
   'api::pay-statutory-remittance.pay-statutory-remittance': ['process'],
   'api::pay-adjustment.pay-adjustment': ['disburse'],
