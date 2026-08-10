@@ -16,6 +16,29 @@
  *   C. purchase generate-bill → the bill capitalizes to INVENTORY, so the
  *      acc-bill lifecycle debits the asset instead of OPERATING_EXPENSES.
  *   D. pay-adjustment disburse → Dr EMPLOYEE_ADVANCES / Cr cash, idempotent.
+ *   E. The same two actions over HTTP, so routing and the gates are exercised
+ *      too, not just the services.
+ *
+ * Section E serves its OWN HTTP on SMOKE_PORT (default 4011) rather than
+ * talking to a dev server on 4010: booting a second Strapi alongside a running
+ * one starves both (each boot is minutes of admin build + type generation), and
+ * a self-served port makes the run standalone. Nothing else may hold that port.
+ *
+ * Known limit: under `createStrapi().load()` the api-pro request-interceptor
+ * never sets `ctx.state.apiProClaim` — verified against
+ * /acc-journal-entries/reports/trial-balance, a claim-gated route that predates
+ * this work, so it is the harness and not these endpoints. Section E probes for
+ * that and SKIPS the claim-dependent assertions rather than reporting a
+ * failure it cannot attribute. Full HTTP + policy coverage for the same two
+ * endpoints runs in rutba-core/scripts/smoke-accounting-gl.js, which serves
+ * through core's own interceptor. What section E still asserts unconditionally:
+ * the session token works, api-pro can see the granted roles, and disburse
+ * refuses a non-payroll caller.
+ *
+ * On tokens: users-permissions runs `jwtManagement: 'refresh'` (config/plugins),
+ * so access tokens are session-backed — a hand-signed {id} JWT is rejected with
+ * "Missing or invalid credentials". Section E mints one through the plugin's own
+ * jwt service, which routes via strapi.sessionManager.
  *
  * Self-cleaning: marker rows and the journal entries they produce are removed.
  * Run: npm --prefix pos-strapi run smoke:accounting-gl   (from the repo root:
@@ -24,6 +47,8 @@
 
 const { createStrapi, compileStrapi } = require('@strapi/strapi');
 
+const SMOKE_PORT = Number(process.env.SMOKE_PORT || 4011);
+const BASE = `http://127.0.0.1:${SMOKE_PORT}`;
 const MARK = '__pos_gl_smoke__';
 const PR_UID = 'api::purchase-return.purchase-return';
 const PURCHASE_UID = 'api::purchase.purchase';
@@ -41,11 +66,41 @@ const RESOLVER_KEYS = [
 ];
 
 let failures = 0;
+let lastClaim = null;
 function check(name, ok, detail) {
   if (ok) console.log(`  PASS  ${name}`);
   else { failures++; console.log(`  FAIL  ${name}${detail ? ` — ${detail}` : ''}`); }
 }
 const num = (v) => Math.round(Number(v || 0) * 100) / 100;
+
+// Wait for the HTTP server this run started to answer (401 counts — it means
+// something is listening).
+async function reachable(tries = 20) {
+  for (let i = 0; i < tries; i++) {
+    try {
+      const res = await fetch(`${BASE}/api/users/me`, { signal: AbortSignal.timeout(3000) });
+      if (res.status > 0) return true;
+    } catch { /* not up yet */ }
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  return false;
+}
+
+async function req(method, path, token, body, headers = {}) {
+  const res = await fetch(BASE + path, {
+    method,
+    headers: {
+      'content-type': 'application/json',
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
+      ...headers,
+    },
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+    signal: AbortSignal.timeout(20000),
+  });
+  let json = null;
+  try { json = await res.json(); } catch { /* empty body */ }
+  return { status: res.status, body: json };
+}
 
 async function entriesFor(strapi, source_type, source_id) {
   return strapi.entityService.findMany('api::acc-journal-entry.acc-journal-entry', {
@@ -55,10 +110,41 @@ async function entriesFor(strapi, source_type, source_id) {
 }
 const lineFor = (e, code) => (e.lines || []).find((l) => String(l.account?.code) === code);
 
+// Strapi's "port already used" error arrives mid-boot and reads like an
+// unrelated failure, so say it plainly before spending minutes loading.
+async function portFree(port) {
+  const net = require('net');
+  return new Promise((resolve) => {
+    const s = net.createServer()
+      .once('error', () => resolve(false))
+      .once('listening', () => s.close(() => resolve(true)))
+      .listen(port, '127.0.0.1');
+  });
+}
+
 async function main() {
+  if (!(await portFree(SMOKE_PORT))) {
+    console.error(`Port ${SMOKE_PORT} is in use — free it or set SMOKE_PORT to another port.`);
+    process.exitCode = 1;
+    return;
+  }
+  // Bind our own port so section E can drive real HTTP without a second boot.
+  // Use strapi.listen(), not strapi.server.listen(): the latter binds the
+  // socket without the middleware composition start() performs, so the api-pro
+  // request-interceptor never runs and every gated route falls through to UP.
+  process.env.PORT = String(SMOKE_PORT);
   const strapi = await createStrapi(await compileStrapi()).load();
+  // Record whether the api-pro interceptor resolved a claim for the last
+  // request, so section E can tell "the endpoint rejected me" apart from "the
+  // interceptor never ran in this harness".
+  strapi.server.use(async (ctx, next) => {
+    await next();
+    lastClaim = ctx.state.apiProClaim || null;
+  });
+  await strapi.listen();
   const created = [];
   const jeSources = [];
+  const grants = [];
   const track = (uid, row) => { created.push([uid, row.id]); return row; };
 
   try {
@@ -170,6 +256,105 @@ async function main() {
     const ae2 = await entriesFor(strapi, 'Employee Advance', adj.id);
     check('idempotent — no second entry', ae2.length === 1, `got ${ae2.length}`);
     check('idempotent path flags alreadyPosted', ctx.sent?.meta?.alreadyPosted === true);
+
+    /* ── E ── */
+    console.log(`E. HTTP against a running pos-strapi (${BASE})`);
+    if (!(await reachable())) {
+      check(`HTTP server came up on ${SMOKE_PORT}`, false, 'is something else holding the port?');
+    } else {
+      const knex = strapi.db.connection;
+      const actor = await knex('up_users').where('blocked', 0).first('id');
+      // Session-backed access token (see the header note on jwtManagement).
+      const token = await strapi.plugin('users-permissions').service('jwt').issue({ id: actor.id });
+      check('minted a session-backed access token', typeof token === 'string' && token.length > 0);
+
+      for (const key of ['accounts_admin', 'payroll_admin']) {
+        const role = await knex('api_pro_app_roles').where('key', key).first('id');
+        if (role && !(await knex('up_users_app_roles_lnk').where({ user_id: actor.id, app_role_id: role.id }).first('id'))) {
+          await knex('up_users_app_roles_lnk').insert({ user_id: actor.id, app_role_id: role.id });
+          grants.push({ user_id: actor.id, app_role_id: role.id });
+        }
+      }
+      // api-pro caches user→app_roles (`u:<id>:app_roles`) and only invalidates
+      // on app-role/app-domain content-type writes — a raw link-table insert
+      // like the one above leaves it stale. Without this the claim never
+      // resolves, the interceptor skips the request, and both endpoints 403
+      // for unrelated-looking reasons (UP "Forbidden" / the controller gate).
+      strapi.apiPro?.clearCache?.(actor.id);
+
+      // Diagnostic: the interceptor silently SKIPS a request whose claim it
+      // cannot resolve, and the endpoint then fails for an unrelated-looking
+      // reason (UP "Forbidden", or the controller's own gate). Prove api-pro
+      // can actually see the grants before blaming the endpoints.
+      check('strapi.apiPro is wired', Boolean(strapi.apiPro), 'plugin not bootstrapped?');
+      try {
+        const contextSvc = strapi.plugin('api-pro').service('context');
+        const seen = await contextSvc.loadUserAppRoles(strapi, actor.id);
+        const keys = (seen || []).map((r) => String(r.key || '').toLowerCase());
+        check('api-pro sees the granted app-roles', keys.includes('accounts_admin') && keys.includes('payroll_admin'),
+          `saw: ${keys.join(', ') || '(none)'}`);
+      } catch (e) {
+        check('api-pro context service reachable', false, e.message);
+      }
+      const acct = { 'X-Rutba-App': 'accounts', 'X-Rutba-App-Role': 'accounts_admin' };
+      const pay = { 'X-Rutba-App': 'payroll', 'X-Rutba-App-Role': 'payroll_admin' };
+
+      const me = await req('GET', '/api/users/me', token);
+      check('token authenticates', me.status === 200, `got ${me.status}`);
+
+      // Does the api-pro interceptor engage at all here? Probe an endpoint
+      // that predates this work and is known to be claim-gated.
+      await req('GET', '/api/acc-journal-entries/reports/trial-balance?from=2026-01-01&to=2026-12-31', token, undefined, acct);
+      const interceptorRuns = Boolean(lastClaim && lastClaim.roleKey);
+      if (!interceptorRuns) {
+        console.log('  SKIP  api-pro interceptor does not engage under createStrapi().load()+listen()');
+        console.log('        — no ctx.state.apiProClaim on a known claim-gated route, so the');
+        console.log('          claim-dependent assertions below would test the harness, not the code.');
+        console.log('        HTTP + policy coverage for these endpoints lives in');
+        console.log('          rutba-core/scripts/smoke-accounting-gl.js (section C/D).');
+      }
+
+      // generate-bill: the path that used to 403 every non-super-admin.
+      const p2 = track(PURCHASE_UID, await strapi.entityService.create(PURCHASE_UID, {
+        data: { orderId: `${MARK}-PO-HTTP`, order_date: new Date().toISOString(), status: 'Received', total: 510 },
+      }));
+      const p2doc = await strapi.documents(PURCHASE_UID).findFirst({ filters: { id: { $eq: p2.id } } });
+      const billRes = await req('POST', `/api/purchases/${p2doc.documentId}/generate-bill`, token, {}, acct);
+      if (interceptorRuns) {
+        check('generate-bill 200 for an accounts_admin claim', billRes.status === 200,
+          `got ${billRes.status} ${JSON.stringify(billRes.body && billRes.body.error)}`);
+      }
+      if (billRes.body?.data?.documentId) {
+        const brow = await knex('acc_bills').where('document_id', billRes.body.data.documentId).first('id', 'expense_key');
+        created.push([BILL_UID, brow.id]);
+        jeSources.push(['Bill Payment', brow.id]);
+        check('bill capitalizes to INVENTORY over HTTP', brow?.expense_key === 'INVENTORY', String(brow?.expense_key));
+        const hbe = await entriesFor(strapi, 'Bill Payment', brow.id);
+        check('AP entry debits 1300 Inventory', hbe.length === 1 && num(lineFor(hbe[0], '1300')?.debit) === 510,
+          JSON.stringify((hbe[0]?.lines || []).map((l) => [l.account?.code, l.debit, l.credit])));
+      }
+
+      // disburse: new route + UP grant + api-pro policy + payroll claim gate.
+      const adj2 = track(ADJ_UID, await strapi.entityService.create(ADJ_UID, {
+        data: { type: 'advance', amount: 900, status: 'Pending', reason: MARK, employee: emp.id },
+      }));
+      const adj2doc = await strapi.documents(ADJ_UID).findFirst({ filters: { id: { $eq: adj2.id } } });
+      const wrongClaim = await req('POST', `/api/pay-adjustments/${adj2doc.documentId}/disburse`, token, { data: {} }, acct);
+      check('disburse 403 for a non-payroll claim', wrongClaim.status === 403, `got ${wrongClaim.status}`);
+
+      const disRes = await req('POST', `/api/pay-adjustments/${adj2doc.documentId}/disburse`, token, { data: { method: 'Bank' } }, pay);
+      if (interceptorRuns) {
+        check('disburse 200 for a payroll_admin claim', disRes.status === 200,
+          `got ${disRes.status} ${JSON.stringify(disRes.body && disRes.body.error)}`);
+        jeSources.push(['Employee Advance', adj2.id]);
+        const hae = await entriesFor(strapi, 'Employee Advance', adj2.id);
+        check('advance posts Dr 1220 / Cr 1100 Bank over HTTP',
+          hae.length === 1 && num(lineFor(hae[0], '1220')?.debit) === 900 && num(lineFor(hae[0], '1100')?.credit) === 900,
+          JSON.stringify((hae[0]?.lines || []).map((l) => [l.account?.code, l.debit, l.credit])));
+      } else {
+        jeSources.push(['Employee Advance', adj2.id]);
+      }
+    }
   } finally {
     const knex = strapi.db.connection;
     for (const [source_type, source_id] of jeSources) {
@@ -188,6 +373,9 @@ async function main() {
     }
     for (const [uid, id] of created.reverse()) {
       try { await strapi.entityService.delete(uid, id); } catch { /* best-effort */ }
+    }
+    for (const g of grants) {
+      try { await knex('up_users_app_roles_lnk').where(g).del(); } catch { /* best-effort */ }
     }
     console.log(failures ? `\n${failures} FAILED` : '\nall checks passed');
     await strapi.destroy();

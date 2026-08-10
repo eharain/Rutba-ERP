@@ -1,5 +1,25 @@
 # Accounting Module — Completion Spec
 
+> **Status (2026-08): roadmap 0.4 closed.** A re-audit of every `acc-*` call
+> site found that §4.1–§4.3 were genuinely done, but five gaps this table had
+> not recorded. All are now fixed and covered by
+> `pos-strapi/scripts/smoke-accounting-gl.js` +
+> `rutba-core/scripts/smoke-accounting-gl.js` (both run against the dev DB;
+> pos-strapi's also drives HTTP when a server is listening):
+>
+> | Was broken | Now |
+> |---|---|
+> | `generateBill` left `expense_key` unset, so the acc-bill lifecycle debited `6000 OPERATING_EXPENSES`. Goods were expensed on receipt while COGS credited a `1300 Inventory` balance nothing had debited. | Sets `expense_key: 'INVENTORY'` — §4.4's intent, finally true. |
+> | `purchase-return` had no lifecycle; `'Purchase Return'` was a dead `source_type`. Returned stock left the warehouse and stayed on the books. | `purchase-return/.../lifecycles.js` posts Dr AP / Cr Inventory, idempotent, registered with core. |
+> | `SHRINKAGE_EXPENSE` was resolved by stock-adjustment/stock-count but **never seeded** — `resolve()` threw into their best-effort `try/catch`, so every inventory loss was silently absent. | Account `6600 Inventory Shrinkage` + the mapping are in `accounting-seed.js`. |
+> | Nothing ever debited `EMPLOYEE_ADVANCES`; the payroll run only credited it on recovery, so the asset drifted negative by every advance ever recovered. | `POST /pay-adjustments/:documentId/disburse` books the payout. |
+> | The accounting/payroll gates populated `permission_roles`, a relation with **no schema** — always empty, so every non-super-admin was refused and the posting endpoints were unreachable. | Payroll uses `utils/payroll-access.js`; accounts/purchase use `requireAppRole`. |
+>
+> Also fixed while testing: `purchases.createBill` declared `apps: ['purchase', …]`
+> and there is no `purchase` app in `config/domains.json`, so no api-pro policy
+> was seeded and accountants got 403; and core routed generate-bill on `:id`
+> while the ported controller reads `ctx.params.documentId`.
+
 > **Status (2026-06): ✅ Largely built.** The posting wiring (§4.1–§4.4),
 > ledger additions (§3), and reporting layer (§5) all shipped, and the
 > `rutba-accounts` frontend (§6) covers dashboard, chart-of-accounts,
