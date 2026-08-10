@@ -22,9 +22,24 @@ const EMPTY_FORM = {
     is_active: true,
 };
 
-// Platforms posted to by browser automation (the Rutba Social Poster desktop
-// app) rather than a Cloud/Graph API — no OAuth, no keys, just a destination name.
+// Platforms with NO posting API on our side (no provider adapter) — they can
+// only be posted to by browser automation (the Rutba Social Poster desktop
+// app): no OAuth, no keys, just a destination. Every other platform can be
+// EITHER api or browser, so connection_type — not the platform — decides.
 const BROWSER_PLATFORMS = new Set(["whatsapp", "linkedin"]);
+
+// Secrets are write-only (private in the schema, so they read back blank) —
+// blank must mean "keep the stored value". Everything else is plain data and
+// blank means blank, or ids could never be cleared.
+const SECRET_FIELDS = ["api_key", "api_secret", "access_token", "refresh_token"];
+
+// Where a browser-posted account publishes, when the platform has no more
+// specific label of its own.
+const DEFAULT_DESTINATION = {
+    key: "target_name",
+    label: "Destination",
+    placeholder: "profile / page / channel URL the poster publishes to",
+};
 
 // Per-platform: which credential fields to show (labelled for that provider) and
 // a help panel describing the account + API you need from the platform. The
@@ -39,12 +54,14 @@ const PLATFORM_FIELDS = {
             note: "To convert a personal account: Instagram app → Settings → Account type and tools → Switch to professional account.",
             docs: "https://developers.facebook.com/docs/instagram-platform",
         },
+        ids: [
+            { key: "platform_user_id", label: "Instagram Business Account ID", placeholder: "or the @username for browser posting" },
+            { key: "page_id", label: "Facebook Page ID", placeholder: "the Page this account is linked to" },
+        ],
         fields: [
             { key: "api_key", label: "Meta App ID", type: "password", placeholder: "for OAuth Connect" },
             { key: "api_secret", label: "Meta App Secret", type: "password" },
             { key: "access_token", label: "Page Access Token", type: "password", placeholder: "long-lived (or use Connect)" },
-            { key: "platform_user_id", label: "Instagram Business Account ID", type: "text" },
-            { key: "page_id", label: "Facebook Page ID", type: "text" },
         ],
     },
     facebook: {
@@ -58,12 +75,14 @@ const PLATFORM_FIELDS = {
         },
         // The Page this account publishes to (always shown — it's the destination,
         // not a secret). page_id below is the technical id set by Connect.
-        destination: { key: "target_name", label: "Page name", placeholder: "the Facebook Page this posts to" },
+        destination: { key: "target_name", label: "Page name or URL", placeholder: "the Facebook Page this posts to" },
+        ids: [
+            { key: "page_id", label: "Facebook Page ID", placeholder: "e.g. 61587364924242 — routes browser posts too" },
+        ],
         fields: [
             { key: "api_key", label: "Meta App ID", type: "password", placeholder: "for OAuth Connect" },
             { key: "api_secret", label: "Meta App Secret", type: "password" },
             { key: "access_token", label: "Page Access Token", type: "password", placeholder: "long-lived (or use Connect)" },
-            { key: "page_id", label: "Facebook Page ID", type: "text" },
         ],
     },
     x: {
@@ -75,12 +94,15 @@ const PLATFORM_FIELDS = {
             note: "The free API tier cannot reliably auto-post — budget for at least the Basic tier if you want scheduled posting.",
             docs: "https://developer.x.com/en/docs/x-api",
         },
+        destination: { key: "target_name", label: "Handle", placeholder: "@handle this account posts as" },
+        ids: [
+            { key: "platform_user_id", label: "X User ID / handle", placeholder: "set by Connect, or the handle for browser posting" },
+        ],
         fields: [
             { key: "api_key", label: "OAuth2 Client ID", type: "password" },
             { key: "api_secret", label: "OAuth2 Client Secret", type: "password" },
             { key: "access_token", label: "Access Token", type: "password", placeholder: "set by Connect" },
             { key: "refresh_token", label: "Refresh Token", type: "password", placeholder: "set by Connect" },
-            { key: "platform_user_id", label: "X User ID", type: "text", placeholder: "set by Connect" },
         ],
     },
     linkedin: {
@@ -94,6 +116,9 @@ const PLATFORM_FIELDS = {
         },
         // LinkedIn posts via browser automation — the profile/Page URL routes the post.
         destination: { key: "target_name", label: "Profile / Page URL", placeholder: "https://www.linkedin.com/in/… or /company/…" },
+        ids: [
+            { key: "platform_user_id", label: "Profile / Page slug", placeholder: "e.g. rutba-pk-173b89423" },
+        ],
         fields: [],
     },
     tiktok: {
@@ -105,12 +130,15 @@ const PLATFORM_FIELDS = {
             note: "Public auto-posting requires submitting the app for TikTok review; until it's approved, use it for private/self posts only.",
             docs: "https://developers.tiktok.com/doc/content-posting-api-get-started",
         },
+        destination: { key: "target_name", label: "Handle", placeholder: "@handle this account posts as" },
+        ids: [
+            { key: "platform_user_id", label: "open_id / @handle", placeholder: "set by Connect, or the handle for browser posting" },
+        ],
         fields: [
             { key: "api_key", label: "Client Key", type: "password" },
             { key: "api_secret", label: "Client Secret", type: "password" },
             { key: "access_token", label: "Access Token", type: "password", placeholder: "set by Connect" },
             { key: "refresh_token", label: "Refresh Token", type: "password", placeholder: "set by Connect" },
-            { key: "platform_user_id", label: "open_id", type: "text", placeholder: "set by Connect" },
         ],
     },
     youtube: {
@@ -122,12 +150,15 @@ const PLATFORM_FIELDS = {
             note: "Request a quota increase in Google Cloud if you plan to upload more than a few videos per day.",
             docs: "https://developers.google.com/youtube/v3/getting-started",
         },
+        destination: { key: "target_name", label: "Channel URL", placeholder: "https://www.youtube.com/channel/UC… (or @handle)" },
+        ids: [
+            { key: "platform_user_id", label: "Channel ID", placeholder: "UC… — Studio uploads need this form" },
+        ],
         fields: [
             { key: "api_key", label: "Google OAuth Client ID", type: "password" },
             { key: "api_secret", label: "Google OAuth Client Secret", type: "password" },
             { key: "access_token", label: "Access Token", type: "password", placeholder: "set by Connect" },
             { key: "refresh_token", label: "Refresh Token", type: "password", placeholder: "set by Connect" },
-            { key: "platform_user_id", label: "Channel ID", type: "text", placeholder: "set by Connect" },
         ],
     },
     whatsapp: {
@@ -141,6 +172,9 @@ const PLATFORM_FIELDS = {
         },
         // WhatsApp posts via browser automation — the channel name IS the routing key.
         destination: { key: "target_name", label: "Channel name", placeholder: "exact WhatsApp Channel name" },
+        ids: [
+            { key: "page_id", label: "Channel ID", placeholder: "the code in whatsapp.com/channel/… (optional)" },
+        ],
         fields: [],
     },
 };
@@ -191,9 +225,9 @@ export default function AccountsPage() {
             setForm((prev) => ({
                 ...prev,
                 platform: value,
-                // Browser-automation platforms carry no API creds; tag them so the
-                // Social Poster app can pick them out and the UI hides OAuth.
-                connection_type: BROWSER_PLATFORMS.has(value) ? "browser" : "api",
+                // Platforms with no adapter can only be browser-posted; otherwise
+                // keep whichever posting method the user already chose.
+                connection_type: BROWSER_PLATFORMS.has(value) ? "browser" : prev.connection_type || "api",
             }));
             return;
         }
@@ -233,8 +267,10 @@ export default function AccountsPage() {
             const data = { ...form };
             if (editing) {
                 // Secret fields aren't returned to the client (private), so they
-                // load blank — blank must mean "keep the stored value", not wipe it.
-                for (const k of ["api_key", "api_secret", "access_token", "refresh_token", "page_id", "platform_user_id"]) {
+                // load blank — blank must mean "keep the stored value", not wipe
+                // it. Ids (page_id / platform_user_id) DO load, so blank there is
+                // a deliberate clear and must be sent through.
+                for (const k of SECRET_FIELDS) {
                     if (!data[k]) delete data[k];
                 }
             }
@@ -351,7 +387,7 @@ export default function AccountsPage() {
                             <h5>{editing ? "Edit Account" : "New Account"}</h5>
                             <form onSubmit={handleSubmit}>
                                 <div className="row g-3">
-                                    <div className="col-md-4">
+                                    <div className="col-md-3">
                                         <label className="form-label">Platform</label>
                                         <select className="form-select" name="platform" value={form.platform} onChange={handleChange}>
                                             {Object.entries(PLATFORMS).map(([key, p]) => (
@@ -359,7 +395,18 @@ export default function AccountsPage() {
                                             ))}
                                         </select>
                                     </div>
-                                    <div className="col-md-8">
+                                    <div className="col-md-3">
+                                        <label className="form-label">Posted by</label>
+                                        {BROWSER_PLATFORMS.has(form.platform) ? (
+                                            <input className="form-control" value="Desktop app (only option)" disabled readOnly />
+                                        ) : (
+                                            <select className="form-select" name="connection_type" value={form.connection_type} onChange={handleChange}>
+                                                <option value="api">Platform API (OAuth)</option>
+                                                <option value="browser">Rutba Social Poster (desktop app)</option>
+                                            </select>
+                                        )}
+                                    </div>
+                                    <div className="col-md-6">
                                         <label className="form-label">Account Name <span className="text-muted small">(a label for you)</span></label>
                                         <input className="form-control" name="account_name" value={form.account_name} onChange={handleChange} required placeholder="e.g. Rutba Official" />
                                     </div>
@@ -372,8 +419,12 @@ export default function AccountsPage() {
                                         const cfg = PLATFORM_FIELDS[form.platform];
                                         if (!cfg) return null;
                                         const label = PLATFORMS[form.platform]?.label;
-                                        const isBrowser = BROWSER_PLATFORMS.has(form.platform);
+                                        // The ACCOUNT's posting method decides the UI, not the platform —
+                                        // a Facebook/TikTok/… account created by the desktop poster is
+                                        // browser-connected and has no OAuth to show.
+                                        const isBrowser = BROWSER_PLATFORMS.has(form.platform) || form.connection_type === "browser";
                                         const serverReady = !isBrowser && !!providerStatus?.platforms?.[form.platform];
+                                        const dest = cfg.destination || (isBrowser ? DEFAULT_DESTINATION : null);
                                         return (
                                             <>
                                                 <div className="col-12">
@@ -390,9 +441,11 @@ export default function AccountsPage() {
                                                         )}
                                                         <div><strong>Account setup:</strong> {cfg.help.account}</div>
                                                         <div><strong>API access:</strong> {cfg.help.api}</div>
-                                                        <div><strong>How to connect:</strong> {serverReady
-                                                            ? "This platform is already set up on the server — just Save, then click Connect to sign in. No keys to enter."
-                                                            : cfg.help.how}</div>
+                                                        <div><strong>How to connect:</strong> {isBrowser && !BROWSER_PLATFORMS.has(form.platform)
+                                                            ? `This account is posted by the Rutba Social Poster desktop app — log in to ${label} in its browser, set the destination below, and Save. No keys or OAuth.`
+                                                            : serverReady
+                                                                ? "This platform is already set up on the server — just Save, then click Connect to sign in. No keys to enter."
+                                                                : cfg.help.how}</div>
                                                         {cfg.help.note && (
                                                             <div className="mt-1 text-body-secondary">
                                                                 <i className="fas fa-circle-info me-1"></i>{cfg.help.note}
@@ -410,28 +463,45 @@ export default function AccountsPage() {
 
                                                 {/* Destination (Page / Channel name) — always shown; it's
                                                     where this account posts to, not a secret. */}
-                                                {cfg.destination && (
+                                                {dest && (
                                                     <div className="col-md-6">
                                                         <label className="form-label">
-                                                            {cfg.destination.label}
+                                                            {dest.label}
                                                             <span className="text-muted small ms-1">(where this account posts)</span>
                                                         </label>
                                                         <input
                                                             className="form-control"
-                                                            name={cfg.destination.key}
-                                                            value={form[cfg.destination.key] || ""}
+                                                            name={dest.key}
+                                                            value={form[dest.key] || ""}
                                                             onChange={handleChange}
-                                                            placeholder={cfg.destination.placeholder || ""}
+                                                            placeholder={dest.placeholder || ""}
                                                             autoComplete="off"
                                                         />
                                                     </div>
                                                 )}
 
+                                                {/* Routing ids (Page ID / Channel ID / handle) — plain data,
+                                                    never secrets, so they are always visible and always
+                                                    editable, whichever way this account posts. */}
+                                                {(cfg.ids || []).map((f) => (
+                                                    <div className="col-md-6" key={f.key}>
+                                                        <label className="form-label">{f.label}</label>
+                                                        <input
+                                                            className="form-control"
+                                                            name={f.key}
+                                                            value={form[f.key] || ""}
+                                                            onChange={handleChange}
+                                                            placeholder={f.placeholder || ""}
+                                                            autoComplete="off"
+                                                        />
+                                                    </div>
+                                                ))}
+
                                                 {isBrowser ? (
                                                     <div className="col-12">
                                                         <div className="alert alert-secondary py-2 mb-0 small">
                                                             <i className={`${PLATFORMS[form.platform]?.icon} me-1`}></i>
-                                                            Posts to {label} are published by the <strong>Rutba Social Poster</strong> desktop app (browser automation) — there are no API keys or OAuth. Enter the {cfg.destination?.label?.toLowerCase() || "destination"} above and Save; the app posts to that destination.
+                                                            Posts to {label} are published by the <strong>Rutba Social Poster</strong> desktop app (browser automation) — there are no API keys or OAuth. Enter the {dest?.label?.toLowerCase() || "destination"} above and Save; the app posts to that destination.
                                                         </div>
                                                     </div>
                                                 ) : (
@@ -524,7 +594,7 @@ export default function AccountsPage() {
                                                 <div className="small text-muted"><i className="fas fa-bullseye me-1"></i>{acc.target_name}</div>
                                             )}
                                         </td>
-                                        <td><code>{acc.page_id || acc.target_name || "—"}</code></td>
+                                        <td><code>{acc.page_id || acc.platform_user_id || acc.target_name || "—"}</code></td>
                                         <td>
                                             {acc.is_active
                                                 ? <span className="badge bg-success">Active</span>
