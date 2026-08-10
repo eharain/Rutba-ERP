@@ -14,6 +14,7 @@ export interface SocialPostsEndpointsType {
     syncReplies(documentId: any): Promise<any>;
     sendReply(documentId: any, data: any): Promise<any>;
     duplicate(documentId: any): Promise<any>;
+    recordResult(documentId: any, data: any): Promise<any>;
     publishedMarker(): Promise<any>;
     meta: any;
 }

@@ -23,7 +23,9 @@
     "rutba-marketplace",
     "rutba-inventory",
     "rutba-seed",
-    "rutba-campaigns"
+    "rutba-campaigns",
+    "rutba-mail",
+    "rutba-users"
   ],
   "scripts": {
     "dev:strapi": "node scripts/js/load-env.js -- npm --prefix pos-strapi run develop",
@@ -49,6 +51,8 @@
     "dev:inventory": "node scripts/js/load-env.js -- npm run dev --workspace=rutba-inventory",
     "dev:seed": "node scripts/js/load-env.js -- npm run dev --workspace=rutba-seed",
     "dev:campaigns": "node scripts/js/load-env.js -- npm run dev --workspace=rutba-campaigns",
+    "dev:mail": "node scripts/js/load-env.js -- npm run dev --workspace=rutba-mail",
+    "dev:users": "node scripts/js/load-env.js -- npm run dev --workspace=rutba-users",
     "worker:marketplace": "node scripts/js/load-env.js -- npm run worker --workspace=rutba-marketplace",
     "dev:all": "node scripts/js/run-all.js dev",
     "start:strapi": "node scripts/js/load-env.js -- npm --prefix pos-strapi run start",
@@ -72,6 +76,8 @@
     "start:inventory": "node scripts/js/load-env.js -- npm run start --workspace=rutba-inventory",
     "start:seed": "node scripts/js/load-env.js -- npm run start --workspace=rutba-seed",
     "start:campaigns": "node scripts/js/load-env.js -- npm run start --workspace=rutba-campaigns",
+    "start:mail": "node scripts/js/load-env.js -- npm run start --workspace=rutba-mail",
+    "start:users": "node scripts/js/load-env.js -- npm run start --workspace=rutba-users",
 
     "build:api": "node scripts/js/load-env.js -- npm run build --workspace=@rutba/api-provider",
     "build:api-pro": "node scripts/js/load-env.js -- npm run build --workspace=strapi-api-pro",
@@ -94,6 +100,8 @@
     "build:inventory": "node scripts/js/load-env.js -- npm run build --workspace=rutba-inventory",
     "build:seed": "node scripts/js/load-env.js -- npm run build --workspace=rutba-seed",
     "build:campaigns": "node scripts/js/load-env.js -- npm run build --workspace=rutba-campaigns",
+    "build:mail": "node scripts/js/load-env.js -- npm run build --workspace=rutba-mail",
+    "build:users": "node scripts/js/load-env.js -- npm run build --workspace=rutba-users",
     "build:strapi": "node scripts/js/load-env.js -- npm --prefix pos-strapi run build",
 
     "build:all": "node scripts/js/run-app.js build",

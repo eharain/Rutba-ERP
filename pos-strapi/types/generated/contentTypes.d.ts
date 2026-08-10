@@ -1513,6 +1513,8 @@ export interface ApiCmpCampaignCmpCampaign extends Struct.CollectionTypeSchema {
       'manyToOne',
       'api::cmp-template.cmp-template'
     >;
+    track_clicks: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    track_opens: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -1589,6 +1591,7 @@ export interface ApiCmpRecipientCmpRecipient
     draftAndPublish: false;
   };
   attributes: {
+    clicked_at: Schema.Attribute.DateTime;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -1609,6 +1612,8 @@ export interface ApiCmpRecipientCmpRecipient
       Schema.Attribute.Private;
     merge_data: Schema.Attribute.JSON;
     message_uuid: Schema.Attribute.String;
+    opened_at: Schema.Attribute.DateTime;
+    person: Schema.Attribute.Relation<'manyToOne', 'api::person.person'>;
     publishedAt: Schema.Attribute.DateTime;
     run: Schema.Attribute.Relation<'manyToOne', 'api::cmp-run.cmp-run'>;
     sent_at: Schema.Attribute.DateTime;
@@ -1683,6 +1688,7 @@ export interface ApiCmpRunCmpRun extends Struct.CollectionTypeSchema {
       Schema.Attribute.DefaultTo<'Pending'>;
     suppressed: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
     total: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    tracked_links: Schema.Attribute.JSON;
     unsubscribed: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -4932,6 +4938,257 @@ export interface ApiHrWorkExperienceHrWorkExperience
       Schema.Attribute.Private;
     publishedAt: Schema.Attribute.DateTime;
     start_date: Schema.Attribute.Date;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiMailAccountMailAccount extends Struct.CollectionTypeSchema {
+  collectionName: 'mail_accounts';
+  info: {
+    description: 'A connected mailbox (personal or shared), read LIVE over IMAP \u2014 no sync, no mirror. Messages are only persisted when linked (import-on-demand, see docs/todo/email-program/). Credentials are AES-256-GCM ciphertext, never plaintext.';
+    displayName: 'Mail Account';
+    pluralName: 'mail-accounts';
+    singularName: 'mail-account';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    access_roles: Schema.Attribute.JSON;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    email: Schema.Attribute.Email & Schema.Attribute.Required;
+    from_name: Schema.Attribute.String;
+    imap_host: Schema.Attribute.String & Schema.Attribute.Required;
+    imap_password_enc: Schema.Attribute.Text & Schema.Attribute.Private;
+    imap_port: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<993>;
+    imap_secure: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    imap_username: Schema.Attribute.String;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    kind: Schema.Attribute.Enumeration<['personal', 'shared']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'personal'>;
+    last_checked_at: Schema.Attribute.DateTime;
+    last_error: Schema.Attribute.Text;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::mail-account.mail-account'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
+    provisioning_source: Schema.Attribute.Enumeration<['byo', 'mailcow']> &
+      Schema.Attribute.DefaultTo<'byo'>;
+    publishedAt: Schema.Attribute.DateTime;
+    reply_to: Schema.Attribute.String;
+    signature_html: Schema.Attribute.Text;
+    smtp_host: Schema.Attribute.String & Schema.Attribute.Required;
+    smtp_password_enc: Schema.Attribute.Text & Schema.Attribute.Private;
+    smtp_port: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<465>;
+    smtp_secure: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    smtp_username: Schema.Attribute.String;
+    special_folders: Schema.Attribute.JSON;
+    unseen_counts: Schema.Attribute.JSON;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiMailAttachmentMailAttachment
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'mail_attachments';
+  info: {
+    description: 'Attachment METADATA for an imported message. M2 deliberately stores no binary \u2014 the live gateway can still fetch the part from the mailbox while it exists; binary snapshots via the upload provider are the recorded M3+ upgrade (docs/todo/email-program/01-data-model.md).';
+    displayName: 'Mail Attachment';
+    pluralName: 'mail-attachments';
+    singularName: 'mail-attachment';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    checksum: Schema.Attribute.String;
+    cid: Schema.Attribute.String;
+    content_type: Schema.Attribute.String;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    filename: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::mail-attachment.mail-attachment'
+    > &
+      Schema.Attribute.Private;
+    mail_message: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::mail-message.mail-message'
+    >;
+    part_id: Schema.Attribute.Integer;
+    publishedAt: Schema.Attribute.DateTime;
+    size_bytes: Schema.Attribute.Integer;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiMailLinkMailLink extends Struct.CollectionTypeSchema {
+  collectionName: 'mail_links';
+  info: {
+    description: 'Polymorphic link between an imported mail-message and any ERP record (entity_uid + target_document_id \u2014 the work-item-* pattern). One row per attachment of a message to a person, contact, order, or ticket.';
+    displayName: 'Mail Link';
+    pluralName: 'mail-links';
+    singularName: 'mail-link';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    entity_uid: Schema.Attribute.String & Schema.Attribute.Required;
+    link_kind: Schema.Attribute.Enumeration<['manual', 'auto', 'triage']> &
+      Schema.Attribute.DefaultTo<'manual'>;
+    linked_by: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::mail-link.mail-link'
+    > &
+      Schema.Attribute.Private;
+    mail_message: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::mail-message.mail-message'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    target_document_id: Schema.Attribute.String & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiMailMessageMailMessage extends Struct.CollectionTypeSchema {
+  collectionName: 'mail_messages';
+  info: {
+    description: 'A materialized email \u2014 created ONLY via import-on-link or a shared-inbox triage action (docs/todo/email-program/01-data-model.md). The mailbox stays the source of truth for everything else.';
+    displayName: 'Mail Message';
+    pluralName: 'mail-messages';
+    singularName: 'mail-message';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    account: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::mail-account.mail-account'
+    >;
+    assigned_to: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    attachments: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::mail-attachment.mail-attachment'
+    >;
+    bcc_json: Schema.Attribute.JSON;
+    body_html: Schema.Attribute.Text;
+    body_text: Schema.Attribute.Text;
+    cc_json: Schema.Attribute.JSON;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    date: Schema.Attribute.DateTime;
+    dedupe_hash: Schema.Attribute.String;
+    direction: Schema.Attribute.Enumeration<['inbound', 'outbound']> &
+      Schema.Attribute.DefaultTo<'inbound'>;
+    folder: Schema.Attribute.String;
+    from_email: Schema.Attribute.String;
+    from_name: Schema.Attribute.String;
+    has_attachments: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
+    headers_json: Schema.Attribute.JSON;
+    imap_uid: Schema.Attribute.BigInteger;
+    imported_by: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    links: Schema.Attribute.Relation<'oneToMany', 'api::mail-link.mail-link'>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::mail-message.mail-message'
+    > &
+      Schema.Attribute.Private;
+    message_id: Schema.Attribute.String;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    size_bytes: Schema.Attribute.Integer;
+    snippet: Schema.Attribute.String;
+    subject: Schema.Attribute.String;
+    to_json: Schema.Attribute.JSON;
+    triage_status: Schema.Attribute.Enumeration<
+      ['none', 'open', 'assigned', 'awaiting', 'closed', 'spam']
+    > &
+      Schema.Attribute.DefaultTo<'none'>;
+    uidvalidity: Schema.Attribute.BigInteger;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiMailServerMailServer extends Struct.CollectionTypeSchema {
+  collectionName: 'mail_servers';
+  info: {
+    description: 'Registered mail-server admin endpoints (mailcow-type first). Assigning an email to a user in rutba-users provisions the mailbox here automatically. The admin API key is stored encrypted (api_key_enc, AES-256-GCM via MAIL_CRED_KEY) and never returned.';
+    displayName: 'Mail Server';
+    pluralName: 'mail-servers';
+    singularName: 'mail-server';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    api_key_enc: Schema.Attribute.Text & Schema.Attribute.Private;
+    base_url: Schema.Attribute.String & Schema.Attribute.Required;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    imap_host: Schema.Attribute.String;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    kind: Schema.Attribute.Enumeration<['mailcow']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'mailcow'>;
+    last_checked_at: Schema.Attribute.DateTime;
+    last_error: Schema.Attribute.Text;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::mail-server.mail-server'
+    > &
+      Schema.Attribute.Private;
+    mail_domains: Schema.Attribute.JSON;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    smtp_host: Schema.Attribute.String;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -8544,7 +8801,15 @@ export interface ApiSocialAccountSocialAccount
       Schema.Attribute.Private;
     page_id: Schema.Attribute.String;
     platform: Schema.Attribute.Enumeration<
-      ['instagram', 'facebook', 'x', 'tiktok', 'youtube', 'whatsapp']
+      [
+        'instagram',
+        'facebook',
+        'x',
+        'linkedin',
+        'tiktok',
+        'youtube',
+        'whatsapp',
+      ]
     > &
       Schema.Attribute.Required;
     platform_user_id: Schema.Attribute.String;
@@ -8555,6 +8820,44 @@ export interface ApiSocialAccountSocialAccount
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+  };
+}
+
+export interface ApiSocialAudioTrackSocialAudioTrack
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'social_audio_tracks';
+  info: {
+    description: 'Music bed for generated social videos. A track is either a foreign URL or a file on the media server; both are playable from `url`, so consumers never branch on where it came from.';
+    displayName: 'Social Audio Track';
+    pluralName: 'social-audio-tracks';
+    singularName: 'social-audio-track';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    audio_file: Schema.Attribute.Media<'audios' | 'files'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    credit: Schema.Attribute.String;
+    duration_seconds: Schema.Attribute.Decimal;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::social-audio-track.social-audio-track'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    notes: Schema.Attribute.Text;
+    publishedAt: Schema.Attribute.DateTime;
+    tags: Schema.Attribute.JSON;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    url: Schema.Attribute.String & Schema.Attribute.Required;
+    volume: Schema.Attribute.Decimal;
   };
 }
 
@@ -8649,7 +8952,15 @@ export interface ApiSocialReplySocialReply extends Struct.CollectionTypeSchema {
       'api::social-reply.social-reply'
     >;
     platform: Schema.Attribute.Enumeration<
-      ['instagram', 'facebook', 'x', 'tiktok', 'youtube']
+      [
+        'instagram',
+        'facebook',
+        'x',
+        'linkedin',
+        'tiktok',
+        'youtube',
+        'whatsapp',
+      ]
     > &
       Schema.Attribute.Required;
     platform_comment_id: Schema.Attribute.String;
@@ -10658,6 +10969,11 @@ declare module '@strapi/strapi' {
       'api::hr-training-enrollment.hr-training-enrollment': ApiHrTrainingEnrollmentHrTrainingEnrollment;
       'api::hr-training-session.hr-training-session': ApiHrTrainingSessionHrTrainingSession;
       'api::hr-work-experience.hr-work-experience': ApiHrWorkExperienceHrWorkExperience;
+      'api::mail-account.mail-account': ApiMailAccountMailAccount;
+      'api::mail-attachment.mail-attachment': ApiMailAttachmentMailAttachment;
+      'api::mail-link.mail-link': ApiMailLinkMailLink;
+      'api::mail-message.mail-message': ApiMailMessageMailMessage;
+      'api::mail-server.mail-server': ApiMailServerMailServer;
       'api::marketplace-account.marketplace-account': ApiMarketplaceAccountMarketplaceAccount;
       'api::marketplace-listing.marketplace-listing': ApiMarketplaceListingMarketplaceListing;
       'api::marketplace-mapping.marketplace-mapping': ApiMarketplaceMappingMarketplaceMapping;
@@ -10719,6 +11035,7 @@ declare module '@strapi/strapi' {
       'api::seo-meta.seo-meta': ApiSeoMetaSeoMeta;
       'api::site-setting.site-setting': ApiSiteSettingSiteSetting;
       'api::social-account.social-account': ApiSocialAccountSocialAccount;
+      'api::social-audio-track.social-audio-track': ApiSocialAudioTrackSocialAudioTrack;
       'api::social-post.social-post': ApiSocialPostSocialPost;
       'api::social-reply.social-reply': ApiSocialReplySocialReply;
       'api::stock-adjustment.stock-adjustment': ApiStockAdjustmentStockAdjustment;

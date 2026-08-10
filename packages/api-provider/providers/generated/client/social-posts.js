@@ -72,6 +72,11 @@ async function duplicate(documentId) {
     return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
+async function recordResult(documentId, data) {
+    const ep = SocialPostsEndpointsApi.recordResult(documentId, data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
 async function publishedMarker() {
     const ep = SocialPostsEndpointsApi.publishedMarker();
     return authApi.fetch(ep.path, ep.params);
@@ -94,10 +99,11 @@ const endpoints = strictEndpointGuard(
         syncReplies,
         sendReply,
         duplicate,
+        recordResult,
         publishedMarker,
         meta: SocialPostsEndpointsApi.meta,
     },
-    ["updateDraft","publish","unpublish","create","del","list","byId","update","replies","publishSocial","unpublishSocial","syncReplies","sendReply","duplicate","publishedMarker","meta"],
+    ["updateDraft","publish","unpublish","create","del","list","byId","update","replies","publishSocial","unpublishSocial","syncReplies","sendReply","duplicate","recordResult","publishedMarker","meta"],
 );
 
 export default endpoints;

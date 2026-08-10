@@ -25,6 +25,9 @@ echo   Employee Self-Svc: http://localhost:4015
 echo   Marketplace      : http://localhost:4016
 echo   Inventory        : http://localhost:4017
 echo   Seed Control     : http://localhost:4018
+echo   Campaigns        : http://localhost:4019
+echo   Mail             : http://localhost:4021
+echo   User Management  : http://localhost:4022
 echo.
 
 echo [1/3] Starting Strapi API...
@@ -63,6 +66,9 @@ echo   Employee SS    : http://localhost:4015
 echo   Marketplace    : http://localhost:4016
 echo   Inventory      : http://localhost:4017
 echo   Seed Control   : http://localhost:4018
+echo   Campaigns      : http://localhost:4019
+echo   Mail           : http://localhost:4021
+echo   User Mgmt      : http://localhost:4022
 echo   Marketplace Wkr: background worker (no port)
 echo.
 echo   Seed the database once Strapi is up:

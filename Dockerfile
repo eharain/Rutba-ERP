@@ -121,6 +121,8 @@ ARG NEXT_PUBLIC_MARKETPLACE_URL
 ARG NEXT_PUBLIC_INVENTORY_URL
 ARG NEXT_PUBLIC_SEED_URL
 ARG NEXT_PUBLIC_CAMPAIGNS_URL
+ARG NEXT_PUBLIC_MAIL_URL
+ARG NEXT_PUBLIC_USERS_URL
 ARG NEXT_PUBLIC_RIDER_URL
 ARG NEXT_PUBLIC_SOCIAL_URL
 ARG NEXT_PUBLIC_CRM_URL
@@ -150,6 +152,8 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_PUBLIC_INVENTORY_URL=$NEXT_PUBLIC_INVENTORY_URL \
     NEXT_PUBLIC_SEED_URL=$NEXT_PUBLIC_SEED_URL \
     NEXT_PUBLIC_CAMPAIGNS_URL=$NEXT_PUBLIC_CAMPAIGNS_URL \
+    NEXT_PUBLIC_MAIL_URL=$NEXT_PUBLIC_MAIL_URL \
+    NEXT_PUBLIC_USERS_URL=$NEXT_PUBLIC_USERS_URL \
     NEXT_PUBLIC_RIDER_URL=$NEXT_PUBLIC_RIDER_URL \
     NEXT_PUBLIC_SOCIAL_URL=$NEXT_PUBLIC_SOCIAL_URL \
     NEXT_PUBLIC_CRM_URL=$NEXT_PUBLIC_CRM_URL \
@@ -471,3 +475,31 @@ COPY --from=campaigns-build /app/rutba-campaigns/.next/standalone ./
 COPY --from=campaigns-build /app/rutba-campaigns/.next/static     ./rutba-campaigns/.next/static
 COPY --from=campaigns-build /app/rutba-campaigns/public            ./rutba-campaigns/public
 CMD ["node", "rutba-campaigns/server.js"]
+
+# ----------------------------------------------------------
+#  rutba-mail (Personal + shared inboxes over live IMAP)
+# ----------------------------------------------------------
+FROM build-env AS mail-build
+RUN mkdir -p rutba-mail/public && npm run build --workspace=rutba-mail
+
+FROM base AS mail
+WORKDIR /app
+ENV NODE_ENV=production HOSTNAME=0.0.0.0
+COPY --from=mail-build /app/rutba-mail/.next/standalone ./
+COPY --from=mail-build /app/rutba-mail/.next/static     ./rutba-mail/.next/static
+COPY --from=mail-build /app/rutba-mail/public            ./rutba-mail/public
+CMD ["node", "rutba-mail/server.js"]
+
+# ----------------------------------------------------------
+#  rutba-users (Central user management: users, roles, access)
+# ----------------------------------------------------------
+FROM build-env AS users-build
+RUN mkdir -p rutba-users/public && npm run build --workspace=rutba-users
+
+FROM base AS users
+WORKDIR /app
+ENV NODE_ENV=production HOSTNAME=0.0.0.0
+COPY --from=users-build /app/rutba-users/.next/standalone ./
+COPY --from=users-build /app/rutba-users/.next/static     ./rutba-users/.next/static
+COPY --from=users-build /app/rutba-users/public            ./rutba-users/public
+CMD ["node", "rutba-users/server.js"]

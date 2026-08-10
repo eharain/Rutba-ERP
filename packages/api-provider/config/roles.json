@@ -139,6 +139,18 @@
     "level": "staff",
     "domain": "inventory"
   },
+  "mail_admin": {
+    "level": "admin",
+    "domain": "mail"
+  },
+  "mail_manager": {
+    "level": "manager",
+    "domain": "mail"
+  },
+  "mail_staff": {
+    "level": "staff",
+    "domain": "mail"
+  },
   "manufacturing_admin": {
     "level": "admin",
     "domain": "manufacturing"
@@ -246,6 +258,18 @@
   "stock_staff": {
     "level": "staff",
     "domain": "stock"
+  },
+  "users_admin": {
+    "level": "admin",
+    "domain": "users"
+  },
+  "users_manager": {
+    "level": "manager",
+    "domain": "users"
+  },
+  "users_staff": {
+    "level": "staff",
+    "domain": "users"
   },
   "web_public": {
     "level": "public",

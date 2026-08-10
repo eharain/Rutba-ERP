@@ -106,6 +106,15 @@
       "inventory_staff"
     ]
   },
+  "mail": {
+    "name": "Mail",
+    "description": "Personal and shared email over live IMAP: inboxes, compose, and CRM-linked correspondence.",
+    "roles": [
+      "mail_admin",
+      "mail_manager",
+      "mail_staff"
+    ]
+  },
   "manufacturing": {
     "name": "Manufacturing",
     "description": "Production work orders, recipes, and shop-floor operations.",
@@ -185,6 +194,15 @@
       "stock_admin",
       "stock_manager",
       "stock_staff"
+    ]
+  },
+  "users": {
+    "name": "User Management",
+    "description": "Central user accounts, app access, mailbox and notification administration.",
+    "roles": [
+      "users_admin",
+      "users_manager",
+      "users_staff"
     ]
   },
   "web": {

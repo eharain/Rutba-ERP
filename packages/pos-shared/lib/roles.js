@@ -31,11 +31,13 @@ export const APP_URLS = {
     inventory:     process.env.NEXT_PUBLIC_INVENTORY_URL     || 'http://localhost:4017',
     seed:          process.env.NEXT_PUBLIC_SEED_URL          || 'http://localhost:4018',
     campaigns:     process.env.NEXT_PUBLIC_CAMPAIGNS_URL     || 'http://localhost:4019',
+    mail:          process.env.NEXT_PUBLIC_MAIL_URL          || 'http://localhost:4021',
+    users:         process.env.NEXT_PUBLIC_USERS_URL         || 'http://localhost:4022',
     web:       process.env.NEXT_PUBLIC_WEB_URL       || 'http://localhost:4010',
 };
 
 /** All recognised app keys */
-const VALID_APP_KEYS = ['stock', 'sale', 'auth', 'web-user', 'order-management', 'rider', 'crm', 'hr', 'ess', 'accounts', 'payroll', 'cms', 'social', 'manufacturing', 'marketplace', 'inventory', 'seed', 'campaigns'];
+const VALID_APP_KEYS = ['stock', 'sale', 'auth', 'web-user', 'order-management', 'rider', 'crm', 'hr', 'ess', 'accounts', 'payroll', 'cms', 'social', 'manufacturing', 'marketplace', 'inventory', 'seed', 'campaigns', 'mail', 'users'];
 
 /**
  * App categories — the ordered taxonomy used to arrange the growing
@@ -60,7 +62,8 @@ export const APP_CATEGORIES = [
  * else that needs a consistent catalogue of apps.
  */
 export const APP_META = {
-    auth:       { group: 'admin',     icon: 'fa-solid fa-users',              label: 'User Management',    description: 'Users, roles, app access',                    border: 'border-dark',      color: 'text-dark' },
+    auth:       { group: 'admin',     icon: 'fa-solid fa-right-to-bracket',   label: 'Sign-In & SSO',      description: 'Single sign-on, login and session portal',    border: 'border-dark',      color: 'text-dark' },
+    users:      { group: 'admin',     icon: 'fa-solid fa-users-gear',         label: 'User Management',    description: 'Users, roles, app access, mailbox and notification administration', border: 'border-dark', color: 'text-dark' },
     stock:      { group: 'inventory', icon: 'fa-solid fa-boxes-stacked',      label: 'Stock Management',   description: 'Products, purchases, inventory',              border: 'border-primary',   color: 'text-primary' },
     sale:       { group: 'sales',     icon: 'fa-solid fa-cash-register',      label: 'Point of Sale',      description: 'Sales, cart, returns, reports',               border: 'border-success',   color: 'text-success' },
     'web-user': { group: 'sales',     icon: 'fa-solid fa-bag-shopping',       label: 'Web Orders',         description: 'Track customer orders, delivery status, and returns', border: 'border-info',      color: 'text-info' },
@@ -78,6 +81,7 @@ export const APP_META = {
     inventory:  { group: 'inventory', icon: 'fa-solid fa-warehouse',          label: 'Inventory Management', description: 'Warehouses, bins, stock levels, transfers, counts, reordering', border: 'border-primary',   color: 'text-primary' },
     seed:       { group: 'admin',     icon: 'fa-solid fa-seedling',           label: 'Seeding',            description: 'Run system, reference and backfill seeds', border: 'border-success',   color: 'text-success' },
     campaigns:  { group: 'content',   icon: 'fa-solid fa-envelope-open-text', label: 'Campaigns',          description: 'Email templates, audiences, campaigns, delivery reporting', border: 'border-purple',    color: 'text-purple' },
+    mail:       { group: 'content',   icon: 'fa-solid fa-envelope',           label: 'Mail',               description: 'Personal and shared inboxes over live IMAP',  border: 'border-info',      color: 'text-info' },
     web:        { group: 'content',   icon: 'fa-solid fa-globe',              label: 'Storefront',         description: 'Public customer-facing website',              border: 'border-info',      color: 'text-info', public: true },
 };
 
