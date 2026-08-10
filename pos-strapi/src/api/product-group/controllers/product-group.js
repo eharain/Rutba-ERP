@@ -4,6 +4,7 @@ const { createCoreController } = require('@strapi/strapi').factories;
 const { ensureUser } = require('../../../utils/ensure-user');
 const { isApp } = require('../../../utils/require-app');
 const { ACTIVE_PRODUCT_FILTER } = require('../../../utils/active-product');
+const { NOT_A_VARIANT, imagedProductIdSet } = require('../../../utils/public-product');
 
 // findBySlug is public (auth: false), so its `sort` reaches the query builder
 // straight from the querystring — an unrecognised field would blow up the
@@ -110,8 +111,13 @@ module.exports = createCoreController('api::product-group.product-group', ({ str
 
     let products = [];
     let total = 0;
-    if (productIds.length > 0) {
-      const filters = { $and: [{ id: { $in: productIds } }, ACTIVE_PRODUCT_FILTER] };
+    // Same listable gate as the shop grid: image-less products and stray
+    // variants are hidden here too, and the pagination totals stay exact
+    // because the gate is resolved to an id set before the query runs.
+    const sellableIds =
+      productIds.length > 0 ? Array.from(await imagedProductIdSet(strapi, productIds)) : [];
+    if (sellableIds.length > 0) {
+      const filters = { $and: [{ id: { $in: sellableIds } }, ACTIVE_PRODUCT_FILTER, NOT_A_VARIANT] };
       [products, total] = await Promise.all([
         strapi.documents('api::product.product').findMany({
           filters,

@@ -1,6 +1,6 @@
 import LayoutMain from "@/components/layouts";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, ShoppingBasket, Truck, Shield, RotateCcw, Star } from "lucide-react";
+import { ChevronRight, ShoppingBasket, Truck, Shield, RotateCcw, Star, Clock } from "lucide-react";
 import Link from "next/link";
 
 import {
@@ -39,6 +39,8 @@ export const getServerSideProps: GetServerSideProps<{
   initialProduct: any | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   initialOfferContext: any | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  initialAvailability: any | null;
   slug: string;
 }> = async (context) => {
   const slug = context.params?.slug as string;
@@ -51,17 +53,19 @@ export const getServerSideProps: GetServerSideProps<{
       props: {
         initialProduct: product,
         initialOfferContext: res?.meta?.offerContext ?? null,
+        initialAvailability: res?.meta?.availability ?? null,
         slug,
       },
     };
   } catch {
-    return { props: { initialProduct: null, initialOfferContext: null, slug } };
+    return { props: { initialProduct: null, initialOfferContext: null, initialAvailability: null, slug } };
   }
 };
 
 export default function ProductDetail({
   initialProduct,
   initialOfferContext,
+  initialAvailability,
   slug: ssrSlug,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const cartStore = useStoreCart();
@@ -90,13 +94,26 @@ export default function ProductDetail({
     enabled: !!slug,
     initialData:
       initialProduct
-        ? { data: initialProduct, offerContext: initialOfferContext ?? null }
+        ? {
+            data: initialProduct,
+            offerContext: initialOfferContext ?? null,
+            availability: initialAvailability ?? null,
+          }
         : undefined,
     staleTime: 60_000,
   });
   const product = detail?.data;
   const offerContext = detail?.offerContext ?? null;
   const offerActive = !!offerContext?.offer;
+  // The server decides whether this product may be sold online (it's hidden
+  // from grids for the same reasons — no image yet, or not pinned in any
+  // published group). The page still renders so QR scans and old links land
+  // somewhere useful, but the buy flow is replaced with an offline notice.
+  const isOffline = detail?.availability?.online === false;
+  // Published groups this product belongs to — the offline notice links them
+  // so the shopper always has somewhere to go next.
+  const availabilityGroups: { name: string; slug: string }[] =
+    detail?.availability?.groups ?? [];
 
   // Extract variant term types (is_variant: true) used across all variants
   const variantTermTypes = useMemo(() => {
@@ -378,7 +395,12 @@ export default function ProductDetail({
   }
 
   const hasVariants = (product?.variants?.length ?? 0) > 0;
-  const canAddToCart = !hasVariants || (hasTermVariants ? resolvedVariant != null : selectVariant != null);
+  const canAddToCart =
+    !isOffline &&
+    (!hasVariants || (hasTermVariants ? resolvedVariant != null : selectVariant != null));
+  // CTA copy: offline wins, then the pick-options prompt.
+  const ctaLabel = (short: string, pick: string) =>
+    isOffline ? "Temporarily offline" : canAddToCart ? short : pick;
 
   const category = product?.categories?.[0];
   const brand = product?.brands?.[0];
@@ -388,7 +410,7 @@ export default function ProductDetail({
       : 0;
 
   const handleAddToCart = () => {
-    if (!canAddToCart) return;
+    if (isOffline || !canAddToCart) return;
     const variantId = resolvedVariant?.id ?? selectVariant;
     // The price honored at checkout reflects the group offer in play right
     // now. We pass the resolved final price (when present) so the server-side
@@ -463,10 +485,10 @@ export default function ProductDetail({
           product?.gallery?.[0]?.url ||
           product?.logo?.url
         }
-        noindex={!!product?.seo_meta?.noindex}
+        noindex={!!product?.seo_meta?.noindex || isOffline}
         type="product"
       />
-      {product?.name && (
+      {product?.name && !isOffline && (
         <ProductJsonLd
           name={product.name}
           description={seoDescription}
@@ -559,7 +581,7 @@ export default function ProductDetail({
                     className="h-12 px-6 rounded-full text-sm font-bold tracking-wide shrink-0"
                   >
                     <ShoppingBasket className="h-4 w-4 mr-2" />
-                    {canAddToCart ? "Add to Cart" : "Pick options"}
+                    {ctaLabel("Add to Cart", "Pick options")}
                   </Button>
                 </div>
               }
@@ -614,6 +636,54 @@ export default function ProductDetail({
               <p className="mt-1 text-xs text-muted-foreground">
                 Inclusive of all taxes
               </p>
+
+              {/* Offline notice — server said this product can't be sold
+                  online right now (no image yet, or not listed in any live
+                  group). The page stays informative; the buy flow is off, and
+                  the notice doubles as a springboard so the shopper never
+                  feels stuck: its groups, category, brand, and the full
+                  catalog are one tap away. */}
+              {isOffline && (
+                <div className="mt-4 rounded-xl border border-border bg-secondary/60 p-4">
+                  <div className="flex items-start gap-3">
+                    <Clock className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-bold">
+                        This product is temporarily offline
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-0.5">
+                        It can&apos;t be ordered online right now — please
+                        check back soon, or visit us in store.
+                      </p>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                    Meanwhile, keep browsing
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {availabilityGroups.map((g) => (
+                      <OfflineEscapeChip
+                        key={"grp-" + g.slug}
+                        href={`/product-groups/${encodeURIComponent(g.slug)}`}
+                        label={g.name}
+                      />
+                    ))}
+                    {category?.slug && (
+                      <OfflineEscapeChip
+                        href={`/product?category=${encodeURIComponent(category.slug)}`}
+                        label={`More ${category.name}`}
+                      />
+                    )}
+                    {brand?.slug && (
+                      <OfflineEscapeChip
+                        href={`/product?brand=${encodeURIComponent(brand.slug)}`}
+                        label={`More from ${brand.name}`}
+                      />
+                    )}
+                    <OfflineEscapeChip href="/product" label="Browse all products" />
+                  </div>
+                </div>
+              )}
 
               {/* Group-level promos surfaced as badges. Free shipping is
                   resolved server-side from the group's offer set so it can
@@ -778,7 +848,7 @@ export default function ProductDetail({
                 onClick={handleAddToCart}
               >
                 <ShoppingBasket className="h-5 w-5 mr-2 transition-transform group-hover:scale-110" />
-                {canAddToCart ? "Add to Cart" : "Select Options"}
+                {ctaLabel("Add to Cart", "Select Options")}
               </Button>
 
               {/* Trust strip */}
@@ -877,7 +947,7 @@ export default function ProductDetail({
             className="h-12 px-5 rounded-full text-sm font-bold tracking-wide shrink-0"
           >
             <ShoppingBasket className="h-4 w-4 mr-2" />
-            {canAddToCart ? "Add" : "Pick options"}
+            {ctaLabel("Add", "Pick options")}
           </Button>
         </div>
       </div>
@@ -888,6 +958,24 @@ export default function ProductDetail({
 }
 
 /* ─── Helpers ─── */
+
+// A single escape route out of the offline notice — group, category, brand,
+// or the whole catalog. Chip-styled to match the term pickers.
+function OfflineEscapeChip({ href, label }: { href: string; label: string }) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full border border-border bg-background",
+        "px-3.5 py-1.5 text-xs font-semibold transition-all",
+        "hover:border-foreground/40 hover:bg-secondary"
+      )}
+    >
+      {label}
+      <ChevronRight className="h-3 w-3 opacity-60" />
+    </Link>
+  );
+}
 
 function TrustItem({
   icon,

@@ -215,6 +215,68 @@ a:hover { text-decoration: underline; }
     font-size: 0.95rem;
 }
 
+/* Top-nav app switcher — "Most used" first, full catalogue behind
+   the All-apps expander. */
+.nav-app-switcher-menu {
+    max-height: 75vh;
+    overflow-y: auto;
+}
+
+.nav-app-section-label {
+    padding: 0.15rem 1rem 0.3rem;
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--rutba-muted, #6c757d);
+}
+
+.nav-app-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.3em;
+    padding: 0.05em 0.45em;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.08);
+    font-size: 0.68rem;
+    font-weight: 600;
+}
+
+.nav-app-all-toggle { font-weight: 500; }
+
+.nav-app-all {
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    margin-top: 0.25rem;
+    padding-top: 0.25rem;
+}
+
+.nav-app-group-head {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.4rem 1rem 0.2rem;
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+.nav-app-group-head i { font-size: 0.72rem; }
+
+.nav-app-locked { opacity: 0.55; }
+
+.nav-app-current { background: #eef4ff; }
+.nav-app-current-badge {
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: #3b5bdb;
+    background: #dbe4ff;
+    border-radius: 999px;
+    padding: 0.1em 0.5em;
+}
+
 .nav-role-switcher > .nav-link.text-warning {
     background-color: rgba(245, 180, 0, 0.12);
 }
@@ -381,7 +443,8 @@ a:hover { text-decoration: underline; }
     position: absolute;
     bottom: calc(100% + 6px);
     right: 0;
-    min-width: 210px;
+    min-width: 250px;
+    max-width: 320px;
     max-height: 60vh;
     overflow-y: auto;
     background: #ffffff;
@@ -403,14 +466,13 @@ a:hover { text-decoration: underline; }
 
 .footer-cat-item {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 0.55rem;
     padding: 0.4rem 0.5rem;
     border-radius: 0.35rem;
     font-size: 0.82rem;
     color: #212529;
     text-decoration: none;
-    white-space: nowrap;
 }
 .footer-cat-item:hover,
 .footer-cat-item:focus {
@@ -418,8 +480,56 @@ a:hover { text-decoration: underline; }
     color: #212529;
     text-decoration: none;
 }
-.footer-cat-item-icon { width: 18px; text-align: center; font-size: 0.9rem; }
-.footer-cat-ext { font-size: 0.7rem; color: var(--rutba-muted); }
+.footer-cat-item-icon { width: 18px; text-align: center; font-size: 0.9rem; margin-top: 0.15rem; }
+.footer-cat-ext { font-size: 0.7rem; color: var(--rutba-muted); margin-top: 0.3rem; }
+
+/* Two-line item body: app name + one-line description */
+.footer-cat-item-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+.footer-cat-item-label {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+.footer-cat-item-desc {
+    font-size: 0.68rem;
+    line-height: 1.25;
+    color: var(--rutba-muted);
+    white-space: normal;
+}
+
+/* App the user can't access: dimmed, with a lock */
+.footer-cat-item.locked { opacity: 0.55; }
+.footer-cat-lock { font-size: 0.65rem; color: var(--rutba-muted); margin-top: 0.35rem; }
+
+/* App we're currently inside */
+.footer-cat-item.current { background: #eef4ff; }
+.footer-cat-current-badge {
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: #3b5bdb;
+    background: #dbe4ff;
+    border-radius: 999px;
+    padding: 0.1em 0.5em;
+    white-space: nowrap;
+}
+
+/* Dot on the category button whose menu contains the current app */
+.footer-cat-here-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
+}
 
 /* On narrow screens collapse category buttons to icon + count only */
 @media (max-width: 575.98px) {

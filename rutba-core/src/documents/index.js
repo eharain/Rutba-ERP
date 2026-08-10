@@ -206,12 +206,14 @@ async function populateRelation(db, reg, model, rows, ids, rel, opts, status) {
   if (opts.populate && !target.builtin) {
     const allPairs = [...grouped.values()].flat();
     const rawRows = allPairs.map((p) => p.raw);
-    const byId = new Map(allPairs.map((p) => [p.raw.id, p.mapped]));
     await populateRows(db, reg, target, rawRows, opts.populate, opts.status || status);
-    // populateRows attaches onto raw rows' mapped twins via __mapped — see note below.
+    // Copy per PAIR, never via an id-keyed map: the same child row can appear
+    // under several parents (a product pinned in two groups), and an id-keyed
+    // copy delivers the nested populate to only the last pair — every other
+    // parent's copy silently loses its gallery/logo/etc.
     for (const p of allPairs) {
       for (const key of Object.keys(p.raw.__populated || {})) {
-        byId.get(p.raw.id)[key] = p.raw.__populated[key];
+        p.mapped[key] = p.raw.__populated[key];
       }
     }
   }

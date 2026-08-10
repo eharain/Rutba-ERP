@@ -46,7 +46,11 @@ export function createWebProductsService(config = {}) {
 
   const getProductDetail = async (slug, groupId) => {
     const res = await productsProxy.detail(slug, groupId);
-    return { data: res?.data, offerContext: res?.meta?.offerContext ?? null };
+    return {
+      data: res?.data,
+      offerContext: res?.meta?.offerContext ?? null,
+      availability: res?.meta?.availability ?? null,
+    };
   };
 
   const productInArrayId = async (idProducts) => {

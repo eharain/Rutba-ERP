@@ -2,24 +2,28 @@ import dynamic from "next/dynamic";
 import { useUtil } from "../context/UtilContext";
 import { useAuth } from "../context/AuthContext";
 import { useEffect, useRef, useState } from "react";
-import { getCrossAppGroups } from "../lib/roles";
+import { getAppCatalogGroups, getCrossAppGroups } from "../lib/roles";
+import { recordAppUse } from "../lib/appUsage";
 
 /**
- * FooterInfo — slim cross-app launcher.
+ * FooterInfo — slim cross-app launcher and application directory.
  *
  * Renders the branch/desk location on the left and, on the right, one
  * compact menu button per app category (Sales, Inventory, People, …).
  * Clicking a category opens an upward popover listing that category's
- * apps. Only one popover is open at a time. Categories with no
- * accessible apps are omitted, so the bar stays short as the app
- * catalogue grows.
+ * apps with a one-line description each.
+ *
+ * Signed-in users see EVERY configured app — the footer is the complete
+ * application directory. Apps the user can't access are dimmed with a
+ * lock; the app we're currently inside is highlighted. Guests only see
+ * public apps (the storefront).
  */
 function FooterInfo({ currentApp }) {
     const [location, setLocation] = useState("");
     const [openGroup, setOpenGroup] = useState(null);
     const wrapRef = useRef(null);
     const { locationString, branch, desk } = useUtil();
-    const { appAccess, adminAppAccess } = useAuth();
+    const { user, appAccess, adminAppAccess } = useAuth();
 
     useEffect(() => {
         setLocation(locationString());
@@ -41,7 +45,53 @@ function FooterInfo({ currentApp }) {
     }, [openGroup]);
 
     const effectiveAccess = [...new Set([...(appAccess || []), ...(adminAppAccess || [])])];
-    const groups = getCrossAppGroups(effectiveAccess, currentApp);
+    // Signed-in users get the full catalogue (locked apps included);
+    // guests only see what they can actually open.
+    const groups = user
+        ? getAppCatalogGroups(effectiveAccess, currentApp)
+        : getCrossAppGroups(effectiveAccess, currentApp);
+
+    const renderAppLink = (app, color, className, onNavigate) => {
+        const linkProps = app.external
+            ? { target: "_blank", rel: "noopener noreferrer" }
+            : {};
+        const stateClass = [
+            className,
+            app.allowed === false ? "locked" : "",
+            app.current ? "current" : "",
+        ].filter(Boolean).join(" ");
+        return (
+            <a
+                key={app.key}
+                {...linkProps}
+                href={app.href}
+                className={stateClass}
+                role="menuitem"
+                title={app.allowed === false ? `${app.label} — you don't have access` : app.description || app.label}
+                onClick={() => {
+                    if (app.allowed !== false && !app.current) recordAppUse(app.key);
+                    if (onNavigate) onNavigate();
+                }}
+            >
+                <i className={`${app.icon} footer-cat-item-icon`} style={{ color }}></i>
+                <span className="footer-cat-item-text">
+                    <span className="footer-cat-item-label">
+                        {app.label}
+                        {app.current && <span className="footer-cat-current-badge">You are here</span>}
+                    </span>
+                    {app.description && (
+                        <span className="footer-cat-item-desc">{app.description}</span>
+                    )}
+                </span>
+                {app.allowed === false && (
+                    <i className="fa-solid fa-lock footer-cat-lock" aria-label="No access"></i>
+                )}
+                {app.external && app.allowed !== false && (
+                    <i className="fa-solid fa-arrow-up-right-from-square ms-auto footer-cat-ext"></i>
+                )}
+            </a>
+        );
+    };
 
     return (
         <footer className="footer-info" ref={wrapRef}>
@@ -55,12 +105,13 @@ function FooterInfo({ currentApp }) {
             </span>
 
             {groups.length > 0 && (
-                <nav className="footer-info-cats" aria-label="Switch app">
+                <nav className="footer-info-cats" aria-label="Applications">
                     {groups.map((group) => {
+                        const color = group.color || '#64748b';
+                        const containsCurrent = group.apps.some((a) => a.current);
+
                         // A group with a single accessible app doesn't need a
                         // popover — link straight to the app.
-                        const color = group.color || '#64748b';
-
                         if (group.apps.length === 1) {
                             const app = group.apps[0];
                             const linkProps = app.external
@@ -72,8 +123,11 @@ function FooterInfo({ currentApp }) {
                                         {...linkProps}
                                         href={app.href}
                                         className="footer-cat-btn footer-cat-solo"
-                                        title={app.label}
+                                        title={app.description || app.label}
                                         style={{ backgroundColor: `${color}26` }}
+                                        onClick={() => {
+                                            if (app.allowed !== false && !app.current) recordAppUse(app.key);
+                                        }}
                                     >
                                         <i className={app.icon} style={{ color }}></i>
                                         <span className="footer-cat-label">{app.label}</span>
@@ -87,7 +141,7 @@ function FooterInfo({ currentApp }) {
 
                         const isOpen = openGroup === group.key;
                         return (
-                            <div key={group.key} className={`footer-cat${isOpen ? ' open' : ''}`}>
+                            <div key={group.key} className={`footer-cat${isOpen ? ' open' : ''}${containsCurrent ? ' here' : ''}`}>
                                 <button
                                     type="button"
                                     className="footer-cat-btn"
@@ -100,33 +154,16 @@ function FooterInfo({ currentApp }) {
                                     <i className={group.icon} style={{ color }}></i>
                                     <span className="footer-cat-label">{group.label}</span>
                                     <span className="footer-cat-count" style={{ backgroundColor: color, color: '#fff' }}>{group.apps.length}</span>
+                                    {containsCurrent && <span className="footer-cat-here-dot" style={{ backgroundColor: color }}></span>}
                                     <i className="fa-solid fa-chevron-up footer-cat-caret"></i>
                                 </button>
 
                                 {isOpen && (
                                     <div className="footer-cat-menu" role="menu" style={{ borderTop: `3px solid ${color}` }}>
                                         <div className="footer-cat-menu-head" style={{ color }}>{group.label}</div>
-                                        {group.apps.map((app) => {
-                                            const linkProps = app.external
-                                                ? { target: "_blank", rel: "noopener noreferrer" }
-                                                : {};
-                                            return (
-                                                <a
-                                                    key={app.key}
-                                                    {...linkProps}
-                                                    href={app.href}
-                                                    className="footer-cat-item"
-                                                    role="menuitem"
-                                                    onClick={() => setOpenGroup(null)}
-                                                >
-                                                    <i className={`${app.icon} footer-cat-item-icon`} style={{ color }}></i>
-                                                    <span>{app.label}</span>
-                                                    {app.external && (
-                                                        <i className="fa-solid fa-arrow-up-right-from-square ms-auto footer-cat-ext"></i>
-                                                    )}
-                                                </a>
-                                            );
-                                        })}
+                                        {group.apps.map((app) =>
+                                            renderAppLink(app, color, "footer-cat-item", () => setOpenGroup(null))
+                                        )}
                                     </div>
                                 )}
                             </div>

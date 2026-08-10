@@ -2,6 +2,7 @@
 
 const { createCoreService } = require('@strapi/strapi').factories;
 const { ACTIVE_PRODUCT_FILTER } = require('../../../utils/active-product');
+const { imagedProductIdSet } = require('../../../utils/public-product');
 
 // Drafts of nested relations can leak through Strapi 5 populate trees even
 // when the parent is fetched as published, so guard every relation that the
@@ -103,6 +104,27 @@ module.exports = createCoreService('api::cms-page.cms-page', ({ strapi }) => ({
       fields: DETAIL_FIELDS,
       pagination: { pageSize: 1 },
     });
-    return results?.[0] ?? null;
+    const page = results?.[0] ?? null;
+    if (!page) return null;
+
+    // Same listable gate as the shop grid, applied to the product-group cards
+    // this page embeds: stray variants and image-less products drop out here
+    // too (draft preview included, so editors see what the live page will
+    // show). The populate tree can't reach the media morph table, so the
+    // image leg resolves as an id set over the products actually on the page.
+    const groupArrays = [page.hero_product_groups, page.product_groups].filter(Array.isArray);
+    const candidateIds = Array.from(new Set(
+      groupArrays.flat().flatMap((g) => (g?.products ?? []).map((p) => p?.id).filter(Boolean))
+    ));
+    if (candidateIds.length > 0) {
+      const imaged = await imagedProductIdSet(strapi, candidateIds);
+      for (const groups of groupArrays) {
+        for (const g of groups) {
+          if (!Array.isArray(g?.products)) continue;
+          g.products = g.products.filter((p) => !p?.is_variant && imaged.has(p.id));
+        }
+      }
+    }
+    return page;
   },
 }));

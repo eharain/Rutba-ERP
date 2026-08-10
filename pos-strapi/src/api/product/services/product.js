@@ -2,6 +2,7 @@
 
 const { createCoreService } = require('@strapi/strapi').factories;
 const { ACTIVE_PRODUCT_FILTER } = require('../../../utils/active-product');
+const { NOT_A_VARIANT, imagedProductIdSet, hasAnyImage } = require('../../../utils/public-product');
 
 // Drafts of nested relations can slip through Strapi 5 populate trees even
 // when the parent is fetched as published.
@@ -46,13 +47,15 @@ const PUBLIC_POPULATE = {
 const DETAIL_POPULATE = {
   ...PUBLIC_POPULATE,
   seo_meta: { populate: { og_image: true } },
-  parent: { fields: ['name', 'slug'] },
+  // Parent media ride along so a variant page can answer the availability
+  // image check ("does anything on this page have a photo?") without a
+  // second query.
+  parent: { fields: ['name', 'slug'], populate: { gallery: true, logo: true } },
 };
 
-// Colour/design variants live on their parent's page (variant selector); a
-// bare variant card named "Black" in the shop grid or search is never right,
-// even if someone pins one into a product-group by mistake.
-const NOT_A_VARIANT = { is_variant: { $ne: true } };
+// NOT_A_VARIANT and the has-image gate both live in utils/public-product —
+// shared with the product-group and cms-page surfaces so "listable" means the
+// same thing everywhere.
 
 function buildListFilters(filter = {}) {
   const and = [];
@@ -96,6 +99,73 @@ module.exports = createCoreService('api::product.product', ({ strapi }) => ({
     return Array.from(ids);
   },
 
+  // The full listable gate: pinned AND carrying at least one image. Everything
+  // the storefront renders as a card goes through this so an image-less
+  // product drops out of every grid the moment it's noticed, and returns the
+  // moment someone uploads a photo.
+  async _sellableProductIds() {
+    const pinned = await this._pinnedProductIds();
+    if (pinned.length === 0) return [];
+    return Array.from(await imagedProductIdSet(strapi, pinned));
+  },
+
+  // Detail pages stay reachable for any published+active product (printed QR
+  // labels resolve there), but the storefront needs to know whether to offer
+  // purchase. `online: false` renders as "temporarily offline": no Add to
+  // Cart, noindex. `groups` carries the published groups this product (or its
+  // parent, for variants) belongs to, so the offline view can offer the
+  // shopper somewhere to go instead of a dead end.
+  async publicAvailabilityFor(product) {
+    if (!product) return null;
+    const reasons = [];
+
+    // Image leg: own images, a variant's, or — on a variant page — the
+    // parent's. All populated by DETAIL_POPULATE, so no extra query.
+    const parentHasImage =
+      (product.parent?.gallery?.length ?? 0) > 0 || !!product.parent?.logo;
+    if (!hasAnyImage(product) && !parentHasImage) reasons.push('no-image');
+
+    // Listed leg: pinned in a published product-group. Variants inherit their
+    // parent's pinning — they are sold from the parent's page.
+    const documentId =
+      product.is_variant && product.parent?.documentId
+        ? product.parent.documentId
+        : product.documentId;
+    const groups = await this._publishedGroupsFor(documentId);
+    if (groups.length === 0) reasons.push('not-listed');
+
+    return { online: reasons.length === 0, reasons, groups };
+  },
+
+  // The published groups a product document is pinned in — resolved against
+  // the link table by documentId, so it holds regardless of which version row
+  // (draft/published) the link rows reference. Doubles as the pinned check
+  // (empty = not listed anywhere) and as the offline view's escape links.
+  async _publishedGroupsFor(documentId) {
+    if (!documentId) return [];
+    const knex = strapi.db.connection;
+    const rowIds = (
+      await knex('products').where('document_id', documentId).select('id')
+    ).map((r) => r.id);
+    if (rowIds.length === 0) return [];
+    const links = await knex('product_groups_products_lnk')
+      .whereIn('product_id', rowIds)
+      .select('product_group_id');
+    const groupIds = [...new Set(links.map((l) => l.product_group_id))];
+    if (groupIds.length === 0) return [];
+    const rows = await knex('product_groups')
+      .whereIn('id', groupIds)
+      .whereNotNull('published_at')
+      .select('document_id', 'name', 'title', 'slug');
+    // One entry per document, storefront-ready: display label + URL slug.
+    const seen = new Map();
+    for (const g of rows) {
+      if (!g.slug || seen.has(g.document_id)) continue;
+      seen.set(g.document_id, { name: g.title || g.name || g.slug, slug: g.slug });
+    }
+    return [...seen.values()];
+  },
+
   // Accepts either a slug or a documentId. We try slug first because that is
   // the canonical lookup going forward; falling back to documentId keeps any
   // pre-slug URLs (cached links, sitemaps, recently-viewed entries) working.
@@ -136,11 +206,11 @@ module.exports = createCoreService('api::product.product', ({ strapi }) => ({
   async findPublicSearch(query, pageSize = 5) {
     const q = (query ?? '').trim();
     if (q.length === 0) return [];
-    const pinned = await this._pinnedProductIds();
-    if (pinned.length === 0) return [];
+    const sellable = await this._sellableProductIds();
+    if (sellable.length === 0) return [];
     return strapi.documents('api::product.product').findMany({
       status: 'published',
-      filters: { $and: [{ name: { $containsi: q } }, { id: { $in: pinned } }, ACTIVE, NOT_A_VARIANT] },
+      filters: { $and: [{ name: { $containsi: q } }, { id: { $in: sellable } }, ACTIVE, NOT_A_VARIANT] },
       fields: DETAIL_FIELDS,
       populate: PUBLIC_POPULATE,
       pagination: { pageSize },
@@ -148,11 +218,11 @@ module.exports = createCoreService('api::product.product', ({ strapi }) => ({
   },
 
   async findPublicHighestPrice() {
-    const pinned = await this._pinnedProductIds();
-    if (pinned.length === 0) return null;
+    const sellable = await this._sellableProductIds();
+    if (sellable.length === 0) return null;
     const results = await strapi.documents('api::product.product').findMany({
       status: 'published',
-      filters: { $and: [{ id: { $in: pinned } }, ACTIVE] },
+      filters: { $and: [{ id: { $in: sellable } }, ACTIVE] },
       sort: ['selling_price:DESC', 'id:ASC'],
       fields: DETAIL_FIELDS,
       populate: PUBLIC_POPULATE,
@@ -164,13 +234,13 @@ module.exports = createCoreService('api::product.product', ({ strapi }) => ({
   async findPublicList({ filter = {}, page = 1, pageSize = 24 } = {}) {
     const baseFilters = buildListFilters(filter);
     const sort = buildListSort(filter);
-    const pinned = await this._pinnedProductIds();
-    if (pinned.length === 0) {
+    const sellable = await this._sellableProductIds();
+    if (sellable.length === 0) {
       return { data: [], meta: { pagination: { page, pageSize, pageCount: 1, total: 0 } } };
     }
     // buildListFilters returns either {} or { $and: [...] }, so flattening its
-    // clauses alongside the pinned + active gates keeps everything ANDed.
-    const filters = { $and: [{ id: { $in: pinned } }, ACTIVE, NOT_A_VARIANT, ...(baseFilters.$and ?? [])] };
+    // clauses alongside the sellable + active gates keeps everything ANDed.
+    const filters = { $and: [{ id: { $in: sellable } }, ACTIVE, NOT_A_VARIANT, ...(baseFilters.$and ?? [])] };
 
     const [data, total] = await Promise.all([
       strapi.documents('api::product.product').findMany({

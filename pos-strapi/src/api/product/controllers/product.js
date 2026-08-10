@@ -165,7 +165,15 @@ module.exports = createCoreController('api::product.product', ({ strapi }) => ({
         .resolveOfferForProductInGroup(data.id, groupId);
     }
 
-    return ctx.send({ data: data ?? null, meta: { offerContext } });
+    // Whether this product may be SOLD online. The page renders either way
+    // (QR labels resolve here for any published product); `online: false`
+    // tells the storefront to show the temporarily-offline state instead of
+    // the buy flow.
+    const availability = data
+      ? await strapi.service('api::product.product').publicAvailabilityFor(data)
+      : null;
+
+    return ctx.send({ data: data ?? null, meta: { offerContext, availability } });
   },
 
   async publicByIds(ctx) {
