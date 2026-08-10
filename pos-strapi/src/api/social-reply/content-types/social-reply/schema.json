@@ -22,8 +22,10 @@
         "instagram",
         "facebook",
         "x",
+        "linkedin",
         "tiktok",
-        "youtube"
+        "youtube",
+        "whatsapp"
       ],
       "required": true
     },
