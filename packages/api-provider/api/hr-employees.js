@@ -58,6 +58,22 @@ export const HrEmployeesEndpoints = {
         },
     }),
 
+    /**
+     * Re-parent one employee on the reporting line (the drag-to-reparent write).
+     *
+     * Defaults to a dry run, which returns the authority impact — who gains it,
+     * who loses it, and how many people travel with the dragged node — so the
+     * confirmation can name them. Call again with `dryRun: false` to commit.
+     */
+    setReportingLine: (documentId, manager, dryRun = true) => ({
+        path: `/hr-employees/${documentId}/reporting-line`,
+        action: 'setReportingLine',
+        method: 'put',
+        apps: ['hr'],
+        approle: ['admin', 'manager'],
+        data: { manager: manager ?? null, dry_run: dryRun ? 'true' : 'false' },
+    }),
+
     /** Employees with no `reports_to` yet — the reporting-line backfill gap (HR only). */
     listWithoutReportingLine: () => ({
         path: '/hr-employees/without-reporting-line',

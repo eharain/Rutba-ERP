@@ -100,12 +100,53 @@ function isHrManager(ctx, user) {
 }
 
 const MAX_GRAPH_DEPTH = 10;
+const LINE_UID = 'api::hr-reporting-line.hr-reporting-line';
+
+/** Today as YYYY-MM-DD, which is how `date` attributes compare in filters. */
+function todayIso() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * Filter matching secondary reporting lines that are in force RIGHT NOW and
+ * actually confer approval rights.
+ *
+ * Two independent gates, both deliberate:
+ *   - `grants_authority` — a dotted line is documentation by default (the column
+ *     defaults to FALSE, so a row written without the field grants nothing).
+ *     Recording that someone advises a team must not silently let them approve
+ *     its leave, and a permission that defaults to "on" gets granted by accident.
+ *   - the date window — an open-ended line (both bounds null) is permanent; a
+ *     bounded one lapses on its own rather than needing someone to remember to
+ *     delete it.
+ */
+function activeSecondaryLineFilter(managerDocIds) {
+  const today = todayIso();
+  return {
+    manager: { documentId: { $in: managerDocIds } },
+    grants_authority: { $eq: true },
+    $and: [
+      { $or: [{ valid_from: { $null: true } }, { valid_from: { $lte: today } }] },
+      { $or: [{ valid_to: { $null: true } }, { valid_to: { $gte: today } }] },
+    ],
+  };
+}
 
 /**
  * Employee documentIds below the given employee on the REPORTING LINE, walked
- * transitively down `direct_reports`. Excludes the employee.
+ * transitively. Excludes the employee.
  *
- * Depth-bounded and visited-guarded: `reports_to` is HR-editable and nothing
+ * Two kinds of edge feed the same walk:
+ *   1. the primary line — `hr-employee.reports_to` / `direct_reports`
+ *   2. active secondary lines — `hr-reporting-line` rows (matrix / dotted)
+ *      where `grants_authority` is set and today falls inside the date window
+ *
+ * They are walked together rather than separately because authority composes:
+ * a dotted-line manager over B reaches B's own reports the same way B's primary
+ * manager does, and doing it in one BFS means a mixed chain (solid → dotted →
+ * solid) resolves in one pass instead of needing a second fixpoint loop.
+ *
+ * Depth-bounded and visited-guarded: both edges are HR-editable and nothing
  * stops someone entering a cycle (A reports to B reports to A). A cycle must
  * not hang the request that asked "can this person approve?".
  */
@@ -116,21 +157,76 @@ async function reportingLineDocIds(strapi, employeeDocId) {
   let frontier = [employeeDocId];
 
   for (let depth = 0; depth < MAX_GRAPH_DEPTH && frontier.length; depth++) {
-    const rows = await strapi.documents(EMP_UID).findMany({
-      filters: { reports_to: { documentId: { $in: frontier } } },
-      fields: ['documentId'],
-      pagination: { pageSize: 1000 },
-    });
+    const [direct, secondary] = await Promise.all([
+      strapi.documents(EMP_UID).findMany({
+        filters: { reports_to: { documentId: { $in: frontier } } },
+        fields: ['documentId'],
+        pagination: { pageSize: 1000 },
+      }),
+      strapi.documents(LINE_UID).findMany({
+        filters: activeSecondaryLineFilter(frontier),
+        fields: ['documentId'],
+        populate: { employee: { fields: ['documentId'] } },
+        pagination: { pageSize: 1000 },
+      }),
+    ]);
+
     const next = [];
-    for (const r of rows || []) {
-      if (r.documentId && !seen.has(r.documentId) && r.documentId !== employeeDocId) {
-        seen.add(r.documentId);
-        next.push(r.documentId);
-      }
-    }
+    const add = (docId) => {
+      if (!docId || docId === employeeDocId || seen.has(docId)) return;
+      seen.add(docId);
+      next.push(docId);
+    };
+    for (const r of direct || []) add(r.documentId);
+    for (const l of secondary || []) add(l.employee?.documentId);
+
     frontier = next;
   }
   return Array.from(seen);
+}
+
+/**
+ * The managers an employee reports to via ACTIVE authority-granting secondary
+ * lines — the inverse of the walk above, one hop only. Used by the org chart to
+ * annotate a node with its dotted-line managers without duplicating the person
+ * into two places in the tree.
+ */
+async function secondaryManagersFor(strapi, employeeDocIds) {
+  const ids = (Array.isArray(employeeDocIds) ? employeeDocIds : [employeeDocIds]).filter(Boolean);
+  if (!ids.length) return new Map();
+
+  const today = todayIso();
+  const rows = await strapi.documents(LINE_UID).findMany({
+    filters: {
+      employee: { documentId: { $in: ids } },
+      $and: [
+        { $or: [{ valid_from: { $null: true } }, { valid_from: { $lte: today } }] },
+        { $or: [{ valid_to: { $null: true } }, { valid_to: { $gte: today } }] },
+      ],
+    },
+    fields: ['documentId', 'kind', 'grants_authority'],
+    populate: {
+      employee: { fields: ['documentId'] },
+      manager: { fields: ['documentId', 'name'] },
+    },
+    pagination: { pageSize: 1000 },
+  });
+
+  const byEmployee = new Map();
+  for (const r of rows || []) {
+    const empId = r.employee?.documentId;
+    if (!empId || !r.manager?.documentId) continue;
+    if (!byEmployee.has(empId)) byEmployee.set(empId, []);
+    byEmployee.get(empId).push({
+      documentId: r.manager.documentId,
+      name: r.manager.name,
+      kind: r.kind || 'Dotted',
+      // Surfaced so the chart can distinguish a line that moves approvals from
+      // one that is purely descriptive — they look identical otherwise.
+      grants_authority: r.grants_authority !== false,
+    });
+  }
+  return byEmployee;
 }
 
 /**
@@ -201,8 +297,14 @@ async function teamManagedDocIds(strapi, employeeDocId) {
  * one can see. The union means nothing that works today stops working, and the
  * reporting line starts granting authority the moment HR fills it in.
  *
- * Once `hr-employees/without-reporting-line` returns empty, this can collapse to
- * `reportingLineDocIds` alone. See docs/todo/hr-org-chart-and-reporting-line.md.
+ * CUTOVER GATE — this can collapse to `reportingLineDocIds` alone only once
+ * `GET /hr-employees/without-reporting-line` reports `meta.cutover_ready`. That
+ * flag is `meta.total === 0`, NOT `meta.uncovered === 0`. The two are easy to
+ * confuse and picking the wrong one is the failure this whole design exists to
+ * avoid: `uncovered` counts people no one can reach TODAY, under the union —
+ * everyone else in that list is reachable only because the team half is still
+ * in play. Drop the team half while `total > 0` and every one of them loses
+ * their approver at once. See docs/todo/hr-org-chart-and-reporting-line.md.
  *
  * NOTE: grievances deliberately do NOT use this — a grievance is frequently
  * about the reporting manager, so its queue stays HR-claim only.
@@ -280,6 +382,7 @@ module.exports = {
   isHrManager,
   managedReportDocIds,
   reportingLineDocIds,
+  secondaryManagersFor,
   teamManagedDocIds,
   managerUserIdsForEmployee,
   ownerUserIdForEmployeeRef,
