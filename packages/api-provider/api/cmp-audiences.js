@@ -78,4 +78,17 @@ export const CmpAudiencesEndpoints = {
         approle: ['admin', 'manager'],
     }),
 
+    /**
+     * Run the resolver: returns { total, sample, mergeKeys } and refreshes the
+     * cached member_count — the composer's recipient check.
+     */
+    resolveMembers: (documentId) => ({
+        path: `/cmp-audiences/${documentId}/resolve`,
+        action: 'resolveMembers',
+        method: 'post',
+        apps: ['campaigns'],
+        approle: ['admin', 'manager', 'staff'],
+        data: {},
+    }),
+
 };

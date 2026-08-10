@@ -76,4 +76,41 @@ export const CmpTemplatesEndpoints = {
         approle: ['admin', 'manager'],
     }),
 
+    /**
+     * Render the template with sample merge values. Returns the rendered
+     * subject/html/text plus `mergeKeys` and `missingKeys`, so the studio can
+     * show what an audience will have to supply.
+     */
+    getPreview: (documentId, { data, utm } = {}) => ({
+        path: `/cmp-templates/${documentId}/preview`,
+        action: 'getPreview',
+        method: 'post',
+        apps: ['campaigns'],
+        approle: ['admin', 'manager', 'staff'],
+        data: { ...(data ? { data } : {}), ...(utm ? { utm } : {}) },
+    }),
+
+    /**
+     * Send one rendered copy to a real inbox. Goes out transactional, so it
+     * bypasses marketing pacing and stays out of the marketing reputation stats.
+     */
+    sendTest: (documentId, { to, data, identityDocId } = {}) => ({
+        path: `/cmp-templates/${documentId}/test-send`,
+        action: 'sendTest',
+        method: 'post',
+        apps: ['campaigns'],
+        approle: ['admin', 'manager', 'staff'],
+        data: { to, ...(data ? { data } : {}), ...(identityDocId ? { identityDocId } : {}) },
+    }),
+
+    /** Copy a template into a new Draft. */
+    duplicateTemplate: (documentId) => ({
+        path: `/cmp-templates/${documentId}/duplicate`,
+        action: 'duplicateTemplate',
+        method: 'post',
+        apps: ['campaigns'],
+        approle: ['admin', 'manager', 'staff'],
+        data: {},
+    }),
+
 };

@@ -27,6 +27,11 @@ async function del(documentId) {
     return authApi.del(withQuery(ep.path, ep.params));
 }
 
+async function resolveMembers(documentId) {
+    const ep = CmpAudiencesEndpointsApi.resolveMembers(documentId);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
 const endpoints = strictEndpointGuard(
     'CmpAudiencesEndpoints',
     {
@@ -35,9 +40,10 @@ const endpoints = strictEndpointGuard(
         create,
         update,
         del,
+        resolveMembers,
         meta: CmpAudiencesEndpointsApi.meta,
     },
-    ["list","byId","create","update","del","meta"],
+    ["list","byId","create","update","del","resolveMembers","meta"],
 );
 
 export default endpoints;

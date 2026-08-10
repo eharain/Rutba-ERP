@@ -27,6 +27,21 @@ async function del(documentId) {
     return authApi.del(withQuery(ep.path, ep.params));
 }
 
+async function getPreview(documentId, arg2 = {}) {
+    const ep = CmpTemplatesEndpointsApi.getPreview(documentId, arg2);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
+async function sendTest(documentId, arg2 = {}) {
+    const ep = CmpTemplatesEndpointsApi.sendTest(documentId, arg2);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
+async function duplicateTemplate(documentId) {
+    const ep = CmpTemplatesEndpointsApi.duplicateTemplate(documentId);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
 const endpoints = strictEndpointGuard(
     'CmpTemplatesEndpoints',
     {
@@ -35,9 +50,12 @@ const endpoints = strictEndpointGuard(
         create,
         update,
         del,
+        getPreview,
+        sendTest,
+        duplicateTemplate,
         meta: CmpTemplatesEndpointsApi.meta,
     },
-    ["list","byId","create","update","del","meta"],
+    ["list","byId","create","update","del","getPreview","sendTest","duplicateTemplate","meta"],
 );
 
 export default endpoints;

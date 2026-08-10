@@ -70,6 +70,16 @@
     "utm_content": {
       "type": "string"
     },
+    "track_opens": {
+      "type": "boolean",
+      "default": true,
+      "description": "Inject the local open pixel at run time (needs PUBLIC_URL)."
+    },
+    "track_clicks": {
+      "type": "boolean",
+      "default": true,
+      "description": "Rewrite links through the local click redirect at run time (needs PUBLIC_URL)."
+    },
     "schedule_frequency": {
       "type": "enumeration",
       "enum": [

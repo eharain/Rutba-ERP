@@ -85,12 +85,16 @@
     "opened": {
       "type": "integer",
       "default": 0,
-      "description": "Stays 0 until the Phase 4 tracking decision lands — the MTA does not report opens today."
+      "description": "Unique recipients who opened (local tracking pixel — Phase 4 option (b))."
     },
     "clicked": {
       "type": "integer",
       "default": 0,
-      "description": "Stays 0 until Phase 4. actions_clicked covers action-token clicks in the meantime."
+      "description": "Unique recipients who clicked any tracked link. actions_clicked covers MTA action-token clicks separately."
+    },
+    "tracked_links": {
+      "type": "json",
+      "description": "Ordered destination URLs behind /cmp/t/c/<token>/<index>. Server-side lookup by index is what rules out open redirects."
     },
     "actions_clicked": {
       "type": "json",

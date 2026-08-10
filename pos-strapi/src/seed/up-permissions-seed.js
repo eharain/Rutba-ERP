@@ -50,6 +50,25 @@ const CUSTOM_ACTIONS = {
   // trust token, so the controller re-checks campaigns_admin itself — the UP
   // grant alone admits every app user.
   'api::cmp-sending-identity.cmp-sending-identity': ['setupSender', 'validateSender', 'resetToken', 'getMtaHealth'],
+  'api::cmp-template.cmp-template': ['getPreview', 'sendTest', 'duplicateTemplate'],
+  'api::cmp-audience.cmp-audience': ['resolveMembers'],
+  'api::cmp-campaign.cmp-campaign': ['runCampaign', 'cancelCampaign'],
+  // processWebhook is auth:false (HMAC-verified) — no UP grant needed for it.
+  'api::cmp-run.cmp-run': ['syncRun'],
+  // Mail client: the live-IMAP surface. The controller re-checks the mail
+  // app-role and per-account ownership itself — the UP grant alone admits
+  // every app user.
+  'api::mail-account.mail-account': [
+    'validateConnection', 'listFolders', 'listMessages', 'getMessage',
+    'getAttachment', 'setFlags', 'removeMessage', 'sendMessage',
+    'transferMessage', 'createDraft', 'createImport', 'listAssignees', 'createProvision',
+    'listAccess', 'setAccess',
+  ],
+  // Mail-server registry (rutba-users): controller re-checks users/mail admin.
+  'api::mail-server.mail-server': ['validateServer'],
+  'api::mail-message.mail-message': [
+    'createLink', 'removeLink', 'assignMessage', 'setTriageStatus',
+  ],
 };
 
 function resolveApiProviderRoot(strapi) {

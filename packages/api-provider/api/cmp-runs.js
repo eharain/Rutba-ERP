@@ -49,4 +49,14 @@ export const CmpRunsEndpoints = {
         params: byIdParams({ populate, fields }, { populate: { campaign: true } }),
     }),
 
+    /** Pull the MTA batch report into the run counters on demand. */
+    syncRun: (documentId) => ({
+        path: `/cmp-runs/${documentId}/sync`,
+        action: 'syncRun',
+        method: 'post',
+        apps: ['campaigns'],
+        approle: ['admin', 'manager', 'staff'],
+        data: {},
+    }),
+
 };

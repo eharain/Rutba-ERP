@@ -1,14 +1,62 @@
 # `rutba-campaigns` — Implementation Spec
 
-> **Status (2026-08): 🔨 Phase 0 built.** The seven `cmp-*` content types, their
-> api-provider descriptors, the Rutba-MTA client, the sending-identity lifecycle
-> and the `rutba-campaigns` app shell (**:4019**) are in and verified: Strapi
-> boots with the schemas, all eight routes resolve (403 = gated, not 404), the
-> seeder applied 23 domains / 3996 policies and granted 39 UP permissions
-> (7 CTs × 5 + 4 custom actions), and the app builds and serves. **Phases 1–6
-> are not started** — see §9. Decisions from §8 were taken as recommended:
-> `cmp-audience` behind a resolver interface, email-only with the channel seam
-> kept, roles-based permissions, port 4019, tracking deferred to Phase 4.
+> **Status update (2026-08-09, later): Phases 4–5 built** under the
+> email-program umbrella (M6). The §5 tracking decision was taken as
+> **option (b) — local** — with cause: the MTA's own FUNCTION.md scopes
+> generic open/click tracking out, the repo has its own release process, and
+> dev has no MTA running to verify an MTA-side tracker against. Shape:
+> `utils/cmp-tracking.js` instruments the batch HTML AFTER `withUtm` (pixel +
+> per-link rewrite through `/api/cmp/t/c/{{_trk}}/<index>`); `_trk` is a
+> per-recipient HMAC token carried in merge data, so ONE batch still yields
+> per-recipient attribution; destinations live in `cmp-run.tracked_links`
+> and are resolved by index server-side (no open redirect). Events dedupe on
+> `trk:<recipient>:<kind>:<idx>`; `opened`/`clicked` run counters count
+> unique recipients. The runner now materializes recipient rows BEFORE the
+> batch (they carry person/crm-contact/customer resolved by email — Phase 5's
+> `crm-activity` tie-in logs send, first open, first click on contact-matched
+> recipients). If the MTA later gains native tracking, `ingestWebhook`
+> already maps `opened`/`clicked` — switch off the injection and nothing
+> downstream moves. Verified by a 19-check smoke (pure instrumentation +
+> live pixel/redirect/dedupe/tamper + activity + `/api/persons` gating); an
+> MTA-connected `_trk` send is still unexercised (`MTA_BASE_URL` blank).
+>
+> **Status update (2026-08-09): Phases 2–3 built** under the email-program
+> umbrella (M4 — see `email-program/00-overview-and-roadmap.md`): audience
+> resolver + `resolveMembers`, campaign runner (`runCampaign`/`cancelCampaign`,
+> failure ledger), `campaign-cron-tasks.js` (due sweep + report poll —
+> `CAMPAIGNS_CRON_ENABLED` finally consumed), the HMAC-verified public
+> `/api/cmp/webhook` receiver, `syncRun` report pull, and the audiences /
+> composer / runs pages. Verified by API smoke (resolver dedupe, runner
+> failure path, webhook 401 gate, cancel); an MTA-connected send is still
+> unexercised — `MTA_BASE_URL` is blank in dev. One recorded bound: one MTA
+> batch per run (multi-batch chunking deferred until an audience needs it).
+>
+> **Status (2026-08): 🔨 Phases 0–1 built.** Decisions from §8 were taken as
+> recommended: `cmp-audience` behind a resolver interface, email-only with the
+> channel seam kept, roles-based permissions, port 4019, tracking deferred to
+> Phase 4. **Phases 2–6 are not started** — see §9.
+>
+> **Phase 0** — seven `cmp-*` content types, their api-provider descriptors, the
+> Rutba-MTA client, the sending-identity lifecycle, and the `rutba-campaigns`
+> app shell (**:4019**) registered across all seven registration points.
+>
+> **Phase 1** — the template studio: GrapesJS + `grapesjs-preset-newsletter`,
+> merge-key extraction/validation, server-side preview, transactional test-send,
+> duplicate, and the templates list + editor pages.
+>
+> **What is verified:** Strapi boots with the schemas; all eleven routes resolve
+> (403 = gated, not 404); the seeder registered everything (23 domains, 849
+> methods, 4005 policies, 42 UP permissions = 7 CTs × 5 + 7 custom actions); the
+> app builds with all six pages; and the pure render logic — merge-key
+> extraction, substitution, missing-key reporting, UTM appending — passes 27
+> targeted checks (`pos-strapi/src/utils/template-render.js`).
+>
+> **What is NOT verified: GrapesJS mounting in a real browser.** React does not
+> hydrate in the agent's browser pane — `rutba-inventory`, untouched, fails
+> identically — so the studio could not be exercised end to end. The imports
+> resolve and the production build succeeds, and grapesjs is pinned to `^0.21.13`
+> to satisfy the preset's declared `^0.21.2` peer, but **a human should open
+> `/templates/<id>` once and confirm the canvas, blocks, and save round-trip.**
 >
 > **One deviation from this spec worth knowing:** §3 said the trust token would
 > be "encrypted". It is stored `private: true` (stripped on serialize), matching
@@ -16,6 +64,11 @@
 > encrypted at rest. The repo has no key-management layer and inventing one for
 > this was out of scope. The MTA does encrypt the SMTP password it holds
 > (AES-256-GCM), and the ERP never stores that password at all.
+>
+> **A correction to an earlier status claim:** Phase 0 was first reported as
+> "the app renders". That was wrong — what was actually observed was static SSR
+> markup, which looks the same as a mounted component that is still loading. The
+> hydration gap above was only found while verifying Phase 1.
 >
 > **Roadmap slot:** [`ROADMAP.md`](./ROADMAP.md) **1.4** (stream ⑤ Growth), with
 > **0.6** (CRM saved-segment engine) as its hard dependency and **1.6**
@@ -338,12 +391,12 @@ Screens:
 
 | Phase | Contents | Size |
 |---|---|---|
-| **0 — Foundations** | `cmp-*` content types + descriptors + policies, MTA client service, sending-identity bootstrap, app registration (§6 checklist), empty app shell | **M** |
-| **1 — Template studio** | GrapesJS editor, folders, merge-key declaration + validation, inline-CSS export, test-send, preview | **M** |
+| **0 — Foundations** ✅ | `cmp-*` content types + descriptors + policies, MTA client service, sending-identity bootstrap, app registration (§6 checklist), empty app shell | **M** |
+| **1 — Template studio** ✅ | GrapesJS editor, folders, merge-key declaration + validation, inline-CSS export, test-send, preview | **M** |
 | **2 — Audiences + composer** | `cmp-audience` (CSV + filter over crm-contact/customer), resolver, merge mapping, 4-step composer, one-time send via `/v1/send/batch` | **M** |
 | **3 — Scheduling + reporting** | `campaign-cron-tasks.js` (recurrence, max_runs/max_failures), webhook receiver + HMAC verify, report poller, run/recipient grids, delivery dashboard, suppression UI | **M** |
-| **4 — Tracking** | §5 decision — opens + link clicks + UTM append, click-through reporting | **S–M** |
-| **5 — CRM tie-in (ROADMAP 1.6)** | campaign events → `crm-activity`; tracked email on activity | **S** |
+| **4 — Tracking** ✅ | §5 decided as (b) local — opens + link clicks via `{{_trk}}` pixel/redirect, UTM append (Phase 1), open/click reporting on run + recipient grids | **S–M** |
+| **5 — CRM tie-in (ROADMAP 1.6)** ✅ | campaign send / first open / first click → `crm-activity` on contact-matched recipients; recipients carry person/contact/customer | **S** |
 | **6 — Automation (competitive parity)** | A/B with auto-deploy winner, nurture journeys, lead scoring, landing pages, ABM account object, identity stitching | **L** — separate roadmap item, not 1.4 |
 
 Phases 0–3 are the ROADMAP 1.4 deliverable. Phase 6 is the §1.5 competitor gap

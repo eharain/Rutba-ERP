@@ -5,6 +5,8 @@ export interface CmpCampaignsEndpointsType {
     create(data: any): Promise<any>;
     update(documentId: any, data: any): Promise<any>;
     del(documentId: any): Promise<any>;
+    runCampaign(documentId: any): Promise<any>;
+    cancelCampaign(documentId: any): Promise<any>;
     meta: any;
 }
 

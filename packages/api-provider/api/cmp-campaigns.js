@@ -84,4 +84,28 @@ export const CmpCampaignsEndpoints = {
         approle: ['admin', 'manager'],
     }),
 
+    /**
+     * Execute a run NOW: resolve the audience, submit the batch to Rutba-MTA,
+     * create the cmp-run + recipient rows. Errors are structured
+     * (mta_not_configured, audience_empty, campaign_no_identity, ...).
+     */
+    runCampaign: (documentId) => ({
+        path: `/cmp-campaigns/${documentId}/run`,
+        action: 'runCampaign',
+        method: 'post',
+        apps: ['campaigns'],
+        approle: ['admin', 'manager'],
+        data: {},
+    }),
+
+    /** Stop all future runs (in-flight MTA batches are not recalled). */
+    cancelCampaign: (documentId) => ({
+        path: `/cmp-campaigns/${documentId}/cancel`,
+        action: 'cancelCampaign',
+        method: 'post',
+        apps: ['campaigns'],
+        approle: ['admin', 'manager'],
+        data: {},
+    }),
+
 };

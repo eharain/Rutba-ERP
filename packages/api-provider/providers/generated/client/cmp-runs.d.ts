@@ -2,6 +2,7 @@
 export interface CmpRunsEndpointsType {
     list({ page, pageSize, sort, populate, filters, fields, campaignDocId, state }?: any): Promise<any>;
     byId(documentId: any, { populate, fields }?: any): Promise<any>;
+    syncRun(documentId: any): Promise<any>;
     meta: any;
 }
 

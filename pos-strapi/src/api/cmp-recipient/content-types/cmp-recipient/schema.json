@@ -23,6 +23,12 @@
       "relation": "manyToOne",
       "target": "api::crm-contact.crm-contact"
     },
+    "person": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::person.person",
+      "description": "Resolved by email at run time — folds campaign sends into the person email-identity spine (email-program 04/07)."
+    },
     "customer": {
       "type": "relation",
       "relation": "manyToOne",
@@ -58,6 +64,14 @@
     },
     "sent_at": {
       "type": "datetime"
+    },
+    "opened_at": {
+      "type": "datetime",
+      "description": "First recorded open (local tracking pixel)."
+    },
+    "clicked_at": {
+      "type": "datetime",
+      "description": "First recorded click on any tracked link."
     },
     "last_event_at": {
       "type": "datetime"

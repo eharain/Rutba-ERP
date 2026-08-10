@@ -12,6 +12,10 @@ import '@rutba/pos-shared/styles/layout.css';
 import '../src/styles/globals.css';
 import 'primereact/resources/themes/saga-blue/theme.css';
 import 'primereact/resources/primereact.min.css';
+// GrapesJS ships global CSS, and Next.js only permits global stylesheet imports
+// from _app — so the studio's styles load here rather than in the editor
+// component. Everything it defines is namespaced under .gjs-*.
+import 'grapesjs/dist/css/grapes.min.css';
 import { Geist, Geist_Mono } from "next/font/google";
 
 const geistSans = Geist({

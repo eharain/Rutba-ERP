@@ -5,6 +5,7 @@ export interface CmpAudiencesEndpointsType {
     create(data: any): Promise<any>;
     update(documentId: any, data: any): Promise<any>;
     del(documentId: any): Promise<any>;
+    resolveMembers(documentId: any): Promise<any>;
     meta: any;
 }
 
