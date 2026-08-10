@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useAuth } from "../context/AuthContext";
+import useSiteLogo from "../hooks/useSiteLogo";
 import { APP_URLS, APP_META } from "../lib/roles";
 import RoleSwitcher from "./RoleSwitcher";
 import NavAppSwitcher from "./NavAppSwitcher";
@@ -13,8 +14,14 @@ import NotificationBell from "./NotificationBell";
  * shortcuts in the middle (`secondary`), and Apps/Role/User on the
  * right. The primary nav lives in the Sidebar.
  *
+ * The brand slot resolves in three steps: an explicit `brand` node wins, then
+ * the logo configured in site settings for this app, then the app's own icon
+ * from APP_META. That middle step is why a logo uploaded in the CMS shows up
+ * across every app without each one wiring its own fetch.
+ *
  * @param {string} currentApp - app key (e.g. 'sale', 'hr', 'cms')
- * @param {React.ReactNode} brand - optional custom brand node
+ * @param {React.ReactNode} brand - optional custom brand node, overrides the
+ *   site-settings logo
  * @param {string} secondaryLabel - small uppercase label before the
  *   secondary list (e.g. "Create", "Quick"). Hidden if no items.
  * @param {Array<{href:string,label:string,icon?:string,variant?:string,external?:boolean}>} secondary
@@ -36,8 +43,9 @@ export default function Topbar({
     loginHref,
     showRoleSwitcher = true,
 }) {
-    const { user } = useAuth();
+    const { user, jwt } = useAuth();
     const router = useRouter();
+    const { logoUrl } = useSiteLogo(jwt);
 
     const meta = APP_META[currentApp] || {};
     const userLabel = user?.username || user?.email || "";
@@ -49,9 +57,15 @@ export default function Topbar({
     return (
         <nav className="topbar">
             <Link className="topbar-brand" href="/">
-                {brand || (
+                {brand || (logoUrl ? (
+                    <img
+                        src={logoUrl}
+                        alt={resolvedAppName}
+                        style={{ height: 28, objectFit: "contain" }}
+                    />
+                ) : (
                     <i className={`${meta.icon || 'fa-solid fa-cube'} ${meta.color || 'text-warning'}`}></i>
-                )}
+                ))}
             </Link>
 
             {resolvedAppName && (
