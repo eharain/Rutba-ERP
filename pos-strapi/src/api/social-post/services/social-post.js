@@ -121,7 +121,10 @@ module.exports = createCoreService(POST_UID, ({ strapi }) => ({
         documentId: acc.documentId,
         platform: acc.platform,
         account_name: acc.account_name,
-        browser: acc.connection_type === 'browser',
+        // No adapter for this platform means it can ONLY be browser-posted,
+        // whatever connection_type says — a row created in the admin panel
+        // defaults to 'api' and would otherwise hit getAdapter() and throw.
+        browser: acc.connection_type === 'browser' || !providers.hasAdapter(acc.platform),
       });
       covered.add(acc.platform);
     }
@@ -217,8 +220,11 @@ module.exports = createCoreService(POST_UID, ({ strapi }) => ({
     }
 
     const attempted = targets.length + missing.length;
+    const failures = Object.values(results).filter((v) => v && v.status === 'error').length;
     // Browser handoffs aren't failures — the desktop poster finishes them and
-    // recordBrowserResult upgrades the rollup when it does.
+    // recordBrowserResult upgrades the rollup when it does. `failures` is
+    // returned separately so a caller can warn about API targets that DID fail;
+    // the rollup alone can't express "some failed, some still in progress".
     const post_status = successes === attempted ? 'published'
       : successes > 0 ? 'partially_published'
       : browserPending > 0 ? 'publishing'
@@ -241,7 +247,7 @@ module.exports = createCoreService(POST_UID, ({ strapi }) => ({
       catch (e) { strapi.log.warn(`[social] CMS publish after social publish failed: ${e.message}`); }
     }
 
-    return { post_status, successes, attempted, browser_pending: browserPending, platform_results: results };
+    return { post_status, successes, attempted, failures, browser_pending: browserPending, platform_results: results };
   },
 
   // ── unpublish (best-effort delete from each platform) ──────────────────────
@@ -299,24 +305,39 @@ module.exports = createCoreService(POST_UID, ({ strapi }) => ({
     const results = { ...(post.platform_results || {}) };
     const key = account_id ? resultKey(platform, account_id) : platform;
     const prev = results[key] || {};
+    // A confirmed success is final. A later failed/unverified report for the
+    // same destination (a retry, or a flush from the poster's offline queue)
+    // must not un-publish something that is live — it only bumps the counter.
+    const keepSuccess = prev.status === 'success' && status !== 'success';
     results[key] = {
-      status,
+      ...prev, // keep platform_post_id / url / account_name so delete + reply sync still work
+      status: keepSuccess ? 'success' : status,
       platform,
       account_id: account_id || null,
-      error: status === 'success' ? null : error || null,
-      note: note || null,
+      error: keepSuccess || status === 'success' ? null : error || null,
+      note: keepSuccess ? `later attempt reported ${status}: ${error || 'no detail'}` : note || null,
       via: via || 'desktop-poster',
       attempts: (Number(prev.attempts) || 0) + 1,
       at: new Date().toISOString(),
     };
 
+    // Completion is per (platform, ACCOUNT), not per platform: with two accounts
+    // on one platform, one success used to mark the whole platform done and left
+    // the second account silently unposted.
+    const linked = Array.isArray(post.social_accounts) ? post.social_accounts : [];
+    const targetPlatforms = Array.isArray(post.platforms) && post.platforms.length ? post.platforms : [platform];
+    const expected = linked
+      .filter((a) => a && a.is_active !== false && targetPlatforms.includes(a.platform))
+      .map((a) => resultKey(a.platform, a.documentId));
+    // fall back to the key we just wrote when the post has no linked accounts
+    const wanted = expected.length ? expected : [key];
+    const done = wanted.filter((k) => results[k] && results[k].status === 'success');
     const covered = new Set(Object.entries(results)
       .filter(([, v]) => v && v.status === 'success')
       .map(([k]) => String(k).split('#')[0]));
-    const targets = Array.isArray(post.platforms) && post.platforms.length ? post.platforms : [platform];
     let post_status = post.post_status;
-    if (targets.every((t) => covered.has(t))) post_status = 'published';
-    else if (covered.size > 0) post_status = 'partially_published';
+    if (done.length === wanted.length) post_status = 'published';
+    else if (done.length > 0 || covered.size > 0) post_status = 'partially_published';
     else if (status === 'failed') post_status = 'failed';
 
     const published_at_social = covered.size > 0
@@ -339,7 +360,7 @@ module.exports = createCoreService(POST_UID, ({ strapi }) => ({
       });
     }
 
-    return { ok: true, post_status, done: covered.size, total: targets.length, key };
+    return { ok: true, post_status, done: done.length, total: wanted.length, key };
   },
 
   // ── repost: clone a post into a fresh draft (re-publishable) ───────────────
@@ -377,7 +398,10 @@ module.exports = createCoreService(POST_UID, ({ strapi }) => ({
     let imported = 0;
 
     for (const val of Object.values(results)) {
-      if (!val || val.status === 'error' || val.status === 'removed' || !val.platform_post_id || !val.account_id) continue;
+      // Allow-list, not deny-list: only a CONFIRMED success has comments worth
+      // polling. A deny-list silently opts every future status in (pending,
+      // failed, unverified all passed before).
+      if (!val || val.status !== 'success' || !val.platform_post_id || !val.account_id) continue;
       try {
         const adapter = providers.getAdapter(val.platform);
         if (!adapter.capabilities?.comments) continue;

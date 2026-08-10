@@ -229,9 +229,15 @@ export default function AccountsPage() {
             setForm((prev) => ({
                 ...prev,
                 platform: value,
-                // Platforms with no adapter can only be browser-posted; otherwise
-                // keep whichever posting method the user already chose.
-                connection_type: BROWSER_PLATFORMS.has(value) ? "browser" : prev.connection_type || "api",
+                // Routing fields mean different things per platform (page_id is a
+                // Facebook Page ID but a YouTube Studio URL), so carrying them
+                // across a platform switch silently writes nonsense.
+                page_id: "",
+                platform_user_id: "",
+                target_name: "",
+                // Platforms with no adapter can only be browser-posted; a platform
+                // that has one goes back to the API default.
+                connection_type: BROWSER_PLATFORMS.has(value) ? "browser" : "api",
             }));
             return;
         }

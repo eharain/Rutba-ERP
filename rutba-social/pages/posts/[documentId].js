@@ -24,6 +24,17 @@ const STATUS_BADGES = {
 // and a second copy here only drifts (this one was missing LinkedIn/WhatsApp).
 const platformColor = (p) => PLATFORMS[p]?.color || "#6c757d";
 
+// Per-destination outcomes. `pending` means handed to the Rutba Social Poster
+// desktop app — in progress, not a failure, so it must not render red.
+const RESULT_BADGES = {
+    success: "bg-success",
+    pending: "bg-info",
+    unverified: "bg-warning text-dark",
+    removed: "bg-secondary",
+    error: "bg-danger",
+    failed: "bg-danger",
+};
+
 export default function PostDetailPage() {
     const { jwt } = useAuth();
     const { toast, ToastContainer } = useToast();
@@ -186,11 +197,19 @@ export default function PostDetailPage() {
             const res = await SocialPostsEndpoints.publishSocial(documentId);
             const r = res?.data || res || {};
             const ok = r.successes || 0;
-            const fail = Math.max(0, (r.attempted || 0) - ok);
-            setIsPublished(ok > 0);
-            if (ok > 0 && fail > 0) toast(`Published to ${ok} platform(s); ${fail} failed — see Publish Results.`, "warning");
-            else if (ok > 0) toast(`Saved & published to ${ok} platform(s)!`, "success");
-            else toast("Publish failed on all platforms — see Publish Results below.", "danger");
+            const queued = r.browser_pending || 0;
+            const fail = r.failures ?? Math.max(0, (r.attempted || 0) - ok - queued);
+            // A browser handoff is NOT a failure: those platforms have no API,
+            // so the post is queued for the Rutba Social Poster desktop app and
+            // reports back when it has actually gone out.
+            setIsPublished(ok > 0 || queued > 0);
+            const parts = [];
+            if (ok) parts.push(`published to ${ok} account(s)`);
+            if (queued) parts.push(`${queued} queued for the Social Poster app`);
+            if (fail) parts.push(`${fail} failed`);
+            const msg = parts.length ? parts.join("; ") : "nothing to publish";
+            toast(msg.charAt(0).toUpperCase() + msg.slice(1) + (fail ? " — see Publish Results." : "."),
+                fail ? (ok || queued ? "warning" : "danger") : "success");
             await loadPost();
         } catch (err) {
             console.error("Failed to publish post", err);
@@ -539,8 +558,8 @@ export default function PostDetailPage() {
                                             {Object.entries(post.platform_results).map(([key, val]) => (
                                                 <tr key={key}>
                                                     <td><code>{key}</code></td>
-                                                    <td><span className={`badge ${val.status === "success" ? "bg-success" : "bg-danger"}`}>{val.status}</span></td>
-                                                    <td className="text-muted small">{val.error || ""}</td>
+                                                    <td><span className={`badge ${RESULT_BADGES[val.status] || "bg-danger"}`}>{val.status}</span></td>
+                                                    <td className="text-muted small">{val.error || val.note || ""}</td>
                                                 </tr>
                                             ))}
                                         </tbody>
