@@ -33,11 +33,12 @@ export const APP_URLS = {
     campaigns:     process.env.NEXT_PUBLIC_CAMPAIGNS_URL     || 'http://localhost:4019',
     mail:          process.env.NEXT_PUBLIC_MAIL_URL          || 'http://localhost:4021',
     users:         process.env.NEXT_PUBLIC_USERS_URL         || 'http://localhost:4022',
+    helpdesk:      process.env.NEXT_PUBLIC_HELPDESK_URL      || 'http://localhost:4019',
     web:       process.env.NEXT_PUBLIC_WEB_URL       || 'http://localhost:4010',
 };
 
 /** All recognised app keys */
-const VALID_APP_KEYS = ['stock', 'sale', 'auth', 'web-user', 'order-management', 'rider', 'crm', 'hr', 'ess', 'accounts', 'payroll', 'cms', 'social', 'manufacturing', 'marketplace', 'inventory', 'seed', 'campaigns', 'mail', 'users'];
+const VALID_APP_KEYS = ['stock', 'sale', 'auth', 'web-user', 'order-management', 'rider', 'crm', 'hr', 'ess', 'accounts', 'payroll', 'cms', 'social', 'manufacturing', 'marketplace', 'inventory', 'seed', 'campaigns', 'mail', 'users', 'helpdesk'];
 
 /**
  * App categories — the ordered taxonomy used to arrange the growing
@@ -82,6 +83,7 @@ export const APP_META = {
     seed:       { group: 'admin',     icon: 'fa-solid fa-seedling',           label: 'Seeding',            description: 'Run system, reference and backfill seeds', border: 'border-success',   color: 'text-success' },
     campaigns:  { group: 'content',   icon: 'fa-solid fa-envelope-open-text', label: 'Campaigns',          description: 'Email templates, audiences, campaigns, delivery reporting', border: 'border-purple',    color: 'text-purple' },
     mail:       { group: 'content',   icon: 'fa-solid fa-envelope',           label: 'Mail',               description: 'Personal and shared inboxes over live IMAP',  border: 'border-info',      color: 'text-info' },
+    helpdesk:   { group: 'sales',     icon: 'fa-solid fa-headset',            label: 'Helpdesk',           description: 'Support desks, tickets, SLAs, service catalog, knowledge base', border: 'border-info',      color: 'text-info' },
     web:        { group: 'content',   icon: 'fa-solid fa-globe',              label: 'Storefront',         description: 'Public customer-facing website',              border: 'border-info',      color: 'text-info', public: true },
 };
 
@@ -259,7 +261,75 @@ export function getCrossAppLinks(appAccess, currentApp) {
  */
 export function getCrossAppGroups(appAccess, currentApp) {
     const links = getCrossAppLinks(appAccess, currentApp);
+    return groupLinksByCategory(links);
+}
 
+/**
+ * Build links for EVERY configured app — the full catalogue, not just
+ * what the user can access. Each link carries `allowed` (user has
+ * access) and `current` (the app we're inside) so callers can render
+ * locked/active states. The current app is INCLUDED (unlike
+ * getCrossAppLinks) so the list doubles as a complete app directory.
+ * @param {string[]} appAccess
+ * @param {string} currentApp - the app key we're currently in
+ * @returns {{ key, label, href, icon, color, description, external, allowed, current }[]}
+ */
+export function getAppCatalogLinks(appAccess, currentApp) {
+    const allowed = getAllowedApps(appAccess);
+    const links = [];
+
+    for (const appKey of VALID_APP_KEYS) {
+        if (!APP_URLS[appKey]) continue;
+        const meta = APP_META[appKey] || {};
+        links.push({
+            key: appKey,
+            label: meta.label || appKey,
+            href: APP_URLS[appKey],
+            icon: meta.icon || 'fa-solid fa-cube',
+            color: meta.color || 'text-secondary',
+            description: meta.description || '',
+            allowed: allowed.includes(appKey),
+            current: appKey === currentApp,
+        });
+    }
+
+    // Public apps (e.g. the storefront) are open to everyone.
+    for (const [appKey, meta] of Object.entries(APP_META)) {
+        if (!meta || !meta.public) continue;
+        if (!APP_URLS[appKey]) continue;
+        if (links.find((l) => l.key === appKey)) continue;
+        links.push({
+            key: appKey,
+            label: meta.label || appKey,
+            href: APP_URLS[appKey],
+            icon: meta.icon || 'fa-solid fa-cube',
+            color: meta.color || 'text-secondary',
+            description: meta.description || '',
+            external: true,
+            allowed: true,
+            current: appKey === currentApp,
+        });
+    }
+
+    return links;
+}
+
+/**
+ * The full app catalogue grouped by category — every configured app,
+ * including ones the user can't access (marked `allowed: false`) and
+ * the current app (marked `current: true`). Used by the footer launcher
+ * so the footer always shows the complete application directory.
+ * @param {string[]} appAccess
+ * @param {string} currentApp
+ * @returns {{ key, label, icon, color, apps: object[] }[]}
+ */
+export function getAppCatalogGroups(appAccess, currentApp) {
+    const links = getAppCatalogLinks(appAccess, currentApp);
+    return groupLinksByCategory(links);
+}
+
+/** Shared grouping: arrange links into APP_CATEGORIES order, A-Z inside. */
+function groupLinksByCategory(links) {
     const byGroup = new Map();
     for (const link of links) {
         const groupKey = (APP_META[link.key] || {}).group || 'admin';

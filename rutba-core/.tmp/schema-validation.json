@@ -12,6 +12,259 @@
       ]
     },
     {
+      "table": "core_event_deliveries",
+      "columns": [
+        "id",
+        "event_id",
+        "subscriber",
+        "status",
+        "attempts",
+        "last_attempt_at",
+        "next_attempt_at",
+        "last_error",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    {
+      "table": "core_events",
+      "columns": [
+        "id",
+        "event_id",
+        "event_name",
+        "version",
+        "occurred_at",
+        "tenant_id",
+        "actor",
+        "entity_uid",
+        "document_id",
+        "payload",
+        "correlation_id",
+        "causation_id",
+        "created_at"
+      ]
+    },
+    {
+      "table": "core_migrations",
+      "columns": [
+        "id",
+        "name",
+        "applied_at",
+        "checksum"
+      ]
+    },
+    {
+      "table": "helpdesk_business_calendars",
+      "columns": [
+        "id",
+        "document_id",
+        "key",
+        "name",
+        "timezone",
+        "working_days",
+        "is_default",
+        "is_active",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    {
+      "table": "helpdesk_desks",
+      "columns": [
+        "id",
+        "document_id",
+        "key",
+        "name",
+        "description",
+        "is_active",
+        "sequence",
+        "visibility_mode",
+        "default_priority",
+        "default_assignee_id",
+        "default_team_id",
+        "workflow_id",
+        "sla_policy_id",
+        "business_calendar_id",
+        "allow_anonymous",
+        "require_resolution_note",
+        "grant_line_manager_access",
+        "requester_kinds",
+        "reopen_window_days",
+        "auto_close_after_days",
+        "csat_enabled",
+        "email_address",
+        "branch_ids",
+        "category_map",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    {
+      "table": "helpdesk_holidays",
+      "columns": [
+        "id",
+        "document_id",
+        "calendar_id",
+        "name",
+        "holiday_date",
+        "is_recurring",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    {
+      "table": "helpdesk_queues",
+      "columns": [
+        "id",
+        "document_id",
+        "key",
+        "name",
+        "desk_id",
+        "filter",
+        "sort",
+        "columns",
+        "owner_id",
+        "shared_with_team_id",
+        "is_shared",
+        "sequence",
+        "is_active",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    {
+      "table": "helpdesk_resolution_codes",
+      "columns": [
+        "id",
+        "document_id",
+        "key",
+        "name",
+        "desk_id",
+        "is_active",
+        "requires_note",
+        "counts_as_resolved",
+        "sequence",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    {
+      "table": "helpdesk_routing_rules",
+      "columns": [
+        "id",
+        "document_id",
+        "key",
+        "name",
+        "desk_id",
+        "sequence",
+        "conditions",
+        "strategy",
+        "target_desk_id",
+        "target_team_id",
+        "target_agent_id",
+        "is_active",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    {
+      "table": "helpdesk_sla_policies",
+      "columns": [
+        "id",
+        "document_id",
+        "key",
+        "name",
+        "desk_id",
+        "business_calendar_id",
+        "pause_on_waiting",
+        "pause_stages",
+        "is_default",
+        "is_active",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    {
+      "table": "helpdesk_sla_targets",
+      "columns": [
+        "id",
+        "document_id",
+        "policy_id",
+        "priority",
+        "first_response_minutes",
+        "resolution_minutes",
+        "at_risk_threshold_pct",
+        "escalation_steps",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    {
+      "table": "helpdesk_team_members",
+      "columns": [
+        "id",
+        "document_id",
+        "team_id",
+        "user_id",
+        "role_in_team",
+        "capacity_weight",
+        "is_active",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    {
+      "table": "helpdesk_teams",
+      "columns": [
+        "id",
+        "document_id",
+        "key",
+        "name",
+        "desk_id",
+        "manager_id",
+        "working_hours",
+        "skills",
+        "is_active",
+        "sequence",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    {
+      "table": "helpdesk_ticket_dedupe",
+      "columns": [
+        "id",
+        "dedupe_key",
+        "ticket_id",
+        "desk_id",
+        "created_at"
+      ]
+    },
+    {
+      "table": "helpdesk_ticket_messages",
+      "columns": [
+        "id",
+        "document_id",
+        "ticket_id",
+        "body",
+        "body_format",
+        "visibility",
+        "author_id",
+        "author_kind",
+        "author_label",
+        "channel",
+        "in_reply_to_id",
+        "external_id",
+        "delivery_state",
+        "redacted_at",
+        "redacted_by",
+        "redaction_reason",
+        "is_first_response",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    {
       "table": "sync_logs",
       "columns": [
         "id",

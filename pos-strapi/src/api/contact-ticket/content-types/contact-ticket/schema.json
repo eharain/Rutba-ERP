@@ -16,7 +16,7 @@
     "message": { "type": "text", "required": true },
     "status": {
       "type": "enumeration",
-      "enum": ["open", "in_progress", "waiting", "resolved"],
+      "enum": ["open", "in_progress", "waiting", "resolved", "closed", "cancelled", "merged"],
       "default": "open"
     },
     "sla_due_at": { "type": "datetime" },
@@ -51,6 +51,55 @@
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::hr-employee.hr-employee"
-    }
+    },
+
+    "desk_id": { "type": "integer" },
+    "priority": {
+      "type": "enumeration",
+      "enum": ["low", "normal", "high", "urgent"],
+      "default": "normal"
+    },
+    "source": {
+      "type": "enumeration",
+      "enum": [
+        "web", "portal", "email", "phone", "whatsapp",
+        "walk_in", "internal", "api", "system", "marketplace"
+      ],
+      "default": "api"
+    },
+    "requester_kind": {
+      "type": "enumeration",
+      "enum": ["customer", "employee", "supplier", "system", "anonymous"]
+    },
+    "branch_id": { "type": "integer" },
+    "team_id": { "type": "integer" },
+    "subject_entity_uid": { "type": "string" },
+    "subject_document_id": { "type": "string" },
+    "catalog_item_id": { "type": "integer" },
+    "custom_fields": { "type": "json" },
+    "workflow_id": { "type": "integer" },
+    "stage_key": { "type": "string" },
+    "sla_policy_id": { "type": "integer" },
+    "first_response_due_at": { "type": "datetime" },
+    "first_response_at": { "type": "datetime" },
+    "resolution_due_at": { "type": "datetime" },
+    "sla_state": {
+      "type": "enumeration",
+      "enum": ["ok", "at_risk", "breached", "paused", "indeterminate"],
+      "default": "ok"
+    },
+    "sla_paused_at": { "type": "datetime" },
+    "sla_paused_ms": { "type": "biginteger" },
+    "resolution": { "type": "text" },
+    "resolution_code_id": { "type": "integer" },
+    "closed_at": { "type": "datetime" },
+    "reopened_count": { "type": "integer", "default": 0 },
+    "merged_into_id": { "type": "integer" },
+    "split_from_id": { "type": "integer" },
+    "tags": { "type": "json" },
+    "is_imported": { "type": "boolean", "default": false },
+    "origin_event": { "type": "json" },
+    "dedupe_key": { "type": "string" },
+    "archived_at": { "type": "datetime" }
   }
 }

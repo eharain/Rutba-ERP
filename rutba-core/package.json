@@ -8,7 +8,10 @@
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
     "validate-schema": "node scripts/validate-schema.js",
-    "smoke": "node scripts/smoke-documents.js"
+    "smoke": "node scripts/smoke-documents.js",
+    "migrate": "node scripts/migrate.js up",
+    "migrate:status": "node scripts/migrate.js status",
+    "migrate:down": "node scripts/migrate.js down"
   },
   "dependencies": {
     "@koa/router": "^15.7.0",

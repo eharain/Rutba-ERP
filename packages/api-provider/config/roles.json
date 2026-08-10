@@ -115,6 +115,18 @@
     "level": "manager",
     "domain": "ess"
   },
+  "helpdesk_admin": {
+    "level": "admin",
+    "domain": "helpdesk"
+  },
+  "helpdesk_manager": {
+    "level": "manager",
+    "domain": "helpdesk"
+  },
+  "helpdesk_staff": {
+    "level": "staff",
+    "domain": "helpdesk"
+  },
   "hr_admin": {
     "level": "admin",
     "domain": "hr"

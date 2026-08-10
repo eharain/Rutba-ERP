@@ -88,6 +88,15 @@
       "ess_manager"
     ]
   },
+  "helpdesk": {
+    "name": "Helpdesk",
+    "description": "Support desks, tickets, SLAs, service catalog, and the knowledge base.",
+    "roles": [
+      "helpdesk_admin",
+      "helpdesk_manager",
+      "helpdesk_staff"
+    ]
+  },
   "hr": {
     "name": "Human Resources",
     "description": "Employees, leave approvals, and HR administration.",

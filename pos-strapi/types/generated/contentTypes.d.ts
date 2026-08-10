@@ -2104,21 +2104,31 @@ export interface ApiContactTicketContactTicket
     draftAndPublish: false;
   };
   attributes: {
+    archived_at: Schema.Attribute.DateTime;
     assigned_to: Schema.Attribute.Relation<
       'manyToOne',
       'plugin::users-permissions.user'
     >;
+    branch_id: Schema.Attribute.Integer;
+    catalog_item_id: Schema.Attribute.Integer;
     category: Schema.Attribute.Enumeration<
       ['General', 'IT', 'HR', 'Facilities']
     > &
       Schema.Attribute.DefaultTo<'General'>;
+    closed_at: Schema.Attribute.DateTime;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    custom_fields: Schema.Attribute.JSON;
+    dedupe_key: Schema.Attribute.String;
+    desk_id: Schema.Attribute.Integer;
     employee: Schema.Attribute.Relation<
       'manyToOne',
       'api::hr-employee.hr-employee'
     >;
+    first_response_at: Schema.Attribute.DateTime;
+    first_response_due_at: Schema.Attribute.DateTime;
+    is_imported: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     last_reply_at: Schema.Attribute.DateTime;
     last_reply_by: Schema.Attribute.Enumeration<['user', 'agent']>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
@@ -2127,17 +2137,66 @@ export interface ApiContactTicketContactTicket
       'api::contact-ticket.contact-ticket'
     > &
       Schema.Attribute.Private;
+    merged_into_id: Schema.Attribute.Integer;
     message: Schema.Attribute.Text & Schema.Attribute.Required;
     metadata: Schema.Attribute.JSON;
+    origin_event: Schema.Attribute.JSON;
     person: Schema.Attribute.Relation<'manyToOne', 'api::person.person'>;
+    priority: Schema.Attribute.Enumeration<
+      ['low', 'normal', 'high', 'urgent']
+    > &
+      Schema.Attribute.DefaultTo<'normal'>;
     publishedAt: Schema.Attribute.DateTime;
+    reopened_count: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    requester_kind: Schema.Attribute.Enumeration<
+      ['customer', 'employee', 'supplier', 'system', 'anonymous']
+    >;
+    resolution: Schema.Attribute.Text;
+    resolution_code_id: Schema.Attribute.Integer;
+    resolution_due_at: Schema.Attribute.DateTime;
     resolved_at: Schema.Attribute.DateTime;
     sla_due_at: Schema.Attribute.DateTime;
+    sla_paused_at: Schema.Attribute.DateTime;
+    sla_paused_ms: Schema.Attribute.BigInteger;
+    sla_policy_id: Schema.Attribute.Integer;
+    sla_state: Schema.Attribute.Enumeration<
+      ['ok', 'at_risk', 'breached', 'paused', 'indeterminate']
+    > &
+      Schema.Attribute.DefaultTo<'ok'>;
+    source: Schema.Attribute.Enumeration<
+      [
+        'web',
+        'portal',
+        'email',
+        'phone',
+        'whatsapp',
+        'walk_in',
+        'internal',
+        'api',
+        'system',
+        'marketplace',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'api'>;
+    split_from_id: Schema.Attribute.Integer;
+    stage_key: Schema.Attribute.String;
     status: Schema.Attribute.Enumeration<
-      ['open', 'in_progress', 'waiting', 'resolved']
+      [
+        'open',
+        'in_progress',
+        'waiting',
+        'resolved',
+        'closed',
+        'cancelled',
+        'merged',
+      ]
     > &
       Schema.Attribute.DefaultTo<'open'>;
     subject: Schema.Attribute.String & Schema.Attribute.Required;
+    subject_document_id: Schema.Attribute.String;
+    subject_entity_uid: Schema.Attribute.String;
+    tags: Schema.Attribute.JSON;
+    team_id: Schema.Attribute.Integer;
     ticket_no: Schema.Attribute.UID<'subject'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -2146,6 +2205,7 @@ export interface ApiContactTicketContactTicket
       'manyToOne',
       'plugin::users-permissions.user'
     >;
+    workflow_id: Schema.Attribute.Integer;
   };
 }
 
