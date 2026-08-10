@@ -13,6 +13,7 @@ const PLATFORM_COLORS = {
     instagram: "#E1306C",
     facebook: "#1877F2",
     x: "#000000",
+    linkedin: "#0A66C2",
     tiktok: "#010101",
     youtube: "#FF0000",
 };

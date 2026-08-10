@@ -24,7 +24,7 @@ const EMPTY_FORM = {
 
 // Platforms posted to by browser automation (the Rutba Social Poster desktop
 // app) rather than a Cloud/Graph API — no OAuth, no keys, just a destination name.
-const BROWSER_PLATFORMS = new Set(["whatsapp"]);
+const BROWSER_PLATFORMS = new Set(["whatsapp", "linkedin"]);
 
 // Per-platform: which credential fields to show (labelled for that provider) and
 // a help panel describing the account + API you need from the platform. The
@@ -82,6 +82,19 @@ const PLATFORM_FIELDS = {
             { key: "refresh_token", label: "Refresh Token", type: "password", placeholder: "set by Connect" },
             { key: "platform_user_id", label: "X User ID", type: "text", placeholder: "set by Connect" },
         ],
+    },
+    linkedin: {
+        help: {
+            accountType: "A LinkedIn profile or company Page you can post from, signed in on the device that runs the Rutba Social Poster desktop app.",
+            account: "Log in to LinkedIn in the Social Poster's browser. Posting to a company Page requires an admin role on that Page.",
+            api: "LinkedIn's official posting API needs Marketing Developer Platform approval — so posting is done through the Social Poster app (browser automation), no keys or OAuth here.",
+            how: "Paste the profile or Page URL below and Save. The Social Poster opens LinkedIn, verifies the signed-in identity against this URL, and publishes there.",
+            note: "Use the /in/… URL for a personal profile or the /company/… URL for a company Page.",
+            docs: "https://www.linkedin.com/help/linkedin/answer/a522110",
+        },
+        // LinkedIn posts via browser automation — the profile/Page URL routes the post.
+        destination: { key: "target_name", label: "Profile / Page URL", placeholder: "https://www.linkedin.com/in/… or /company/…" },
+        fields: [],
     },
     tiktok: {
         help: {

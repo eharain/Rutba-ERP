@@ -117,7 +117,12 @@ module.exports = createCoreService(POST_UID, ({ strapi }) => ({
     for (const acc of linked) {
       if (!platforms.includes(acc.platform)) continue;
       if (acc.is_active === false) continue;
-      targets.push({ documentId: acc.documentId, platform: acc.platform, account_name: acc.account_name });
+      targets.push({
+        documentId: acc.documentId,
+        platform: acc.platform,
+        account_name: acc.account_name,
+        browser: acc.connection_type === 'browser',
+      });
       covered.add(acc.platform);
     }
     const missing = platforms.filter((p) => !covered.has(p));
@@ -144,8 +149,31 @@ module.exports = createCoreService(POST_UID, ({ strapi }) => ({
     });
 
     let successes = 0;
+    let browserPending = 0;
     for (const t of targets) {
       const key = resultKey(t.platform, t.documentId);
+      // Browser-connected accounts (WhatsApp, LinkedIn, …) are posted by the
+      // Rutba Social Poster desktop app, not an API adapter — hand them off as
+      // 'pending' (never downgrade an attempt the poster already confirmed).
+      if (t.browser) {
+        if (results[key]?.status !== 'success') {
+          results[key] = {
+            status: 'pending',
+            platform: t.platform,
+            account_id: t.documentId,
+            account_name: t.account_name,
+            platform_post_id: null,
+            url: null,
+            error: null,
+            note: 'queued for the Rutba Social Poster desktop app',
+            at: new Date().toISOString(),
+          };
+          browserPending += 1;
+        } else {
+          successes += 1; // already posted by the poster — counts as done
+        }
+        continue;
+      }
       try {
         let account = await this._accountFull(t.documentId);
         account = await this._ensureFreshToken(account);
@@ -189,9 +217,12 @@ module.exports = createCoreService(POST_UID, ({ strapi }) => ({
     }
 
     const attempted = targets.length + missing.length;
-    const post_status = successes === 0 ? 'failed'
-      : successes === attempted ? 'published'
-      : 'partially_published';
+    // Browser handoffs aren't failures — the desktop poster finishes them and
+    // recordBrowserResult upgrades the rollup when it does.
+    const post_status = successes === attempted ? 'published'
+      : successes > 0 ? 'partially_published'
+      : browserPending > 0 ? 'publishing'
+      : 'failed';
 
     await strapi.documents(POST_UID).update({
       documentId,
@@ -202,13 +233,15 @@ module.exports = createCoreService(POST_UID, ({ strapi }) => ({
       },
     });
 
-    // Mirror to the published entry so the post is "live" in CMS too.
-    if (successes > 0) {
+    // Mirror to the published entry so the post is "live" in CMS too. A browser
+    // handoff needs this as much as an API success — the desktop poster only
+    // sees published entries.
+    if (successes > 0 || browserPending > 0) {
       try { await strapi.documents(POST_UID).publish({ documentId }); }
       catch (e) { strapi.log.warn(`[social] CMS publish after social publish failed: ${e.message}`); }
     }
 
-    return { post_status, successes, attempted, platform_results: results };
+    return { post_status, successes, attempted, browser_pending: browserPending, platform_results: results };
   },
 
   // ── unpublish (best-effort delete from each platform) ──────────────────────

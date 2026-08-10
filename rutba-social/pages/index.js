@@ -16,7 +16,7 @@ export default function Home() {
                         <div className="card border-primary h-100">
                             <div className="card-body">
                                 <h5 className="card-title"><i className="fas fa-paper-plane me-2 text-primary"></i>Posts</h5>
-                                <p className="card-text text-muted">Create, schedule, and publish posts to Instagram, Facebook, X, TikTok, and YouTube.</p>
+                                <p className="card-text text-muted">Create, schedule, and publish posts to Instagram, Facebook, X, LinkedIn, TikTok, YouTube, and WhatsApp.</p>
                                 <Link className="btn btn-outline-primary btn-sm" href="/posts">Manage Posts</Link>
                             </div>
                         </div>
