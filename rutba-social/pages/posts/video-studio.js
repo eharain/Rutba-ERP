@@ -97,6 +97,10 @@ export default function VideoStudioPage() {
     // The editor: which layer is selected (panel + canvas outline + drag), and
     // the per-image arrangement (order, exclusion, seconds, focal point).
     const [selectedLayerId, setSelectedLayerId] = useState(null);
+    // The rail shows the selected layer OR the video — but the video's
+    // properties (aspect, music, timing) must never be more than one click
+    // away, so with a layer selected the rail is two tabs, not a takeover.
+    const [railTab, setRailTab] = useState("layer"); // 'layer' | 'video'
     const [arrangement, setArrangement] = useState(null); // [{path, seconds, excluded, focal}]
     const [productContext, setProductContext] = useState(null); // {price, was, discount, product, url}
     const dragRef = useRef(null);
@@ -877,6 +881,10 @@ export default function VideoStudioPage() {
         toast(`Key at ${t.toFixed(1)}s — scrub the playhead and drag the layer to record the next one.`, "info");
     };
 
+    // Selecting a layer is a statement of intent — front its tab. The user
+    // can still flip to Video without losing the selection.
+    useEffect(() => { if (selectedLayerId) setRailTab("layer"); }, [selectedLayerId]);
+
     // Layers that exist because a patch appended them — the ones delete can
     // actually remove (compiled layers are hidden with the eye instead).
     const appendedIds = useMemo(
@@ -1354,8 +1362,23 @@ export default function VideoStudioPage() {
                             <div style={{ maxHeight: "calc(100vh - 140px)", overflowY: "auto", paddingRight: 4 }}>
                                 <audio ref={trackAudioRef} className="d-none" onEnded={() => setPreviewingId(null)} />
 
-                                {/* ── selected-layer inspector ── */}
+                                {/* ── rail tabs: the selected layer, or the video ── */}
                                 {selectedLayer && (
+                                    <div className="btn-group btn-group-sm w-100 mb-2">
+                                        <button type="button" className={`btn ${railTab === "layer" ? "btn-secondary" : "btn-outline-secondary"} text-truncate`}
+                                            onClick={() => setRailTab("layer")}>
+                                            <i className="fas fa-layer-group me-1" />{selectedLayer.name || selectedLayer.text || "Layer"}
+                                        </button>
+                                        <button type="button" className={`btn ${railTab === "video" ? "btn-secondary" : "btn-outline-secondary"}`}
+                                            title="The video's own properties — look, music, timing — without dropping the selection"
+                                            onClick={() => setRailTab("video")}>
+                                            <i className="fas fa-film me-1" />Video
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* ── selected-layer inspector ── */}
+                                {selectedLayer && railTab === "layer" && (
                                 <div className="card mb-3">
                                     <div className="card-header py-2 d-flex align-items-center gap-2">
                                         <i className="fas fa-layer-group" />
@@ -1686,8 +1709,8 @@ export default function VideoStudioPage() {
                                 </div>
                                 )}
 
-                                {/* ── video inspector: nothing selected → the video's properties ── */}
-                                {!selectedLayer && (
+                                {/* ── video inspector: the video's own properties ── */}
+                                {(!selectedLayer || railTab === "video") && (
                                 <>
                                 <p className="text-muted mb-2" style={{ fontSize: 11 }}>
                                     Click a lane or a layer on the preview to edit that layer; these are the video's own properties.
@@ -1820,6 +1843,36 @@ export default function VideoStudioPage() {
                                     </div>
                                 </div>
 
+                                {/* ── brand mark — video-level, because with showLogo off there
+                                       is no logo lane to click ── */}
+                                <div className="card mb-3">
+                                    <div className="card-header py-2 d-flex align-items-center">
+                                        <i className="fas fa-copyright me-2" />Logo
+                                        {logo && <span className="badge bg-success ms-2">from site settings</span>}
+                                        {!logo && logoError && <span className="badge bg-warning text-dark ms-2">unavailable</span>}
+                                    </div>
+                                    <div className="card-body py-2">
+                                        {logoError && <div className="alert alert-warning py-2 small">{logoError}</div>}
+                                        <div className="d-flex align-items-center gap-3">
+                                            {logo && (
+                                                <img src={logo.objectUrl} alt="Site logo"
+                                                    style={{ width: 64, height: 40, objectFit: "contain", background: "#222", borderRadius: 4, padding: 4 }} />
+                                            )}
+                                            <div className="form-check form-switch mb-0">
+                                                <input className="form-check-input" type="checkbox" id="opt-logo-vid" disabled={busy || !logo}
+                                                    checked={options.showLogo && !!logo}
+                                                    onChange={(e) => setOpt({ showLogo: e.target.checked })} />
+                                                <label className="form-check-label small" htmlFor="opt-logo-vid">Show on the video</label>
+                                            </div>
+                                        </div>
+                                        {options.showLogo && logo && (
+                                            <p className="text-muted mb-0 mt-1" style={{ fontSize: 11 }}>
+                                                Corner, size and opacity live on the logo's own lane — click it (or the logo on the preview).
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+
                                 {/* ── excluded photos, so a hidden one has a way back ── */}
                                 {arrangement?.some((a) => a.excluded) && (
                                     <div className="card mb-3">
@@ -1847,7 +1900,12 @@ export default function VideoStudioPage() {
                                     <div className="card-header py-2 d-flex align-items-center">
                                         <i className="fas fa-music me-2" />Music
                                         {tracks.length > 0 && <span className="badge bg-secondary ms-2">{tracks.length} in rotation</span>}
-                                        <Link className="btn btn-sm btn-link ms-auto p-0" href="/audio">Manage library →</Link>
+                                        <button className="btn btn-sm btn-link ms-auto p-0" onClick={addSoundLayer}
+                                            disabled={busy || !plan || !tracks.length}
+                                            title="Add a clip from the library as a SOUND LAYER — placed and trimmed on the timeline, mixed over the bed below">
+                                            <i className="fas fa-plus me-1" />Sound layer
+                                        </button>
+                                        <Link className="btn btn-sm btn-link p-0 ms-2" href="/audio">Library →</Link>
                                     </div>
                                     <div className="card-body">
                                         <div className="btn-group btn-group-sm w-100 mb-2">
@@ -1944,10 +2002,29 @@ export default function VideoStudioPage() {
                                             suffix="s" disabled={busy} onChange={(v) => setOpt({ edgeFadeSeconds: v })} />
                                         <p className="text-muted small mb-0">
                                             The video runs for whichever is longer — the images, or the time the caption needs to type out in full.
-                                            The caption itself is a layer — click its lane to edit the text.
                                         </p>
                                     </div>
                                 </div>
+
+                                {/* ── caption text — also editable from its lane ── */}
+                                {selected && (
+                                    <div className="card mb-3">
+                                        <div className="card-header py-2 d-flex align-items-center">
+                                            <i className="fas fa-keyboard me-2" />Caption
+                                            <Link className="btn btn-sm btn-link ms-auto p-0" href={`/posts/${selected.documentId}`}>Edit the post →</Link>
+                                        </div>
+                                        <div className="card-body py-2">
+                                            <textarea className="form-control form-control-sm" rows={4} disabled={busy}
+                                                value={captionText} onChange={(e) => setBodyOverride(e.target.value)} />
+                                            <div className="d-flex justify-content-between mt-1">
+                                                <small className="text-muted">{captionText.length} characters — the video only, not the post.</small>
+                                                {bodyOverride !== null && (
+                                                    <button className="btn btn-sm btn-link p-0" onClick={() => setBodyOverride(null)} disabled={busy}>Reset</button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                                 </>
                                 )}
                             </div>
