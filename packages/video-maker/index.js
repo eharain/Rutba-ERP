@@ -50,6 +50,15 @@ export const DEFAULTS = {
     maxSeconds: 60,
     kenBurns: true,
     fit: 'blur', // 'blur' = whole image, blurred fill behind · 'cover' = fill the frame, cropped
+    // How one image hands over to the next. 'fade' is the legacy crossfade;
+    // 'cut' is a hard cut (no overlap at all).
+    transition: 'fade', // 'fade' | 'cut' | 'slide' | 'push' | 'zoom'
+    // Branded end card: theme background + logo + a line of text, appended to
+    // the timeline. 0 = off (and off is what every stored recipe predates).
+    outroSeconds: 0,
+    outroText: '', // falls back to `footer`
+    // The open/close dip to black (white on the light theme).
+    edgeFadeSeconds: 0.45,
     showTitle: true,
     titleSeconds: 3.2,
     showProgress: true,
@@ -149,11 +158,19 @@ export function imageItems(post) {
     return out;
 }
 
+/** True when a media file is a video, by mime or by extension. */
+export function isVideoFile(m) {
+    return /^video\//i.test(m?.mime || '') || /\.(mp4|mov|webm|m4v)(\?|$)/i.test(m?.url || '');
+}
+
+/** True when a post carries a video — attached or sitting in its gallery. */
+export function hasVideo(post) {
+    return (post?.video || []).length > 0 || (post?.media || []).some(isVideoFile);
+}
+
 /** True when a post has stills and nothing that is already a video. */
 export function isImageOnly(post) {
-    const hasVideo = (post?.video || []).length > 0
-        || (post?.media || []).some((m) => /^video\//i.test(m?.mime || '') || /\.(mp4|mov|webm|m4v)(\?|$)/i.test(m?.url || ''));
-    return !hasVideo && imageItems(post).length > 0;
+    return !hasVideo(post) && imageItems(post).length > 0;
 }
 
 /**
@@ -388,7 +405,9 @@ export function buildPlan({ canvas, images, title, body, logo, options, layerPat
     const maxVisibleLines = Math.max(2, Math.min(9, Math.floor((H * bandFraction - pad * 2) / lineHeight)));
 
     const count = Math.max(1, images.length);
-    const fade = count > 1 ? Math.min(opts.fadeSeconds, opts.secondsPerImage * 0.5) : 0;
+    // A hard cut is "no overlap at all" — the rest of the slot math needs no
+    // other change, which is the point of expressing it through `fade`.
+    const fade = count > 1 && opts.transition !== 'cut' ? Math.min(opts.fadeSeconds, opts.secondsPerImage * 0.5) : 0;
     // Per-image durations (the studio's image strip). Uniform when absent —
     // and the uniform case must reduce to the exact legacy arithmetic.
     const per = Array.isArray(opts.perImageSeconds) && opts.perImageSeconds.length === count
@@ -396,22 +415,29 @@ export function buildPlan({ canvas, images, title, body, logo, options, layerPat
         : null;
     const imagesDuration = per ? per.reduce((a, b) => a + b, 0) : count * opts.secondsPerImage;
 
+    // The outro card is APPENDED to the content: images and typing get the
+    // budget that remains under maxSeconds, so the total still honours the cap.
+    const outro = Math.max(0, Math.min(Number(opts.outroSeconds) || 0, 6));
+    const contentMax = Math.max(3, opts.maxSeconds - outro);
+
     const totalChars = text.length;
     let cps = Math.max(1, opts.charsPerSecond);
     let needed = opts.leadInSeconds + totalChars / cps + opts.tailSeconds;
     let spedUp = false;
-    if (needed > opts.maxSeconds) {
-        const typingWindow = Math.max(1, opts.maxSeconds - opts.leadInSeconds - opts.tailSeconds);
+    if (needed > contentMax) {
+        const typingWindow = Math.max(1, contentMax - opts.leadInSeconds - opts.tailSeconds);
         cps = totalChars / typingWindow;
-        needed = opts.maxSeconds;
+        needed = contentMax;
         spedUp = true;
     }
-    const duration = Math.max(3, Math.min(opts.maxSeconds, Math.max(imagesDuration, needed)));
+    const contentDuration = Math.max(3, Math.min(contentMax, Math.max(imagesDuration, needed)));
+    const duration = contentDuration + outro;
 
     // Images stretch to fill whatever duration the text demanded, each taking
     // its share of the usable window (equal shares without per-image seconds —
-    // in which case this IS the legacy slot math).
-    const usable = duration - fade;
+    // in which case this IS the legacy slot math). The outro's tail is NOT
+    // theirs to fill.
+    const usable = contentDuration - fade;
     const slot = usable / count;
     const shares = per ? per.map((s) => s / imagesDuration) : null;
     let cum = 0;
@@ -419,13 +445,17 @@ export function buildPlan({ canvas, images, title, body, logo, options, layerPat
         const width = shares ? usable * shares[i] : slot;
         const start = shares ? cum : i * slot;
         cum += width;
-        return { start, end: Math.min(duration, start + width + fade) };
+        return { start, end: Math.min(contentDuration, start + width + fade) };
     });
+    // The last image holds under the outro card's fade-in rather than dropping
+    // to a bare background a beat before the card lands.
+    if (outro > 0) slots[count - 1].end = duration;
 
     const bitrate = Math.round(W * H * opts.fps * (QUALITY_BPP[opts.quality] ?? QUALITY_BPP.high));
 
     const plan = {
         opts, theme, W, H, fps: opts.fps, duration, bitrate,
+        contentDuration, outroSeconds: outro,
         images, slots, fade,
         logo: opts.showLogo ? (logo || null) : null,
         title: String(title || '').trim(),
@@ -651,14 +681,48 @@ function revealPosition(lines, n) {
 
 function paintSlideshow(ctx, plan, layer, time) {
     const stageRect = plan.stageRect;
+    const tr = plan.opts.transition || 'fade';
     for (let i = 0; i < plan.images.length; i++) {
         const s = plan.slots[i];
         if (time < s.start || time > s.end) continue;
         const local = (time - s.start) / Math.max(0.0001, s.end - s.start);
-        const alpha = (i > 0 && plan.fade > 0 && time < s.start + plan.fade)
-            ? (time - s.start) / plan.fade
-            : 1;
+
+        // Where this image is in a handover: entering under the previous one,
+        // or leaving under the next. Both are 0..1 across the overlap window.
+        // Images draw in index order, so the incoming one lands ON TOP — which
+        // is what lets slide/zoom cover the outgoing image without touching it.
+        const enter = (i > 0 && plan.fade > 0 && time < s.start + plan.fade)
+            ? (time - s.start) / plan.fade : 1;
+        const exitStart = s.end - plan.fade;
+        const exit = (i < plan.images.length - 1 && plan.fade > 0 && time > exitStart)
+            ? Math.min(1, (time - exitStart) / plan.fade) : 0;
+
+        let alpha = 1;
+        let tx = 0;
+        let scale = 1;
+        if (tr === 'slide') {
+            tx = (1 - enter) * plan.W; // incoming covers from the right
+        } else if (tr === 'push') {
+            tx = (1 - enter) * plan.W - exit * plan.W; // outgoing is shoved out left
+        } else if (tr === 'zoom') {
+            alpha = enter;
+            scale = 1 + 0.2 * (1 - enter); // incoming settles from oversized
+        } else {
+            alpha = enter; // 'fade' — the legacy crossfade ('cut' never overlaps)
+        }
+
+        const transformed = tx !== 0 || scale !== 1;
+        if (transformed) {
+            ctx.save();
+            if (tx) ctx.translate(tx, 0);
+            if (scale !== 1) {
+                ctx.translate(plan.W / 2, plan.H / 2);
+                ctx.scale(scale, scale);
+                ctx.translate(-plan.W / 2, -plan.H / 2);
+            }
+        }
         drawImageLayer(ctx, plan, plan.images[i], i, local, Math.max(0, Math.min(1, alpha)), stageRect);
+        if (transformed) ctx.restore();
     }
 }
 
@@ -839,6 +903,40 @@ function paintText(ctx, plan, layer, time) {
     ctx.restore();
 }
 
+// The branded end card: theme background, logo, a line of text. Fades in over
+// the last image so the video ends on brand instead of stopping dead.
+function paintOutro(ctx, plan, layer, time) {
+    const start = plan.duration - plan.outroSeconds;
+    const p = Math.max(0, Math.min(1, (time - start) / 0.5));
+    if (p <= 0) return;
+    const { W, H, theme } = plan;
+
+    ctx.save();
+    ctx.globalAlpha = p;
+    ctx.fillStyle = theme.bg;
+    ctx.fillRect(0, 0, W, H);
+
+    let y = H / 2;
+    if (plan.logo?.img) {
+        const lw = W * 0.34;
+        const lh = lw * (plan.logo.height / Math.max(1, plan.logo.width));
+        ctx.drawImage(plan.logo.img, (W - lw) / 2, H / 2 - lh - H * 0.02, lw, lh);
+        y = H / 2 + H * 0.03;
+    } else {
+        y = H / 2 - plan.titleSize;
+    }
+
+    const line = layer.text;
+    if (line) {
+        ctx.font = `700 ${plan.titleSize}px ${FONT_STACK}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = theme.text;
+        ctx.fillText(line, W / 2, y);
+    }
+    ctx.restore();
+}
+
 function paintProgress(ctx, plan, layer, time) {
     const { W, H, theme } = plan;
     const h = Math.max(4, Math.round(H * 0.004));
@@ -851,7 +949,8 @@ function paintProgress(ctx, plan, layer, time) {
 // Open and close on black — a hard cut from frame zero looks like a glitch.
 function paintEdges(ctx, plan, layer, time) {
     const { W, H, theme } = plan;
-    const edge = 0.45;
+    const edge = plan.opts.edgeFadeSeconds ?? 0.45;
+    if (edge <= 0) return;
     const dip = time < edge ? 1 - time / edge : (time > plan.duration - edge ? 1 - (plan.duration - time) / edge : 0);
     if (dip > 0) {
         ctx.fillStyle = theme.key === 'light' ? `rgba(255,255,255,${dip})` : `rgba(0,0,0,${dip})`;
@@ -866,6 +965,7 @@ const PAINTERS = {
     title: paintTitle,
     image: paintImage,
     text: paintText,
+    outro: paintOutro,
     progress: paintProgress,
     edges: paintEdges,
 };
@@ -923,6 +1023,13 @@ export function compileLayers(plan) {
         });
     }
 
+    if (plan.outroSeconds > 0) {
+        layers.push({
+            id: 'outro', type: 'outro',
+            text: String(opts.outroText || opts.footer || '').trim(),
+            timing: { start: plan.duration - plan.outroSeconds, end: plan.duration + 1 },
+        });
+    }
     if (opts.showProgress) layers.push({ id: 'progress', type: 'progress' });
     layers.push({ id: 'edges', type: 'edges' });
 

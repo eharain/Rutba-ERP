@@ -1,6 +1,13 @@
 # Video Studio v2 — layers, editing, customization
 
-**Status:** M0–M3 done · 2026-08-11 · next: M4 (transitions + outro)
+**Status:** M0–M4 done · 2026-08-11 · next: M5 (commerce layers)
+- M4 ✔ transitions (`transition: fade|cut|slide|push|zoom` — cut folds into the fade=0
+  slot math; slide/push/zoom are enter/exit transforms in the slideshow painter), the
+  branded outro card (`outroSeconds`/`outroText` — appended to the timeline inside the
+  maxSeconds cap, last image holds under its fade-in), and `edgeFadeSeconds` replacing
+  the fixed 0.45s dips. Built-ins updated (Classic fade+outro, Card push+outro, Minimal
+  cut, no chrome). Also: the studio layout — full-width post grid until a post is
+  chosen, then one big canvas (74vh) + a single 400px settings rail.
 - M3 ✔ editor v1: Layers panel (visibility toggles, add/edit/delete text layers,
   per-layer color/weight/size/pill/animation/timing), select-and-drag on the preview
   canvas (hit-test + fractional coords), image strip (reorder / exclude / per-image

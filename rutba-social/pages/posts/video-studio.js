@@ -10,6 +10,9 @@
  *
  * The encoding happens in this tab (see lib/video-maker.js) and runs in real
  * time, so a 30-second video takes 30 seconds and the tab has to stay in front.
+ *
+ * Browsing posts happens on /posts (each card deep-links here with ?post=…);
+ * this page is the editor plus the batch runner, nothing more.
  */
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useRouter } from "next/router";
@@ -22,7 +25,6 @@ import {
     SiteSettingEndpoints, SocialAudioTracksEndpoints, SocialVideoTemplatesEndpoints,
 } from "@rutba/api-provider/endpoints";
 import { useToast } from "../../components/Toast";
-import PLATFORMS from "../../components/PlatformBadge";
 import {
     ASPECTS, THEMES, DEFAULTS,
     buildPlan, paintFrame, renderVideo, loadImage, loadImages, releaseImages,
@@ -34,7 +36,7 @@ import {
 const LAYER_LABELS = {
     slideshow: "Photos", gradient: "Caption shade", caption: "Caption",
     title: "Title card", logo: "Logo", footer: "Footer",
-    progress: "Progress bar", edges: "Fade in/out",
+    outro: "Outro card", progress: "Progress bar", edges: "Fade in/out",
 };
 
 // The nine focal-point presets: where a cover crop keeps the subject.
@@ -49,13 +51,6 @@ const urlPath = (u) => { try { return new URL(u, "http://x").pathname; } catch {
 const SETTINGS_KEY = "rutba-social-video-studio";
 const FETCH_PAGE = 50;
 const MAX_PAGES = 20;
-
-// Which platforms care that a post has no video — a capability fact, not a
-// second copy of the platform registry (labels and colours still come from
-// components/PlatformBadge). TikTok's web uploader is video-only, so an
-// image-only post targeting it can never go out at all.
-const VIDEO_ONLY = ["tiktok"];
-const VIDEO_PREFERRED = ["instagram", "youtube"];
 
 const fmtSeconds = (s) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
 const fmtBytes = (b) => (b > 1024 * 1024 ? `${(b / 1024 / 1024).toFixed(1)} MB` : `${Math.round(b / 1024)} KB`);
@@ -75,8 +70,6 @@ export default function VideoStudioPage() {
     const [blocked, setBlocked] = useState(null); // browser can't encode
     const [posts, setPosts] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [onlyCandidates, setOnlyCandidates] = useState(true);
-    const [search, setSearch] = useState("");
 
     const [selected, setSelected] = useState(null);
     const [images, setImages] = useState([]);
@@ -276,9 +269,9 @@ export default function VideoStudioPage() {
     // The three built-in looks. Created from here rather than seeded so the
     // layer format they carry is always the one THIS renderer understands.
     const BUILTINS = [
-        { name: "Classic", description: "Bottom caption panel over the whole photo, blurred fill.", is_default: true, aspect: "vertical", options: { textPosition: "bottom", captionStyle: "box", fit: "blur", theme: "dark", showTitle: true, showProgress: true } },
-        { name: "Card", description: "Centered caption card over full-frame photos.", is_default: false, aspect: "vertical", options: { textPosition: "middle", captionStyle: "box", fit: "cover", theme: "dark", showTitle: false, showProgress: true } },
-        { name: "Minimal", description: "Bare shadowed text, no panels, no progress bar.", is_default: false, aspect: "vertical", options: { textPosition: "bottom", captionStyle: "bare", fit: "cover", theme: "dark", showTitle: false, showProgress: false } },
+        { name: "Classic", description: "Bottom caption panel over the whole photo, blurred fill, branded outro.", is_default: true, aspect: "vertical", options: { textPosition: "bottom", captionStyle: "box", fit: "blur", theme: "dark", showTitle: true, showProgress: true, transition: "fade", outroSeconds: 1.6 } },
+        { name: "Card", description: "Centered caption card over full-frame photos, push transitions.", is_default: false, aspect: "vertical", options: { textPosition: "middle", captionStyle: "box", fit: "cover", theme: "dark", showTitle: false, showProgress: true, transition: "push", outroSeconds: 1.6 } },
+        { name: "Minimal", description: "Bare shadowed text, hard cuts, no chrome.", is_default: false, aspect: "vertical", options: { textPosition: "bottom", captionStyle: "bare", fit: "cover", theme: "dark", showTitle: false, showProgress: false, transition: "cut", outroSeconds: 0 } },
     ];
 
     const createBuiltins = async () => {
@@ -381,15 +374,10 @@ export default function VideoStudioPage() {
         }
     }, [options, tracks, toast]);
 
-    const candidates = useMemo(() => {
-        const q = search.trim().toLowerCase();
-        return posts.filter((p) => {
-            if (onlyCandidates && !isImageOnly(p)) return false;
-            if (!onlyCandidates && imageItems(p).length === 0) return false;
-            if (!q) return true;
-            return `${p.title || ""} ${p.body || ""}`.toLowerCase().includes(q);
-        });
-    }, [posts, onlyCandidates, search]);
+    // Browsing posts moved to /posts (every card there deep-links back here).
+    // What the studio still needs from the full post set is just the batch
+    // queue — image-only posts awaiting a video.
+    const pending = useMemo(() => posts.filter(isImageOnly), [posts]);
 
     // ── image loading for the selected post ─────────────────
     const releaseLoaded = useCallback(() => {
@@ -751,7 +739,7 @@ export default function VideoStudioPage() {
 
     // ── batch ───────────────────────────────────────────────
     const runBatch = async () => {
-        const queue = candidates.filter(isImageOnly);
+        const queue = pending;
         if (!queue.length) { toast("Nothing pending — every listed post already has a video.", "info"); return; }
         const estimate = queue.length * (plan?.duration || options.secondsPerImage * 3);
         if (!confirm(
@@ -809,7 +797,7 @@ export default function VideoStudioPage() {
     // ── render helpers ──────────────────────────────────────
     const aspect = ASPECTS[options.aspect] || ASPECTS.vertical;
     const busy = rendering || !!batch;
-    const pendingCount = candidates.filter(isImageOnly).length;
+    const pendingCount = pending.length;
 
     return (
         <ProtectedRoute>
@@ -819,7 +807,6 @@ export default function VideoStudioPage() {
                 <div className="d-flex align-items-center flex-wrap gap-2 mb-3">
                     <Link className="btn btn-sm btn-outline-secondary" href="/posts"><i className="fas fa-arrow-left" /> Posts</Link>
                     <h2 className="mb-0"><i className="fas fa-film me-2" />Video Studio</h2>
-                    <span className="badge bg-secondary align-self-center">{candidates.length} listed</span>
                     {pendingCount > 0 && <span className="badge bg-warning text-dark align-self-center">{pendingCount} without a video</span>}
                     <div className="ms-auto d-flex gap-2">
                         {batch ? (
@@ -857,81 +844,41 @@ export default function VideoStudioPage() {
                     </div>
                 )}
 
-                {/* ── post picker: the whole page until a post is chosen ── */}
+                {/* ── no post chosen: browsing lives on /posts now ── */}
                 {!selected && (
                     <>
                         {/* a batch run still needs a canvas to render on */}
                         <canvas ref={canvasRef} style={{ display: "none" }} />
-                        <div className="card mb-3">
-                            <div className="card-body py-2 d-flex flex-wrap align-items-center gap-3">
-                                <div className="input-group input-group-sm" style={{ maxWidth: 380 }}>
-                                    <span className="input-group-text"><i className="fas fa-search" /></span>
-                                    <input className="form-control" placeholder="Search posts…" value={search} onChange={(e) => setSearch(e.target.value)} />
-                                </div>
-                                <div className="form-check form-switch mb-0">
-                                    <input className="form-check-input" type="checkbox" id="only-candidates"
-                                        checked={onlyCandidates} onChange={(e) => setOnlyCandidates(e.target.checked)} />
-                                    <label className="form-check-label small" htmlFor="only-candidates">
-                                        Only posts with images and no video
-                                    </label>
-                                </div>
-                                {loading && <span className="spinner-border spinner-border-sm" />}
-                                <span className="text-muted small ms-auto">Pick a post to open the editor.</span>
+                        <div className="card">
+                            <div className="card-body text-center py-5">
+                                {loading ? (
+                                    <span className="spinner-border" />
+                                ) : (
+                                    <>
+                                        <i className="fas fa-film fa-3x text-muted mb-3 d-block" />
+                                        <p className="mb-1">Pick a post to edit its video.</p>
+                                        <p className="text-muted small mb-3" style={{ maxWidth: 520, margin: "0 auto" }}>
+                                            Posts are browsed and filtered on the Posts page — every card there has an
+                                            {" "}<i className="fas fa-film" /> Edit video action, and the
+                                            {" "}“without video” filter singles out the ones still missing one.
+                                        </p>
+                                        <div className="d-flex justify-content-center gap-2">
+                                            <Link className="btn btn-sm btn-primary" href="/posts?video=without">
+                                                <i className="fas fa-list me-1" />Posts without a video
+                                            </Link>
+                                            <Link className="btn btn-sm btn-outline-secondary" href="/posts">
+                                                All posts
+                                            </Link>
+                                        </div>
+                                        {pendingCount > 0 && (
+                                            <p className="text-muted small mt-3 mb-0">
+                                                Or use <strong>Render all pending</strong> above to batch-render the
+                                                {" "}{pendingCount} image-only post{pendingCount === 1 ? "" : "s"} with the current look.
+                                            </p>
+                                        )}
+                                    </>
+                                )}
                             </div>
-                        </div>
-                        <div className="row g-3">
-                            {!loading && candidates.length === 0 && (
-                                <div className="col-12 text-center text-muted py-5">
-                                    <i className="fas fa-film fa-3x mb-3 d-block" />
-                                    {onlyCandidates
-                                        ? "No image-only posts. Every post with images already has a video attached."
-                                        : "No posts with images."}
-                                </div>
-                            )}
-                            {candidates.map((p) => {
-                                const imgs = imageItems(p);
-                                const done = !isImageOnly(p);
-                                const thumb = imgs[0];
-                                const needsVideo = (p.platforms || []).filter((x) => VIDEO_ONLY.includes(x));
-                                const likesVideo = (p.platforms || []).filter((x) => VIDEO_PREFERRED.includes(x));
-                                return (
-                                    <div key={p.documentId} className="col-sm-6 col-md-4 col-xl-3 col-xxl-2">
-                                        <button type="button" disabled={busy}
-                                            className="card w-100 h-100 text-start p-0 shadow-sm border-0"
-                                            style={{ cursor: "pointer" }}
-                                            onClick={() => selectPost(p)}>
-                                            <div className="bg-light d-flex align-items-center justify-content-center"
-                                                style={{ height: 140, overflow: "hidden", borderRadius: "6px 6px 0 0", width: "100%" }}>
-                                                {thumb ? (
-                                                    <img src={MediaUtilsEndpoints.strapiImageUrl(thumb.formats?.small || thumb.formats?.thumbnail || thumb)} alt=""
-                                                        style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                                                ) : (
-                                                    <i className="fas fa-image fa-2x text-muted" />
-                                                )}
-                                            </div>
-                                            <div className="card-body p-2">
-                                                <div className="fw-semibold text-truncate" style={{ fontSize: 13 }}>{p.title || "(untitled)"}</div>
-                                                <div className="text-muted text-truncate" style={{ fontSize: 11 }}>
-                                                    {imgs.length} image{imgs.length === 1 ? "" : "s"}
-                                                    {done && <> · <i className="fas fa-check" /> has video</>}
-                                                </div>
-                                                <div className="mt-1">
-                                                    {needsVideo.map((x) => (
-                                                        <span key={x} className="badge bg-danger me-1" style={{ fontSize: 9 }}>
-                                                            {PLATFORMS[x]?.label || x} needs video
-                                                        </span>
-                                                    ))}
-                                                    {likesVideo.map((x) => (
-                                                        <span key={x} className="badge bg-secondary me-1" style={{ fontSize: 9 }}>
-                                                            {PLATFORMS[x]?.label || x}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </button>
-                                    </div>
-                                );
-                            })}
                         </div>
                     </>
                 )}
@@ -942,7 +889,7 @@ export default function VideoStudioPage() {
                         <div className="flex-grow-1" style={{ minWidth: 0 }}>
                                 <div className="card">
                                     <div className="card-header py-2 d-flex align-items-center gap-2">
-                                        <button className="btn btn-sm btn-outline-secondary" onClick={() => selectPost(null)} disabled={busy}
+                                        <button className="btn btn-sm btn-outline-secondary" onClick={() => router.push("/posts")} disabled={busy}
                                             title="Back to the post list">
                                             <i className="fas fa-arrow-left me-1" />Posts
                                         </button>
@@ -1269,6 +1216,17 @@ export default function VideoStudioPage() {
                                                 </select>
                                             </div>
                                             <div className="col-6">
+                                                <label className="form-label small mb-1">Transition</label>
+                                                <select className="form-select form-select-sm" value={options.transition || "fade"} disabled={busy}
+                                                    onChange={(e) => setOpt({ transition: e.target.value })}>
+                                                    <option value="fade">Crossfade</option>
+                                                    <option value="cut">Hard cut</option>
+                                                    <option value="slide">Slide over</option>
+                                                    <option value="push">Push</option>
+                                                    <option value="zoom">Zoom through</option>
+                                                </select>
+                                            </div>
+                                            <div className="col-6">
                                                 <label className="form-label small mb-1">Quality</label>
                                                 <select className="form-select form-select-sm" value={options.quality} disabled={busy}
                                                     onChange={(e) => setOpt({ quality: e.target.value })}>
@@ -1300,6 +1258,18 @@ export default function VideoStudioPage() {
                                         <label className="form-label small mb-1 mt-3">Footer line (optional)</label>
                                         <input className="form-control form-control-sm" value={options.footer} disabled={busy}
                                             placeholder="rutba.pk" onChange={(e) => setOpt({ footer: e.target.value })} />
+
+                                        <hr className="my-3" />
+                                        <RangeRow label="Outro card" value={options.outroSeconds || 0} min={0} max={4} step={0.2}
+                                            suffix="s (0 = off)" disabled={busy} onChange={(v) => setOpt({ outroSeconds: v })} />
+                                        {(options.outroSeconds || 0) > 0 && (
+                                            <>
+                                                <input className="form-control form-control-sm" value={options.outroText || ""} disabled={busy}
+                                                    placeholder={options.footer || "End-card line (defaults to the footer)"}
+                                                    onChange={(e) => setOpt({ outroText: e.target.value })} />
+                                                <div className="form-text">Theme background + logo + this line, appended to the end of the video.</div>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
 
@@ -1441,6 +1411,8 @@ export default function VideoStudioPage() {
                                             suffix="s" disabled={busy} onChange={(v) => setOpt({ maxSeconds: v })} />
                                         <RangeRow label="Frame rate" value={options.fps} min={15} max={60} step={5}
                                             suffix=" fps" disabled={busy} onChange={(v) => setOpt({ fps: v })} />
+                                        <RangeRow label="Open/close fade" value={options.edgeFadeSeconds ?? 0.45} min={0} max={1.5} step={0.05}
+                                            suffix="s" disabled={busy} onChange={(v) => setOpt({ edgeFadeSeconds: v })} />
                                         <p className="text-muted small mb-0">
                                             The video runs for whichever is longer — the images, or the time the caption needs to type out in full.
                                         </p>
