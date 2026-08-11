@@ -31,7 +31,8 @@
   "scripts": {
     "dev:strapi": "node scripts/js/load-env.js -- npm --prefix pos-strapi run develop",
     "dev:core": "node scripts/js/load-env.js -- npm --prefix rutba-core run dev",
-    "grant:full-access": "node scripts/js/load-env.js -- npm --prefix pos-strapi run grant:full-access --",
+    "grant:full-access": "npm --prefix rutba-core run grant:full-access --",
+    "grant:full-access:strapi": "node scripts/js/load-env.js -- npm --prefix pos-strapi run grant:full-access --",
     "seed": "node scripts/js/load-env.js -- npm --prefix pos-strapi run seed --",
     "seed:essential": "node scripts/js/load-env.js -- npm --prefix pos-strapi run seed -- --essential",
     "dev:auth": "node scripts/js/load-env.js -- npm run dev --workspace=pos-auth",

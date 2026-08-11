@@ -12,6 +12,7 @@
     "migrate": "node scripts/migrate.js up",
     "migrate:status": "node scripts/migrate.js status",
     "migrate:down": "node scripts/migrate.js down",
+    "grant:full-access": "node scripts/grant-full-access.js",
     "social:shorten-urls": "node scripts/shorten-social-post-urls.js"
   },
   "dependencies": {
