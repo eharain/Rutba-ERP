@@ -19,7 +19,7 @@ import {
     SocialAudioTracksEndpoints, UploadEndpoints, MediaUtilsEndpoints,
 } from "@rutba/api-provider/endpoints";
 import { useToast } from "../components/Toast";
-import { isAudioFile } from "../lib/video-maker";
+import { isAudioFile, loadAudioTrack, setMediaAuth } from "../lib/video-maker";
 
 const BLANK = { name: "", url: "", credit: "", tags: "", volume: "" };
 
@@ -42,6 +42,22 @@ export default function AudioLibraryPage() {
     const [uploading, setUploading] = useState(false);
     const audioRef = useRef(null);
     const fileRef = useRef(null);
+
+    // The start-point picker: one expanded row at a time, its decoded peaks
+    // cached so re-opening a track costs nothing.
+    const [waveTrackId, setWaveTrackId] = useState(null);
+    const [waveData, setWaveData] = useState(null); // { peaks, duration }
+    const [waveLoading, setWaveLoading] = useState(false);
+    const waveCache = useRef(new Map());
+    const waveCanvasRef = useRef(null);
+
+    // Decoding a track goes through /api/media-proxy, which needs our identity
+    // to admit foreign track urls (it checks them against this very library).
+    useEffect(() => {
+        let role = null;
+        try { role = localStorage.getItem("activeRole:social"); } catch { /* private mode */ }
+        setMediaAuth({ jwt, appRole: role });
+    }, [jwt]);
 
     const load = useCallback(async () => {
         if (!jwt) return;
@@ -107,6 +123,101 @@ export default function AudioLibraryPage() {
     };
 
     const parseTags = (s) => String(s || "").split(",").map((x) => x.trim()).filter(Boolean);
+
+    // ── start-point picker ──────────────────────────────────
+    const toggleWave = async (t) => {
+        if (waveTrackId === t.documentId) { setWaveTrackId(null); setWaveData(null); return; }
+        setWaveTrackId(t.documentId);
+        setWaveData(null);
+        setWaveLoading(true);
+        try {
+            let d = waveCache.current.get(t.documentId);
+            if (!d) {
+                const buf = await loadAudioTrack(playable(t));
+                const ch = buf.getChannelData(0);
+                const bins = 240;
+                const per = Math.max(1, Math.floor(ch.length / bins));
+                const peaks = new Float32Array(bins);
+                for (let i = 0; i < bins; i++) {
+                    let m = 0;
+                    // sampling every 16th value is plenty for a picker strip
+                    for (let j = i * per; j < (i + 1) * per && j < ch.length; j += 16) {
+                        const v = Math.abs(ch[j]);
+                        if (v > m) m = v;
+                    }
+                    peaks[i] = m;
+                }
+                d = { peaks, duration: buf.duration };
+                waveCache.current.set(t.documentId, d);
+            }
+            setWaveData(d);
+        } catch (err) {
+            console.error("Failed to decode for waveform", err);
+            toast("Could not decode that track for a waveform.", "warning");
+            setWaveTrackId(null);
+        } finally {
+            setWaveLoading(false);
+        }
+    };
+
+    // Repaint the strip whenever the data or the saved start point changes.
+    useEffect(() => {
+        const c = waveCanvasRef.current;
+        if (!c || !waveData) return;
+        const W = 640;
+        const H = 64;
+        c.width = W;
+        c.height = H;
+        const ctx = c.getContext("2d");
+        const t = tracks.find((x) => x.documentId === waveTrackId);
+        const start = Number(t?.start_offset) || 0;
+        const startX = waveData.duration > 0 ? (start / waveData.duration) * W : 0;
+
+        ctx.fillStyle = "#f8f9fa";
+        ctx.fillRect(0, 0, W, H);
+        // the part before the start point plays never — shade it out
+        if (startX > 0) { ctx.fillStyle = "#e9ecef"; ctx.fillRect(0, 0, startX, H); }
+        const bins = waveData.peaks.length;
+        const bw = W / bins;
+        for (let i = 0; i < bins; i++) {
+            const h = Math.max(2, waveData.peaks[i] * (H - 8));
+            const x = i * bw;
+            ctx.fillStyle = x < startX ? "#adb5bd" : "#0d6efd";
+            ctx.fillRect(x, (H - h) / 2, Math.max(1, bw - 1), h);
+        }
+        if (start > 0) {
+            ctx.fillStyle = "#dc3545";
+            ctx.fillRect(startX - 1, 0, 2, H);
+        }
+    }, [waveData, waveTrackId, tracks]);
+
+    const saveStartOffset = async (t, secs) => {
+        try {
+            await SocialAudioTracksEndpoints.update(t.documentId, { start_offset: secs });
+            setTracks((list) => list.map((x) => (x.documentId === t.documentId ? { ...x, start_offset: secs } : x)));
+            // audition from exactly there, so the click is immediately judged by ear
+            const el = audioRef.current;
+            if (el && secs !== null) {
+                el.src = playable(t);
+                el.currentTime = secs;
+                el.play().then(() => setPlayingId(t.documentId)).catch(() => { /* audition is best-effort */ });
+            }
+        } catch (err) {
+            console.error("Failed to save the start point", err);
+            toast("Could not save the start point.", "danger");
+        }
+    };
+
+    const onWaveClick = (e) => {
+        const t = tracks.find((x) => x.documentId === waveTrackId);
+        if (!t || !waveData || waveData.duration <= 0) return;
+        const r = e.currentTarget.getBoundingClientRect();
+        const frac = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+        // snap to a tenth of a second, and never inside the last 3s — a start
+        // point right at the end would loop almost immediately
+        const secs = Math.min(Math.max(0, waveData.duration - 3), Math.round(frac * waveData.duration * 10) / 10);
+        saveStartOffset(t, secs);
+    };
 
     const submit = async (e) => {
         e?.preventDefault?.();
@@ -360,7 +471,8 @@ export default function AudioLibraryPage() {
                                     </td></tr>
                                 )}
                                 {tracks.map((t) => (
-                                    <tr key={t.documentId} className={t.is_active ? "" : "text-muted"}>
+                                    <React.Fragment key={t.documentId}>
+                                    <tr className={t.is_active ? "" : "text-muted"}>
                                         <td>
                                             <button className="btn btn-sm btn-link p-0" title="Listen" onClick={() => preview(t)}>
                                                 <i className={`fas ${playingId === t.documentId ? "fa-pause" : "fa-play"}`} />
@@ -369,6 +481,11 @@ export default function AudioLibraryPage() {
                                         <td>
                                             <span className="fw-semibold">{t.name}</span>
                                             {t.duration_seconds ? <span className="text-muted small ms-2">{fmtDuration(t.duration_seconds)}</span> : null}
+                                            {Number(t.start_offset) > 0 && (
+                                                <span className="badge bg-light text-dark border ms-2" title="Videos use the track from this point">
+                                                    <i className="fas fa-forward me-1" />starts {fmtDuration(Number(t.start_offset))}
+                                                </span>
+                                            )}
                                             <span className="d-block text-muted text-truncate" style={{ maxWidth: 420, fontSize: "0.75rem" }} title={t.url}>{t.url}</span>
                                         </td>
                                         <td>
@@ -387,6 +504,10 @@ export default function AudioLibraryPage() {
                                             </div>
                                         </td>
                                         <td className="text-end">
+                                            <button className={`btn btn-sm me-1 ${waveTrackId === t.documentId ? "btn-primary" : "btn-outline-primary"}`}
+                                                onClick={() => toggleWave(t)} title="Pick where videos start in this track">
+                                                <i className="fas fa-wave-square" />
+                                            </button>
                                             <button className="btn btn-sm btn-outline-secondary me-1" onClick={() => startEdit(t)} title="Edit">
                                                 <i className="fas fa-pen" />
                                             </button>
@@ -395,6 +516,31 @@ export default function AudioLibraryPage() {
                                             </button>
                                         </td>
                                     </tr>
+                                    {waveTrackId === t.documentId && (
+                                        <tr>
+                                            <td colSpan={7} className="bg-light">
+                                                {waveLoading && <div className="text-center py-3"><span className="spinner-border spinner-border-sm me-2" />Decoding…</div>}
+                                                {waveData && (
+                                                    <div className="py-2 px-2">
+                                                        <canvas ref={waveCanvasRef} onClick={onWaveClick}
+                                                            style={{ width: "100%", maxWidth: 640, height: 64, display: "block", cursor: "crosshair", borderRadius: 4 }} />
+                                                        <div className="d-flex align-items-center gap-3 mt-1">
+                                                            <small className="text-muted">
+                                                                Click where videos should start in this track — it plays from there so you can judge it.
+                                                                Total {fmtDuration(waveData.duration)}.
+                                                            </small>
+                                                            {Number(t.start_offset) > 0 && (
+                                                                <button className="btn btn-sm btn-link p-0" onClick={() => saveStartOffset(t, null)}>
+                                                                    Clear (use a random start again)
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    )}
+                                    </React.Fragment>
                                 ))}
                             </tbody>
                         </table>

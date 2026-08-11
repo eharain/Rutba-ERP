@@ -1,6 +1,15 @@
 # Video Studio v2 — layers, editing, customization
 
-**Status:** M0–M5 done · 2026-08-11 · next: M6 (audio start-point)
+**Status:** M0–M6 done · 2026-08-11 — the planned program is complete
+- M6 ✔ audio start points + per-post audio. The Audio Library grew a waveform picker
+  (decode → 240 peak bins → canvas; click sets `social-audio-track.start_offset`, snapped
+  to 0.1s and never inside the last 3s; auditions from the click; clear = random again).
+  Both hosts honour a track's start point over the random offset, and the poster now
+  honours the RECIPE's audio choice (none / picked track / random) instead of always
+  rolling its own — a post previewed silent stays silent, a picked track that has left
+  the library falls back to random rather than dropping the music.
+- Remaining stretch items (explicitly not committed): beat-synced cuts, bundled webfonts,
+  on-canvas resize handles, per-boundary transitions.
 - M5 ✔ commerce layers. A self-contained QR encoder lives in the renderer (byte mode,
   v1–10, EC M, penalty-chosen mask — zero-dependency by design, PROVEN by decoding the
   painted pixels with an independent reader at v3/v7/v10). Layers take {token}
