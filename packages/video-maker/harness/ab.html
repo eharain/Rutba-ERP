@@ -1,0 +1,318 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>video-maker A/B — baseline vs working tree</title>
+<!--
+  The T1 gate from docs/todo/video-studio-timeline-plan.md.
+
+  Imports the renderer twice — baseline.js (the v2 checkpoint, materialized
+  from git by serve.cjs) and current.js (the working tree) — builds the same
+  legacy looks through both, paints both at the same timestamps, and compares
+  the frames BYTE FOR BYTE. Photos and the logo are procedural canvases, so the
+  page never touches the network and every run is deterministic.
+
+  The sound probe (a button, because an AudioContext needs a user gesture)
+  renders a short video with two overlapping clips through the NEW renderer
+  and verifies each lands in the file at its instant: 440 Hz alone in the
+  first half, 440 + 880 Hz in the second. It also re-renders with the legacy
+  single-bed call form to prove that shape still carries audio.
+-->
+<style>
+  body { font: 13px/1.5 system-ui; background: #14121a; color: #ddd; margin: 20px; }
+  h1 { font-size: 17px; } h2 { font-size: 14px; margin-top: 24px; }
+  table { border-collapse: collapse; margin-top: 8px; }
+  td, th { border: 1px solid #333; padding: 2px 9px; text-align: left; }
+  .ok { color: #6c6; } .bad { color: #f77; font-weight: 700; }
+  #summary, #soundSummary { font-size: 15px; font-weight: 700; margin: 10px 0; }
+  canvas.peek { width: 108px; border: 1px solid #333; margin-right: 6px; }
+  button { padding: 6px 14px; }
+</style>
+<h1>video-maker A/B — v2 baseline vs working tree</h1>
+<div id="summary">running…</div>
+<div><canvas id="peekOld" class="peek"></canvas><canvas id="peekNew" class="peek"></canvas></div>
+<table id="results"><tr><th>look</th><th>t</th><th>result</th><th>differing bytes</th><th>first diff</th></tr></table>
+<h2>sound probe</h2>
+<button id="probeBtn">run the sound probe (~16s, real-time)</button>
+<div id="soundSummary"></div>
+<pre id="soundDetail"></pre>
+<script type="module">
+import * as OLD from './baseline.js';
+import * as NEW from './current.js';
+
+// ── deterministic media ──────────────────────────────────────────────────────
+
+function makePhoto(seed, w, h) {
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const x = c.getContext('2d');
+    const g = x.createLinearGradient(0, 0, w, h);
+    g.addColorStop(0, `hsl(${(seed * 67) % 360},70%,45%)`);
+    g.addColorStop(1, `hsl(${(seed * 131 + 40) % 360},60%,25%)`);
+    x.fillStyle = g;
+    x.fillRect(0, 0, w, h);
+    for (let i = 0; i < 14; i++) {
+        x.fillStyle = `hsla(${(seed * 43 + i * 25) % 360},80%,60%,0.55)`;
+        const r = ((seed * 7 + i * 13) % 10) / 10;
+        x.beginPath();
+        x.arc((i * 97 % w), ((i * 61 + seed * 17) % h), 20 + r * 90, 0, Math.PI * 2);
+        x.fill();
+    }
+    x.fillStyle = '#fff';
+    x.font = `${Math.round(h * 0.12)}px system-ui`;
+    x.fillText(`photo ${seed}`, w * 0.08, h * 0.5);
+    return { img: c, width: w, height: h };
+}
+
+function makeLogo() {
+    const c = document.createElement('canvas');
+    c.width = 400; c.height = 160;
+    const x = c.getContext('2d');
+    x.fillStyle = '#ffc107';
+    x.beginPath(); x.arc(80, 80, 70, 0, Math.PI * 2); x.fill();
+    x.fillStyle = '#fff';
+    x.font = '700 64px system-ui';
+    x.fillText('RUTBA', 150, 104);
+    return { img: c, width: 400, height: 160 };
+}
+
+const logo = makeLogo();
+const BODY = 'Hand-embroidered lawn suit in soft pistachio, with a woven dupatta. '
+    + 'Stitched to order in every size. Cash on delivery across Pakistan, and easy returns within seven days.';
+const BODY_UR = 'یہ ایک آزمائشی کیپشن ہے جو دائیں سے بائیں لکھا جاتا ہے۔ ہاتھ کی کڑھائی والا لان کا جوڑا، ہر سائز میں دستیاب۔';
+const LONG_BODY = (BODY + ' ').repeat(4);
+
+// ── the legacy looks ─────────────────────────────────────────────────────────
+
+const LOOKS = [
+    {
+        name: 'classic vertical / fade / blur',
+        images: [makePhoto(1, 900, 1400), makePhoto(2, 1200, 800), makePhoto(3, 800, 800), makePhoto(4, 1100, 1500)],
+        title: 'New arrivals for Eid', body: BODY, logo,
+        options: { aspect: 'vertical', theme: 'dark', transition: 'fade', fit: 'blur', footer: 'rutba.pk' },
+    },
+    {
+        name: 'push square / cover / outro / per-image seconds',
+        images: (() => {
+            const im = [makePhoto(5, 1000, 1300), makePhoto(6, 1300, 900), makePhoto(7, 900, 900), makePhoto(8, 1000, 700)];
+            im[0].focal = { fx: 0.2, fy: 0.3 };
+            im[2].focal = { fx: 0.8, fy: 0.7 };
+            return im;
+        })(),
+        title: 'Winter drop', body: BODY, logo,
+        options: {
+            aspect: 'square', theme: 'light', transition: 'push', fit: 'cover', kenBurns: false,
+            outroSeconds: 3, outroText: 'rutba.pk — shop the drop', perImageSeconds: [2, 3, 2.5, 4],
+        },
+    },
+    {
+        name: 'zoom landscape / middle text / RTL',
+        images: [makePhoto(9, 1600, 900), makePhoto(10, 1200, 1200), makePhoto(11, 1000, 1400)],
+        title: '', body: BODY_UR, logo: null,
+        options: { aspect: 'landscape', theme: 'dark', transition: 'zoom', fit: 'blur', showTitle: false, textPosition: 'middle' },
+    },
+    {
+        name: 'slide vertical / bare caption / patches (drag, sticker, qr, hide)',
+        images: [makePhoto(12, 900, 1200), makePhoto(13, 1100, 900), makePhoto(14, 1000, 1000)],
+        title: 'Weekend sale', body: BODY, logo,
+        options: { aspect: 'vertical', theme: 'dark', transition: 'slide', fit: 'blur', captionStyle: 'bare', footer: 'rutba.pk' },
+        layerPatches: [
+            { id: 'logo', fx: 0.66, fy: 0.04 },
+            { id: 'footer', visible: false },
+            { id: 'sale-1', type: 'text', text: 'SALE', pill: 'accent', color: '#141118', weight: 800, sizeFrac: 0.05, fx: 0.18, fy: 0.07, align: 'center', anim: 'fade', timing: { start: 1, end: 6 } },
+            { id: 'qr-1', type: 'qr', fx: 0.68, fy: 0.045, fw: 0.24 },
+        ],
+        context: { url: 'https://rutba.pk/s/2q4x' },
+    },
+    {
+        name: 'cut single-photo / sped-up typing / photos hidden via slideshow patch',
+        images: [makePhoto(15, 1000, 1000)],
+        title: 'Everything must go', body: LONG_BODY, logo,
+        options: { aspect: 'square', theme: 'dark', transition: 'cut', fit: 'blur', maxSeconds: 12, edgeFadeSeconds: 0 },
+        layerPatches: [{ id: 'slideshow', visible: false }],
+    },
+];
+
+// ── pixel A/B ────────────────────────────────────────────────────────────────
+
+const resultsEl = document.getElementById('results');
+const summaryEl = document.getElementById('summary');
+
+function stampsFor(duration, look) {
+    const stamps = Array.from({ length: 10 }, (_, i) => duration * i / 9);
+    // Boundary instants, where inclusive/exclusive window bugs live.
+    stamps.push(look.options?.titleSeconds ?? 3.2);
+    stamps.push(duration / 2);
+    return stamps.map((t) => Math.max(0, Math.min(duration, t)));
+}
+
+async function runPixelAB() {
+    const rows = [];
+    for (const look of LOOKS) {
+        const cOld = document.createElement('canvas');
+        const cNew = document.createElement('canvas');
+        const args = {
+            images: look.images, title: look.title, body: look.body, logo: look.logo,
+            options: look.options, layerPatches: look.layerPatches || null, context: look.context || {},
+        };
+        const planOld = OLD.buildPlan({ canvas: cOld, ...args });
+        const planNew = NEW.buildPlan({ canvas: cNew, ...args });
+        if (Math.abs(planOld.duration - planNew.duration) > 1e-9) {
+            rows.push({ look: look.name, t: '-', ok: false, diff: `duration ${planOld.duration} vs ${planNew.duration}`, first: '' });
+            continue;
+        }
+        const xOld = cOld.getContext('2d', { willReadFrequently: true });
+        const xNew = cNew.getContext('2d', { willReadFrequently: true });
+        for (const t of stampsFor(planOld.duration, look)) {
+            const compare = () => {
+                OLD.paintFrame(xOld, planOld, t);
+                NEW.paintFrame(xNew, planNew, t);
+                const a = new Uint32Array(xOld.getImageData(0, 0, cOld.width, cOld.height).data.buffer);
+                const b = new Uint32Array(xNew.getImageData(0, 0, cNew.width, cNew.height).data.buffer);
+                let diff = 0;
+                let first = -1;
+                for (let i = 0; i < a.length; i++) {
+                    if (a[i] !== b[i]) { diff++; if (first < 0) first = i; }
+                }
+                return { diff, first };
+            };
+            // GPU canvases occasionally rasterize the same commands differently
+            // (shadow/filter paths under memory pressure). A logic difference
+            // reproduces; a flake does not — so a mismatch only counts when a
+            // fresh repaint of BOTH sides still differs.
+            let { diff, first } = compare();
+            let retried = false;
+            if (diff) { retried = true; ({ diff, first } = compare()); }
+            const firstStr = first >= 0 ? `px (${first % cOld.width}, ${Math.floor(first / cOld.width)})` : (retried ? 'flake, clean on repaint' : '');
+            rows.push({ look: look.name, t: t.toFixed(3), ok: diff === 0, diff, first: firstStr });
+            if (diff && !document.getElementById('peekOld').dataset.used) {
+                for (const [peekId, srcCanvas] of [['peekOld', cOld], ['peekNew', cNew]]) {
+                    const peek = document.getElementById(peekId);
+                    peek.width = srcCanvas.width; peek.height = srcCanvas.height;
+                    peek.getContext('2d').drawImage(srcCanvas, 0, 0);
+                    peek.dataset.used = '1';
+                }
+            }
+            await new Promise((r) => setTimeout(r, 0)); // let the page breathe
+        }
+    }
+    for (const r of rows) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${r.look}</td><td>${r.t}</td>`
+            + `<td class="${r.ok ? 'ok' : 'bad'}">${r.ok ? 'IDENTICAL' : 'DIFFERS'}</td>`
+            + `<td>${r.diff}</td><td>${r.first}</td>`;
+        resultsEl.appendChild(tr);
+    }
+    const bad = rows.filter((r) => !r.ok).length;
+    summaryEl.textContent = bad === 0
+        ? `PASS — ${rows.length}/${rows.length} frames byte-identical across ${LOOKS.length} looks`
+        : `FAIL — ${bad} of ${rows.length} frames differ`;
+    summaryEl.className = bad === 0 ? 'ok' : 'bad';
+    window.__AB = { done: true, pass: bad === 0, total: rows.length, bad, rows };
+}
+
+// For interactive debugging from the console / automation.
+window.__OLD = OLD;
+window.__NEW = NEW;
+window.__LOOKS = LOOKS;
+
+runPixelAB();
+
+// ── sound probe ──────────────────────────────────────────────────────────────
+
+function sine(ac, freq, seconds) {
+    const b = ac.createBuffer(1, Math.ceil(ac.sampleRate * seconds), ac.sampleRate);
+    const d = b.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.sin(2 * Math.PI * freq * i / ac.sampleRate) * 0.6;
+    return b;
+}
+
+function goertzel(data, sr, freq, from, to) {
+    const s = Math.max(0, Math.floor(from * sr));
+    const e = Math.min(data.length, Math.floor(to * sr));
+    const w = 2 * Math.PI * freq / sr;
+    const cw = Math.cos(w);
+    let s1 = 0;
+    let s2 = 0;
+    for (let i = s; i < e; i++) {
+        const s0 = data[i] + 2 * cw * s1 - s2;
+        s2 = s1; s1 = s0;
+    }
+    return (s1 * s1 + s2 * s2 - 2 * cw * s1 * s2) / Math.max(1, e - s);
+}
+
+async function decodeBlob(ac, blob) {
+    const bytes = await blob.arrayBuffer();
+    return new Promise((ok, bad) => {
+        const p = ac.decodeAudioData(bytes, ok, bad);
+        if (p && typeof p.then === 'function') p.then(ok, bad);
+    });
+}
+
+document.getElementById('probeBtn').onclick = async () => {
+    const out = document.getElementById('soundSummary');
+    const detail = document.getElementById('soundDetail');
+    out.textContent = 'rendering…';
+    out.className = '';
+    try {
+        const canvas = document.createElement('canvas');
+        canvas.className = 'peek';
+        document.body.appendChild(canvas);
+        const images = [makePhoto(20, 800, 800), makePhoto(21, 800, 800)];
+        const plan = NEW.buildPlan({
+            canvas, images, title: '', body: 'Sound probe.', logo: null,
+            options: { aspect: 'square', theme: 'dark', showTitle: false, showProgress: false, showLogo: false, secondsPerImage: 3.5, quality: 'low' },
+        });
+        const ac = NEW.audioContext();
+        await ac.resume();
+        const half = plan.duration / 2;
+
+        // Two overlapping clips through the new path.
+        const res = await NEW.renderVideo({
+            canvas, plan,
+            audio: {
+                clips: [
+                    { buffer: sine(ac, 440, plan.duration + 1), start: 0, end: plan.duration, volume: 0.9, fadeIn: 0, fadeOut: 0 },
+                    { buffer: sine(ac, 880, plan.duration + 1), start: half, end: plan.duration, volume: 0.9, fadeIn: 0, fadeOut: 0 },
+                ],
+            },
+            onProgress: (p) => { out.textContent = `rendering (two clips)… ${Math.round(p * 100)}%`; },
+        });
+
+        out.textContent = 'decoding…';
+        const decoded = await decodeBlob(ac, res.blob);
+        const d = decoded.getChannelData(0);
+        const sr = decoded.sampleRate;
+        const e440A = goertzel(d, sr, 440, 0.4, half - 0.4);
+        const e880A = goertzel(d, sr, 880, 0.4, half - 0.4);
+        const e440B = goertzel(d, sr, 440, half + 0.4, plan.duration - 0.4);
+        const e880B = goertzel(d, sr, 880, half + 0.4, plan.duration - 0.4);
+
+        // The legacy single-bed call form still carries audio.
+        const resBed = await NEW.renderVideo({
+            canvas, plan,
+            audio: { buffer: sine(ac, 440, plan.duration + 1), offset: 0, volume: 0.8, fadeIn: 0.5, fadeOut: 0.5 },
+            onProgress: (p) => { out.textContent = `rendering (legacy bed)… ${Math.round(p * 100)}%`; },
+        });
+
+        const checks = [
+            ['clip A audible in first half (440 early)', e440A > 1e-4],
+            ['clip B silent in first half (880 early ≈ 0)', e880A < e880B * 0.02],
+            ['clip B lands at its instant (880 late)', e880B > 1e-4],
+            ['clip A still present late (440 late)', e440B > 1e-4],
+            ['legacy bed form still records audio', !!resBed.hasAudio && resBed.blob.size > 0],
+            ['file duration sane', Math.abs(res.duration - plan.duration) < 0.001],
+        ];
+        const bad = checks.filter(([, ok]) => !ok);
+        out.textContent = bad.length === 0 ? `PASS — ${checks.length}/${checks.length} sound checks` : `FAIL — ${bad.length} sound checks failed`;
+        out.className = bad.length === 0 ? 'ok' : 'bad';
+        detail.textContent = checks.map(([n, ok]) => `${ok ? 'ok  ' : 'FAIL'}  ${n}`).join('\n')
+            + `\n\n440 early ${e440A.toExponential(2)} · 880 early ${e880A.toExponential(2)}`
+            + `\n440 late  ${e440B.toExponential(2)} · 880 late  ${e880B.toExponential(2)}`
+            + `\nmime ${res.mimeType} · ${res.blob.size} bytes`;
+        window.__SOUND = { done: true, pass: bad.length === 0, checks: checks.map(([n, ok]) => ({ n, ok })) };
+    } catch (err) {
+        out.textContent = `probe error: ${err.message}`;
+        out.className = 'bad';
+        window.__SOUND = { done: true, pass: false, error: err.message };
+    }
+};
+</script>

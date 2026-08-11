@@ -30,6 +30,7 @@ import {
     ASPECTS, THEMES, DEFAULTS,
     buildPlan, paintFrame, renderVideo, loadImage, loadImages, releaseImages,
     loadAudioTrack, setMediaAuth, layerBounds, hitTestLayers,
+    soundLayers, clipFromSoundLayer,
     imageItems, isImageOnly, unsupportedReason, videoFileName,
 } from "../../lib/video-maker";
 
@@ -391,6 +392,38 @@ export default function VideoStudioPage() {
         }
     }, [options, tracks, toast]);
 
+    // Appended `sound` layers, resolved to renderVideo clips. Each references
+    // a library track (trackId = documentId) or a raw url; a track that has
+    // left the library is skipped with a warning rather than sinking the
+    // render — the same degradation the music bed has always had.
+    const clipsFromSoundLayers = useCallback(async (thePlan) => {
+        const clips = [];
+        for (const layer of soundLayers(thePlan)) {
+            const track = layer.trackId ? tracks.find((t) => String(t.documentId) === String(layer.trackId)) : null;
+            const url = track ? trackUrl(track) : layer.url;
+            if (!url) { toast(`“${layer.name || layer.id}” has no track — skipped.`, "warning"); continue; }
+            try {
+                const cacheKey = track?.documentId || url;
+                let buffer = bufferCache.current.get(cacheKey);
+                if (!buffer) {
+                    buffer = await loadAudioTrack(url);
+                    bufferCache.current.set(cacheKey, buffer);
+                }
+                clips.push(clipFromSoundLayer(layer, buffer, thePlan, {
+                    volume: Number.isFinite(Number(track?.volume)) && track?.volume !== null
+                        ? Number(track.volume) : options.audioVolume,
+                    fadeIn: options.audioFadeIn,
+                    fadeOut: options.audioFadeOut,
+                }));
+            } catch (err) {
+                console.error("Failed to decode a sound layer", err);
+                toast(`Could not use the sound “${layer.name || layer.id}” — skipped.`, "warning");
+            }
+        }
+        return clips;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [tracks, options.audioVolume, options.audioFadeIn, options.audioFadeOut, toast]);
+
     // Browsing posts moved to /posts (every card there deep-links back here).
     // What the studio still needs from the full post set is just the batch
     // queue — image-only posts awaiting a video.
@@ -705,10 +738,15 @@ export default function VideoStudioPage() {
         abortRef.current = new AbortController();
         try {
             const audio = await audioForRender();
+            // The music bed plus any appended sound layers, as one clip list.
+            // With no sound layers the bed goes through in its legacy form.
+            const soundClips = await clipsFromSoundLayers(thePlan);
             const out = await renderVideo({
                 canvas: canvasRef.current,
                 plan: thePlan,
-                audio,
+                audio: soundClips.length
+                    ? { clips: [...(audio ? [{ ...audio, loop: true }] : []), ...soundClips] }
+                    : audio,
                 onProgress: setProgress,
                 signal: abortRef.current.signal,
             });
@@ -1158,7 +1196,7 @@ export default function VideoStudioPage() {
                                                                 <i className={`fas ${l.visible === false ? "fa-eye-slash text-muted" : "fa-eye"}`} />
                                                             </button>
                                                             <span className={`flex-grow-1 small text-truncate ${l.visible === false ? "text-muted" : ""}`}>
-                                                                {isCustom ? (l.type === "qr" ? "QR code" : l.text || "Text") : (LAYER_LABELS[l.id] || LAYER_LABELS[l.type] || l.id)}
+                                                                {isCustom ? (l.type === "qr" ? "QR code" : l.text || "Text") : (l.name || LAYER_LABELS[l.id] || LAYER_LABELS[l.type] || l.id)}
                                                                 {l.missingToken && <i className="fas fa-triangle-exclamation text-warning ms-1" title="Uses a {token} with no data — link a product to the post" />}
                                                             </span>
                                                             {movable && <i className="fas fa-up-down-left-right text-muted" style={{ fontSize: 10 }} title="Drag on the preview to move" />}

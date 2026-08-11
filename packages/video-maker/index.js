@@ -15,6 +15,14 @@
  * canvas is tainted; Electron can fetch in the main process and hand bytes
  * over IPC).
  *
+ * EVERYTHING IS A LAYER. A photo is a layer, the caption is a layer, the logo
+ * and the QR are layers — and a sound is a layer too. Every layer carries the
+ * same envelope: order (z), timing (start/end on the video's clock), entry and
+ * exit (fade / slide / zoom / push, applied around the painter), fractional
+ * geometry where it applies, and state (visible, named). Legacy options
+ * compile into this stack in compileLayers — options are sugar, layers are
+ * truth — which is why every pre-layer recipe keeps rendering identically.
+ *
  * WHAT CALLERS MUST KNOW
  * - Rendering is REAL TIME: a 30-second video takes 30 seconds.
  * - The canvas must belong to a live document. Where the document is not being
@@ -375,7 +383,7 @@ function layoutLines(ctx, text, maxWidth) {
  * blow past maxSeconds the typing speeds up to fit rather than getting cut off
  * mid-sentence — `plan.spedUp` says so, and the UI reports it.
  */
-export function buildPlan({ canvas, images, title, body, logo, options, layerPatches, context }) {
+export function buildPlan({ canvas, images, title, body, logo, options, layerPatches, context, assets }) {
     const opts = { ...DEFAULTS, ...(options || {}) };
     const aspect = ASPECTS[opts.aspect] || ASPECTS.vertical;
     const W = aspect.width;
@@ -477,6 +485,11 @@ export function buildPlan({ canvas, images, title, body, logo, options, layerPat
     // "{price}" chip honest when the price changes after the recipe was saved.
     plan.context = context && typeof context === 'object' ? context : {};
 
+    // Pre-loaded bitmaps for appended image layers (a second logo, a
+    // watermark), keyed by the url the recipe stores. Loading is the host's
+    // job — compile is synchronous and must stay that way.
+    plan.assets = assets && typeof assets === 'object' ? assets : {};
+
     plan.layers = compileLayers(plan);
     if (Array.isArray(layerPatches) && layerPatches.length) applyLayerPatches(plan, layerPatches);
     return plan;
@@ -515,14 +528,37 @@ function resolveTokens(str, context) {
 export function applyLayerPatches(plan, patches) {
     const { W, H, theme } = plan;
     const themeColor = (c, fallback) => (c === 'text' ? theme.text : c === 'dim' ? theme.dim : c === 'accent' ? theme.accent : (c || fallback));
+    // Appended layers land on top of everything already there — the same place
+    // the old push-at-the-end put them, now written down as a z.
+    const nextZ = () => plan.layers.reduce((m, l) => Math.max(m, l.z || 0), 0) + 10;
 
     for (const patch of patches) {
         if (!patch || !patch.id) continue;
+
+        // v2 recipes patched the photos as one 'slideshow' layer. The only
+        // thing those patches could express was hiding the photos wholesale,
+        // so that is what the patch still means — applied to every photo.
+        if (patch.id === 'slideshow' && !plan.layers.some((l) => l.id === 'slideshow')) {
+            if (patch.visible !== undefined) {
+                for (const l of plan.layers) if (l.type === 'photo') l.visible = patch.visible;
+            }
+            continue;
+        }
+
         const existing = plan.layers.find((l) => l.id === patch.id);
 
         if (existing) {
-            const { id, type, ...rest } = patch;
+            const { id, type, anim, ...rest } = patch;
             Object.assign(existing, rest);
+            // The legacy `anim` key is sugar for the envelope now — one
+            // mechanism, not two. An explicit enter/exit in the same patch
+            // wins over the translation.
+            if (anim !== undefined) {
+                existing.anim = anim;
+                const env = envelopeFromAnim(anim, H);
+                if (patch.enter === undefined) existing.enter = env.enter;
+                if (patch.exit === undefined) existing.exit = env.exit;
+            }
             // Fractional geometry on a patched layer (e.g. a dragged logo or
             // footer) re-resolves against this frame's size.
             if (existing.type === 'image') {
@@ -537,6 +573,10 @@ export function applyLayerPatches(plan, patches) {
             } else if (existing.type === 'text') {
                 if (patch.fx !== undefined) existing.x = W * patch.fx;
                 if (patch.fy !== undefined) existing.y = H * patch.fy;
+            } else if (existing.type === 'qr') {
+                if (patch.fx !== undefined) existing.x = W * patch.fx;
+                if (patch.fy !== undefined) existing.y = H * patch.fy;
+                if (patch.fw !== undefined) existing.size = Math.max(60, Math.round(W * patch.fw));
             }
             continue;
         }
@@ -545,13 +585,18 @@ export function applyLayerPatches(plan, patches) {
             const sizePx = Math.max(10, Math.round(W * (patch.sizeFrac || 0.035)));
             const resolved = resolveTokens(patch.text, plan.context);
             const text = resolved.text;
+            const env = envelopeFromAnim(patch.anim, H);
             plan.layers.push({
                 id: patch.id, type: 'text', text,
+                name: patch.name || null,
                 // A tokened layer whose data isn't available simply doesn't
                 // draw — "Rs " with the price missing must never reach a video.
                 visible: patch.visible !== false && !resolved.missing,
                 missingToken: resolved.missing,
                 timing: patch.timing || null,
+                enter: patch.enter || env.enter,
+                exit: patch.exit || env.exit,
+                z: patch.z ?? nextZ(),
                 font: `${patch.weight || 600} ${sizePx}px ${FONT_STACK}`,
                 sizePx,
                 color: themeColor(patch.color, theme.text),
@@ -580,10 +625,14 @@ export function applyLayerPatches(plan, patches) {
             const sizePx = Math.max(60, Math.round(W * (patch.fw || 0.22)));
             plan.layers.push({
                 id: patch.id, type: 'qr',
+                name: patch.name || 'QR code',
                 data: resolved.text,
                 visible: patch.visible !== false && !resolved.missing && !!resolved.text,
                 missingToken: resolved.missing,
                 timing: patch.timing || null,
+                enter: patch.enter || { kind: 'none', seconds: 0 },
+                exit: patch.exit || { kind: 'none', seconds: 0 },
+                z: patch.z ?? nextZ(),
                 x: W * (patch.fx ?? 0.72), y: H * (patch.fy ?? 0.06),
                 size: sizePx,
                 fx: patch.fx ?? 0.72, fy: patch.fy ?? 0.06, fw: patch.fw || 0.22,
@@ -591,10 +640,158 @@ export function applyLayerPatches(plan, patches) {
             continue;
         }
 
+        // A photo appended a second time — the same picture reappearing later
+        // on the clock. It references the loaded image by index, and carries
+        // kbIndex so the Ken Burns direction can stay what the original had.
+        if (patch.type === 'photo') {
+            const idx = Number(patch.index) || 0;
+            plan.layers.push({
+                id: patch.id, type: 'photo',
+                name: patch.name || `Photo ${idx + 1} again`,
+                index: idx,
+                kbIndex: patch.kbIndex ?? idx,
+                visible: patch.visible !== false && !!plan.images[idx],
+                timing: patch.timing || null,
+                enter: patch.enter || { kind: 'fade', seconds: 0.4 },
+                exit: patch.exit || { kind: 'fade', seconds: 0.4 },
+                z: patch.z ?? nextZ(),
+            });
+            continue;
+        }
+
+        // A second logo / watermark. Its bitmap must already be decoded — the
+        // compiled logo covers the common case, anything else arrives through
+        // buildPlan({ assets }) keyed by the url the recipe stores.
+        if (patch.type === 'image') {
+            const src = (patch.src === 'logo' || !patch.url) ? plan.logo : (plan.assets[patch.url] || null);
+            const fw = patch.fw || 0.16;
+            const w = W * fw;
+            const h = src ? w * (src.height / Math.max(1, src.width)) : w;
+            plan.layers.push({
+                id: patch.id, type: 'image',
+                name: patch.name || 'Image',
+                src,
+                url: patch.url || null,
+                visible: patch.visible !== false && !!src?.img,
+                timing: patch.timing || null,
+                enter: patch.enter || { kind: 'none', seconds: 0 },
+                exit: patch.exit || { kind: 'none', seconds: 0 },
+                z: patch.z ?? nextZ(),
+                x: W * (patch.fx ?? 0.5), y: H * (patch.fy ?? 0.5), w, h,
+                opacity: patch.opacity ?? 1,
+                shadow: patch.shadow !== false,
+                fx: patch.fx ?? 0.5, fy: patch.fy ?? 0.5, fw,
+                draggable: true,
+            });
+            continue;
+        }
+
+        // A sound clip. It never paints — the host resolves trackId/url to a
+        // decoded buffer and hands renderVideo the clips (see soundLayers /
+        // clipFromSoundLayer). enter/exit seconds are its audio fades.
+        if (patch.type === 'sound') {
+            plan.layers.push({
+                id: patch.id, type: 'sound',
+                name: patch.name || 'Sound',
+                trackId: patch.trackId ?? null,
+                url: patch.url || null,
+                offset: Number(patch.offset) || 0,
+                volume: patch.volume ?? null, // null = the host's default
+                loop: !!patch.loop,
+                visible: patch.visible !== false,
+                timing: patch.timing || null,
+                enter: patch.enter || { kind: 'fade', seconds: 0 },
+                exit: patch.exit || { kind: 'fade', seconds: 0 },
+                z: patch.z ?? nextZ(),
+            });
+            continue;
+        }
+
+        // A second typewriter block with its own text and its own window.
+        if (patch.type === 'caption') {
+            plan.layers.push({
+                id: patch.id, type: 'caption',
+                name: patch.name || 'Caption again',
+                text: String(patch.text ?? plan.text),
+                visible: patch.visible !== false,
+                timing: patch.timing || null,
+                enter: patch.enter || { kind: 'none', seconds: 0 },
+                exit: patch.exit || { kind: 'none', seconds: 0 },
+                z: patch.z ?? nextZ(),
+            });
+            continue;
+        }
+
         // Anything else (a layer type this renderer version doesn't know) is
         // kept for round-tripping; paintFrame skips what it can't paint.
-        plan.layers.push({ ...patch, visible: patch.visible !== false });
+        plan.layers.push({ ...patch, visible: patch.visible !== false, z: patch.z ?? nextZ() });
     }
+}
+
+// ── entry / exit envelope ────────────────────────────────────────────────────
+// Every layer carries `enter` and `exit`: { kind, seconds } plus an optional
+// `dist` (pixels) for the slides. The envelope is applied AROUND the painter —
+// fades scale ctx.globalAlpha, slides translate, zoom scales — so every layer
+// type gets entry/exit treatments without its painter knowing. Painters
+// therefore MULTIPLY into ctx.globalAlpha rather than assign it.
+//
+// 'type-on' is the one kind the envelope cannot express: only a text painter
+// can reveal per character, so paintText / paintCaption read it themselves.
+
+/** The legacy text-layer `anim` key, translated. One mechanism, not two. */
+function envelopeFromAnim(anim, H) {
+    if (anim === 'fade') return { enter: { kind: 'fade', seconds: 0.4 }, exit: { kind: 'fade', seconds: 0.4 } };
+    if (anim === 'slide-up') return { enter: { kind: 'slide-up', seconds: 0.4, dist: H * 0.02 }, exit: { kind: 'fade', seconds: 0.4 } };
+    if (anim === 'type') return { enter: { kind: 'type-on', seconds: 0 }, exit: { kind: 'none', seconds: 0 } };
+    return { enter: { kind: 'none', seconds: 0 }, exit: { kind: 'none', seconds: 0 } };
+}
+
+/**
+ * The transform the envelope imposes at `time`, or null when it is identity —
+ * which it is for every layer outside its ramps, so the common frame costs
+ * nothing. Slides name the direction of MOTION: 'slide-left' enters from the
+ * right edge moving left, and exits off the left edge. 'push' is slide-left
+ * that a photo pairs with the next photo's slide-left enter — the incoming one
+ * shoves this one out. Distances default to the full frame (a photo crossing
+ * it); text compiled from the legacy `anim` carries its own small dist.
+ */
+function envelopeAt(plan, layer, time) {
+    const en = layer.enter;
+    const ex = layer.exit;
+    if (!en && !ex) return null;
+    const start = layer.timing ? layer.timing.start : 0;
+    const end = layer.timing ? layer.timing.end : plan.duration;
+    let alpha = 1;
+    let tx = 0;
+    let ty = 0;
+    let scale = 1;
+
+    if (en && en.seconds > 0 && en.kind !== 'none' && en.kind !== 'type-on' && time < start + en.seconds) {
+        const p = Math.max(0, (time - start) / en.seconds); // 0 → 1 across the ramp
+        const out = 1 - p;
+        if (en.kind === 'fade') alpha *= p;
+        else if (en.kind === 'zoom') { alpha *= p; scale *= 1 + 0.2 * out; }
+        else if (en.kind === 'push' || en.kind === 'slide-left') tx += out * (en.dist ?? plan.W); // in from the right
+        else if (en.kind === 'slide-right') tx -= out * (en.dist ?? plan.W); // in from the left
+        else if (en.kind === 'slide-up') ty += out * (en.dist ?? plan.H); // in from below
+        else if (en.kind === 'slide-down') ty -= out * (en.dist ?? plan.H); // in from above
+    }
+
+    if (ex && ex.seconds > 0 && ex.kind !== 'none' && ex.kind !== 'type-on') {
+        const exitStart = end - ex.seconds;
+        if (time > exitStart) {
+            const p = Math.min(1, (time - exitStart) / ex.seconds); // 0 → 1 across the ramp
+            if (ex.kind === 'fade') alpha *= 1 - p;
+            else if (ex.kind === 'zoom') { alpha *= 1 - p; scale *= 1 + 0.2 * p; }
+            else if (ex.kind === 'push' || ex.kind === 'slide-left') tx -= p * (ex.dist ?? plan.W); // out to the left
+            else if (ex.kind === 'slide-right') tx += p * (ex.dist ?? plan.W); // out to the right
+            else if (ex.kind === 'slide-up') ty -= p * (ex.dist ?? plan.H); // out through the top
+            else if (ex.kind === 'slide-down') ty += p * (ex.dist ?? plan.H); // out through the bottom
+        }
+    }
+
+    if (alpha >= 1 && tx === 0 && ty === 0 && scale === 1) return null;
+    return { alpha, tx, ty, scale };
 }
 
 // ── painting ─────────────────────────────────────────────────────────────────
@@ -667,7 +864,9 @@ function drawImageLayer(ctx, plan, entry, index, p, alpha, stageRect) {
     const kb = kenBurns(index, p, opts.kenBurns);
 
     ctx.save();
-    ctx.globalAlpha = alpha;
+    // Multiplied, not assigned — the entry/exit envelope may already have
+    // scaled globalAlpha down before this painter ran.
+    ctx.globalAlpha *= alpha;
 
     if (opts.fit === 'cover') {
         const c = coverRect(entry.width, entry.height, W, H);
@@ -720,51 +919,19 @@ function revealPosition(lines, n) {
 // This is the seam the v2 editor builds on: templates store a stack, the
 // editor manipulates plan.layers, and every painter stays oblivious to both.
 
-function paintSlideshow(ctx, plan, layer, time) {
-    const stageRect = plan.stageRect;
-    const tr = plan.opts.transition || 'fade';
-    for (let i = 0; i < plan.images.length; i++) {
-        const s = plan.slots[i];
-        if (time < s.start || time > s.end) continue;
-        const local = (time - s.start) / Math.max(0.0001, s.end - s.start);
-
-        // Where this image is in a handover: entering under the previous one,
-        // or leaving under the next. Both are 0..1 across the overlap window.
-        // Images draw in index order, so the incoming one lands ON TOP — which
-        // is what lets slide/zoom cover the outgoing image without touching it.
-        const enter = (i > 0 && plan.fade > 0 && time < s.start + plan.fade)
-            ? (time - s.start) / plan.fade : 1;
-        const exitStart = s.end - plan.fade;
-        const exit = (i < plan.images.length - 1 && plan.fade > 0 && time > exitStart)
-            ? Math.min(1, (time - exitStart) / plan.fade) : 0;
-
-        let alpha = 1;
-        let tx = 0;
-        let scale = 1;
-        if (tr === 'slide') {
-            tx = (1 - enter) * plan.W; // incoming covers from the right
-        } else if (tr === 'push') {
-            tx = (1 - enter) * plan.W - exit * plan.W; // outgoing is shoved out left
-        } else if (tr === 'zoom') {
-            alpha = enter;
-            scale = 1 + 0.2 * (1 - enter); // incoming settles from oversized
-        } else {
-            alpha = enter; // 'fade' — the legacy crossfade ('cut' never overlaps)
-        }
-
-        const transformed = tx !== 0 || scale !== 1;
-        if (transformed) {
-            ctx.save();
-            if (tx) ctx.translate(tx, 0);
-            if (scale !== 1) {
-                ctx.translate(plan.W / 2, plan.H / 2);
-                ctx.scale(scale, scale);
-                ctx.translate(-plan.W / 2, -plan.H / 2);
-            }
-        }
-        drawImageLayer(ctx, plan, plan.images[i], i, local, Math.max(0, Math.min(1, alpha)), stageRect);
-        if (transformed) ctx.restore();
-    }
+// One photo, one layer. The crossfade that used to live inside a slideshow
+// painter is now this layer's `enter` overlapping the previous photo's window
+// — the envelope applies it before this runs, so all that is left is the Ken
+// Burns drift and the draw itself: the body of the old loop, unchanged.
+function paintPhoto(ctx, plan, layer, time) {
+    const entry = plan.images[layer.index];
+    if (!entry) return;
+    const t0 = layer.timing ? layer.timing.start : 0;
+    const t1 = layer.timing ? layer.timing.end : plan.duration;
+    const local = (time - t0) / Math.max(0.0001, t1 - t0);
+    // kbIndex keeps the alternating Ken Burns direction stable when a photo is
+    // duplicated or reordered — it is the image's place in the arrangement.
+    drawImageLayer(ctx, plan, entry, layer.kbIndex ?? layer.index, local, 1, plan.stageRect);
 }
 
 // Legibility gradient under the caption band.
@@ -777,18 +944,38 @@ function paintGradient(ctx, plan) {
     ctx.fillRect(0, H - captionBandH * 1.5, W, captionBandH * 1.5);
 }
 
-// The typewriter caption.
+// The typewriter caption. A duplicated caption layer carries its own text and
+// its own window; the compiled one uses the plan's, and typing runs on the
+// layer's local clock so a retimed caption starts typing when IT starts.
 function paintCaption(ctx, plan, layer, time) {
-    const { W, H, theme, opts, lines, lineHeight, bodySize, margin, pad, maxVisibleLines } = plan;
-    const revealed = Math.max(0, Math.floor((time - opts.leadInSeconds) * plan.cps));
-    const n = Math.min(plan.totalChars, revealed);
-    const typing = n < plan.totalChars && time > opts.leadInSeconds;
+    const { W, H, theme, opts, lineHeight, bodySize, margin, pad, maxVisibleLines } = plan;
+
+    let { lines, totalChars, text, rtl } = plan;
+    if (layer.text !== undefined && layer.text !== null && layer.text !== plan.text) {
+        text = String(layer.text);
+        // Wrapping is far too slow to redo per frame; the layout is cached on
+        // the layer, keyed so an edited text or resized frame re-wraps.
+        const key = `${plan.textWidth}|${bodySize}|${text}`;
+        if (layer._layoutKey !== key) {
+            ctx.font = `500 ${bodySize}px ${FONT_STACK}`;
+            layer._lines = layoutLines(ctx, text, plan.textWidth);
+            layer._layoutKey = key;
+        }
+        lines = layer._lines;
+        totalChars = text.length;
+        rtl = /[֐-ࣿﭐ-﷿ﹰ-ﻼ]/.test(text);
+    }
+
+    const local = layer.timing ? time - layer.timing.start : time;
+    const revealed = Math.max(0, Math.floor((local - opts.leadInSeconds) * plan.cps));
+    const n = Math.min(totalChars, revealed);
+    const typing = n < totalChars && local > opts.leadInSeconds;
     if (n <= 0 && !typing) return;
 
     ctx.font = `500 ${bodySize}px ${FONT_STACK}`;
     ctx.textBaseline = 'top';
-    ctx.textAlign = plan.rtl ? 'right' : 'left';
-    if (plan.rtl) ctx.direction = 'rtl';
+    ctx.textAlign = rtl ? 'right' : 'left';
+    if (rtl) ctx.direction = 'rtl';
 
     const posF = revealPosition(lines, n);
     const shownLines = Math.max(1, Math.min(maxVisibleLines, posF + 1));
@@ -822,7 +1009,7 @@ function paintCaption(ctx, plan, layer, time) {
     }
 
     const scroll = Math.max(0, posF - (maxVisibleLines - 1)) * lineHeight;
-    const textX = plan.rtl ? boxX + boxW - pad : boxX + pad;
+    const textX = rtl ? boxX + boxW - pad : boxX + pad;
     const textTop = boxY + pad - scroll;
 
     ctx.fillStyle = theme.text;
@@ -832,15 +1019,15 @@ function paintCaption(ctx, plan, layer, time) {
         if (n < l.start) break; // `<` not `<=`: at n === start the caret has just landed on this line
         const y = textTop + i * lineHeight;
         if (y > boxY + boxH || y + lineHeight < boxY - lineHeight) continue;
-        const slice = plan.text.slice(l.start, Math.min(l.end, n)).replace(/\s+$/, '');
+        const slice = text.slice(l.start, Math.min(l.end, n)).replace(/\s+$/, '');
         if (slice) ctx.fillText(slice, textX, y);
         if (n <= l.end) {
             const advance = ctx.measureText(slice).width + Math.round(bodySize * 0.14);
-            caret = { x: plan.rtl ? textX - advance - Math.round(bodySize * 0.09) : textX + advance, y };
+            caret = { x: rtl ? textX - advance - Math.round(bodySize * 0.09) : textX + advance, y };
         }
     }
 
-    if (typing && caret && (time * 2) % 1 < 0.62) {
+    if (typing && caret && (local * 2) % 1 < 0.62) {
         ctx.fillStyle = theme.accent;
         ctx.fillRect(caret.x, caret.y + Math.round(bodySize * 0.12), Math.round(bodySize * 0.09), bodySize);
     }
@@ -850,13 +1037,18 @@ function paintCaption(ctx, plan, layer, time) {
 // The opening title card. Its own fades live here; the layer's timing window
 // only gates when the painter runs at all.
 function paintTitle(ctx, plan, layer, time) {
-    const { W, theme, opts, margin, pad } = plan;
+    const { W, theme, margin, pad } = plan;
     if (!plan.title) return;
-    const fadeIn = Math.min(1, time / 0.45);
-    const fadeOut = Math.min(1, Math.max(0, (opts.titleSeconds - time) / 0.6));
+    // On the layer's own clock, so a retimed title card fades at ITS edges.
+    // With the compiled window {0, titleSeconds} this is the legacy arithmetic.
+    const winStart = layer.timing ? layer.timing.start : 0;
+    const winLen = layer.timing ? layer.timing.end - winStart : plan.opts.titleSeconds;
+    const local = time - winStart;
+    const fadeIn = Math.min(1, local / 0.45);
+    const fadeOut = Math.min(1, Math.max(0, (winLen - local) / 0.6));
     const a = Math.min(fadeIn, fadeOut);
     ctx.save();
-    ctx.globalAlpha = a;
+    ctx.globalAlpha *= a;
     ctx.font = `700 ${plan.titleSize}px ${FONT_STACK}`;
     ctx.textBaseline = 'top';
     const titleRtl = plan.rtl;
@@ -882,7 +1074,7 @@ function paintImage(ctx, plan, layer) {
     const entry = layer.src;
     if (!entry?.img) return;
     ctx.save();
-    ctx.globalAlpha = Math.max(0, Math.min(1, layer.opacity ?? 1));
+    ctx.globalAlpha *= Math.max(0, Math.min(1, layer.opacity ?? 1));
     if (layer.shadow) {
         // Most brand marks are transparent PNGs; over a busy photo they vanish
         // without something to lift them off it.
@@ -894,32 +1086,21 @@ function paintImage(ctx, plan, layer) {
 }
 
 // A text overlay: the compiled footer, and every editor-added text layer.
-// Static layers (no anim/bg/rtl props) paint exactly as the original footer
-// painter did — that identity is load-bearing for the A/B guarantee.
+// Static layers paint exactly as the original footer painter did — that
+// identity is load-bearing for the A/B guarantee. Fades and slides are the
+// envelope's job now; the one reveal only a text painter can do stays here.
 function paintText(ctx, plan, layer, time) {
     const winStart = layer.timing ? layer.timing.start : 0;
-    const winEnd = layer.timing ? layer.timing.end : plan.duration;
     const local = time - winStart;
 
-    // Entry/exit animation, confined to the layer's own window.
-    const RAMP = 0.4;
-    let alpha = 1;
-    let dy = 0;
     let text = layer.text;
-    if (layer.anim === 'fade' || layer.anim === 'slide-up') {
-        alpha = Math.max(0, Math.min(1, local / RAMP));
-        const out = (winEnd - time) / RAMP;
-        if (out < 1) alpha = Math.min(alpha, Math.max(0, out));
-        if (layer.anim === 'slide-up') dy = (1 - Math.min(1, local / RAMP)) * plan.H * 0.02;
-    } else if (layer.anim === 'type') {
+    if (layer.enter?.kind === 'type-on' || layer.anim === 'type') {
         const cps = Math.max(8, layer.text.length / 1.2);
         text = layer.text.slice(0, Math.max(0, Math.floor(local * cps)));
         if (!text) return;
     }
-    if (alpha <= 0) return;
 
     ctx.save();
-    ctx.globalAlpha *= alpha;
     ctx.font = layer.font;
     ctx.textAlign = layer.align || 'left';
     ctx.textBaseline = layer.baseline || 'top';
@@ -936,12 +1117,12 @@ function paintText(ctx, plan, layer, time) {
         const x0 = layer.align === 'center' ? layer.x - w / 2 : layer.align === 'right' ? layer.x - w : layer.x;
         const y0 = layer.baseline === 'bottom' ? layer.y - size : layer.baseline === 'middle' ? layer.y - size / 2 : layer.y;
         ctx.fillStyle = layer.pillColor || plan.theme.scrim;
-        roundRect(ctx, x0 - padX, y0 - padY + dy, w + padX * 2, size + padY * 2, Math.round(size * 0.6));
+        roundRect(ctx, x0 - padX, y0 - padY, w + padX * 2, size + padY * 2, Math.round(size * 0.6));
         ctx.fill();
     }
 
     ctx.fillStyle = layer.color;
-    ctx.fillText(text, layer.x, layer.y + dy);
+    ctx.fillText(text, layer.x, layer.y);
     ctx.restore();
 }
 
@@ -980,13 +1161,13 @@ function paintQr(ctx, plan, layer) {
 // The branded end card: theme background, logo, a line of text. Fades in over
 // the last image so the video ends on brand instead of stopping dead.
 function paintOutro(ctx, plan, layer, time) {
-    const start = plan.duration - plan.outroSeconds;
+    const start = layer.timing ? layer.timing.start : plan.duration - plan.outroSeconds;
     const p = Math.max(0, Math.min(1, (time - start) / 0.5));
     if (p <= 0) return;
     const { W, H, theme } = plan;
 
     ctx.save();
-    ctx.globalAlpha = p;
+    ctx.globalAlpha *= p;
     ctx.fillStyle = theme.bg;
     ctx.fillRect(0, 0, W, H);
 
@@ -1033,7 +1214,7 @@ function paintEdges(ctx, plan, layer, time) {
 }
 
 const PAINTERS = {
-    slideshow: paintSlideshow,
+    photo: paintPhoto,
     gradient: paintGradient,
     caption: paintCaption,
     title: paintTitle,
@@ -1056,12 +1237,34 @@ export function compileLayers(plan) {
     const { W, H, opts, margin, pad, lineHeight, maxVisibleLines } = plan;
     const layers = [];
 
-    layers.push({ id: 'slideshow', type: 'slideshow' });
-    if (opts.textPosition === 'bottom') layers.push({ id: 'gradient', type: 'gradient' });
-    layers.push({ id: 'caption', type: 'caption' });
+    // One layer per photo. The crossfade that used to live inside the
+    // slideshow painter is photo N+1's `enter` overlapping photo N's window —
+    // the same windows and the same ramps the old loop computed, written down.
+    // The first photo gets no enter and only 'push' gives a photo an exit
+    // (everything else is simply covered by the incoming one) — exactly the
+    // `i > 0` / `i < n-1` guards the old painter carried.
+    const tr = opts.transition || 'fade';
+    const ENTER_FOR = { fade: 'fade', slide: 'slide-left', push: 'push', zoom: 'zoom' };
+    const enterKind = plan.fade > 0 ? (ENTER_FOR[tr] || 'none') : 'none';
+    plan.images.forEach((entry, i) => {
+        layers.push({
+            id: `photo-${i + 1}`, type: 'photo', name: `Photo ${i + 1}`,
+            index: i,
+            timing: { start: plan.slots[i].start, end: plan.slots[i].end },
+            enter: i > 0 && enterKind !== 'none'
+                ? { kind: enterKind, seconds: plan.fade }
+                : { kind: 'none', seconds: 0 },
+            exit: tr === 'push' && plan.fade > 0 && i < plan.images.length - 1
+                ? { kind: 'push', seconds: plan.fade }
+                : { kind: 'none', seconds: 0 },
+        });
+    });
+
+    if (opts.textPosition === 'bottom') layers.push({ id: 'gradient', type: 'gradient', name: 'Caption shade' });
+    layers.push({ id: 'caption', type: 'caption', name: 'Caption' });
 
     if (opts.showTitle && plan.title) {
-        layers.push({ id: 'title', type: 'title', timing: { start: 0, end: opts.titleSeconds } });
+        layers.push({ id: 'title', type: 'title', name: 'Title card', timing: { start: 0, end: opts.titleSeconds } });
     }
 
     if (plan.logo?.img) {
@@ -1077,7 +1280,7 @@ export function compileLayers(plan) {
         const bottomY = Math.max(margin, captionTopFull - margin * 0.45 - lh);
         const pos = opts.logoPosition || 'top-right';
         layers.push({
-            id: 'logo', type: 'image', src: plan.logo,
+            id: 'logo', type: 'image', name: 'Logo', src: plan.logo,
             x: pos.endsWith('left') ? margin : W - margin - lw,
             y: pos.startsWith('top') ? margin : bottomY,
             w: lw, h: lh,
@@ -1089,7 +1292,7 @@ export function compileLayers(plan) {
     if (opts.footer) {
         const sizePx = Math.round(plan.bodySize * 0.62);
         layers.push({
-            id: 'footer', type: 'text', text: opts.footer,
+            id: 'footer', type: 'text', name: 'Footer', text: opts.footer,
             font: `600 ${sizePx}px ${FONT_STACK}`,
             sizePx,
             color: plan.theme.dim, align: 'center', baseline: 'bottom',
@@ -1100,13 +1303,25 @@ export function compileLayers(plan) {
 
     if (plan.outroSeconds > 0) {
         layers.push({
-            id: 'outro', type: 'outro',
+            id: 'outro', type: 'outro', name: 'Outro card',
             text: String(opts.outroText || opts.footer || '').trim(),
             timing: { start: plan.duration - plan.outroSeconds, end: plan.duration + 1 },
         });
     }
-    if (opts.showProgress) layers.push({ id: 'progress', type: 'progress' });
-    layers.push({ id: 'edges', type: 'edges' });
+    if (opts.showProgress) layers.push({ id: 'progress', type: 'progress', name: 'Progress bar' });
+    layers.push({ id: 'edges', type: 'edges', name: 'Fade in/out' });
+
+    // The universal envelope: every layer leaves compile with the same five
+    // things — order, timing, entry/exit, geometry (where it applies), state.
+    // z is compile order, so an untouched recipe stacks exactly as it always
+    // did; `timing: null` means the whole video, however long it becomes.
+    layers.forEach((l, i) => {
+        l.z = (i + 1) * 10;
+        if (l.visible === undefined) l.visible = true;
+        if (l.timing === undefined) l.timing = null;
+        if (!l.enter) l.enter = { kind: 'none', seconds: 0 };
+        if (!l.exit) l.exit = { kind: 'none', seconds: 0 };
+    });
 
     return layers;
 }
@@ -1436,8 +1651,10 @@ export function hitTestLayers(ctx, plan, x, y) {
 /**
  * Paint the frame at time `t`. Pure: same t always gives the same picture, so
  * the preview scrubber and the recorder share one code path. The frame is the
- * background plus plan.layers painted in stack order; a layer skips when
- * hidden or outside its timing window.
+ * background plus plan.layers painted in z order (ascending — the sort is
+ * stable, so equal z keeps compile order); a layer skips when hidden or
+ * outside its timing window, and its entry/exit envelope is applied around
+ * its painter.
  */
 export function paintFrame(ctx, plan, t) {
     const time = Math.max(0, Math.min(plan.duration, t));
@@ -1446,12 +1663,27 @@ export function paintFrame(ctx, plan, t) {
     ctx.fillStyle = plan.theme.bg;
     ctx.fillRect(0, 0, plan.W, plan.H);
 
-    for (const layer of plan.layers) {
+    const ordered = [...plan.layers].sort((a, b) => (a.z || 0) - (b.z || 0));
+
+    for (const layer of ordered) {
         if (layer.visible === false) continue;
-        if (layer.timing && (time < layer.timing.start || time >= layer.timing.end)) continue;
+        // Inclusive at the end: the old slideshow held an image through
+        // `time <= slot.end`, and the very last frame paints at exactly
+        // t === duration — it must still show the last photo.
+        if (layer.timing && (time < layer.timing.start || time > layer.timing.end)) continue;
         const painter = PAINTERS[layer.type];
         if (!painter) continue;
         ctx.save();
+        const env = envelopeAt(plan, layer, time);
+        if (env) {
+            if (env.tx || env.ty) ctx.translate(env.tx, env.ty);
+            if (env.scale !== 1) {
+                ctx.translate(plan.W / 2, plan.H / 2);
+                ctx.scale(env.scale, env.scale);
+                ctx.translate(-plan.W / 2, -plan.H / 2);
+            }
+            if (env.alpha < 1) ctx.globalAlpha = env.alpha;
+        }
         painter(ctx, plan, layer, time);
         ctx.restore();
     }
@@ -1506,12 +1738,73 @@ async function primeEncoder(plan, mimeType) {
     } catch { /* the real recording is what matters */ }
 }
 
+/** The sound layers a host must resolve into clips before calling renderVideo. */
+export function soundLayers(plan) {
+    return plan.layers.filter((l) => l.type === 'sound' && l.visible !== false);
+}
+
+/**
+ * A renderVideo clip from a sound layer plus the buffer the host decoded for
+ * it. `defaults` supplies the studio-level volume/fades that apply when the
+ * layer doesn't carry its own.
+ */
+export function clipFromSoundLayer(layer, buffer, plan, defaults = {}) {
+    return {
+        buffer,
+        start: layer.timing ? layer.timing.start : 0,
+        end: layer.timing ? layer.timing.end : plan.duration,
+        offset: layer.offset || 0,
+        volume: layer.volume ?? defaults.volume,
+        fadeIn: layer.enter?.seconds ?? defaults.fadeIn ?? 0,
+        fadeOut: layer.exit?.seconds ?? defaults.fadeOut ?? 0,
+        loop: !!layer.loop,
+    };
+}
+
+/**
+ * Every accepted `audio` shape, reduced to one list of scheduled clips.
+ * The single-bed form ({ buffer, offset, volume, fadeIn, fadeOut }) is the one
+ * every stored recipe and the poster already use: it becomes a one-clip array
+ * that loops across the whole video — nothing about its output changes.
+ */
+function normalizeAudioClips(audio, plan) {
+    if (!audio) return [];
+    const raw = Array.isArray(audio) ? audio
+        : Array.isArray(audio.clips) ? audio.clips
+            : audio.buffer ? [{ ...audio, loop: audio.loop !== false }] : [];
+    const clips = [];
+    for (const c of raw) {
+        if (!c?.buffer) continue;
+        const start = Math.max(0, Math.min(plan.duration, Number(c.start) || 0));
+        const end = Math.max(start, Math.min(plan.duration, Number(c.end) || plan.duration));
+        const dur = end - start;
+        if (dur <= 0.05) continue;
+        clips.push({
+            buffer: c.buffer,
+            start,
+            dur,
+            offset: c.buffer.duration > 0 ? (Number(c.offset) || 0) % c.buffer.duration : 0,
+            vol: Math.max(0, Math.min(1, c.volume ?? 0.7)),
+            fadeIn: Math.max(0, Math.min(c.fadeIn ?? 1.2, dur / 3)),
+            fadeOut: Math.max(0, Math.min(c.fadeOut ?? 1.6, dur / 3)),
+            loop: !!c.loop,
+        });
+    }
+    return clips;
+}
+
 /**
  * Record `plan` off `canvas` in real time. Resolves to the encoded blob.
  * onProgress gets 0..1; `signal` cancels.
+ *
+ * `audio` is either the legacy single bed ({ buffer, offset, volume, fadeIn,
+ * fadeOut }) or { clips: [...] } — each clip a bed-shaped record plus `start`
+ * and `end` on the video's clock. Clips may overlap; each gets its own source
+ * and gain envelope into the one recorded stream.
  */
 export async function renderVideo({ canvas, plan, audio, onProgress, signal }) {
-    const withAudio = !!audio?.buffer;
+    const clips = normalizeAudioClips(audio, plan);
+    const withAudio = clips.length > 0;
     const mimeType = pickMimeType(withAudio);
     if (!mimeType) throw new Error(unsupportedReason() || 'This browser cannot record video.');
 
@@ -1561,16 +1854,21 @@ export async function renderVideo({ canvas, plan, audio, onProgress, signal }) {
     const tracks = [...canvasStream.getVideoTracks()];
 
     if (audioNodes) {
+        // One destination, one source + gain per clip — overlapping clips mix
+        // by simple summation into the single recorded audio track.
         const { ac } = audioNodes;
         const dest = ac.createMediaStreamDestination();
-        const source = ac.createBufferSource();
-        source.buffer = audio.buffer;
-        source.loop = true;
-        const gain = ac.createGain();
-        source.connect(gain);
-        gain.connect(dest);
+        const sources = clips.map((clip) => {
+            const source = ac.createBufferSource();
+            source.buffer = clip.buffer;
+            source.loop = clip.loop;
+            const gain = ac.createGain();
+            source.connect(gain);
+            gain.connect(dest);
+            return { source, gain, clip };
+        });
         tracks.push(...dest.stream.getAudioTracks());
-        Object.assign(audioNodes, { dest, source, gain });
+        Object.assign(audioNodes, { dest, sources });
     }
 
     const stream = new MediaStream(tracks);
@@ -1592,21 +1890,23 @@ export async function renderVideo({ canvas, plan, audio, onProgress, signal }) {
     pushFrame();
     rec.start(1000);
 
-    // Music starts in the same tick the recorder does, and its envelope is
-    // scheduled from that instant — any earlier and the fades drift out of step
-    // with the picture by however long the setup above took.
+    // Music starts in the same tick the recorder does, and every clip is
+    // scheduled from that instant — any earlier and the fades drift out of
+    // step with the picture by however long the setup above took.
     if (audioNodes) {
-        const { ac, source, gain } = audioNodes;
-        const vol = Math.max(0, Math.min(1, audio.volume ?? 0.7));
-        const fadeIn = Math.max(0, Math.min(audio.fadeIn ?? 1.2, plan.duration / 3));
-        const fadeOut = Math.max(0, Math.min(audio.fadeOut ?? 1.6, plan.duration / 3));
-        const t = ac.currentTime;
-        gain.gain.setValueAtTime(0, t);
-        gain.gain.linearRampToValueAtTime(vol, t + fadeIn);
-        gain.gain.setValueAtTime(vol, t + Math.max(fadeIn, plan.duration - fadeOut));
-        gain.gain.linearRampToValueAtTime(0, t + plan.duration);
-        const offset = audio.buffer.duration > 0 ? (audio.offset || 0) % audio.buffer.duration : 0;
-        source.start(0, offset);
+        const { ac, sources } = audioNodes;
+        const t0a = ac.currentTime;
+        for (const { source, gain, clip } of sources) {
+            const at = t0a + clip.start;
+            gain.gain.setValueAtTime(0, at);
+            gain.gain.linearRampToValueAtTime(clip.vol, at + clip.fadeIn);
+            gain.gain.setValueAtTime(clip.vol, at + Math.max(clip.fadeIn, clip.dur - clip.fadeOut));
+            gain.gain.linearRampToValueAtTime(0, at + clip.dur);
+            // A looped clip runs until the explicit stop below; a one-shot is
+            // bounded here so it can never spill past its window.
+            if (clip.loop) source.start(at, clip.offset);
+            else source.start(at, clip.offset, clip.dur);
+        }
     }
 
     // Paced by setTimeout, NOT requestAnimationFrame. rAF only fires while the
@@ -1643,7 +1943,9 @@ export async function renderVideo({ canvas, plan, audio, onProgress, signal }) {
     // file. Left running it tacks a second or more of silence onto a video whose
     // content ended on schedule.
     if (audioNodes) {
-        try { audioNodes.source.stop(); } catch { /* already ended */ }
+        for (const s of audioNodes.sources) {
+            try { s.source.stop(); } catch { /* already ended */ }
+        }
         audioNodes.dest.stream.getAudioTracks().forEach((tr) => tr.stop());
     }
 
@@ -1656,7 +1958,9 @@ export async function renderVideo({ canvas, plan, audio, onProgress, signal }) {
     if (audioNodes) {
         // Disconnect but do NOT close the shared context — it still owns the
         // decoded buffers of every other track in the library.
-        try { audioNodes.source.disconnect(); audioNodes.gain.disconnect(); } catch { /* already torn down */ }
+        for (const s of audioNodes.sources) {
+            try { s.source.disconnect(); s.gain.disconnect(); } catch { /* already torn down */ }
+        }
     }
 
     if (cancelled) throw new DOMException('Render cancelled', 'AbortError');
