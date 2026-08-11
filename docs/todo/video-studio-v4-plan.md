@@ -1,6 +1,6 @@
 # Video Studio v4 — geometry in hand, motion on the clock
 
-**Status:** planned · 2026-08-11
+**Status:** M1+M2 BUILT · 2026-08-11 — geometry (ERP 265964c) and keyframes (ERP ea6aed3), all gates green: fixture suite 11/11 (retime 14, geometry 5, keyframes 4, interactions), A/B rig 60/60 byte-identical + 6/6 sound in both hosts. M3/M-AI/M5 remain planned.
 **Builds on:** v3 (`docs/todo/video-studio-timeline-plan.md`, BUILT — everything
 is a layer with one envelope, on a timeline of lanes).
 **This plan carries two things:** a competitive review of where the studio
