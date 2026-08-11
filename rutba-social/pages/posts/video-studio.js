@@ -857,12 +857,14 @@ export default function VideoStudioPage() {
                     </div>
                 )}
 
-                <div className="row g-3">
-                    {/* ── post picker ── */}
-                    <div className="col-lg-4">
-                        <div className="card">
-                            <div className="card-header py-2">
-                                <div className="input-group input-group-sm mb-2">
+                {/* ── post picker: the whole page until a post is chosen ── */}
+                {!selected && (
+                    <>
+                        {/* a batch run still needs a canvas to render on */}
+                        <canvas ref={canvasRef} style={{ display: "none" }} />
+                        <div className="card mb-3">
+                            <div className="card-body py-2 d-flex flex-wrap align-items-center gap-3">
+                                <div className="input-group input-group-sm" style={{ maxWidth: 380 }}>
                                     <span className="input-group-text"><i className="fas fa-search" /></span>
                                     <input className="form-control" placeholder="Search posts…" value={search} onChange={(e) => setSearch(e.target.value)} />
                                 </div>
@@ -873,41 +875,47 @@ export default function VideoStudioPage() {
                                         Only posts with images and no video
                                     </label>
                                 </div>
+                                {loading && <span className="spinner-border spinner-border-sm" />}
+                                <span className="text-muted small ms-auto">Pick a post to open the editor.</span>
                             </div>
-                            <div className="list-group list-group-flush" style={{ maxHeight: "72vh", overflowY: "auto" }}>
-                                {loading && <div className="p-3 text-center"><div className="spinner-border spinner-border-sm" /></div>}
-                                {!loading && candidates.length === 0 && (
-                                    <div className="p-3 text-muted small">
-                                        {onlyCandidates
-                                            ? "No image-only posts. Every post with images already has a video attached."
-                                            : "No posts with images."}
-                                    </div>
-                                )}
-                                {candidates.map((p) => {
-                                    const imgs = imageItems(p);
-                                    const done = !isImageOnly(p);
-                                    const active = selected?.documentId === p.documentId;
-                                    const thumb = imgs[0];
-                                    const needsVideo = (p.platforms || []).filter((x) => VIDEO_ONLY.includes(x));
-                                    const likesVideo = (p.platforms || []).filter((x) => VIDEO_PREFERRED.includes(x));
-                                    return (
-                                        <button key={p.documentId} type="button" disabled={busy}
-                                            className={`list-group-item list-group-item-action d-flex gap-2 ${active ? "active" : ""}`}
+                        </div>
+                        <div className="row g-3">
+                            {!loading && candidates.length === 0 && (
+                                <div className="col-12 text-center text-muted py-5">
+                                    <i className="fas fa-film fa-3x mb-3 d-block" />
+                                    {onlyCandidates
+                                        ? "No image-only posts. Every post with images already has a video attached."
+                                        : "No posts with images."}
+                                </div>
+                            )}
+                            {candidates.map((p) => {
+                                const imgs = imageItems(p);
+                                const done = !isImageOnly(p);
+                                const thumb = imgs[0];
+                                const needsVideo = (p.platforms || []).filter((x) => VIDEO_ONLY.includes(x));
+                                const likesVideo = (p.platforms || []).filter((x) => VIDEO_PREFERRED.includes(x));
+                                return (
+                                    <div key={p.documentId} className="col-sm-6 col-md-4 col-xl-3 col-xxl-2">
+                                        <button type="button" disabled={busy}
+                                            className="card w-100 h-100 text-start p-0 shadow-sm border-0"
+                                            style={{ cursor: "pointer" }}
                                             onClick={() => selectPost(p)}>
-                                            {thumb ? (
-                                                <img src={MediaUtilsEndpoints.strapiImageUrl(thumb.formats?.thumbnail || thumb)} alt=""
-                                                    style={{ width: 46, height: 46, objectFit: "cover", borderRadius: 6, flex: "0 0 auto" }} />
-                                            ) : (
-                                                <span className="d-inline-flex align-items-center justify-content-center bg-light text-muted"
-                                                    style={{ width: 46, height: 46, borderRadius: 6, flex: "0 0 auto" }}><i className="fas fa-image" /></span>
-                                            )}
-                                            <span className="flex-grow-1 text-truncate">
-                                                <span className="d-block text-truncate fw-semibold">{p.title || "(untitled)"}</span>
-                                                <span className={`d-block small text-truncate ${active ? "text-white-50" : "text-muted"}`}>
+                                            <div className="bg-light d-flex align-items-center justify-content-center"
+                                                style={{ height: 140, overflow: "hidden", borderRadius: "6px 6px 0 0", width: "100%" }}>
+                                                {thumb ? (
+                                                    <img src={MediaUtilsEndpoints.strapiImageUrl(thumb.formats?.small || thumb.formats?.thumbnail || thumb)} alt=""
+                                                        style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                                ) : (
+                                                    <i className="fas fa-image fa-2x text-muted" />
+                                                )}
+                                            </div>
+                                            <div className="card-body p-2">
+                                                <div className="fw-semibold text-truncate" style={{ fontSize: 13 }}>{p.title || "(untitled)"}</div>
+                                                <div className="text-muted text-truncate" style={{ fontSize: 11 }}>
                                                     {imgs.length} image{imgs.length === 1 ? "" : "s"}
                                                     {done && <> · <i className="fas fa-check" /> has video</>}
-                                                </span>
-                                                <span className="d-block mt-1">
+                                                </div>
+                                                <div className="mt-1">
                                                     {needsVideo.map((x) => (
                                                         <span key={x} className="badge bg-danger me-1" style={{ fontSize: 9 }}>
                                                             {PLATFORMS[x]?.label || x} needs video
@@ -918,23 +926,28 @@ export default function VideoStudioPage() {
                                                             {PLATFORMS[x]?.label || x}
                                                         </span>
                                                     ))}
-                                                </span>
-                                            </span>
+                                                </div>
+                                            </div>
                                         </button>
-                                    );
-                                })}
-                            </div>
+                                    </div>
+                                );
+                            })}
                         </div>
-                    </div>
+                    </>
+                )}
 
-                    {/* ── preview + controls ── */}
-                    <div className="col-lg-8">
-                        <div className="row g-3">
-                            <div className="col-xl-6">
-                                <div className="card h-100">
-                                    <div className="card-header py-2 d-flex align-items-center">
-                                        <i className="fas fa-eye me-2" />Preview
-                                        {plan && <span className="badge bg-secondary ms-2">{aspect.width}×{aspect.height}</span>}
+                {/* ── the editor: one big canvas, one settings rail ── */}
+                {selected && (
+                    <div className="d-flex gap-3 align-items-start">
+                        <div className="flex-grow-1" style={{ minWidth: 0 }}>
+                                <div className="card">
+                                    <div className="card-header py-2 d-flex align-items-center gap-2">
+                                        <button className="btn btn-sm btn-outline-secondary" onClick={() => selectPost(null)} disabled={busy}
+                                            title="Back to the post list">
+                                            <i className="fas fa-arrow-left me-1" />Posts
+                                        </button>
+                                        <strong className="text-truncate">{selected.title || "(untitled)"}</strong>
+                                        {plan && <span className="badge bg-secondary ms-1">{aspect.width}×{aspect.height}</span>}
                                         {plan && <span className="badge bg-info ms-1">{fmtSeconds(plan.duration)}</span>}
                                         {plan?.spedUp && (
                                             <span className="badge bg-warning text-dark ms-1"
@@ -948,11 +961,10 @@ export default function VideoStudioPage() {
                                             <canvas ref={canvasRef}
                                                 onPointerDown={onCanvasDown} onPointerMove={onCanvasMove}
                                                 onPointerUp={onCanvasUp} onPointerCancel={onCanvasUp}
-                                                style={{ width: "auto", height: "auto", maxWidth: "100%", maxHeight: "58vh", display: "block", touchAction: "none", cursor: "crosshair" }} />
+                                                style={{ width: "auto", height: "auto", maxWidth: "100%", maxHeight: "74vh", display: "block", touchAction: "none", cursor: "crosshair" }} />
                                         </div>
 
                                         {loadingImages && <div className="mt-3"><span className="spinner-border spinner-border-sm me-2" />Loading images…</div>}
-                                        {!selected && !loadingImages && <p className="text-muted mt-3 mb-0">Pick a post on the left.</p>}
 
                                         {plan && (
                                             <div className="w-100 mt-3">
@@ -1068,8 +1080,9 @@ export default function VideoStudioPage() {
                                 </div>
                             </div>
 
-                            {/* ── settings ── */}
-                            <div className="col-xl-6">
+                        {/* ── settings rail ── */}
+                        <div className="flex-shrink-0" style={{ width: 400 }}>
+                            <div style={{ maxHeight: "calc(100vh - 140px)", overflowY: "auto", paddingRight: 4 }}>
                                 {/* ── layers ── */}
                                 <div className="card mb-3">
                                     <div className="card-header py-2 d-flex align-items-center">
@@ -1455,7 +1468,7 @@ export default function VideoStudioPage() {
                             </div>
                         </div>
                     </div>
-                </div>
+                )}
             </Layout>
         </ProtectedRoute>
     );
