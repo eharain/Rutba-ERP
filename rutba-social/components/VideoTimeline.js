@@ -120,6 +120,35 @@ export default function VideoTimeline({
         e.currentTarget.setPointerCapture?.(e.pointerId);
     };
 
+    // ── keyframe diamonds (drag to retime, double-click to delete) ─────────
+    const beginKeyDrag = (e, layer, kt) => {
+        if (busy) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const w = winOf(layer);
+        dragRef.current = { id: layer.id, mode: "key", kt, barLen: w.end - w.start, keys: layer.keys, x0: e.clientX };
+        e.currentTarget.setPointerCapture?.(e.pointerId);
+    };
+    const retimeKeys = (keys, from, to) => {
+        const out = {};
+        for (const [prop, list] of Object.entries(keys || {})) {
+            out[prop] = list
+                .map((k) => (Math.abs(k.t - from) < 0.02 ? { ...k, t: +to.toFixed(3) } : k))
+                .sort((a, b) => a.t - b.t);
+        }
+        return out;
+    };
+    const deleteKeysAt = (layer, kt) => {
+        if (busy) return;
+        const out = {};
+        let any = false;
+        for (const [prop, list] of Object.entries(layer.keys || {})) {
+            const rest = list.filter((k) => Math.abs(k.t - kt) > 0.02);
+            if (rest.length) { out[prop] = rest; any = true; }
+        }
+        onPatch?.({ id: layer.id, keys: any ? out : null });
+    };
+
     const onPointerMove = (e) => {
         const d = dragRef.current;
         if (!d) return;
@@ -127,6 +156,11 @@ export default function VideoTimeline({
         const track = trackRef.current;
         if (!track) return;
         const dt = ((e.clientX - d.x0) / track.getBoundingClientRect().width) * duration;
+        if (d.mode === "key") {
+            const to = Math.max(0, Math.min(d.barLen, d.kt + dt));
+            onPatch?.({ id: d.id, keys: retimeKeys(d.keys, d.kt, to) });
+            return;
+        }
         if (Math.abs(e.clientX - d.x0) > 2) d.moved = true;
         const MIN = 0.2;
         let { start, end } = d.orig;
@@ -145,7 +179,7 @@ export default function VideoTimeline({
     const onPointerUp = (e) => {
         const d = dragRef.current;
         dragRef.current = null;
-        if (d && d.mode !== "scrub" && !d.moved) onSelect?.(d.id);
+        if (d && d.mode !== "scrub" && d.mode !== "key" && !d.moved) onSelect?.(d.id);
     };
 
     // ── lane reorder = z (only meaningful in the z view) ───────────────────
@@ -298,6 +332,22 @@ export default function VideoTimeline({
                                                 onPointerDown={(e) => beginDrag(e, l, "trim-start")} onPointerMove={onPointerMove} onPointerUp={onPointerUp} />
                                             <div className="position-absolute" style={{ right: -3, top: 0, bottom: 0, width: 8, cursor: "ew-resize" }}
                                                 onPointerDown={(e) => beginDrag(e, l, "trim-end")} onPointerMove={onPointerMove} onPointerUp={onPointerUp} />
+                                            {/* keyframe diamonds — the union of all keyed properties' times */}
+                                            {sel && l.keys && [...new Set(
+                                                Object.values(l.keys).flat().map((k) => +k.t.toFixed(3)),
+                                            )].sort((a, b) => a - b).map((kt) => (
+                                                <div key={kt} className="position-absolute"
+                                                    title={`Key at ${fmtT(kt)} into the layer — drag to retime, double-click to delete`}
+                                                    style={{
+                                                        left: `${Math.min(100, (kt / barLen) * 100)}%`, top: "50%",
+                                                        width: 9, height: 9, marginLeft: -4.5, marginTop: -4.5,
+                                                        background: "#fff", outline: "1px solid rgba(0,0,0,0.6)",
+                                                        transform: "rotate(45deg)", cursor: "ew-resize", zIndex: 2,
+                                                    }}
+                                                    onPointerDown={(e) => beginKeyDrag(e, l, kt)}
+                                                    onPointerMove={onPointerMove} onPointerUp={onPointerUp}
+                                                    onDoubleClick={(e) => { e.stopPropagation(); deleteKeysAt(l, kt); }} />
+                                            ))}
                                         </div>
                                     </div>
                                 </div>

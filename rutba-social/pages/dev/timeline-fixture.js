@@ -212,6 +212,73 @@ export default function TimelineFixturePage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [plan]);
 
+    // ── the keyframe probe (v4-M2): lerp, retime invariance, keyed opacity ──
+    useEffect(() => {
+        if (!plan || window.__KEYS) return;
+        const c = document.createElement("canvas");
+        const x = () => c.getContext("2d", { willReadFrequently: true });
+        const mk = (patches) => buildPlan({ canvas: c, ...buildArgs(patches) });
+        const results = [];
+        const push = (label, ok) => results.push({ label, ok });
+
+        // The SALE pill paints in the theme accent; its horizontal centroid in
+        // the top band of the frame IS the layer's keyed fx, measured.
+        const accentStats = (p, t) => {
+            paintFrame(x(), p, t);
+            const d = x().getImageData(0, 0, c.width, Math.floor(c.height * 0.3)).data;
+            let n = 0;
+            let sx = 0;
+            for (let i = 0; i < d.length; i += 4) {
+                if (Math.abs(d[i] - 255) <= 2 && Math.abs(d[i + 1] - 193) <= 2 && Math.abs(d[i + 2] - 7) <= 2) {
+                    n++;
+                    sx += (i / 4) % c.width;
+                }
+            }
+            return { n, cx: n ? sx / n : -1 };
+        };
+
+        // The QR panel sits top-right ABOVE the sticker — at fx 0.8 the keyed
+        // pill would fly under it and vanish from the scan, so the keyed
+        // variants hide the QR. (The first probe run caught exactly that.)
+        const stickerKeyed = (timing) => BASE_PATCHES.map((p) => (p.id === "sticker-1"
+            ? {
+                ...p, timing,
+                enter: { kind: "none", seconds: 0 }, exit: { kind: "none", seconds: 0 },
+                keys: { fx: [{ t: 0, v: 0.2 }, { t: 2, v: 0.8 }] },
+            }
+            : p.id === "qr-1" ? { ...p, visible: false } : p));
+
+        const pk = mk(stickerKeyed({ start: 1, end: 5 }));
+        const s0 = accentStats(pk, 1.0); // local 0 → fx 0.2
+        const sMid = accentStats(pk, 2.0); // local 1 → fx 0.5
+        const s1 = accentStats(pk, 3.0); // local 2 → fx 0.8
+        push("keyed layer paints at every instant", s0.n > 50 && sMid.n > 50 && s1.n > 50);
+        push("position lerps along the window",
+            Math.abs(s0.cx - 0.2 * c.width) < 30
+            && Math.abs(sMid.cx - 0.5 * c.width) < 30
+            && Math.abs(s1.cx - 0.8 * c.width) < 30);
+
+        // Key times are LOCAL: moving the bar moves the whole motion.
+        const pk2 = mk(stickerKeyed({ start: 2, end: 6 }));
+        const r = accentStats(pk2, 3.0); // the same LOCAL instant as sMid
+        push("retiming the bar carries the motion", Math.abs(r.cx - sMid.cx) < 2);
+
+        // Keyed opacity owns the interior (the envelope only owns the edges).
+        const pf = mk(BASE_PATCHES.map((p) => (p.id === "sticker-1"
+            ? {
+                ...p,
+                enter: { kind: "none", seconds: 0 }, exit: { kind: "none", seconds: 0 },
+                keys: { opacity: [{ t: 1, v: 1 }, { t: 3.5, v: 0 }] },
+            }
+            : p)));
+        const early = accentStats(pf, 1.5); // local 0.5 → holds at 1
+        const late = accentStats(pf, 4.4); // local 3.4 → α ≈ 0.04
+        push("keyed opacity fades the interior", early.n > 50 && late.n < early.n / 5);
+
+        window.__KEYS = { done: true, pass: results.every((res) => res.ok), results };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [plan]);
+
     return (
         <div className="container-fluid py-3" style={{ maxWidth: 1100 }}>
             <h5>Timeline fixture <small className="text-muted">— dev only, no auth, no network</small></h5>

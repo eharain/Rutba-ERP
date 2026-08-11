@@ -550,6 +550,7 @@ export function applyLayerPatches(plan, patches) {
         if (existing) {
             const { id, type, anim, ...rest } = patch;
             Object.assign(existing, rest);
+            if (patch.keys !== undefined) existing.keys = sanitizeKeys(patch.keys);
             // The legacy `anim` key is sugar for the envelope now — one
             // mechanism, not two. An explicit enter/exit in the same patch
             // wins over the translation.
@@ -623,6 +624,7 @@ export function applyLayerPatches(plan, patches) {
                 colorToken: patch.color || 'text',
                 direction: patch.direction || 'auto',
                 rot: patch.rot || 0,
+                keys: sanitizeKeys(patch.keys),
             });
             continue;
         }
@@ -644,6 +646,7 @@ export function applyLayerPatches(plan, patches) {
                 size: sizePx,
                 fx: patch.fx ?? 0.72, fy: patch.fy ?? 0.06, fw: patch.fw || 0.22,
                 rot: patch.rot || 0,
+                keys: sanitizeKeys(patch.keys),
             });
             continue;
         }
@@ -667,6 +670,7 @@ export function applyLayerPatches(plan, patches) {
                 // the copy fills the stage like the original.
                 fx: patch.fx, fy: patch.fy, fw: patch.fw, fh: patch.fh,
                 rot: patch.rot || 0,
+                keys: sanitizeKeys(patch.keys),
             });
             continue;
         }
@@ -694,6 +698,7 @@ export function applyLayerPatches(plan, patches) {
                 shadow: patch.shadow !== false,
                 fx: patch.fx ?? 0.5, fy: patch.fy ?? 0.5, fw,
                 rot: patch.rot || 0,
+                keys: sanitizeKeys(patch.keys),
                 draggable: true,
             });
             continue;
@@ -739,6 +744,115 @@ export function applyLayerPatches(plan, patches) {
         // kept for round-tripping; paintFrame skips what it can't paint.
         plan.layers.push({ ...patch, visible: patch.visible !== false, z: patch.z ?? nextZ() });
     }
+}
+
+// ── keyframes ────────────────────────────────────────────────────────────────
+// A layer may carry `keys`: { prop: [{ t, v, ease? }, …] } for prop ∈ fx, fy,
+// fw, sizeFrac, opacity, rot. Key times are LOCAL to the layer's window
+// (t = 0 at timing.start), so retiming the bar carries the motion and a
+// duplicate keeps it. Between keys: linear, or the segment's ease ('in' |
+// 'out' | 'in-out', stored on the RIGHT key); before the first and after the
+// last key the value holds. A property with no keys is the static field — the
+// pre-keyframe code path, byte for byte. The envelope owns the window's
+// EDGES; keys own the INTERIOR: alpha multiplies, transforms compose.
+//
+// QR size is deliberately NOT keyable — the matrix re-rasterizes per size and
+// an animated QR is unscannable anyway. fx/fy/opacity/rot still work on it.
+
+const KEYABLE = ['fx', 'fy', 'fw', 'sizeFrac', 'opacity', 'rot'];
+
+function easeP(p, ease) {
+    if (ease === 'in') return p * p;
+    if (ease === 'out') return 1 - (1 - p) * (1 - p);
+    if (ease === 'in-out') return p * p * (3 - 2 * p);
+    return p;
+}
+
+/** The keyed value at local time t, or null when the list is empty/absent. */
+function keyValueAt(list, t) {
+    if (!Array.isArray(list) || !list.length) return null;
+    if (t <= list[0].t) return list[0].v;
+    const last = list[list.length - 1];
+    if (t >= last.t) return last.v;
+    for (let i = 1; i < list.length; i++) {
+        if (t <= list[i].t) {
+            const a = list[i - 1];
+            const b = list[i];
+            return a.v + (b.v - a.v) * easeP((t - a.t) / Math.max(1e-6, b.t - a.t), b.ease);
+        }
+    }
+    return last.v;
+}
+
+/** Coerce, sort and strip a stored `keys` map; null when nothing keyable. */
+function sanitizeKeys(keys) {
+    if (!keys || typeof keys !== 'object') return null;
+    const out = {};
+    let any = false;
+    for (const prop of KEYABLE) {
+        const list = keys[prop];
+        if (!Array.isArray(list)) continue;
+        const ks = list
+            .filter((k) => k && Number.isFinite(Number(k.t)) && Number.isFinite(Number(k.v)))
+            .map((k) => ({ t: Number(k.t), v: Number(k.v), ...(k.ease ? { ease: k.ease } : {}) }))
+            .sort((a, b) => a.t - b.t);
+        if (ks.length) { out[prop] = ks; any = true; }
+    }
+    return any ? out : null;
+}
+
+/**
+ * Temporarily resolve a keyed layer's geometry at local time t — the painter
+ * then reads the same resolved pixel fields it always has. Returns an undo
+ * that restores the static fields, so nothing outside this frame sees them.
+ */
+function applyKeyedGeometry(plan, layer, t) {
+    const keys = layer.keys;
+    if (!keys) return null;
+    const { W, H } = plan;
+    const saved = {};
+    const set = (field, v) => {
+        if (!(field in saved)) saved[field] = layer[field];
+        layer[field] = v;
+    };
+    const kfx = keyValueAt(keys.fx, t);
+    const kfy = keyValueAt(keys.fy, t);
+    const kfw = keyValueAt(keys.fw, t);
+    const kfrac = keyValueAt(keys.sizeFrac, t);
+
+    if (layer.type === 'photo') {
+        if (kfx !== null) set('fx', kfx);
+        if (kfy !== null) set('fy', kfy);
+        if (kfw !== null) set('fw', kfw);
+    } else {
+        if (kfx !== null) { set('fx', kfx); set('x', W * kfx); }
+        if (kfy !== null) { set('fy', kfy); set('y', H * kfy); }
+        if (layer.type === 'text' && kfrac !== null) {
+            const sizePx = Math.max(10, Math.round(W * kfrac));
+            set('sizeFrac', kfrac);
+            set('sizePx', sizePx);
+            set('font', `${layer.weight || 600} ${sizePx}px ${FONT_STACK}`);
+        }
+        if (layer.type === 'image' && kfw !== null) {
+            const w = W * kfw;
+            const srcH = layer.src?.height || 1;
+            const srcW = layer.src?.width || 1;
+            set('fw', kfw);
+            set('w', w);
+            set('h', w * (srcH / srcW));
+        }
+    }
+    return () => { for (const f of Object.keys(saved)) layer[f] = saved[f]; };
+}
+
+/**
+ * Run `fn` with `layer` resolved at `time` — the editor uses this so
+ * hit-testing, bounds and handles track a keyed layer mid-motion.
+ */
+export function withLayerStateAt(plan, layer, time, fn) {
+    const t = layer.timing ? time - layer.timing.start : time;
+    const undo = layer.keys ? applyKeyedGeometry(plan, layer, t) : null;
+    try { return fn(); } finally { if (undo) undo(); }
 }
 
 // ── entry / exit envelope ────────────────────────────────────────────────────
@@ -1843,6 +1957,11 @@ export function paintFrame(ctx, plan, t) {
         const painter = PAINTERS[layer.type];
         if (!painter) continue;
         ctx.save();
+        // Keyed geometry resolves FIRST, so the envelope, the rotation and
+        // the painter all see this frame's values. Purity holds: same t,
+        // same keys, same pixels.
+        const localT = layer.timing ? time - layer.timing.start : time;
+        const undoKeys = layer.keys ? applyKeyedGeometry(plan, layer, localT) : null;
         const env = envelopeAt(plan, layer, time);
         if (env) {
             if (env.tx || env.ty) ctx.translate(env.tx, env.ty);
@@ -1853,20 +1972,27 @@ export function paintFrame(ctx, plan, t) {
             }
             if (env.alpha < 1) ctx.globalAlpha = env.alpha;
         }
+        // The envelope owns the window's edges; keyed opacity owns the
+        // interior. They multiply — one mechanism per job, never fighting.
+        const kOpacity = layer.keys ? keyValueAt(layer.keys.opacity, localT) : null;
+        if (kOpacity !== null) ctx.globalAlpha *= Math.max(0, Math.min(1, kOpacity));
         // Rotation lives here, not in the painters — the same trick as the
         // envelope: rotate about the layer's own centre and every layer type
         // gets it without its painter knowing.
-        if (layer.rot) {
+        const kRot = layer.keys ? keyValueAt(layer.keys.rot, localT) : null;
+        const rot = kRot !== null ? kRot : layer.rot;
+        if (rot) {
             const b = layerBounds(ctx, plan, layer);
             if (b) {
                 const cx = b.x + b.w / 2;
                 const cy = b.y + b.h / 2;
                 ctx.translate(cx, cy);
-                ctx.rotate((layer.rot * Math.PI) / 180);
+                ctx.rotate((rot * Math.PI) / 180);
                 ctx.translate(-cx, -cy);
             }
         }
         painter(ctx, plan, layer, time);
+        if (undoKeys) undoKeys();
         ctx.restore();
     }
 

@@ -31,7 +31,7 @@ import {
     ASPECTS, THEMES, DEFAULTS,
     buildPlan, paintFrame, renderVideo, loadImage, loadImages, releaseImages,
     loadAudioTrack, setMediaAuth, layerBounds, hitTestLayers,
-    layerHandles, hitTestHandles, scaleFromDrag, resizePatch,
+    layerHandles, hitTestHandles, scaleFromDrag, resizePatch, withLayerStateAt,
     soundLayers, clipFromSoundLayer,
     imageItems, isImageOnly, unsupportedReason, videoFileName,
 } from "../../lib/video-maker";
@@ -570,6 +570,14 @@ export default function VideoStudioPage() {
         ...(arrangement ? { imageArrangement: arrangement } : {}),
     }), [options, arranged.perImageSeconds, arrangement]);
 
+    // Run `fn` with every KEYED layer resolved at the playhead, so selection
+    // outlines and hit-tests track a layer mid-motion instead of its static
+    // base. Static layers cost nothing.
+    const atPreviewState = useCallback((p, t, fn) => {
+        const keyed = p.layers.filter((l) => l.keys);
+        return keyed.reduceRight((inner, l) => () => withLayerStateAt(p, l, t, inner), fn)();
+    }, []);
+
     // The selection outline is editor chrome — painted OVER the frame, never
     // part of it, and never while playing or recording. It is an instrument:
     // corner squares resize about the opposite corner, the stalk dot rotates.
@@ -577,7 +585,7 @@ export default function VideoStudioPage() {
         if (!selectedLayerId) return;
         const layer = p.layers.find((l) => l.id === selectedLayerId);
         if (!layer || layer.visible === false) return;
-        const h = layerHandles(ctx, p, layer);
+        const h = atPreviewState(p, Math.min(previewTime, p.duration), () => layerHandles(ctx, p, layer));
         if (!h) return;
         const { bounds: b, center, handles } = h;
         ctx.save();
@@ -609,7 +617,7 @@ export default function VideoStudioPage() {
             }
         }
         ctx.restore();
-    }, [selectedLayerId]);
+    }, [selectedLayerId, previewTime, atPreviewState]);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -682,7 +690,7 @@ export default function VideoStudioPage() {
         // corner of the selected layer must never re-select what sits under it.
         const sel = selectedLayerId ? plan.layers.find((l) => l.id === selectedLayerId) : null;
         if (sel && sel.visible !== false) {
-            const handle = hitTestHandles(ctx2, plan, sel, pt.x, pt.y, Math.max(14, plan.W * 0.016));
+            const handle = atPreviewState(plan, previewTime, () => hitTestHandles(ctx2, plan, sel, pt.x, pt.y, Math.max(14, plan.W * 0.016)));
             if (handle) {
                 e.currentTarget.setPointerCapture?.(e.pointerId);
                 dragRef.current = handle.kind === "rotate"
@@ -700,7 +708,7 @@ export default function VideoStudioPage() {
             }
         }
 
-        const hit = hitTestLayers(ctx2, plan, pt.x, pt.y);
+        const hit = atPreviewState(plan, previewTime, () => hitTestLayers(ctx2, plan, pt.x, pt.y));
         setSelectedLayerId(hit ? hit.layer.id : null);
         if (!hit) return;
         e.currentTarget.setPointerCapture?.(e.pointerId);
@@ -733,6 +741,26 @@ export default function VideoStudioPage() {
         // move — the drag writes FRACTIONS, so it survives an aspect switch.
         const fx = Math.min(1, Math.max(0, d.baseFx + (pt.x - d.startX) / plan.W));
         const fy = Math.min(1, Math.max(0, d.baseFy + (pt.y - d.startY) / plan.H));
+
+        // Record-by-doing: a layer that already HAS keys records the drag as a
+        // key at the playhead instead of moving its base — park the playhead,
+        // drag, and the motion writes itself. No keys = the ordinary move.
+        const layer = plan.layers.find((l) => l.id === d.id);
+        if (layer?.keys) {
+            const start = layer.timing?.start ?? 0;
+            const len = (layer.timing?.end ?? plan.duration) - start;
+            const kt = +Math.max(0, Math.min(len, previewTime - start)).toFixed(3);
+            const put = (list = [], v) => {
+                const arr = list.filter((k) => Math.abs(k.t - kt) > 0.02);
+                arr.push({ t: kt, v });
+                return arr.sort((a, b) => a.t - b.t);
+            };
+            upsertPatch({
+                id: d.id,
+                keys: { ...layer.keys, fx: put(layer.keys.fx, +fx.toFixed(4)), fy: put(layer.keys.fy, +fy.toFixed(4)) },
+            });
+            return;
+        }
         upsertPatch({ id: d.id, fx: +fx.toFixed(4), fy: +fy.toFixed(4) });
     };
     const onCanvasUp = () => { dragRef.current = null; };
@@ -809,6 +837,44 @@ export default function VideoStudioPage() {
             exit: { kind: "fade", seconds: 0.6 },
         });
         setSelectedLayerId(id);
+    };
+
+    // ── motion (keyframe) helpers ───────────────────────────
+    const keyCount = (l) => Object.values(l.keys || {}).reduce((n, list) => n + list.length, 0);
+    const firstEase = (l) => {
+        for (const list of Object.values(l.keys || {})) for (const k of list) if (k.ease) return k.ease;
+        return "";
+    };
+    const withEase = (keys, ease) => {
+        const out = {};
+        for (const [prop, list] of Object.entries(keys || {})) {
+            out[prop] = list.map((k) => {
+                const { ease: _e, ...rest } = k;
+                return ease ? { ...rest, ease } : rest;
+            });
+        }
+        return out;
+    };
+    // Key the layer's CURRENT position (and size) at the playhead. The first
+    // key is what arms record-by-doing on the canvas.
+    const addKeyAtPlayhead = (l) => {
+        if (!plan) return;
+        const start = l.timing?.start ?? 0;
+        const len = (l.timing?.end ?? plan.duration) - start;
+        const t = +Math.max(0, Math.min(len, previewTime - start)).toFixed(3);
+        const put = (list = [], v) => {
+            if (v === undefined || v === null || Number.isNaN(Number(v))) return list;
+            const arr = list.filter((k) => Math.abs(k.t - t) > 0.02);
+            arr.push({ t, v: +Number(v).toFixed(4) });
+            return arr.sort((a, b) => a.t - b.t);
+        };
+        const keys = { ...(l.keys || {}) };
+        keys.fx = put(keys.fx, l.type === "photo" ? (l.fx ?? 0.3) : l.x / plan.W);
+        keys.fy = put(keys.fy, l.type === "photo" ? (l.fy ?? 0.3) : l.y / plan.H);
+        if (l.type === "text") keys.sizeFrac = put(keys.sizeFrac, l.sizeFrac || 0.035);
+        else if (l.type !== "qr") keys.fw = put(keys.fw, l.fw ?? (l.w ? l.w / plan.W : undefined));
+        upsertPatch({ id: l.id, keys });
+        toast(`Key at ${t.toFixed(1)}s — scrub the playhead and drag the layer to record the next one.`, "info");
     };
 
     // Layers that exist because a patch appended them — the ones delete can
@@ -1495,6 +1561,44 @@ export default function VideoStudioPage() {
                                                 Part of the video's look — its options are in the video properties (press × above).
                                                 Use the lane to retime it, or its eye to hide it.
                                             </p>
+                                        )}
+
+                                        {/* ── motion: keys on the layer's local clock ── */}
+                                        {(["text", "qr", "image"].includes(selectedLayer.type)
+                                            || (selectedLayer.type === "photo" && !!selectedLayer.fw)) && (
+                                            <div className="border rounded p-2 mt-2">
+                                                <div className="d-flex align-items-center gap-2">
+                                                    <strong className="small">Motion</strong>
+                                                    {selectedLayer.keys && <span className="badge bg-secondary">{keyCount(selectedLayer)} keys</span>}
+                                                    <button className="btn btn-sm btn-outline-primary py-0 ms-auto" disabled={busy}
+                                                        title="Key this layer's position and size at the playhead — then scrub and drag it on the preview to record the next key"
+                                                        onClick={() => addKeyAtPlayhead(selectedLayer)}>
+                                                        ◆ Key @ {Math.max(0, previewTime - (selectedLayer.timing?.start ?? 0)).toFixed(1)}s
+                                                    </button>
+                                                </div>
+                                                {selectedLayer.keys && (
+                                                    <>
+                                                        <div className="d-flex align-items-center gap-2 mt-2">
+                                                            <label className="small text-muted mb-0">Easing</label>
+                                                            <select className="form-select form-select-sm" style={{ width: 130 }} disabled={busy}
+                                                                value={firstEase(selectedLayer)}
+                                                                onChange={(e) => upsertPatch({ id: selectedLayer.id, keys: withEase(selectedLayer.keys, e.target.value) })}>
+                                                                <option value="">Linear</option>
+                                                                <option value="in">Ease in</option>
+                                                                <option value="out">Ease out</option>
+                                                                <option value="in-out">Ease in-out</option>
+                                                            </select>
+                                                            <button className="btn btn-sm btn-outline-danger py-0 ms-auto" disabled={busy}
+                                                                title="Remove every key — the layer goes back to sitting still"
+                                                                onClick={() => upsertPatch({ id: selectedLayer.id, keys: null })}>Clear</button>
+                                                        </div>
+                                                        <p className="text-muted mb-0 mt-1" style={{ fontSize: 11 }}>
+                                                            With keys set, dragging on the preview RECORDS position at the playhead.
+                                                            Diamonds on the lane: drag to retime, double-click to delete.
+                                                        </p>
+                                                    </>
+                                                )}
+                                            </div>
                                         )}
 
                                         {/* ── selected text layer editor ── */}
