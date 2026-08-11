@@ -25,6 +25,7 @@ import {
     SiteSettingEndpoints, SocialAudioTracksEndpoints, SocialVideoTemplatesEndpoints,
 } from "@rutba/api-provider/endpoints";
 import { useToast } from "../../components/Toast";
+import { resolveStorefrontBaseUrl, productShortUrl } from "../../lib/storefront-url";
 import {
     ASPECTS, THEMES, DEFAULTS,
     buildPlan, paintFrame, renderVideo, loadImage, loadImages, releaseImages,
@@ -35,8 +36,17 @@ import {
 // Friendly names for the compiled layers in the panel.
 const LAYER_LABELS = {
     slideshow: "Photos", gradient: "Caption shade", caption: "Caption",
-    title: "Title card", logo: "Logo", footer: "Footer",
+    title: "Title card", logo: "Logo", footer: "Footer", qr: "QR code",
     outro: "Outro card", progress: "Progress bar", edges: "Fade in/out",
+};
+
+// "Rs 3,999" — whole rupees stay whole; anything else keeps two decimals.
+const fmtRs = (n) => {
+    const v = Number(n);
+    if (!Number.isFinite(v) || v <= 0) return "";
+    return "Rs " + (v % 1 === 0
+        ? v.toLocaleString("en-US")
+        : v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 };
 
 // The nine focal-point presets: where a cover crop keeps the subject.
@@ -92,6 +102,7 @@ export default function VideoStudioPage() {
     // the per-image arrangement (order, exclusion, seconds, focal point).
     const [selectedLayerId, setSelectedLayerId] = useState(null);
     const [arrangement, setArrangement] = useState(null); // [{path, seconds, excluded, focal}]
+    const [productContext, setProductContext] = useState(null); // {price, was, discount, product, url}
     const dragRef = useRef(null);
 
     // Layer patches are the single write path for everything the editor does —
@@ -352,9 +363,15 @@ export default function VideoStudioPage() {
                 buffer = await loadAudioTrack(trackUrl(track));
                 bufferCache.current.set(track.documentId, buffer);
             }
-            const offset = options.audioRandomStart && buffer.duration > 12
-                ? Math.random() * Math.max(0, buffer.duration - 8)
-                : 0;
+            // A start point picked in the Audio Library beats the random one —
+            // it exists precisely because someone chose the best bit of the
+            // track. DECIMAL column, so coerce.
+            const savedStart = Number(track.start_offset);
+            const offset = Number.isFinite(savedStart) && savedStart > 0
+                ? savedStart % buffer.duration
+                : (options.audioRandomStart && buffer.duration > 12
+                    ? Math.random() * Math.max(0, buffer.duration - 8)
+                    : 0);
             return {
                 buffer, offset, track,
                 // A per-track trim wins over the studio slider: it exists
@@ -387,6 +404,37 @@ export default function VideoStudioPage() {
 
     useEffect(() => () => { releaseLoaded(); cancelAnimationFrame(previewRaf.current); }, [releaseLoaded]);
 
+    // Render-time data for {token} layers, from the FIRST product linked to
+    // the post: {price} {was} {discount} {product} {url}. Derived, never
+    // stored — the poster resolves the same tokens with fresh data at its own
+    // render time, which is what keeps a price chip honest.
+    const fetchProductContext = useCallback(async (post) => {
+        try {
+            const res = await SocialPostsEndpoints.byId(post.documentId, { status: "draft", populate: ["products"] });
+            const p = ((res?.data || res)?.products || [])[0];
+            if (!p) return null;
+            const selling = Number(p.selling_price) || 0;
+            const offer = Number(p.offer_price) || 0;
+            const onSale = offer > 0 && selling > offer;
+            const eff = onSale ? offer : (offer > 0 ? offer : selling);
+            const base = await resolveStorefrontBaseUrl();
+            return {
+                product: p.name || "",
+                price: fmtRs(eff),
+                was: onSale ? fmtRs(selling) : "",
+                discount: onSale ? `-${Math.round((1 - offer / selling) * 100)}%` : "",
+                // Short form: {url} is burned into the frame as text, so nobody
+                // clicks it — they read it off a phone and type it. A slug that
+                // wraps to two lines at overlay sizes is a URL that does not
+                // get typed.
+                url: productShortUrl(base, p),
+            };
+        } catch (err) {
+            console.error("Failed to load the linked product", err);
+            return null;
+        }
+    }, []);
+
     const selectPost = useCallback(async (post) => {
         cancelAnimationFrame(previewRaf.current);
         setPlaying(false);
@@ -399,8 +447,13 @@ export default function VideoStudioPage() {
         setBodyOverride(null);
         setSelectedLayerId(null);
         setArrangement(null);
+        setProductContext(null);
         setSelected(post);
         if (!post) return;
+
+        // Arrives when it arrives — the plan rebuilds and any {token} layers
+        // light up once the product data is in.
+        fetchProductContext(post).then(setProductContext);
 
         // A post that has been rendered before carries its full recipe —
         // restore it, so a re-render reproduces the video it already has.
@@ -516,6 +569,7 @@ export default function VideoStudioPage() {
             logo,
             options: effectiveOptions,
             layerPatches,
+            context: productContext || {},
         });
         setPlan(p);
         paintFrame(canvas.getContext("2d"), p, Math.min(previewTime, p.duration));
@@ -523,7 +577,7 @@ export default function VideoStudioPage() {
         // scrub tick would rebuild the whole plan (and re-wrap the text) 60
         // times a second. The scrub effect below repaints on its own.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selected, arranged, captionText, effectiveOptions, logo, layerPatches]);
+    }, [selected, arranged, captionText, effectiveOptions, logo, layerPatches, productContext]);
 
     useEffect(() => {
         if (!plan || playing || rendering) return;
@@ -617,6 +671,26 @@ export default function VideoStudioPage() {
         [next[idx], next[j]] = [next[j], next[idx]];
         return next;
     });
+
+    // Commerce quick-adds. These are ordinary layers whose text/data are
+    // {tokens}: the studio previews them with this post's product, the poster
+    // re-resolves them with fresh data at its own render time.
+    const addCommerceLayer = (kind) => {
+        const id = kind + "-" + Date.now().toString(36);
+        const prefabs = {
+            price: { id, type: "text", text: "{price}", pill: "accent", color: "#141118", weight: 800, sizeFrac: 0.055, fx: 0.5, fy: 0.08, align: "center" },
+            discount: { id, type: "text", text: "{discount} OFF", pill: "accent", color: "#141118", weight: 800, sizeFrac: 0.05, fx: 0.82, fy: 0.16, align: "center" },
+            qr: { id, type: "qr", fx: 0.68, fy: 0.045, fw: 0.24 },
+            newSticker: { id, type: "text", text: "NEW", pill: "accent", color: "#141118", weight: 800, sizeFrac: 0.045, fx: 0.14, fy: 0.06, align: "center" },
+            saleSticker: { id, type: "text", text: "SALE", pill: "accent", color: "#141118", weight: 800, sizeFrac: 0.045, fx: 0.14, fy: 0.06, align: "center" },
+        };
+        const p = prefabs[kind];
+        if (!p) return;
+        upsertPatch(p);
+        setSelectedLayerId(id);
+    };
+
+    const selectedQrPatch = (layerPatches || []).find((p) => p.id === selectedLayerId && p.type === "qr") || null;
 
     // ── render ──────────────────────────────────────────────
     const doRender = async (thePlan) => {
@@ -763,7 +837,9 @@ export default function VideoStudioPage() {
                 const { images: imgs } = await loadImages(urls);
                 loaded = imgs;
                 if (!imgs.length) throw new Error("no images could be loaded");
-                const p = buildPlan({ canvas: canvasRef.current, images: imgs, title: post.title, body: post.body, logo, options, layerPatches });
+                const ctxData = layerPatches && JSON.stringify(layerPatches).includes("{")
+                    ? await fetchProductContext(post) : null;
+                const p = buildPlan({ canvas: canvasRef.current, images: imgs, title: post.title, body: post.body, logo, options, layerPatches, context: ctxData || {} });
                 const out = await doRender(p);
                 const { ids } = await attachToPost(post, out, alsoPublish);
                 URL.revokeObjectURL(out.url);
@@ -1040,11 +1116,37 @@ export default function VideoStudioPage() {
                                     </div>
                                     <div className="card-body py-2">
                                         {!plan && <p className="text-muted small mb-0">Pick a post to see its layers.</p>}
+
+                                        {/* commerce quick-adds — tokened layers off the linked product */}
+                                        {plan && (
+                                            <div className="d-flex flex-wrap gap-1 mb-2">
+                                                <button className="btn btn-sm btn-outline-warning py-0" disabled={busy || !productContext?.price}
+                                                    title={productContext?.price ? `Adds a chip showing ${productContext.price} — kept fresh at render time` : "Link a product to the post first"}
+                                                    onClick={() => addCommerceLayer("price")}>
+                                                    <i className="fas fa-tag me-1" />Price
+                                                </button>
+                                                <button className="btn btn-sm btn-outline-warning py-0" disabled={busy || !productContext?.discount}
+                                                    title={productContext?.discount ? `Adds "${productContext.discount} OFF"` : "Needs a product on sale (offer price below selling price)"}
+                                                    onClick={() => addCommerceLayer("discount")}>
+                                                    <i className="fas fa-percent me-1" />Discount
+                                                </button>
+                                                <button className="btn btn-sm btn-outline-warning py-0" disabled={busy || !productContext?.url}
+                                                    title={productContext?.url ? `QR to ${productContext.url}` : "Link a product to the post first"}
+                                                    onClick={() => addCommerceLayer("qr")}>
+                                                    <i className="fas fa-qrcode me-1" />QR
+                                                </button>
+                                                <button className="btn btn-sm btn-outline-secondary py-0" disabled={busy}
+                                                    onClick={() => addCommerceLayer("newSticker")}>NEW</button>
+                                                <button className="btn btn-sm btn-outline-secondary py-0" disabled={busy}
+                                                    onClick={() => addCommerceLayer("saleSticker")}>SALE</button>
+                                            </div>
+                                        )}
+
                                         {plan && (
                                             <div className="list-group list-group-flush">
                                                 {[...plan.layers].reverse().map((l) => {
-                                                    const isCustom = (layerPatches || []).some((p) => p.id === l.id && p.type === "text");
-                                                    const movable = l.type === "text" || l.type === "image";
+                                                    const isCustom = (layerPatches || []).some((p) => p.id === l.id && (p.type === "text" || p.type === "qr"));
+                                                    const movable = l.type === "text" || l.type === "image" || l.type === "qr";
                                                     const sel = selectedLayerId === l.id;
                                                     return (
                                                         <div key={l.id}
@@ -1056,7 +1158,8 @@ export default function VideoStudioPage() {
                                                                 <i className={`fas ${l.visible === false ? "fa-eye-slash text-muted" : "fa-eye"}`} />
                                                             </button>
                                                             <span className={`flex-grow-1 small text-truncate ${l.visible === false ? "text-muted" : ""}`}>
-                                                                {isCustom ? (l.text || "Text") : (LAYER_LABELS[l.id] || LAYER_LABELS[l.type] || l.id)}
+                                                                {isCustom ? (l.type === "qr" ? "QR code" : l.text || "Text") : (LAYER_LABELS[l.id] || LAYER_LABELS[l.type] || l.id)}
+                                                                {l.missingToken && <i className="fas fa-triangle-exclamation text-warning ms-1" title="Uses a {token} with no data — link a product to the post" />}
                                                             </span>
                                                             {movable && <i className="fas fa-up-down-left-right text-muted" style={{ fontSize: 10 }} title="Drag on the preview to move" />}
                                                             {isCustom && (
@@ -1137,7 +1240,18 @@ export default function VideoStudioPage() {
                                                 </div>
                                             </div>
                                         )}
-                                        {plan && !selectedTextPatch && (
+                                        {/* ── selected QR layer editor ── */}
+                                        {selectedQrPatch && (
+                                            <div className="border rounded p-2 mt-2">
+                                                <RangeRow label="QR size" value={selectedQrPatch.fw || 0.24} min={0.12} max={0.45} step={0.01}
+                                                    suffix="× width" disabled={busy} onChange={(v) => upsertPatch({ id: selectedQrPatch.id, fw: v })} />
+                                                <p className="text-muted mb-0" style={{ fontSize: 11 }}>
+                                                    Encodes the linked product's storefront page{productContext?.url ? `: ${productContext.url}` : ""} —
+                                                    resolved fresh on every render. Drag it on the preview to place it.
+                                                </p>
+                                            </div>
+                                        )}
+                                        {plan && !selectedTextPatch && !selectedQrPatch && (
                                             <p className="text-muted mb-0 mt-2" style={{ fontSize: 11 }}>
                                                 Click a layer above (or on the preview) to select it; drag text and the logo directly on the preview.
                                             </p>

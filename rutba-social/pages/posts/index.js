@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
@@ -8,8 +8,14 @@ import { useToast } from "../../components/Toast";
 import PLATFORMS, { PlatformBadge } from "../../components/PlatformBadge";
 import ExcelIO from "../../components/ExcelIO";
 import Link from "next/link";
+import { imageItems, hasVideo } from "../../lib/video-maker";
 
-const PAGE_SIZE = 20;
+// Everything is fetched up front (like the studio always did) because half the
+// filters — has-video, published-on-platform — live in JSON columns the API
+// cannot filter on. Filtering and paging then happen client-side.
+const FETCH_PAGE = 50;
+const MAX_PAGES = 20;
+const CARDS_PER_PAGE = 24;
 
 // Bulk-edit columns. documentId/id/contentType/publish are auto-emitted by
 // ExcelIO. Keep the documentId on a row to update it; clear it (or add a new
@@ -122,6 +128,16 @@ const POST_STATUS_BADGES = {
     failed: "bg-danger",
 };
 
+// Did any destination on this platform confirm the post? Keys are
+// `<platform>#<accountDocId>` (bare `<platform>` on old rows).
+const publishedOn = (post, platform) => Object.entries(post.platform_results || {})
+    .some(([k, v]) => (k === platform || k.startsWith(`${platform}#`)) && v?.status === "success");
+const publishedAnywhere = (post) =>
+    Object.values(post.platform_results || {}).some((v) => v?.status === "success");
+// An empty platforms list targets every connected account (see AccountFlags).
+const targetsPlatform = (post, platform) =>
+    !(post.platforms || []).length || post.platforms.includes(platform);
+
 export default function PostsPage() {
     const { jwt } = useAuth();
     const { toast, ToastContainer } = useToast();
@@ -130,14 +146,40 @@ export default function PostsPage() {
     const [posts, setPosts] = useState([]);
     const [loading, setLoading] = useState(false);
     const [page, setPage] = useState(1);
-    const [pageCount, setPageCount] = useState(1);
-    const [total, setTotal] = useState(0);
-    const [search, setSearch] = useState("");
-    const [statusFilter, setStatusFilter] = useState("all");
     const [selectedIds, setSelectedIds] = useState(new Set());
     const [publishing, setPublishing] = useState({});
     // Active accounts drive the per-account "posted / not posted" flags.
     const [accounts, setAccounts] = useState([]);
+
+    // ── filters ─────────────────────────────────────────────
+    const [search, setSearch] = useState("");
+    const [statusFilter, setStatusFilter] = useState("all");
+    const [videoFilter, setVideoFilter] = useState("all"); // all | with | without
+    const [dateFrom, setDateFrom] = useState("");
+    const [dateTo, setDateTo] = useState("");
+    // Two independent conditions so they can combine — e.g. posts already on
+    // YouTube that still owe TikTok. "" = off, "any" = any platform.
+    const [publishedOnFilter, setPublishedOnFilter] = useState("");
+    const [notPublishedOnFilter, setNotPublishedOnFilter] = useState("");
+
+    // Deep links (e.g. the studio's "posts without a video") preset filters:
+    // ?video=with|without, ?published_on=tiktok|any, ?not_published_on=youtube|any
+    useEffect(() => {
+        if (!router.isReady) return;
+        const v = router.query.video;
+        if (v === "with" || v === "without") setVideoFilter(v);
+        const okPlatform = (x) => x === "any" || !!PLATFORMS[x];
+        if (okPlatform(router.query.published_on)) setPublishedOnFilter(router.query.published_on);
+        if (okPlatform(router.query.not_published_on)) setNotPublishedOnFilter(router.query.not_published_on);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [router.isReady]);
+
+    const filtersActive = search.trim() || statusFilter !== "all" || videoFilter !== "all"
+        || dateFrom || dateTo || publishedOnFilter || notPublishedOnFilter;
+    const clearFilters = () => {
+        setSearch(""); setStatusFilter("all"); setVideoFilter("all");
+        setDateFrom(""); setDateTo(""); setPublishedOnFilter(""); setNotPublishedOnFilter("");
+    };
 
     useEffect(() => {
         if (!jwt) return;
@@ -146,6 +188,76 @@ export default function PostsPage() {
             .catch((err) => console.error("Failed to load accounts", err));
     }, [jwt]);
 
+    const loadPosts = useCallback(async () => {
+        if (!jwt) return;
+        setLoading(true);
+        try {
+            const all = [];
+            for (let p = 1; p <= MAX_PAGES; p++) {
+                const res = await SocialPostsEndpoints.list({
+                    status: 'draft',
+                    sort: ['createdAt:desc'],
+                    populate: ['cover', 'media', 'video', 'products'],
+                    pagination: { page: p, pageSize: FETCH_PAGE },
+                });
+                const rows = res.data || [];
+                all.push(...rows);
+                const pc = res.meta?.pagination?.pageCount || 1;
+                if (p >= pc || rows.length < FETCH_PAGE) break;
+            }
+            let pubIds = new Set();
+            try {
+                const pub = await SocialPostsEndpoints.publishedMarker();
+                pubIds = new Set((pub.data || []).map((x) => x.documentId));
+            } catch { /* CMS column falls back to draft */ }
+            setPosts(all.map((p) => ({ ...p, _isPublished: pubIds.has(p.documentId) })));
+        } catch (err) {
+            console.error("Failed to load posts", err);
+            toast("Failed to load posts.", "danger");
+        } finally {
+            setLoading(false);
+        }
+    }, [jwt]);
+
+    useEffect(() => { loadPosts(); }, [loadPosts]);
+
+    // ── client-side filtering ───────────────────────────────
+    const filtered = useMemo(() => {
+        const q = search.trim().toLowerCase();
+        const from = dateFrom ? new Date(dateFrom) : null;
+        const to = dateTo ? new Date(`${dateTo}T23:59:59.999`) : null;
+        return posts.filter((p) => {
+            if (q && !`${p.title || ""} ${p.body || ""}`.toLowerCase().includes(q)) return false;
+            if (statusFilter !== "all" && (p.post_status || "draft") !== statusFilter) return false;
+            if (videoFilter === "with" && !hasVideo(p)) return false;
+            if (videoFilter === "without" && hasVideo(p)) return false;
+            const created = p.createdAt ? new Date(p.createdAt) : null;
+            if (from && (!created || created < from)) return false;
+            if (to && (!created || created > to)) return false;
+            if (publishedOnFilter) {
+                if (publishedOnFilter === "any" ? !publishedAnywhere(p) : !publishedOn(p, publishedOnFilter)) return false;
+            }
+            if (notPublishedOnFilter) {
+                if (notPublishedOnFilter === "any") {
+                    if (publishedAnywhere(p)) return false;
+                } else {
+                    // "Not published on X" means posts that still OWE X a post —
+                    // ones that target the platform but have no success there.
+                    if (publishedOn(p, notPublishedOnFilter) || !targetsPlatform(p, notPublishedOnFilter)) return false;
+                }
+            }
+            return true;
+        });
+    }, [posts, search, statusFilter, videoFilter, dateFrom, dateTo, publishedOnFilter, notPublishedOnFilter]);
+
+    useEffect(() => { setPage(1); }, [search, statusFilter, videoFilter, dateFrom, dateTo, publishedOnFilter, notPublishedOnFilter]);
+
+    const pageCount = Math.max(1, Math.ceil(filtered.length / CARDS_PER_PAGE));
+    const clampedPage = Math.min(page, pageCount);
+    const pageItems = filtered.slice((clampedPage - 1) * CARDS_PER_PAGE, clampedPage * CARDS_PER_PAGE);
+    const withoutVideoCount = useMemo(() => filtered.filter((p) => !hasVideo(p)).length, [filtered]);
+
+    // ── selection ───────────────────────────────────────────
     const toggleSelected = (docId) => {
         setSelectedIds(prev => {
             const next = new Set(prev);
@@ -154,7 +266,7 @@ export default function PostsPage() {
         });
     };
 
-    const filteredPostIds = posts.map(p => p.documentId);
+    const filteredPostIds = filtered.map(p => p.documentId);
     const allSelected = filteredPostIds.length > 0 && filteredPostIds.every(id => selectedIds.has(id));
     const toggleSelectAll = () => {
         setSelectedIds(prev => {
@@ -163,7 +275,9 @@ export default function PostsPage() {
             return next;
         });
     };
+    const selectedCount = [...selectedIds].filter(id => filteredPostIds.includes(id)).length;
 
+    // ── publish / unpublish / duplicate / delete ────────────
     const summarizeResult = (res) => {
         const r = res?.data || res || {};
         if (typeof r.successes === "number" && typeof r.attempted === "number") {
@@ -204,7 +318,7 @@ export default function PostsPage() {
     };
 
     const bulkPublish = async () => {
-        const ids = [...selectedIds];
+        const ids = [...selectedIds].filter(id => filteredPostIds.includes(id));
         if (ids.length === 0) { toast("No items selected.", "warning"); return; }
         if (!confirm(`Publish ${ids.length} post(s) to their connected platforms?`)) return;
         let ok = 0, fail = 0;
@@ -219,7 +333,7 @@ export default function PostsPage() {
     };
 
     const bulkUnpublish = async () => {
-        const ids = [...selectedIds];
+        const ids = [...selectedIds].filter(id => filteredPostIds.includes(id));
         if (ids.length === 0) { toast("No items selected.", "warning"); return; }
         if (!confirm(`Unpublish ${ids.length} post(s)?`)) return;
         let ok = 0, fail = 0;
@@ -233,72 +347,12 @@ export default function PostsPage() {
         setSelectedIds(new Set());
     };
 
-    const loadPosts = useCallback(async () => {
-        if (!jwt) return;
-        setLoading(true);
-        try {
-            const params = {
-                status: 'draft',
-                sort: ['createdAt:desc'],
-                populate: ['cover', 'social_accounts', 'products'],
-                pagination: { page, pageSize: PAGE_SIZE },
-            };
-            const filters = {};
-            if (search.trim()) filters.title = { $containsi: search.trim() };
-            if (statusFilter !== 'all') filters.post_status = { $eq: statusFilter };
-            if (Object.keys(filters).length > 0) params.filters = filters;
-
-            const [draftRes, pubRes] = await Promise.all([
-                SocialPostsEndpoints.list(params),
-                SocialPostsEndpoints.publishedMarker(),
-            ]);
-            const pubIds = new Set((pubRes.data || []).map(p => p.documentId));
-            setPosts((draftRes.data || []).map(p => ({ ...p, _isPublished: pubIds.has(p.documentId) })));
-            setPageCount(draftRes.meta?.pagination?.pageCount || 1);
-            setTotal(draftRes.meta?.pagination?.total || 0);
-        } catch (err) {
-            console.error("Failed to load posts", err);
-            toast("Failed to load posts.", "danger");
-        } finally {
-            setLoading(false);
-        }
-    }, [jwt, page, search, statusFilter]);
-
-    useEffect(() => { loadPosts(); }, [loadPosts]);
-
-    // Pull every draft matching the current filters (for "Export All"). Marks
-    // _isPublished from publishedMarker so the sheet's publish column is right.
-    const fetchAllPosts = useCallback(async () => {
-        const out = [];
-        let p = 1;
-        const PAGE = 100;
-        const filters = {};
-        if (search.trim()) filters.title = { $containsi: search.trim() };
-        if (statusFilter !== 'all') filters.post_status = { $eq: statusFilter };
-        while (true) {
-            const params = { status: 'draft', sort: ['createdAt:desc'], pagination: { page: p, pageSize: PAGE } };
-            if (Object.keys(filters).length > 0) params.filters = filters;
-            const res = await SocialPostsEndpoints.list(params);
-            const arr = res.data || [];
-            out.push(...arr);
-            if (arr.length < PAGE) break;
-            p += 1;
-            if (p > 500) break;
-        }
-        try {
-            const pub = await SocialPostsEndpoints.publishedMarker();
-            const pubIds = new Set((pub.data || []).map(x => x.documentId));
-            out.forEach(r => { r._isPublished = pubIds.has(r.documentId); });
-        } catch { /* publish column falls back to publishedAt */ }
-        return out;
-    }, [search, statusFilter]);
-
     const handleDelete = async (post) => {
         if (!confirm(`Delete post "${post.title}"?`)) return;
         try {
             await SocialPostsEndpoints.del(post.documentId);
+            setPosts(prev => prev.filter(p => p.documentId !== post.documentId));
             toast("Post deleted.", "success");
-            await loadPosts();
         } catch (err) {
             console.error("Failed to delete post", err);
             toast("Failed to delete post.", "danger");
@@ -318,15 +372,22 @@ export default function PostsPage() {
         }
     };
 
-    const selectedCount = [...selectedIds].filter(id => filteredPostIds.includes(id)).length;
+    // Everything is already in memory, so "Export All" is just the filtered list.
+    const fetchAllPosts = useCallback(async () => filtered, [filtered]);
 
     return (
         <ProtectedRoute>
-            <Layout>
+            <Layout fullWidth>
                 <ToastContainer />
-                <div className="d-flex justify-content-between align-items-center mb-3">
-                    <h3><i className="fas fa-paper-plane me-2"></i>Posts</h3>
-                    <div className="d-flex gap-2 align-items-center">
+                <div className="d-flex align-items-center flex-wrap gap-2 mb-3">
+                    <h3 className="mb-0"><i className="fas fa-paper-plane me-2"></i>Posts</h3>
+                    <span className="badge bg-secondary align-self-center">
+                        {filtersActive ? `${filtered.length} of ${posts.length}` : `${posts.length}`} posts
+                    </span>
+                    {withoutVideoCount > 0 && (
+                        <span className="badge bg-warning text-dark align-self-center">{withoutVideoCount} without a video</span>
+                    )}
+                    <div className="ms-auto d-flex gap-2 align-items-center flex-wrap">
                         {selectedCount > 0 && (
                             <>
                                 <button className="btn btn-success btn-sm" onClick={bulkPublish}>
@@ -341,9 +402,9 @@ export default function PostsPage() {
                             entityLabel="Social Posts"
                             contentType="api::social-post.social-post"
                             columns={POST_EXCEL_COLUMNS}
-                            rows={posts}
+                            rows={filtered}
                             selectedIds={selectedIds}
-                            total={total}
+                            total={filtered.length}
                             fetchAll={fetchAllPosts}
                             onAfterImport={loadPosts}
                         />
@@ -353,135 +414,191 @@ export default function PostsPage() {
                         <Link className="btn btn-primary btn-sm" href="/posts/create">
                             <i className="fas fa-plus me-1"></i>New Post
                         </Link>
+                        <button className="btn btn-sm btn-outline-secondary" onClick={loadPosts} disabled={loading} title="Refresh">
+                            <i className={`fas fa-sync-alt ${loading ? "fa-spin" : ""}`}></i>
+                        </button>
                     </div>
                 </div>
 
-                <div className="row g-2 mb-3">
-                    <div className="col-md-6">
-                        <input
-                            className="form-control form-control-sm"
-                            placeholder="Search posts..."
-                            value={search}
-                            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                        />
-                    </div>
-                    <div className="col-md-3">
-                        <select className="form-select form-select-sm" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}>
-                            <option value="all">All Statuses</option>
+                {/* ── filters ── */}
+                <div className="card mb-3">
+                    <div className="card-body py-2 d-flex flex-wrap align-items-center gap-2">
+                        <div className="input-group input-group-sm" style={{ maxWidth: 280 }}>
+                            <span className="input-group-text"><i className="fas fa-search"></i></span>
+                            <input className="form-control" placeholder="Search posts…" value={search}
+                                onChange={(e) => setSearch(e.target.value)} />
+                        </div>
+                        <select className="form-select form-select-sm" style={{ width: "auto" }} value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)} title="Post status">
+                            <option value="all">All statuses</option>
                             <option value="draft">Draft</option>
                             <option value="scheduled">Scheduled</option>
+                            <option value="publishing">Publishing</option>
                             <option value="published">Published</option>
+                            <option value="partially_published">Partially published</option>
                             <option value="failed">Failed</option>
                         </select>
+                        <select className="form-select form-select-sm" style={{ width: "auto" }} value={videoFilter}
+                            onChange={(e) => setVideoFilter(e.target.value)} title="Video">
+                            <option value="all">With & without video</option>
+                            <option value="with">With video</option>
+                            <option value="without">Without video</option>
+                        </select>
+                        <select className={`form-select form-select-sm ${publishedOnFilter ? "border-success" : ""}`}
+                            style={{ width: "auto" }} value={publishedOnFilter}
+                            onChange={(e) => setPublishedOnFilter(e.target.value)}
+                            title="Only posts already published on…">
+                            <option value="">Published on…</option>
+                            <option value="any">Published anywhere</option>
+                            {Object.entries(PLATFORMS).map(([key, p]) => (
+                                <option key={key} value={key}>Published on {p.label}</option>
+                            ))}
+                        </select>
+                        <select className={`form-select form-select-sm ${notPublishedOnFilter ? "border-danger" : ""}`}
+                            style={{ width: "auto" }} value={notPublishedOnFilter}
+                            onChange={(e) => setNotPublishedOnFilter(e.target.value)}
+                            title="Only posts that still owe a platform a post">
+                            <option value="">Not published on…</option>
+                            <option value="any">Not published anywhere</option>
+                            {Object.entries(PLATFORMS).map(([key, p]) => (
+                                <option key={key} value={key}>Not on {p.label}</option>
+                            ))}
+                        </select>
+                        <div className="input-group input-group-sm" style={{ width: "auto" }} title="Created between">
+                            <span className="input-group-text"><i className="fas fa-calendar"></i></span>
+                            <input type="date" className="form-control" value={dateFrom} max={dateTo || undefined}
+                                onChange={(e) => setDateFrom(e.target.value)} />
+                            <span className="input-group-text">→</span>
+                            <input type="date" className="form-control" value={dateTo} min={dateFrom || undefined}
+                                onChange={(e) => setDateTo(e.target.value)} />
+                        </div>
+                        <div className="form-check mb-0 ms-1">
+                            <input className="form-check-input" type="checkbox" id="select-all"
+                                checked={allSelected} onChange={toggleSelectAll} disabled={!filtered.length} />
+                            <label className="form-check-label small" htmlFor="select-all">Select all</label>
+                        </div>
+                        {filtersActive && (
+                            <button className="btn btn-sm btn-link p-0" onClick={clearFilters}>Clear filters</button>
+                        )}
+                        {loading && <span className="spinner-border spinner-border-sm ms-auto"></span>}
                     </div>
                 </div>
 
-                {loading ? (
+                {loading && posts.length === 0 ? (
                     <div className="text-center py-5"><div className="spinner-border"></div></div>
-                ) : posts.length === 0 ? (
-                    <div className="alert alert-info">No posts found. Create your first post!</div>
+                ) : filtered.length === 0 ? (
+                    <div className="alert alert-info">
+                        {posts.length === 0 ? "No posts yet. Create your first post!" : "No posts match the current filters."}
+                    </div>
                 ) : (
                     <>
-                        <div className="table-responsive">
-                            <table className="table table-hover align-middle">
-                                <thead>
-                                    <tr>
-                                        <th style={{ width: 30 }}>
-                                            <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} />
-                                        </th>
-                                        <th style={{ width: 50 }}></th>
-                                        <th>Title</th>
-                                        <th>Accounts posted</th>
-                                        <th>Post Status</th>
-                                        <th>CMS</th>
-                                        <th>Created</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {posts.map((post) => (
-                                        <tr key={post.id}>
-                                            <td>
-                                                <input type="checkbox" checked={selectedIds.has(post.documentId)} onChange={() => toggleSelected(post.documentId)} />
-                                            </td>
-                                            <td>
-                                                {post.cover ? (
-                                                    <img src={MediaUtilsEndpoints.strapiImageUrl(post.cover)} alt="" className="rounded" style={{ width: 40, height: 40, objectFit: "cover" }} />
-                                                ) : (
-                                                    <div className="bg-light rounded d-flex align-items-center justify-content-center" style={{ width: 40, height: 40 }}>
-                                                        <i className="fas fa-image text-muted"></i>
-                                                    </div>
-                                                )}
-                                            </td>
-                                            <td>
-                                                <Link href={`/posts/${post.documentId}`} className="text-decoration-none fw-semibold">
-                                                    {post.title}
-                                                </Link>
-                                                {(post.products || []).length > 0 && (
-                                                    <span className="ms-2 text-muted small" title="Linked products">
-                                                        <i className="fas fa-box"></i> {post.products.length}
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td style={{ minWidth: 220 }}>
-                                                <AccountFlags post={post} accounts={accounts} />
-                                            </td>
-                                            <td>
-                                                <span className={`badge ${POST_STATUS_BADGES[post.post_status] || "bg-secondary"}`}>
-                                                    {(post.post_status || "draft").replace("_", " ")}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                {post._isPublished ? (
-                                                    <span className="badge bg-success">Published</span>
-                                                ) : (
-                                                    <span className="badge bg-secondary">Draft</span>
-                                                )}
-                                            </td>
-                                            <td className="text-muted small">
-                                                {post.createdAt ? new Date(post.createdAt).toLocaleDateString() : ""}
-                                            </td>
-                                            <td>
-                                                <div className="d-flex gap-1">
-                                                    <Link className="btn btn-sm btn-outline-primary" href={`/posts/${post.documentId}`}>
-                                                        <i className="fas fa-pen"></i>
-                                                    </Link>
-                                                    {post._isPublished ? (
-                                                        <button className="btn btn-sm btn-outline-secondary" onClick={() => unpublishOne(post.documentId)} disabled={publishing[post.documentId]}>
-                                                            {publishing[post.documentId] ? <span className="spinner-border spinner-border-sm"></span> : <i className="fas fa-eye-slash"></i>}
-                                                        </button>
+                        <div className="row g-3">
+                            {pageItems.map((post) => {
+                                const imgs = imageItems(post);
+                                const thumb = post.cover || imgs[0];
+                                const withVideo = hasVideo(post);
+                                const busy = publishing[post.documentId];
+                                const checked = selectedIds.has(post.documentId);
+                                return (
+                                    <div key={post.documentId} className="col-sm-6 col-md-4 col-xl-3 col-xxl-2">
+                                        <div className={`card h-100 shadow-sm ${checked ? "border-primary" : "border-0"}`}>
+                                            <div className="position-relative">
+                                                <Link href={`/posts/${post.documentId}`} className="d-block bg-light d-flex align-items-center justify-content-center"
+                                                    style={{ height: 140, overflow: "hidden", borderRadius: "6px 6px 0 0" }}>
+                                                    {thumb ? (
+                                                        <img src={MediaUtilsEndpoints.strapiImageUrl(thumb.formats?.small || thumb.formats?.thumbnail || thumb)} alt=""
+                                                            style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                                                     ) : (
-                                                        <button className="btn btn-sm btn-outline-success" onClick={() => publishOne(post.documentId)} disabled={publishing[post.documentId]}>
-                                                            {publishing[post.documentId] ? <span className="spinner-border spinner-border-sm"></span> : <i className="fas fa-upload"></i>}
-                                                        </button>
+                                                        <i className="fas fa-image fa-2x text-muted"></i>
                                                     )}
-                                                    <button className="btn btn-sm btn-outline-primary" onClick={() => duplicateOne(post)} title="Repost — copy to a new draft">
-                                                        <i className="fas fa-copy"></i>
-                                                    </button>
-                                                    <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(post)}>
-                                                        <i className="fas fa-trash"></i>
-                                                    </button>
+                                                </Link>
+                                                <input type="checkbox" className="form-check-input position-absolute"
+                                                    style={{ top: 8, left: 8, zIndex: 2 }}
+                                                    checked={checked} onChange={() => toggleSelected(post.documentId)} />
+                                                <div className="position-absolute d-flex gap-1" style={{ top: 8, right: 8, zIndex: 2 }}>
+                                                    {withVideo && (
+                                                        <span className="badge bg-dark" title="Has a video"><i className="fas fa-film"></i></span>
+                                                    )}
+                                                    <span className={`badge ${post._isPublished ? "bg-success" : "bg-secondary"}`}
+                                                        title={`CMS: ${post._isPublished ? "published" : "draft"}`}>
+                                                        {post._isPublished ? "Live" : "Draft"}
+                                                    </span>
                                                 </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                            </div>
+                                            <div className="card-body p-2">
+                                                <Link href={`/posts/${post.documentId}`} className="text-decoration-none fw-semibold d-block text-truncate"
+                                                    style={{ fontSize: 13 }} title={post.title}>
+                                                    {post.title || "(untitled)"}
+                                                </Link>
+                                                <div className="text-muted d-flex align-items-center gap-2 flex-wrap" style={{ fontSize: 11 }}>
+                                                    <span className={`badge ${POST_STATUS_BADGES[post.post_status] || "bg-secondary"}`}>
+                                                        {(post.post_status || "draft").replace("_", " ")}
+                                                    </span>
+                                                    <span>{post.createdAt ? new Date(post.createdAt).toLocaleDateString() : ""}</span>
+                                                    {imgs.length > 0 && <span><i className="fas fa-image"></i> {imgs.length}</span>}
+                                                    {(post.products || []).length > 0 && (
+                                                        <span title="Linked products"><i className="fas fa-box"></i> {post.products.length}</span>
+                                                    )}
+                                                </div>
+                                                <div className="mt-1">
+                                                    <AccountFlags post={post} accounts={accounts} />
+                                                </div>
+                                            </div>
+                                            <div className="card-footer p-1 d-flex gap-1 justify-content-center flex-wrap">
+                                                <Link className="btn btn-sm btn-outline-primary" href={`/posts/${post.documentId}`} title="Edit the post">
+                                                    <i className="fas fa-pen"></i>
+                                                </Link>
+                                                {imgs.length > 0 && (
+                                                    <Link className={`btn btn-sm ${withVideo ? "btn-outline-secondary" : "btn-outline-warning"}`}
+                                                        href={`/posts/video-studio?post=${post.documentId}`}
+                                                        title={withVideo ? "Edit / re-render this post's video" : "Make a video from this post's images"}>
+                                                        <i className="fas fa-film"></i>
+                                                    </Link>
+                                                )}
+                                                {post._isPublished ? (
+                                                    <button className="btn btn-sm btn-outline-secondary" onClick={() => unpublishOne(post.documentId)}
+                                                        disabled={busy} title="Unpublish from the platforms">
+                                                        {busy ? <span className="spinner-border spinner-border-sm"></span> : <i className="fas fa-eye-slash"></i>}
+                                                    </button>
+                                                ) : (
+                                                    <button className="btn btn-sm btn-outline-success" onClick={() => publishOne(post.documentId)}
+                                                        disabled={busy} title="Publish to the connected platforms">
+                                                        {busy ? <span className="spinner-border spinner-border-sm"></span> : <i className="fas fa-upload"></i>}
+                                                    </button>
+                                                )}
+                                                <button className="btn btn-sm btn-outline-primary" onClick={() => duplicateOne(post)} title="Repost — copy to a new draft">
+                                                    <i className="fas fa-copy"></i>
+                                                </button>
+                                                <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(post)} title="Delete">
+                                                    <i className="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
 
                         {pageCount > 1 && (
-                            <nav>
+                            <nav className="mt-3">
                                 <ul className="pagination pagination-sm justify-content-center">
-                                    <li className={`page-item ${page <= 1 ? "disabled" : ""}`}>
-                                        <button className="page-link" onClick={() => setPage(page - 1)}>Prev</button>
+                                    <li className={`page-item ${clampedPage <= 1 ? "disabled" : ""}`}>
+                                        <button className="page-link" onClick={() => setPage(clampedPage - 1)}>Prev</button>
                                     </li>
-                                    {Array.from({ length: pageCount }, (_, i) => i + 1).map((p) => (
-                                        <li key={p} className={`page-item ${p === page ? "active" : ""}`}>
-                                            <button className="page-link" onClick={() => setPage(p)}>{p}</button>
-                                        </li>
-                                    ))}
-                                    <li className={`page-item ${page >= pageCount ? "disabled" : ""}`}>
-                                        <button className="page-link" onClick={() => setPage(page + 1)}>Next</button>
+                                    {Array.from({ length: Math.min(pageCount, 9) }, (_, i) => {
+                                        let p;
+                                        if (pageCount <= 9) p = i + 1;
+                                        else if (clampedPage <= 5) p = i + 1;
+                                        else if (clampedPage >= pageCount - 4) p = pageCount - 8 + i;
+                                        else p = clampedPage - 4 + i;
+                                        return (
+                                            <li key={p} className={`page-item ${p === clampedPage ? "active" : ""}`}>
+                                                <button className="page-link" onClick={() => setPage(p)}>{p}</button>
+                                            </li>
+                                        );
+                                    })}
+                                    <li className={`page-item ${clampedPage >= pageCount ? "disabled" : ""}`}>
+                                        <button className="page-link" onClick={() => setPage(clampedPage + 1)}>Next</button>
                                     </li>
                                 </ul>
                             </nav>

@@ -183,6 +183,8 @@ module.exports = ({ strapi }) => ({
         // Mime filter
         if (mime === 'image') {
             where.mime = { $startsWith: 'image/' };
+        } else if (mime === 'video') {
+            where.mime = { $startsWith: 'video/' };
         } else if (mime === 'pdf') {
             where.mime = { $eq: 'application/pdf' };
         } else if (mime === 'other') {

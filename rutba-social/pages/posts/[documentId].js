@@ -455,8 +455,10 @@ export default function PostDetailPage() {
                                 {imageItems(post).length > 0 && (
                                     <Link className={`btn btn-sm ms-auto ${isImageOnly(post) ? "btn-warning" : "btn-outline-secondary"}`}
                                         href={`/posts/video-studio?post=${documentId}`}
-                                        title="Stitch this post's images into a video with the text typed over it">
-                                        <i className="fas fa-film me-1"></i>Make video from images
+                                        title={isImageOnly(post)
+                                            ? "Stitch this post's images into a video with the text typed over it"
+                                            : "Re-open this post's video recipe in the studio and re-render it"}>
+                                        <i className="fas fa-film me-1"></i>{isImageOnly(post) ? "Make video from images" : "Edit video"}
                                     </Link>
                                 )}
                             </div>

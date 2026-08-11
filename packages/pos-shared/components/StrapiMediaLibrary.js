@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { StraipImageUrl, isImage, isPDF } from '@rutba/api-provider/lib/api';
+import { StraipImageUrl, isImage, isPDF, isVideo } from '@rutba/api-provider/lib/api';
 import { MediaLibraryEndpoints, UploadEndpoints } from "@rutba/api-provider/endpoints";
 
 /**
@@ -11,7 +11,7 @@ import { MediaLibraryEndpoints, UploadEndpoints } from "@rutba/api-provider/endp
  *   onClose     - () => void
  *   onSelect    - (files: object[]) => void - called with selected file(s)
  *   multiple    - boolean - allow multi-select (default false)
- *   accept      - "image" | "file" | "all" - filter by mime prefix (default "all")
+ *   accept      - "image" | "video" | "file" | "all" - filter by mime prefix (default "all")
  */
 export default function StrapiMediaLibrary({
     show = false,
@@ -71,9 +71,14 @@ export default function StrapiMediaLibrary({
             }
             if (accept === 'image') {
                 params.mime = 'image';
+            } else if (accept === 'video') {
+                params.mime = 'video';
             }
             const res = await MediaLibraryEndpoints.files(params);
-            setFiles(res.data || []);
+            // A server that predates the `video` mime filter ignores the param
+            // and returns everything — keep the list honest client-side.
+            const rows = res.data || [];
+            setFiles(accept === 'video' ? rows.filter(isVideo) : rows);
             setPageCount(res.meta?.pagination?.pageCount || 1);
         } catch (err) {
             console.error('Failed to load media files', err);
@@ -332,7 +337,8 @@ export default function StrapiMediaLibrary({
                                 <option value="size:desc">Largest</option>
                                 <option value="size:asc">Smallest</option>
                             </select>
-                            <input ref={fileInputRef} type="file" accept="image/*,application/pdf" multiple className="d-none" onChange={handleUpload} />
+                            <input ref={fileInputRef} type="file" multiple className="d-none" onChange={handleUpload}
+                                accept={accept === 'video' ? 'video/*' : accept === 'image' ? 'image/*' : 'image/*,video/*,application/pdf'} />
                             <button className="btn btn-sm btn-outline-primary" onClick={() => fileInputRef.current && fileInputRef.current.click()} disabled={uploading}>
                                 <i className="fas fa-cloud-upload-alt me-1" />{uploading ? 'Uploading...' : 'Upload'}
                             </button>
@@ -406,6 +412,7 @@ export default function StrapiMediaLibrary({
                                     var src = StraipImageUrl(thumb);
                                     var fileIsImage = isImage(file);
                                     var fileIsPdf = isPDF(file);
+                                    var fileIsVideo = isVideo(file);
                                     return (
                                         <div key={file.id} className="col-6 col-sm-4 col-md-3 col-lg-2">
                                             <div className={'card h-100' + (isSelected ? ' border-primary border-2 shadow' : '')}
@@ -416,8 +423,9 @@ export default function StrapiMediaLibrary({
                                                     <button className="btn btn-sm p-0 position-absolute top-0 end-0 m-1 text-muted" style={{ zIndex: 2, fontSize: '0.65rem', lineHeight: 1 }}
                                                         title={'Copy ID: ' + file.id} onClick={function(e) { copyId(file.id, e); }}><i className="fas fa-hashtag" /></button>
                                                     {fileIsImage ? <img src={src} alt={file.alternativeText || file.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} draggable={false} />
-                                                        : fileIsPdf ? <i className="fas fa-file-pdf fa-2x text-danger" />
-                                                            : <i className="fas fa-file fa-2x text-secondary" />}
+                                                        : fileIsVideo ? <video src={StraipImageUrl(file)} preload="metadata" muted style={{ maxWidth: '100%', maxHeight: '100%' }} />
+                                                            : fileIsPdf ? <i className="fas fa-file-pdf fa-2x text-danger" />
+                                                                : <i className="fas fa-file fa-2x text-secondary" />}
                                                 </div>
                                                 <div className="card-body p-1">
                                                     <p className="mb-0 text-truncate" style={{ fontSize: '0.7rem' }} title={file.name}>{file.name}</p>

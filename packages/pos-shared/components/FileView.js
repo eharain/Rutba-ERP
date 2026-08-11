@@ -369,7 +369,7 @@ function FileView({
                 onClose={() => setShowMediaLibrary(false)}
                 onSelect={handleMediaLibrarySelect}
                 multiple={multiple}
-                accept={accept === 'video/*' ? 'all' : accept === 'image/*' ? 'image' : 'all'}
+                accept={accept === 'video/*' ? 'video' : accept === 'image/*' ? 'image' : 'all'}
             />
 
             {/* Single file preview */}
