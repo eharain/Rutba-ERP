@@ -1,6 +1,14 @@
 # Video Studio v2 — layers, editing, customization
 
-**Status:** M0–M4 done · 2026-08-11 · next: M5 (commerce layers)
+**Status:** M0–M5 done · 2026-08-11 · next: M6 (audio start-point)
+- M5 ✔ commerce layers. A self-contained QR encoder lives in the renderer (byte mode,
+  v1–10, EC M, penalty-chosen mask — zero-dependency by design, PROVEN by decoding the
+  painted pixels with an independent reader at v3/v7/v10). Layers take {token}
+  placeholders ({price} {was} {discount} {product} {url}) resolved from a per-render
+  `context` — stored recipes keep the tokens, each host resolves them FRESH (studio:
+  linked product + site_url; poster: linked product + REPLACE_PUBLIC_URL), so price
+  chips never go stale. Missing token → layer hides (never "Rs " on a video). Accent
+  pill for price chips/stickers. Studio quick-adds: Price / Discount / QR / NEW / SALE.
 - M4 ✔ transitions (`transition: fade|cut|slide|push|zoom` — cut folds into the fade=0
   slot math; slide/push/zoom are enter/exit transforms in the slideshow painter), the
   branded outro card (`outroSeconds`/`outroText` — appended to the timeline inside the

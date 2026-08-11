@@ -375,7 +375,7 @@ function layoutLines(ctx, text, maxWidth) {
  * blow past maxSeconds the typing speeds up to fit rather than getting cut off
  * mid-sentence — `plan.spedUp` says so, and the UI reports it.
  */
-export function buildPlan({ canvas, images, title, body, logo, options, layerPatches }) {
+export function buildPlan({ canvas, images, title, body, logo, options, layerPatches, context }) {
     const opts = { ...DEFAULTS, ...(options || {}) };
     const aspect = ASPECTS[opts.aspect] || ASPECTS.vertical;
     const W = aspect.width;
@@ -472,9 +472,29 @@ export function buildPlan({ canvas, images, title, body, logo, options, layerPat
         ? { x: margin * 0.4, y: margin * 0.6, w: W - margin * 0.8, h: H - margin * 1.2 }
         : { x: margin * 0.4, y: margin * 0.6, w: W - margin * 0.8, h: H - plan.captionBandH - margin * 0.6 };
 
+    // Render-time data for {token} layers: prices, product names, storefront
+    // urls. Supplied fresh by each host, never stored — that is what keeps a
+    // "{price}" chip honest when the price changes after the recipe was saved.
+    plan.context = context && typeof context === 'object' ? context : {};
+
     plan.layers = compileLayers(plan);
     if (Array.isArray(layerPatches) && layerPatches.length) applyLayerPatches(plan, layerPatches);
     return plan;
+}
+
+/**
+ * Substitute {token} placeholders from plan.context. `missing` is true when a
+ * referenced token has no value — the caller hides the layer, because "Rs
+ * {price}" on a video is worse than no price chip at all.
+ */
+function resolveTokens(str, context) {
+    let missing = false;
+    const text = String(str || '').replace(/\{(\w+)\}/g, (_, key) => {
+        const v = context?.[key];
+        if (v === undefined || v === null || String(v).trim() === '') { missing = true; return ''; }
+        return String(v);
+    });
+    return { text, missing };
 }
 
 /**
@@ -523,10 +543,14 @@ export function applyLayerPatches(plan, patches) {
 
         if (patch.type === 'text' && patch.text) {
             const sizePx = Math.max(10, Math.round(W * (patch.sizeFrac || 0.035)));
-            const text = String(patch.text);
+            const resolved = resolveTokens(patch.text, plan.context);
+            const text = resolved.text;
             plan.layers.push({
                 id: patch.id, type: 'text', text,
-                visible: patch.visible !== false,
+                // A tokened layer whose data isn't available simply doesn't
+                // draw — "Rs " with the price missing must never reach a video.
+                visible: patch.visible !== false && !resolved.missing,
+                missingToken: resolved.missing,
                 timing: patch.timing || null,
                 font: `${patch.weight || 600} ${sizePx}px ${FONT_STACK}`,
                 sizePx,
@@ -535,7 +559,8 @@ export function applyLayerPatches(plan, patches) {
                 baseline: patch.baseline || 'top',
                 x: W * (patch.fx ?? 0.5),
                 y: H * (patch.fy ?? 0.1),
-                bg: !!patch.bg,
+                bg: !!patch.bg || !!patch.pill,
+                pillColor: patch.pill === 'accent' ? theme.accent : null,
                 anim: patch.anim || 'none',
                 rtl: patch.direction === 'rtl'
                     || (patch.direction !== 'ltr' && /[֐-ࣿﭐ-﷿ﹰ-ﻼ]/.test(text)),
@@ -546,6 +571,22 @@ export function applyLayerPatches(plan, patches) {
                 weight: patch.weight || 600,
                 colorToken: patch.color || 'text',
                 direction: patch.direction || 'auto',
+            });
+            continue;
+        }
+
+        if (patch.type === 'qr') {
+            const resolved = resolveTokens(patch.data || '{url}', plan.context);
+            const sizePx = Math.max(60, Math.round(W * (patch.fw || 0.22)));
+            plan.layers.push({
+                id: patch.id, type: 'qr',
+                data: resolved.text,
+                visible: patch.visible !== false && !resolved.missing && !!resolved.text,
+                missingToken: resolved.missing,
+                timing: patch.timing || null,
+                x: W * (patch.fx ?? 0.72), y: H * (patch.fy ?? 0.06),
+                size: sizePx,
+                fx: patch.fx ?? 0.72, fy: patch.fy ?? 0.06, fw: patch.fw || 0.22,
             });
             continue;
         }
@@ -885,15 +926,16 @@ function paintText(ctx, plan, layer, time) {
     if (layer.rtl) ctx.direction = 'rtl';
 
     if (layer.bg) {
-        // A pill of the theme scrim behind the text, sized off the FULL text so
-        // a type-on reveal doesn't pulse the pill width every frame.
+        // A pill behind the text — theme scrim, or a solid color (the accent
+        // for price chips and stickers). Sized off the FULL text so a type-on
+        // reveal doesn't pulse the pill width every frame.
         const size = layer.sizePx || 24;
         const w = ctx.measureText(layer.text).width;
         const padX = Math.round(size * 0.55);
         const padY = Math.round(size * 0.3);
         const x0 = layer.align === 'center' ? layer.x - w / 2 : layer.align === 'right' ? layer.x - w : layer.x;
         const y0 = layer.baseline === 'bottom' ? layer.y - size : layer.baseline === 'middle' ? layer.y - size / 2 : layer.y;
-        ctx.fillStyle = plan.theme.scrim;
+        ctx.fillStyle = layer.pillColor || plan.theme.scrim;
         roundRect(ctx, x0 - padX, y0 - padY + dy, w + padX * 2, size + padY * 2, Math.round(size * 0.6));
         ctx.fill();
     }
@@ -901,6 +943,38 @@ function paintText(ctx, plan, layer, time) {
     ctx.fillStyle = layer.color;
     ctx.fillText(text, layer.x, layer.y + dy);
     ctx.restore();
+}
+
+// A QR code layer. The matrix renders once to an offscreen canvas (cached on
+// the layer, keyed by content+size) with a white field and the mandatory
+// 4-module quiet zone; the per-frame cost is one drawImage.
+function paintQr(ctx, plan, layer) {
+    if (!layer.data) return;
+    const key = layer.data + ':' + layer.size;
+    if (layer._qrKey !== key) {
+        const qr = qrEncode(layer.data);
+        if (!qr) { layer._qrKey = key; layer._qr = null; return; }
+        const quiet = 4;
+        const cells = qr.size + quiet * 2;
+        const mod = Math.max(2, Math.floor(layer.size / cells));
+        const px = mod * cells;
+        const off = document.createElement('canvas');
+        off.width = px;
+        off.height = px;
+        const octx = off.getContext('2d');
+        octx.fillStyle = '#ffffff';
+        octx.fillRect(0, 0, px, px);
+        octx.fillStyle = '#000000';
+        for (let y = 0; y < qr.size; y++) {
+            for (let x = 0; x < qr.size; x++) {
+                if (qr.modules[y * qr.size + x]) octx.fillRect((x + quiet) * mod, (y + quiet) * mod, mod, mod);
+            }
+        }
+        layer._qr = off;
+        layer._qrKey = key;
+        layer._qrPx = px;
+    }
+    if (layer._qr) ctx.drawImage(layer._qr, layer.x, layer.y, layer._qrPx, layer._qrPx);
 }
 
 // The branded end card: theme background, logo, a line of text. Fades in over
@@ -965,6 +1039,7 @@ const PAINTERS = {
     title: paintTitle,
     image: paintImage,
     text: paintText,
+    qr: paintQr,
     outro: paintOutro,
     progress: paintProgress,
     edges: paintEdges,
@@ -1036,6 +1111,287 @@ export function compileLayers(plan) {
     return layers;
 }
 
+// ── QR encoding ──────────────────────────────────────────────────────────────
+// A self-contained byte-mode QR encoder (versions 1–10, EC level M, penalty-
+// chosen mask). Written here rather than pulled in because this package's
+// zero-dependency, single-file contract is what lets the same code run in the
+// studio page and the poster's Electron window with no build step — and a QR
+// layer is useless if it can't render everywhere the videos do.
+// Correctness is proven by round-trip in the harness: painted pixels are
+// DECODED with an independent reader and must yield the input string.
+
+const QR_EC_M = {
+    // version → [totalDataCodewords, ecPerBlock, [blockDataSizes...]]
+    1: [16, 10, [16]],
+    2: [28, 16, [28]],
+    3: [44, 26, [44]],
+    4: [64, 18, [32, 32]],
+    5: [86, 24, [43, 43]],
+    6: [108, 16, [27, 27, 27, 27]],
+    7: [124, 18, [31, 31, 31, 31]],
+    8: [154, 22, [38, 38, 39, 39]],
+    9: [182, 22, [36, 36, 36, 37, 37]],
+    10: [216, 26, [43, 43, 43, 43, 44]],
+};
+const QR_ALIGN = { 1: [], 2: [6, 18], 3: [6, 22], 4: [6, 26], 5: [6, 30], 6: [6, 34], 7: [6, 22, 38], 8: [6, 24, 42], 9: [6, 26, 46], 10: [6, 28, 50] };
+
+const GF_EXP = new Array(512);
+const GF_LOG = new Array(256);
+(() => {
+    let x = 1;
+    for (let i = 0; i < 255; i++) {
+        GF_EXP[i] = x;
+        GF_LOG[x] = i;
+        x <<= 1;
+        if (x & 0x100) x ^= 0x11d;
+    }
+    for (let i = 255; i < 512; i++) GF_EXP[i] = GF_EXP[i - 255];
+})();
+const gfMul = (a, b) => (a && b ? GF_EXP[GF_LOG[a] + GF_LOG[b]] : 0);
+
+// Reed-Solomon ECC by plain polynomial division. The generator is built
+// HIGHEST-degree-first (gen[0] is the leading, monic coefficient) because the
+// division loop below aligns gen[0] with the current position — mixing the two
+// orderings is the classic way to corrupt every ECC block at ecLen >= 2.
+function rsEccDivide(data, ecLen) {
+    let gen = [1];
+    for (let i = 0; i < ecLen; i++) {
+        // gen(x) · (x + α^i), keeping highest-first order
+        const next = new Array(gen.length + 1).fill(0);
+        for (let j = 0; j < gen.length; j++) {
+            next[j] ^= gen[j];
+            next[j + 1] ^= gfMul(gen[j], GF_EXP[i]);
+        }
+        gen = next;
+    }
+    const buf = [...data, ...new Array(ecLen).fill(0)];
+    for (let i = 0; i < data.length; i++) {
+        const factor = buf[i];
+        if (!factor) continue;
+        for (let j = 0; j < gen.length; j++) buf[i + j] ^= gfMul(gen[j], factor);
+    }
+    return buf.slice(data.length);
+}
+
+/**
+ * Encode `text` (UTF-8 bytes) as a QR matrix. Returns { size, modules } where
+ * modules is a flat Uint8Array (1 = dark), or null when the text is too long
+ * for version 10 (216 bytes at EC M) — callers skip the layer rather than
+ * render an unscannable code.
+ */
+export function qrEncode(text) {
+    const bytes = [];
+    for (const ch of new TextEncoder().encode(String(text))) bytes.push(ch);
+
+    let version = 0;
+    for (let v = 1; v <= 10; v++) {
+        const cap = QR_EC_M[v][0] - (v >= 10 ? 4 : 3); // mode(4b)+count(8|16b) rounded up
+        if (bytes.length <= cap) { version = v; break; }
+    }
+    if (!version) return null;
+
+    const [dataLen, ecLen, blockSizes] = QR_EC_M[version];
+    const countBits = version >= 10 ? 16 : 8;
+
+    // bit stream: mode 0100, count, data, terminator, pad
+    const bits = [];
+    const push = (val, n) => { for (let i = n - 1; i >= 0; i--) bits.push((val >> i) & 1); };
+    push(0b0100, 4);
+    push(bytes.length, countBits);
+    for (const b of bytes) push(b, 8);
+    const capacityBits = dataLen * 8;
+    for (let i = 0; i < 4 && bits.length < capacityBits; i++) bits.push(0);
+    while (bits.length % 8) bits.push(0);
+    const codewords = [];
+    for (let i = 0; i < bits.length; i += 8) {
+        let b = 0;
+        for (let j = 0; j < 8; j++) b = (b << 1) | bits[i + j];
+        codewords.push(b);
+    }
+    const pads = [0xec, 0x11];
+    for (let i = 0; codewords.length < dataLen; i++) codewords.push(pads[i % 2]);
+
+    // split into blocks, compute EC, interleave
+    const blocks = [];
+    let off = 0;
+    for (const size of blockSizes) {
+        const d = codewords.slice(off, off + size);
+        off += size;
+        blocks.push({ d, e: rsEccDivide(d, ecLen) });
+    }
+    const inter = [];
+    const maxD = Math.max(...blockSizes);
+    for (let i = 0; i < maxD; i++) for (const b of blocks) if (i < b.d.length) inter.push(b.d[i]);
+    for (let i = 0; i < ecLen; i++) for (const b of blocks) inter.push(b.e[i]);
+
+    // matrix scaffolding
+    const size = 17 + version * 4;
+    const modules = new Uint8Array(size * size);
+    const reserved = new Uint8Array(size * size);
+    const set = (x, y, v) => { modules[y * size + x] = v ? 1 : 0; reserved[y * size + x] = 1; };
+
+    const finder = (cx, cy) => {
+        for (let dy = -1; dy <= 7; dy++) for (let dx = -1; dx <= 7; dx++) {
+            const x = cx + dx;
+            const y = cy + dy;
+            if (x < 0 || y < 0 || x >= size || y >= size) continue;
+            const inOuter = dx >= 0 && dx <= 6 && dy >= 0 && dy <= 6;
+            const onRing = inOuter && (dx === 0 || dx === 6 || dy === 0 || dy === 6);
+            const inCore = dx >= 2 && dx <= 4 && dy >= 2 && dy <= 4;
+            set(x, y, onRing || inCore);
+        }
+    };
+    finder(0, 0);
+    finder(size - 7, 0);
+    finder(0, size - 7);
+
+    // alignment patterns (skip any overlapping a finder)
+    const centers = QR_ALIGN[version];
+    for (const cy of centers) for (const cx of centers) {
+        if ((cx <= 8 && cy <= 8) || (cx <= 8 && cy >= size - 9) || (cx >= size - 9 && cy <= 8)) continue;
+        for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+            set(cx + dx, cy + dy, Math.max(Math.abs(dx), Math.abs(dy)) !== 1);
+        }
+    }
+
+    // timing patterns
+    for (let i = 8; i < size - 8; i++) {
+        if (!reserved[6 * size + i]) set(i, 6, i % 2 === 0);
+        if (!reserved[i * size + 6]) set(6, i, i % 2 === 0);
+    }
+
+    // reserve format areas (values written after masking)
+    for (let i = 0; i < 9; i++) {
+        if (i !== 6) { reserved[8 * size + i] = 1; reserved[i * size + 8] = 1; }
+    }
+    for (let i = 0; i < 8; i++) {
+        reserved[8 * size + (size - 1 - i)] = 1;
+        reserved[(size - 1 - i) * size + 8] = 1;
+    }
+    modules[(size - 8) * size + 8] = 1; // the always-dark module
+    reserved[(size - 8) * size + 8] = 1;
+
+    // version info (v7+)
+    if (version >= 7) {
+        let rem = version;
+        for (let i = 0; i < 12; i++) rem = (rem << 1) ^ ((rem >> 11) & 1 ? 0x1f25 : 0);
+        const info = ((version << 12) | rem) >>> 0;
+        for (let i = 0; i < 18; i++) {
+            const bit = (info >> i) & 1;
+            const a = Math.floor(i / 3);
+            const b = (i % 3) + size - 11;
+            set(a, b, bit);
+            set(b, a, bit);
+        }
+    }
+
+    // data placement: upward/downward zigzag, right to left, skipping col 6
+    const dataBits = [];
+    for (const cw of inter) for (let i = 7; i >= 0; i--) dataBits.push((cw >> i) & 1);
+    let bitIdx = 0;
+    let upward = true;
+    for (let col = size - 1; col > 0; col -= 2) {
+        if (col === 6) col--;
+        for (let i = 0; i < size; i++) {
+            const y = upward ? size - 1 - i : i;
+            for (const x of [col, col - 1]) {
+                if (reserved[y * size + x]) continue;
+                modules[y * size + x] = bitIdx < dataBits.length ? dataBits[bitIdx] : 0;
+                bitIdx++;
+            }
+        }
+        upward = !upward;
+    }
+
+    // mask selection by penalty
+    const maskFns = [
+        (x, y) => (x + y) % 2 === 0,
+        (x, y) => y % 2 === 0,
+        (x, y) => x % 3 === 0,
+        (x, y) => (x + y) % 3 === 0,
+        (x, y) => (Math.floor(y / 2) + Math.floor(x / 3)) % 2 === 0,
+        (x, y) => ((x * y) % 2) + ((x * y) % 3) === 0,
+        (x, y) => (((x * y) % 2) + ((x * y) % 3)) % 2 === 0,
+        (x, y) => (((x + y) % 2) + ((x * y) % 3)) % 2 === 0,
+    ];
+
+    const applyMask = (m) => {
+        const out = new Uint8Array(modules);
+        for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+            if (!reserved[y * size + x] && maskFns[m](x, y)) out[y * size + x] ^= 1;
+        }
+        // format info: EC M = 00, then mask
+        let fmt = (0b00 << 3) | m;
+        let rem = fmt;
+        for (let i = 0; i < 10; i++) rem = (rem << 1) ^ ((rem >> 9) & 1 ? 0x537 : 0);
+        const info = (((fmt << 10) | rem) ^ 0x5412) >>> 0;
+        const fbit = (i) => (info >> i) & 1;
+        for (let i = 0; i < 6; i++) out[8 * size + i] = fbit(14 - i);
+        out[8 * size + 7] = fbit(8);
+        out[8 * size + 8] = fbit(7);
+        out[7 * size + 8] = fbit(6);
+        for (let i = 0; i < 6; i++) out[(5 - i) * size + 8] = fbit(5 - i) ? 1 : 0;
+        // second copy
+        for (let i = 0; i < 7; i++) out[(size - 1 - i) * size + 8] = fbit(14 - i);
+        for (let i = 0; i < 8; i++) out[8 * size + (size - 8 + i)] = fbit(7 - i);
+        out[(size - 8) * size + 8] = 1; // dark module survives
+        return out;
+    };
+
+    const penalty = (grid) => {
+        let score = 0;
+        const at = (x, y) => grid[y * size + x];
+        // N1: runs
+        for (let pass = 0; pass < 2; pass++) {
+            for (let a = 0; a < size; a++) {
+                let run = 1;
+                let prev = pass ? at(a, 0) : at(0, a);
+                for (let b = 1; b < size; b++) {
+                    const cur = pass ? at(a, b) : at(b, a);
+                    if (cur === prev) run++;
+                    else { if (run >= 5) score += 3 + (run - 5); run = 1; prev = cur; }
+                }
+                if (run >= 5) score += 3 + (run - 5);
+            }
+        }
+        // N2: 2x2 blocks
+        for (let y = 0; y < size - 1; y++) for (let x = 0; x < size - 1; x++) {
+            const v = at(x, y);
+            if (v === at(x + 1, y) && v === at(x, y + 1) && v === at(x + 1, y + 1)) score += 3;
+        }
+        // N3: finder-like 1011101 with 0000 on a side
+        const pat1 = [1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0];
+        const pat2 = [0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1];
+        for (let pass = 0; pass < 2; pass++) {
+            for (let a = 0; a < size; a++) for (let b = 0; b <= size - 11; b++) {
+                let m1 = true;
+                let m2 = true;
+                for (let k = 0; k < 11; k++) {
+                    const v = pass ? at(a, b + k) : at(b + k, a);
+                    if (v !== pat1[k]) m1 = false;
+                    if (v !== pat2[k]) m2 = false;
+                }
+                if (m1) score += 40;
+                if (m2) score += 40;
+            }
+        }
+        // N4: dark ratio
+        let dark = 0;
+        for (const v of grid) dark += v;
+        score += Math.floor(Math.abs((dark * 100) / (size * size) - 50) / 5) * 10;
+        return score;
+    };
+
+    let best = null;
+    let bestScore = Infinity;
+    for (let m = 0; m < 8; m++) {
+        const g = applyMask(m);
+        const s = penalty(g);
+        if (s < bestScore) { bestScore = s; best = g; }
+    }
+    return { size, modules: best };
+}
+
 // ── editor support ───────────────────────────────────────────────────────────
 
 /**
@@ -1046,6 +1402,7 @@ export function compileLayers(plan) {
  */
 export function layerBounds(ctx, plan, layer) {
     if (layer.type === 'image') return { x: layer.x, y: layer.y, w: layer.w, h: layer.h };
+    if (layer.type === 'qr') return { x: layer.x, y: layer.y, w: layer._qrPx || layer.size, h: layer._qrPx || layer.size };
     if (layer.type === 'text') {
         ctx.save();
         ctx.font = layer.font;
@@ -1069,7 +1426,7 @@ export function hitTestLayers(ctx, plan, x, y) {
     for (let i = plan.layers.length - 1; i >= 0; i--) {
         const layer = plan.layers[i];
         if (layer.visible === false) continue;
-        if (layer.type !== 'text' && layer.type !== 'image') continue;
+        if (layer.type !== 'text' && layer.type !== 'image' && layer.type !== 'qr') continue;
         const b = layerBounds(ctx, plan, layer);
         if (b && x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) return { layer, bounds: b };
     }
