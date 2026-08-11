@@ -1,6 +1,15 @@
 # Video Studio v2 — layers, editing, customization
 
-**Status:** M0–M2 done · 2026-08-11 · next: M3 (layer editor)
+**Status:** M0–M3 done · 2026-08-11 · next: M4 (transitions + outro)
+- M3 ✔ editor v1: Layers panel (visibility toggles, add/edit/delete text layers,
+  per-layer color/weight/size/pill/animation/timing), select-and-drag on the preview
+  canvas (hit-test + fractional coords), image strip (reorder / exclude / per-image
+  seconds / 9-point focal), Urdu/RTL captions + title + text layers. Renderer grew
+  `perImageSeconds`, `entry.focal` (cover crops), text-layer anim/bg/rtl,
+  `layerBounds`/`hitTestLayers`. All harness-verified: legacy looks stay pixel-identical;
+  timing windows, slot shares, focal shifts, RTL glyphs and hit-tests all probed.
+  Deferred from M3: on-canvas resize handles (size edits via panel slider), reorder of
+  compiled layers, caption dragging (position stays an option).
 - M0 ✔ schema landed + seeded (`social-video-templates` table, `social_posts.video_settings`,
   `social_audio_tracks.start_offset`). Core needs a restart to mount the new route.
 - M1 ✔ scene graph: `plan.layers` + per-type painters; A/B-verified pixel-identical

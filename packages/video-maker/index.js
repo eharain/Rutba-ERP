@@ -379,13 +379,22 @@ export function buildPlan({ canvas, images, title, body, logo, options, layerPat
     ctx.font = `500 ${bodySize}px ${FONT_STACK}`;
     const text = String(body || '').trim();
     const lines = layoutLines(ctx, text, textWidth);
+    // Urdu/Arabic (and Hebrew) captions lay out right-to-left. Shaping itself
+    // comes from the OS text stack; what the painters must flip is the anchor
+    // edge and the canvas direction, or punctuation lands on the wrong side.
+    const rtl = /[֐-ࣿﭐ-﷿ﹰ-ﻼ]/.test(text);
 
     const bandFraction = opts.aspect === 'vertical' ? 0.32 : 0.38;
     const maxVisibleLines = Math.max(2, Math.min(9, Math.floor((H * bandFraction - pad * 2) / lineHeight)));
 
     const count = Math.max(1, images.length);
     const fade = count > 1 ? Math.min(opts.fadeSeconds, opts.secondsPerImage * 0.5) : 0;
-    const imagesDuration = count * opts.secondsPerImage;
+    // Per-image durations (the studio's image strip). Uniform when absent —
+    // and the uniform case must reduce to the exact legacy arithmetic.
+    const per = Array.isArray(opts.perImageSeconds) && opts.perImageSeconds.length === count
+        ? opts.perImageSeconds.map((s) => Math.max(0.5, Number(s) || opts.secondsPerImage))
+        : null;
+    const imagesDuration = per ? per.reduce((a, b) => a + b, 0) : count * opts.secondsPerImage;
 
     const totalChars = text.length;
     let cps = Math.max(1, opts.charsPerSecond);
@@ -399,12 +408,19 @@ export function buildPlan({ canvas, images, title, body, logo, options, layerPat
     }
     const duration = Math.max(3, Math.min(opts.maxSeconds, Math.max(imagesDuration, needed)));
 
-    // Images stretch to fill whatever duration the text demanded.
-    const slot = (duration - fade) / count;
-    const slots = Array.from({ length: count }, (_, i) => ({
-        start: i * slot,
-        end: Math.min(duration, i * slot + slot + fade),
-    }));
+    // Images stretch to fill whatever duration the text demanded, each taking
+    // its share of the usable window (equal shares without per-image seconds —
+    // in which case this IS the legacy slot math).
+    const usable = duration - fade;
+    const slot = usable / count;
+    const shares = per ? per.map((s) => s / imagesDuration) : null;
+    let cum = 0;
+    const slots = Array.from({ length: count }, (_, i) => {
+        const width = shares ? usable * shares[i] : slot;
+        const start = shares ? cum : i * slot;
+        cum += width;
+        return { start, end: Math.min(duration, start + width + fade) };
+    });
 
     const bitrate = Math.round(W * H * opts.fps * (QUALITY_BPP[opts.quality] ?? QUALITY_BPP.high));
 
@@ -413,7 +429,7 @@ export function buildPlan({ canvas, images, title, body, logo, options, layerPat
         images, slots, fade,
         logo: opts.showLogo ? (logo || null) : null,
         title: String(title || '').trim(),
-        text, lines, totalChars, cps,
+        text, lines, totalChars, cps, rtl,
         bodySize, lineHeight, titleSize, margin, pad, textWidth, maxVisibleLines,
         spedUp,
         secondsPerImageEffective: slot,
@@ -457,8 +473,8 @@ export function applyLayerPatches(plan, patches) {
         if (existing) {
             const { id, type, ...rest } = patch;
             Object.assign(existing, rest);
-            // Fractional geometry on a patched image layer (e.g. a dragged
-            // logo) re-resolves against this frame's size.
+            // Fractional geometry on a patched layer (e.g. a dragged logo or
+            // footer) re-resolves against this frame's size.
             if (existing.type === 'image') {
                 if (patch.fw !== undefined) {
                     existing.w = W * patch.fw;
@@ -468,22 +484,38 @@ export function applyLayerPatches(plan, patches) {
                 }
                 if (patch.fx !== undefined) existing.x = W * patch.fx;
                 if (patch.fy !== undefined) existing.y = H * patch.fy;
+            } else if (existing.type === 'text') {
+                if (patch.fx !== undefined) existing.x = W * patch.fx;
+                if (patch.fy !== undefined) existing.y = H * patch.fy;
             }
             continue;
         }
 
         if (patch.type === 'text' && patch.text) {
             const sizePx = Math.max(10, Math.round(W * (patch.sizeFrac || 0.035)));
+            const text = String(patch.text);
             plan.layers.push({
-                id: patch.id, type: 'text', text: patch.text,
+                id: patch.id, type: 'text', text,
                 visible: patch.visible !== false,
                 timing: patch.timing || null,
                 font: `${patch.weight || 600} ${sizePx}px ${FONT_STACK}`,
+                sizePx,
                 color: themeColor(patch.color, theme.text),
                 align: patch.align || 'center',
                 baseline: patch.baseline || 'top',
                 x: W * (patch.fx ?? 0.5),
                 y: H * (patch.fy ?? 0.1),
+                bg: !!patch.bg,
+                anim: patch.anim || 'none',
+                rtl: patch.direction === 'rtl'
+                    || (patch.direction !== 'ltr' && /[֐-ࣿﭐ-﷿ﹰ-ﻼ]/.test(text)),
+                // The source fractions ride along so an editor can round-trip
+                // the layer without re-deriving them from pixels.
+                fx: patch.fx ?? 0.5, fy: patch.fy ?? 0.1,
+                sizeFrac: patch.sizeFrac || 0.035,
+                weight: patch.weight || 600,
+                colorToken: patch.color || 'text',
+                direction: patch.direction || 'auto',
             });
             continue;
         }
@@ -570,7 +602,13 @@ function drawImageLayer(ctx, plan, entry, index, p, alpha, stageRect) {
         const c = coverRect(entry.width, entry.height, W, H);
         const w = c.w * kb.zoom;
         const h = c.h * kb.zoom;
-        ctx.drawImage(img, (W - w) / 2 + kb.dx * W, (H - h) / 2 + kb.dy * H, w, h);
+        // The focal point (0..1 of the source image) is what the crop keeps in
+        // frame — a product shot is rarely centered. 0.5/0.5 reproduces the
+        // legacy centered crop exactly.
+        const f = entry.focal || { fx: 0.5, fy: 0.5 };
+        const x = Math.min(0, Math.max(W - w, W / 2 - f.fx * w));
+        const y = Math.min(0, Math.max(H - h, H / 2 - f.fy * h));
+        ctx.drawImage(img, x + kb.dx * W, y + kb.dy * H, w, h);
     } else {
         // Blurred, darkened cover behind so an off-aspect photo never leaves a
         // dead letterbox — then the whole photo, uncropped, on top of it.
@@ -644,7 +682,8 @@ function paintCaption(ctx, plan, layer, time) {
 
     ctx.font = `500 ${bodySize}px ${FONT_STACK}`;
     ctx.textBaseline = 'top';
-    ctx.textAlign = 'left';
+    ctx.textAlign = plan.rtl ? 'right' : 'left';
+    if (plan.rtl) ctx.direction = 'rtl';
 
     const posF = revealPosition(lines, n);
     const shownLines = Math.max(1, Math.min(maxVisibleLines, posF + 1));
@@ -678,7 +717,7 @@ function paintCaption(ctx, plan, layer, time) {
     }
 
     const scroll = Math.max(0, posF - (maxVisibleLines - 1)) * lineHeight;
-    const textX = boxX + pad;
+    const textX = plan.rtl ? boxX + boxW - pad : boxX + pad;
     const textTop = boxY + pad - scroll;
 
     ctx.fillStyle = theme.text;
@@ -690,7 +729,10 @@ function paintCaption(ctx, plan, layer, time) {
         if (y > boxY + boxH || y + lineHeight < boxY - lineHeight) continue;
         const slice = plan.text.slice(l.start, Math.min(l.end, n)).replace(/\s+$/, '');
         if (slice) ctx.fillText(slice, textX, y);
-        if (n <= l.end) caret = { x: textX + ctx.measureText(slice).width + Math.round(bodySize * 0.14), y };
+        if (n <= l.end) {
+            const advance = ctx.measureText(slice).width + Math.round(bodySize * 0.14);
+            caret = { x: plan.rtl ? textX - advance - Math.round(bodySize * 0.09) : textX + advance, y };
+        }
     }
 
     if (typing && caret && (time * 2) % 1 < 0.62) {
@@ -712,16 +754,19 @@ function paintTitle(ctx, plan, layer, time) {
     ctx.globalAlpha = a;
     ctx.font = `700 ${plan.titleSize}px ${FONT_STACK}`;
     ctx.textBaseline = 'top';
-    ctx.textAlign = 'left';
+    const titleRtl = plan.rtl;
+    ctx.textAlign = titleRtl ? 'right' : 'left';
+    if (titleRtl) ctx.direction = 'rtl';
     const tLines = layoutLines(ctx, plan.title, W - margin * 2 - pad * 2).slice(0, 3);
     const boxH = tLines.length * Math.round(plan.titleSize * 1.28) + pad * 1.6;
     ctx.fillStyle = theme.scrim;
     roundRect(ctx, margin, margin, W - margin * 2, boxH, Math.round(W * 0.028));
     ctx.fill();
     ctx.fillStyle = theme.text;
+    const titleX = titleRtl ? W - margin - pad : margin + pad;
     tLines.forEach((l, i) => {
         ctx.fillText(plan.title.slice(l.start, l.end).replace(/\s+$/, ''),
-            margin + pad, margin + pad * 0.8 + i * Math.round(plan.titleSize * 1.28));
+            titleX, margin + pad * 0.8 + i * Math.round(plan.titleSize * 1.28));
     });
     ctx.restore();
 }
@@ -743,14 +788,54 @@ function paintImage(ctx, plan, layer) {
     ctx.restore();
 }
 
-// A static text overlay (the footer today). Same compile-time-pixels contract.
-function paintText(ctx, plan, layer) {
+// A text overlay: the compiled footer, and every editor-added text layer.
+// Static layers (no anim/bg/rtl props) paint exactly as the original footer
+// painter did — that identity is load-bearing for the A/B guarantee.
+function paintText(ctx, plan, layer, time) {
+    const winStart = layer.timing ? layer.timing.start : 0;
+    const winEnd = layer.timing ? layer.timing.end : plan.duration;
+    const local = time - winStart;
+
+    // Entry/exit animation, confined to the layer's own window.
+    const RAMP = 0.4;
+    let alpha = 1;
+    let dy = 0;
+    let text = layer.text;
+    if (layer.anim === 'fade' || layer.anim === 'slide-up') {
+        alpha = Math.max(0, Math.min(1, local / RAMP));
+        const out = (winEnd - time) / RAMP;
+        if (out < 1) alpha = Math.min(alpha, Math.max(0, out));
+        if (layer.anim === 'slide-up') dy = (1 - Math.min(1, local / RAMP)) * plan.H * 0.02;
+    } else if (layer.anim === 'type') {
+        const cps = Math.max(8, layer.text.length / 1.2);
+        text = layer.text.slice(0, Math.max(0, Math.floor(local * cps)));
+        if (!text) return;
+    }
+    if (alpha <= 0) return;
+
     ctx.save();
+    ctx.globalAlpha *= alpha;
     ctx.font = layer.font;
     ctx.textAlign = layer.align || 'left';
     ctx.textBaseline = layer.baseline || 'top';
+    if (layer.rtl) ctx.direction = 'rtl';
+
+    if (layer.bg) {
+        // A pill of the theme scrim behind the text, sized off the FULL text so
+        // a type-on reveal doesn't pulse the pill width every frame.
+        const size = layer.sizePx || 24;
+        const w = ctx.measureText(layer.text).width;
+        const padX = Math.round(size * 0.55);
+        const padY = Math.round(size * 0.3);
+        const x0 = layer.align === 'center' ? layer.x - w / 2 : layer.align === 'right' ? layer.x - w : layer.x;
+        const y0 = layer.baseline === 'bottom' ? layer.y - size : layer.baseline === 'middle' ? layer.y - size / 2 : layer.y;
+        ctx.fillStyle = plan.theme.scrim;
+        roundRect(ctx, x0 - padX, y0 - padY + dy, w + padX * 2, size + padY * 2, Math.round(size * 0.6));
+        ctx.fill();
+    }
+
     ctx.fillStyle = layer.color;
-    ctx.fillText(layer.text, layer.x, layer.y);
+    ctx.fillText(text, layer.x, layer.y + dy);
     ctx.restore();
 }
 
@@ -822,15 +907,19 @@ export function compileLayers(plan) {
             y: pos.startsWith('top') ? margin : bottomY,
             w: lw, h: lh,
             opacity: opts.logoOpacity, shadow: true,
+            draggable: true,
         });
     }
 
     if (opts.footer) {
+        const sizePx = Math.round(plan.bodySize * 0.62);
         layers.push({
             id: 'footer', type: 'text', text: opts.footer,
-            font: `600 ${Math.round(plan.bodySize * 0.62)}px ${FONT_STACK}`,
+            font: `600 ${sizePx}px ${FONT_STACK}`,
+            sizePx,
             color: plan.theme.dim, align: 'center', baseline: 'bottom',
             x: W / 2, y: H - Math.round(margin * 0.28),
+            draggable: true,
         });
     }
 
@@ -838,6 +927,46 @@ export function compileLayers(plan) {
     layers.push({ id: 'edges', type: 'edges' });
 
     return layers;
+}
+
+// ── editor support ───────────────────────────────────────────────────────────
+
+/**
+ * The on-canvas rectangle a layer occupies, for selection outlines and
+ * hit-testing. Only movable layer kinds report bounds — the slideshow,
+ * caption and chrome layers are configured from the panel, not dragged.
+ * Text bounds need a ctx for measureText.
+ */
+export function layerBounds(ctx, plan, layer) {
+    if (layer.type === 'image') return { x: layer.x, y: layer.y, w: layer.w, h: layer.h };
+    if (layer.type === 'text') {
+        ctx.save();
+        ctx.font = layer.font;
+        if (layer.rtl) ctx.direction = 'rtl';
+        const w = ctx.measureText(layer.text).width;
+        ctx.restore();
+        const size = layer.sizePx || 24;
+        const x0 = layer.align === 'center' ? layer.x - w / 2 : layer.align === 'right' ? layer.x - w : layer.x;
+        const y0 = layer.baseline === 'bottom' ? layer.y - size : layer.baseline === 'middle' ? layer.y - size / 2 : layer.y;
+        // Padded a little so thin text is still clickable.
+        return { x: x0 - 8, y: y0 - 6, w: w + 16, h: Math.round(size * 1.3) + 8 };
+    }
+    return null;
+}
+
+/**
+ * The topmost movable layer under canvas point (x, y), or null. Iterates the
+ * stack top-down so what LOOKS frontmost is what a click selects.
+ */
+export function hitTestLayers(ctx, plan, x, y) {
+    for (let i = plan.layers.length - 1; i >= 0; i--) {
+        const layer = plan.layers[i];
+        if (layer.visible === false) continue;
+        if (layer.type !== 'text' && layer.type !== 'image') continue;
+        const b = layerBounds(ctx, plan, layer);
+        if (b && x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) return { layer, bounds: b };
+    }
+    return null;
 }
 
 /**

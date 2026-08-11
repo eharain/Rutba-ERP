@@ -26,9 +26,25 @@ import PLATFORMS from "../../components/PlatformBadge";
 import {
     ASPECTS, THEMES, DEFAULTS,
     buildPlan, paintFrame, renderVideo, loadImage, loadImages, releaseImages,
-    loadAudioTrack, setMediaAuth,
+    loadAudioTrack, setMediaAuth, layerBounds, hitTestLayers,
     imageItems, isImageOnly, unsupportedReason, videoFileName,
 } from "../../lib/video-maker";
+
+// Friendly names for the compiled layers in the panel.
+const LAYER_LABELS = {
+    slideshow: "Photos", gradient: "Caption shade", caption: "Caption",
+    title: "Title card", logo: "Logo", footer: "Footer",
+    progress: "Progress bar", edges: "Fade in/out",
+};
+
+// The nine focal-point presets: where a cover crop keeps the subject.
+const FOCAL_PRESETS = [
+    { k: "tl", fx: 0, fy: 0 }, { k: "t", fx: 0.5, fy: 0 }, { k: "tr", fx: 1, fy: 0 },
+    { k: "l", fx: 0, fy: 0.5 }, { k: "c", fx: 0.5, fy: 0.5 }, { k: "r", fx: 1, fy: 0.5 },
+    { k: "bl", fx: 0, fy: 1 }, { k: "b", fx: 0.5, fy: 1 }, { k: "br", fx: 1, fy: 1 },
+];
+
+const urlPath = (u) => { try { return new URL(u, "http://x").pathname; } catch { return u; } };
 
 const SETTINGS_KEY = "rutba-social-video-studio";
 const FETCH_PAGE = 50;
@@ -78,6 +94,25 @@ export default function VideoStudioPage() {
     const [templateId, setTemplateId] = useState(null);
     const [layerPatches, setLayerPatches] = useState(null);
     const [savingTemplate, setSavingTemplate] = useState(false);
+
+    // The editor: which layer is selected (panel + canvas outline + drag), and
+    // the per-image arrangement (order, exclusion, seconds, focal point).
+    const [selectedLayerId, setSelectedLayerId] = useState(null);
+    const [arrangement, setArrangement] = useState(null); // [{path, seconds, excluded, focal}]
+    const dragRef = useRef(null);
+
+    // Layer patches are the single write path for everything the editor does —
+    // they persist to video_settings and templates as-is.
+    const upsertPatch = useCallback((patch) => setLayerPatches((list) => {
+        const arr = [...(list || [])];
+        const i = arr.findIndex((p) => p.id === patch.id);
+        if (i >= 0) arr[i] = { ...arr[i], ...patch }; else arr.push(patch);
+        return arr;
+    }), []);
+    const removePatchLayer = useCallback((id) => setLayerPatches((list) => {
+        const arr = (list || []).filter((p) => p.id !== id);
+        return arr.length ? arr : null;
+    }), []);
 
     const [previewTime, setPreviewTime] = useState(0);
     const [playing, setPlaying] = useState(false);
@@ -374,6 +409,8 @@ export default function VideoStudioPage() {
         setImageErrors([]);
         setPlan(null);
         setBodyOverride(null);
+        setSelectedLayerId(null);
+        setArrangement(null);
         setSelected(post);
         if (!post) return;
 
@@ -392,6 +429,16 @@ export default function VideoStudioPage() {
         setLoadingImages(true);
         try {
             const { images: loaded, failures } = await loadImages(urls);
+            loaded.forEach((e) => { e.path = urlPath(e.url); });
+            // Reconcile any stored arrangement with what actually loaded:
+            // stored rows keep their order and settings, images the post gained
+            // since are appended, images it lost just drop out.
+            const stored = Array.isArray(vs?.options?.imageArrangement) ? vs.options.imageArrangement : [];
+            const have = new Set(loaded.map((e) => e.path));
+            const kept = stored.filter((a) => a && have.has(a.path));
+            const known = new Set(kept.map((a) => a.path));
+            for (const e of loaded) if (!known.has(e.path)) kept.push({ path: e.path, seconds: null, excluded: false, focal: null });
+            setArrangement(kept);
             loadedRef.current = loaded;
             setImages(loaded);
             setImageErrors(failures);
@@ -420,16 +467,66 @@ export default function VideoStudioPage() {
     // ── plan + repaint on any change ────────────────────────
     const captionText = bodyOverride ?? (selected?.body || "");
 
+    // The image strip's output: entries in display order minus exclusions,
+    // focal points attached, and per-image seconds when any image has its own.
+    const arranged = useMemo(() => {
+        if (!images.length) return { images: [], perImageSeconds: null };
+        if (!arrangement) return { images, perImageSeconds: null };
+        const byPath = new Map(images.map((e) => [e.path, e]));
+        const ordered = [];
+        const secs = [];
+        let anySecs = false;
+        for (const a of arrangement) {
+            const e = byPath.get(a.path);
+            if (!e) continue;
+            byPath.delete(a.path);
+            e.focal = a.focal || null;
+            if (a.excluded) continue;
+            ordered.push(e);
+            secs.push(a.seconds || null);
+            if (a.seconds) anySecs = true;
+        }
+        for (const e of byPath.values()) { ordered.push(e); secs.push(null); }
+        return {
+            images: ordered,
+            perImageSeconds: anySecs ? secs.map((s) => s || options.secondsPerImage) : null,
+        };
+    }, [images, arrangement, options.secondsPerImage]);
+
+    // Everything the render needs beyond the base options — also exactly what
+    // gets persisted to video_settings, so the poster reproduces this render.
+    const effectiveOptions = useMemo(() => ({
+        ...options,
+        ...(arranged.perImageSeconds ? { perImageSeconds: arranged.perImageSeconds } : {}),
+        ...(arrangement ? { imageArrangement: arrangement } : {}),
+    }), [options, arranged.perImageSeconds, arrangement]);
+
+    // The selection outline is editor chrome — painted OVER the frame, never
+    // part of it, and never while playing or recording.
+    const drawSelection = useCallback((ctx, p) => {
+        if (!selectedLayerId) return;
+        const layer = p.layers.find((l) => l.id === selectedLayerId);
+        if (!layer || layer.visible === false) return;
+        const b = layerBounds(ctx, p, layer);
+        if (!b) return;
+        ctx.save();
+        ctx.strokeStyle = "#4dabf7";
+        ctx.lineWidth = Math.max(2, Math.round(p.W * 0.003));
+        ctx.setLineDash([12, 8]);
+        ctx.strokeRect(b.x, b.y, b.w, b.h);
+        ctx.restore();
+    }, [selectedLayerId]);
+
     useEffect(() => {
         const canvas = canvasRef.current;
-        if (!canvas || !selected || !images.length) { setPlan(null); return; }
+        if (!canvas || !selected || !arranged.images.length) { setPlan(null); return; }
         const p = buildPlan({
             canvas,
-            images,
+            images: arranged.images,
             title: selected.title,
             body: captionText,
             logo,
-            options,
+            options: effectiveOptions,
             layerPatches,
         });
         setPlan(p);
@@ -438,12 +535,14 @@ export default function VideoStudioPage() {
         // scrub tick would rebuild the whole plan (and re-wrap the text) 60
         // times a second. The scrub effect below repaints on its own.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selected, images, captionText, options, logo, layerPatches]);
+    }, [selected, arranged, captionText, effectiveOptions, logo, layerPatches]);
 
     useEffect(() => {
         if (!plan || playing || rendering) return;
-        paintFrame(canvasRef.current.getContext("2d"), plan, previewTime);
-    }, [previewTime, plan, playing, rendering]);
+        const ctx = canvasRef.current.getContext("2d");
+        paintFrame(ctx, plan, previewTime);
+        drawSelection(ctx, plan);
+    }, [previewTime, plan, playing, rendering, drawSelection]);
 
     // ── preview playback ────────────────────────────────────
     const stopPreview = useCallback(() => {
@@ -471,6 +570,65 @@ export default function VideoStudioPage() {
         };
         previewRaf.current = requestAnimationFrame(step);
     };
+
+    // ── canvas editing (select + drag) ──────────────────────
+    const canvasPoint = (e) => {
+        const c = canvasRef.current;
+        const r = c.getBoundingClientRect();
+        return { x: (e.clientX - r.left) * (c.width / r.width), y: (e.clientY - r.top) * (c.height / r.height) };
+    };
+
+    const onCanvasDown = (e) => {
+        if (!plan || busy || playing) return;
+        const pt = canvasPoint(e);
+        const hit = hitTestLayers(canvasRef.current.getContext("2d"), plan, pt.x, pt.y);
+        setSelectedLayerId(hit ? hit.layer.id : null);
+        if (!hit) return;
+        e.currentTarget.setPointerCapture?.(e.pointerId);
+        dragRef.current = {
+            id: hit.layer.id,
+            startX: pt.x, startY: pt.y,
+            baseFx: hit.layer.x / plan.W,
+            baseFy: hit.layer.y / plan.H,
+        };
+    };
+    const onCanvasMove = (e) => {
+        const d = dragRef.current;
+        if (!d || !plan) return;
+        const pt = canvasPoint(e);
+        // The drag writes FRACTIONS, so the position survives an aspect switch.
+        const fx = Math.min(1, Math.max(0, d.baseFx + (pt.x - d.startX) / plan.W));
+        const fy = Math.min(1, Math.max(0, d.baseFy + (pt.y - d.startY) / plan.H));
+        upsertPatch({ id: d.id, fx: +fx.toFixed(4), fy: +fy.toFixed(4) });
+    };
+    const onCanvasUp = () => { dragRef.current = null; };
+
+    const addTextLayer = () => {
+        const id = "txt-" + Date.now().toString(36);
+        upsertPatch({
+            id, type: "text", text: "New text",
+            fx: 0.5, fy: 0.15, sizeFrac: 0.05,
+            color: "accent", weight: 700, bg: true, anim: "none", align: "center",
+        });
+        setSelectedLayerId(id);
+    };
+
+    // The patch entry behind a selected custom text layer (compiled layers have
+    // no editable patch of their own unless one exists for visibility/position).
+    const selectedTextPatch = (layerPatches || []).find((p) => p.id === selectedLayerId && p.type === "text") || null;
+
+    const updateArrangement = (idx, patch) => setArrangement((arr) => {
+        const next = [...(arr || [])];
+        next[idx] = { ...next[idx], ...patch };
+        return next;
+    });
+    const moveImage = (idx, dir) => setArrangement((arr) => {
+        const next = [...(arr || [])];
+        const j = idx + dir;
+        if (j < 0 || j >= next.length) return arr;
+        [next[idx], next[j]] = [next[j], next[idx]];
+        return next;
+    });
 
     // ── render ──────────────────────────────────────────────
     const doRender = async (thePlan) => {
@@ -545,7 +703,9 @@ export default function VideoStudioPage() {
         // this back to render exactly what the studio previewed.
         const video_settings = {
             template: templateId || null,
-            options: { ...options },
+            // effectiveOptions, not the bare options state: it carries the
+            // image arrangement and per-image seconds the render actually used.
+            options: { ...effectiveOptions },
             layers: layerPatches || [],
             renderedAt: new Date().toISOString(),
         };
@@ -786,7 +946,9 @@ export default function VideoStudioPage() {
                                     <div className="card-body d-flex flex-column align-items-center">
                                         <div className="bg-dark rounded w-100 d-flex justify-content-center" style={{ minHeight: 220 }}>
                                             <canvas ref={canvasRef}
-                                                style={{ width: "auto", height: "auto", maxWidth: "100%", maxHeight: "58vh", display: "block" }} />
+                                                onPointerDown={onCanvasDown} onPointerMove={onCanvasMove}
+                                                onPointerUp={onCanvasUp} onPointerCancel={onCanvasUp}
+                                                style={{ width: "auto", height: "auto", maxWidth: "100%", maxHeight: "58vh", display: "block", touchAction: "none", cursor: "crosshair" }} />
                                         </div>
 
                                         {loadingImages && <div className="mt-3"><span className="spinner-border spinner-border-sm me-2" />Loading images…</div>}
@@ -807,6 +969,43 @@ export default function VideoStudioPage() {
                                                         {fmtSeconds(previewTime)} / {fmtSeconds(plan.duration)}
                                                     </small>
                                                 </div>
+                                            </div>
+                                        )}
+
+                                        {/* ── image strip: order · exclude · seconds · focal ── */}
+                                        {plan && arrangement && arrangement.length > 1 && (
+                                            <div className="w-100 mt-2 d-flex gap-2 overflow-auto pb-1">
+                                                {arrangement.map((a, idx) => {
+                                                    const e = images.find((i) => i.path === a.path);
+                                                    if (!e) return null;
+                                                    return (
+                                                        <div key={a.path} className="text-center flex-shrink-0" style={{ width: 86, opacity: a.excluded ? 0.4 : 1 }}>
+                                                            <img src={e.objectUrl} alt="" style={{ width: 84, height: 60, objectFit: "cover", borderRadius: 4 }} />
+                                                            <div className="d-flex justify-content-center gap-1 mt-1">
+                                                                <button className="btn btn-sm btn-outline-secondary p-0 px-1" style={{ fontSize: 10 }} disabled={busy || idx === 0}
+                                                                    onClick={() => moveImage(idx, -1)} title="Earlier"><i className="fas fa-chevron-left" /></button>
+                                                                <button className="btn btn-sm btn-outline-secondary p-0 px-1" style={{ fontSize: 10 }} disabled={busy}
+                                                                    onClick={() => updateArrangement(idx, { excluded: !a.excluded })} title={a.excluded ? "Include" : "Exclude"}>
+                                                                    <i className={`fas ${a.excluded ? "fa-eye-slash" : "fa-eye"}`} /></button>
+                                                                <select className="form-select form-select-sm p-0 px-1" style={{ fontSize: 10, width: 34, height: 22 }} disabled={busy}
+                                                                    title="Focal point — what a cropped fit keeps in frame"
+                                                                    value={a.focal ? FOCAL_PRESETS.find((f) => f.fx === a.focal.fx && f.fy === a.focal.fy)?.k || "c" : "c"}
+                                                                    onChange={(ev) => {
+                                                                        const f = FOCAL_PRESETS.find((x) => x.k === ev.target.value);
+                                                                        updateArrangement(idx, { focal: f && f.k !== "c" ? { fx: f.fx, fy: f.fy } : null });
+                                                                    }}>
+                                                                    {FOCAL_PRESETS.map((f) => <option key={f.k} value={f.k}>{f.k}</option>)}
+                                                                </select>
+                                                                <button className="btn btn-sm btn-outline-secondary p-0 px-1" style={{ fontSize: 10 }} disabled={busy || idx === arrangement.length - 1}
+                                                                    onClick={() => moveImage(idx, 1)} title="Later"><i className="fas fa-chevron-right" /></button>
+                                                            </div>
+                                                            <input type="number" className="form-control form-control-sm mt-1 p-0 text-center" style={{ fontSize: 10, height: 20 }}
+                                                                min={0.5} max={20} step={0.5} placeholder={`${options.secondsPerImage}s`} disabled={busy || a.excluded}
+                                                                value={a.seconds ?? ""} title="Seconds for this image (blank = default)"
+                                                                onChange={(ev) => updateArrangement(idx, { seconds: ev.target.value === "" ? null : Math.max(0.5, Number(ev.target.value)) })} />
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
                                         )}
 
@@ -871,6 +1070,121 @@ export default function VideoStudioPage() {
 
                             {/* ── settings ── */}
                             <div className="col-xl-6">
+                                {/* ── layers ── */}
+                                <div className="card mb-3">
+                                    <div className="card-header py-2 d-flex align-items-center">
+                                        <i className="fas fa-layer-group me-2" />Layers
+                                        <button className="btn btn-sm btn-link ms-auto p-0" onClick={addTextLayer} disabled={busy || !plan}>
+                                            <i className="fas fa-plus me-1" />Add text
+                                        </button>
+                                    </div>
+                                    <div className="card-body py-2">
+                                        {!plan && <p className="text-muted small mb-0">Pick a post to see its layers.</p>}
+                                        {plan && (
+                                            <div className="list-group list-group-flush">
+                                                {[...plan.layers].reverse().map((l) => {
+                                                    const isCustom = (layerPatches || []).some((p) => p.id === l.id && p.type === "text");
+                                                    const movable = l.type === "text" || l.type === "image";
+                                                    const sel = selectedLayerId === l.id;
+                                                    return (
+                                                        <div key={l.id}
+                                                            className={`list-group-item d-flex align-items-center gap-2 py-1 px-2 ${sel ? "list-group-item-primary" : ""}`}
+                                                            style={{ cursor: movable ? "pointer" : "default" }}
+                                                            onClick={() => movable && setSelectedLayerId(sel ? null : l.id)}>
+                                                            <button className="btn btn-sm btn-link p-0" title={l.visible === false ? "Show" : "Hide"} disabled={busy}
+                                                                onClick={(ev) => { ev.stopPropagation(); upsertPatch({ id: l.id, visible: l.visible === false }); }}>
+                                                                <i className={`fas ${l.visible === false ? "fa-eye-slash text-muted" : "fa-eye"}`} />
+                                                            </button>
+                                                            <span className={`flex-grow-1 small text-truncate ${l.visible === false ? "text-muted" : ""}`}>
+                                                                {isCustom ? (l.text || "Text") : (LAYER_LABELS[l.id] || LAYER_LABELS[l.type] || l.id)}
+                                                            </span>
+                                                            {movable && <i className="fas fa-up-down-left-right text-muted" style={{ fontSize: 10 }} title="Drag on the preview to move" />}
+                                                            {isCustom && (
+                                                                <button className="btn btn-sm btn-link p-0 text-danger" title="Delete layer" disabled={busy}
+                                                                    onClick={(ev) => { ev.stopPropagation(); removePatchLayer(l.id); if (sel) setSelectedLayerId(null); }}>
+                                                                    <i className="fas fa-trash" style={{ fontSize: 11 }} />
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+
+                                        {/* ── selected text layer editor ── */}
+                                        {selectedTextPatch && (
+                                            <div className="border rounded p-2 mt-2">
+                                                <input className="form-control form-control-sm mb-2" value={selectedTextPatch.text || ""} disabled={busy}
+                                                    onChange={(e) => upsertPatch({ id: selectedTextPatch.id, text: e.target.value })} />
+                                                <div className="row g-1">
+                                                    <div className="col-4">
+                                                        <select className="form-select form-select-sm" value={selectedTextPatch.color || "text"} disabled={busy}
+                                                            title="Color" onChange={(e) => upsertPatch({ id: selectedTextPatch.id, color: e.target.value })}>
+                                                            <option value="text">Theme text</option>
+                                                            <option value="dim">Dimmed</option>
+                                                            <option value="accent">Accent</option>
+                                                            <option value="#ffffff">White</option>
+                                                            <option value="#e03131">Red</option>
+                                                            <option value="#2f9e44">Green</option>
+                                                        </select>
+                                                    </div>
+                                                    <div className="col-4">
+                                                        <select className="form-select form-select-sm" value={selectedTextPatch.weight || 700} disabled={busy}
+                                                            title="Weight" onChange={(e) => upsertPatch({ id: selectedTextPatch.id, weight: Number(e.target.value) })}>
+                                                            <option value={400}>Regular</option>
+                                                            <option value={600}>Semibold</option>
+                                                            <option value={700}>Bold</option>
+                                                            <option value={800}>Heavy</option>
+                                                        </select>
+                                                    </div>
+                                                    <div className="col-4">
+                                                        <select className="form-select form-select-sm" value={selectedTextPatch.anim || "none"} disabled={busy}
+                                                            title="Animation" onChange={(e) => upsertPatch({ id: selectedTextPatch.id, anim: e.target.value })}>
+                                                            <option value="none">Static</option>
+                                                            <option value="fade">Fade</option>
+                                                            <option value="slide-up">Slide up</option>
+                                                            <option value="type">Type on</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <RangeRow label="Size" value={selectedTextPatch.sizeFrac || 0.05} min={0.02} max={0.14} step={0.005}
+                                                    suffix="× width" disabled={busy} onChange={(v) => upsertPatch({ id: selectedTextPatch.id, sizeFrac: v })} />
+                                                <div className="d-flex flex-wrap align-items-center gap-3">
+                                                    <div className="form-check form-switch mb-0">
+                                                        <input className="form-check-input" type="checkbox" id="tl-bg" checked={selectedTextPatch.bg !== false && !!selectedTextPatch.bg} disabled={busy}
+                                                            onChange={(e) => upsertPatch({ id: selectedTextPatch.id, bg: e.target.checked })} />
+                                                        <label className="form-check-label small" htmlFor="tl-bg">Pill background</label>
+                                                    </div>
+                                                    <div className="d-flex align-items-center gap-1">
+                                                        <span className="small text-muted">Show</span>
+                                                        <input type="number" className="form-control form-control-sm" style={{ width: 64 }} min={0} step={0.5} disabled={busy}
+                                                            placeholder="start" value={selectedTextPatch.timing?.start ?? ""}
+                                                            onChange={(e) => {
+                                                                const start = e.target.value === "" ? null : Number(e.target.value);
+                                                                const end = selectedTextPatch.timing?.end;
+                                                                upsertPatch({ id: selectedTextPatch.id, timing: start === null || end === undefined ? (start === null ? null : { start, end: start + 3 }) : { start, end } });
+                                                            }} />
+                                                        <span className="small text-muted">to</span>
+                                                        <input type="number" className="form-control form-control-sm" style={{ width: 64 }} min={0} step={0.5} disabled={busy}
+                                                            placeholder="end" value={selectedTextPatch.timing?.end ?? ""}
+                                                            onChange={(e) => {
+                                                                const end = e.target.value === "" ? null : Number(e.target.value);
+                                                                const start = selectedTextPatch.timing?.start ?? 0;
+                                                                upsertPatch({ id: selectedTextPatch.id, timing: end === null ? null : { start, end } });
+                                                            }} />
+                                                        <span className="small text-muted">s (blank = whole video)</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {plan && !selectedTextPatch && (
+                                            <p className="text-muted mb-0 mt-2" style={{ fontSize: 11 }}>
+                                                Click a layer above (or on the preview) to select it; drag text and the logo directly on the preview.
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+
                                 <div className="card mb-3">
                                     <div className="card-header py-2 d-flex align-items-center">
                                         <i className="fas fa-sliders me-2" />Look
