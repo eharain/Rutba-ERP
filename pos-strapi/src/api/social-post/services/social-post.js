@@ -135,7 +135,16 @@ module.exports = createCoreService(POST_UID, ({ strapi }) => ({
   // ── publish ────────────────────────────────────────────────────────────────
 
   async publishToProviders(documentId) {
-    const post = await this._loadPost(documentId, 'draft');
+    // What goes out is the PUBLISHED version, never the draft. Publish first
+    // (draft → published) so the CMS-live copy and the content the adapters
+    // push are the same bytes — then every reader of this post (the adapters
+    // now, the desktop poster later) sees one version.
+    try {
+      await strapi.documents(POST_UID).publish({ documentId });
+    } catch (e) {
+      throw new Error(`Post not found or could not be published: ${this._msg(e)}`);
+    }
+    const post = await this._loadPost(documentId, 'published');
     if (!post) throw new Error('Post not found');
 
     const { targets, missing } = this._resolveTargets(post);
@@ -230,21 +239,24 @@ module.exports = createCoreService(POST_UID, ({ strapi }) => ({
       : browserPending > 0 ? 'publishing'
       : 'failed';
 
-    await strapi.documents(POST_UID).update({
-      documentId,
-      data: {
-        platform_results: results,
-        post_status,
-        published_at_social: successes > 0 ? new Date().toISOString() : post.published_at_social || null,
-      },
-    });
+    const published_at_social = successes > 0 ? new Date().toISOString() : post.published_at_social || null;
+    const outcome = { platform_results: results, post_status, published_at_social };
 
-    // Mirror to the published entry so the post is "live" in CMS too. A browser
-    // handoff needs this as much as an API success — the desktop poster only
-    // sees published entries.
-    if (successes > 0 || browserPending > 0) {
-      try { await strapi.documents(POST_UID).publish({ documentId }); }
-      catch (e) { strapi.log.warn(`[social] CMS publish after social publish failed: ${e.message}`); }
+    await strapi.documents(POST_UID).update({ documentId, data: outcome });
+
+    // Mirror the outcome onto the published row directly — no publish() here:
+    // the entry was published BEFORE the push, and a second publish would leak
+    // any draft edits made while the adapters ran. Row-level, like
+    // recordBrowserResult, so the desktop poster sees the pending handoffs and
+    // results on the copy it reads.
+    try {
+      const pubRow = await strapi.db.query(POST_UID).findOne({
+        where: { documentId, publishedAt: { $notNull: true } },
+        select: ['id'],
+      });
+      if (pubRow) await strapi.db.query(POST_UID).update({ where: { id: pubRow.id }, data: outcome });
+    } catch (e) {
+      strapi.log.warn(`[social] result mirror to published row failed: ${e.message}`);
     }
 
     return { post_status, successes, attempted, failures, browser_pending: browserPending, platform_results: results };
@@ -583,7 +595,12 @@ module.exports = createCoreService(POST_UID, ({ strapi }) => ({
       select: ['documentId', 'id'],
       limit: 25,
     });
+    // db.query sees draft AND published rows — the same document can match
+    // twice, and pushing it twice would double-post on every API platform.
+    const seen = new Set();
     for (const p of due) {
+      if (seen.has(p.documentId)) continue;
+      seen.add(p.documentId);
       try {
         strapi.log.info(`[social] cron publishing scheduled post ${p.documentId}`);
         await this.publishToProviders(p.documentId);
@@ -591,7 +608,7 @@ module.exports = createCoreService(POST_UID, ({ strapi }) => ({
         strapi.log.warn(`[social] cron publish ${p.documentId} failed: ${this._msg(e)}`);
       }
     }
-    return { published: due.length };
+    return { published: seen.size };
   },
 
   async syncRepliesForAllPublished() {
