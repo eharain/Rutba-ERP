@@ -25,6 +25,7 @@ import {
     SiteSettingEndpoints, SocialAudioTracksEndpoints, SocialVideoTemplatesEndpoints,
 } from "@rutba/api-provider/endpoints";
 import { useToast } from "../../components/Toast";
+import VideoTimeline from "../../components/VideoTimeline";
 import { resolveStorefrontBaseUrl, productShortUrl } from "../../lib/storefront-url";
 import {
     ASPECTS, THEMES, DEFAULTS,
@@ -725,6 +726,50 @@ export default function VideoStudioPage() {
 
     const selectedQrPatch = (layerPatches || []).find((p) => p.id === selectedLayerId && p.type === "qr") || null;
 
+    // Layers that exist because a patch appended them — the ones delete can
+    // actually remove (compiled layers are hidden with the eye instead).
+    const appendedIds = useMemo(
+        () => new Set((layerPatches || []).filter((p) => p.type).map((p) => p.id)),
+        [layerPatches],
+    );
+
+    // Duplicate a lane: the layer's full record under a new id, nudged later
+    // on the clock, selected so the copy is what the next edit touches.
+    const duplicateLayer = (l) => {
+        if (!plan) return;
+        const newId = `${l.type}-${Date.now().toString(36)}`;
+        const dur = plan.duration;
+        const w = l.timing || { start: 0, end: dur };
+        const len = Math.min(w.end - w.start, dur);
+        const start = Math.min(Math.max(0, w.start + Math.max(1, Math.min(len, 2))), Math.max(0, dur - Math.max(0.5, len)));
+        const timing = { start: +start.toFixed(3), end: +Math.min(dur, start + len).toFixed(3) };
+
+        const srcPatch = (layerPatches || []).find((p) => p.id === l.id && p.type);
+        let patch = null;
+        if (srcPatch) patch = { ...srcPatch, id: newId, timing };
+        else if (l.type === "photo") patch = { id: newId, type: "photo", index: l.index, kbIndex: l.kbIndex ?? l.index, timing };
+        else if (l.type === "image") patch = {
+            id: newId, type: "image", src: "logo",
+            fx: +Math.min(0.9, (l.x / plan.W) + 0.04).toFixed(4), fy: +Math.min(0.9, (l.y / plan.H) + 0.04).toFixed(4),
+            fw: +(l.w / plan.W).toFixed(4), opacity: l.opacity, timing,
+        };
+        else if (l.type === "caption") patch = { id: newId, type: "caption", timing };
+        else if (l.type === "text") patch = {
+            id: newId, type: "text", text: l.text,
+            fx: 0.5, fy: +Math.max(0.04, (l.y / plan.H) - 0.06).toFixed(4),
+            sizeFrac: +((l.sizePx || 24) / plan.W).toFixed(4),
+            align: l.align || "center", baseline: l.baseline || "top",
+            color: l.colorToken || "text", weight: l.weight || 600, timing,
+        };
+        else if (l.type === "sound") patch = {
+            id: newId, type: "sound", trackId: l.trackId, url: l.url,
+            offset: l.offset, volume: l.volume, loop: l.loop, timing,
+        };
+        if (!patch) return;
+        upsertPatch(patch);
+        setSelectedLayerId(newId);
+    };
+
     // ── render ──────────────────────────────────────────────
     const doRender = async (thePlan) => {
         stopPreview();
@@ -1042,6 +1087,20 @@ export default function VideoStudioPage() {
                                                         {fmtSeconds(previewTime)} / {fmtSeconds(plan.duration)}
                                                     </small>
                                                 </div>
+
+                                                {/* ── the timeline: every layer is a lane ── */}
+                                                <VideoTimeline
+                                                    plan={plan}
+                                                    previewTime={previewTime}
+                                                    busy={busy}
+                                                    selectedLayerId={selectedLayerId}
+                                                    appendedIds={appendedIds}
+                                                    onSelect={setSelectedLayerId}
+                                                    onScrub={(t) => { stopPreview(); setPreviewTime(t); }}
+                                                    onPatch={upsertPatch}
+                                                    onRemove={(id) => { removePatchLayer(id); if (selectedLayerId === id) setSelectedLayerId(null); }}
+                                                    onDuplicate={duplicateLayer}
+                                                />
                                             </div>
                                         )}
 
