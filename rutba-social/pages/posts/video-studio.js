@@ -35,13 +35,6 @@ import {
     imageItems, isImageOnly, unsupportedReason, videoFileName,
 } from "../../lib/video-maker";
 
-// Friendly names for the compiled layers in the panel.
-const LAYER_LABELS = {
-    slideshow: "Photos", gradient: "Caption shade", caption: "Caption",
-    title: "Title card", logo: "Logo", footer: "Footer", qr: "QR code",
-    outro: "Outro card", progress: "Progress bar", edges: "Fade in/out",
-};
-
 // "Rs 3,999" — whole rupees stay whole; anything else keeps two decimals.
 const fmtRs = (n) => {
     const v = Number(n);
@@ -725,6 +718,33 @@ export default function VideoStudioPage() {
     };
 
     const selectedQrPatch = (layerPatches || []).find((p) => p.id === selectedLayerId && p.type === "qr") || null;
+    const selectedSoundPatch = (layerPatches || []).find((p) => p.id === selectedLayerId && p.type === "sound") || null;
+    const selectedLayer = plan && selectedLayerId ? plan.layers.find((l) => l.id === selectedLayerId) || null : null;
+
+    // plan.images holds the INCLUDED photos in arrangement order, so photo
+    // layer N is the N-th non-excluded arrangement entry.
+    const arrangementIndexForPhoto = (photoIndex) => {
+        let n = -1;
+        for (let i = 0; i < (arrangement || []).length; i++) {
+            if (!arrangement[i].excluded) { n++; if (n === photoIndex) return i; }
+        }
+        return -1;
+    };
+
+    // A sound layer, placed on the timeline like everything else. It starts on
+    // the first track in rotation; the inspector is where the track changes.
+    const addSoundLayer = () => {
+        if (!plan || !tracks.length) return;
+        const id = "sound-" + Date.now().toString(36);
+        const t = tracks[0];
+        upsertPatch({
+            id, type: "sound", trackId: t.documentId, name: t.name || "Sound",
+            timing: { start: 0, end: +Math.min(plan.duration, 8).toFixed(3) },
+            enter: { kind: "fade", seconds: 0.4 },
+            exit: { kind: "fade", seconds: 0.6 },
+        });
+        setSelectedLayerId(id);
+    };
 
     // Layers that exist because a patch appended them — the ones delete can
     // actually remove (compiled layers are hidden with the eye instead).
@@ -1067,7 +1087,7 @@ export default function VideoStudioPage() {
                                             <canvas ref={canvasRef}
                                                 onPointerDown={onCanvasDown} onPointerMove={onCanvasMove}
                                                 onPointerUp={onCanvasUp} onPointerCancel={onCanvasUp}
-                                                style={{ width: "auto", height: "auto", maxWidth: "100%", maxHeight: "74vh", display: "block", touchAction: "none", cursor: "crosshair" }} />
+                                                style={{ width: "auto", height: "auto", maxWidth: "100%", maxHeight: "52vh", display: "block", touchAction: "none", cursor: "crosshair" }} />
                                         </div>
 
                                         {loadingImages && <div className="mt-3"><span className="spinner-border spinner-border-sm me-2" />Loading images…</div>}
@@ -1088,6 +1108,38 @@ export default function VideoStudioPage() {
                                                     </small>
                                                 </div>
 
+                                                {/* ── add layers: text, commerce, sound ── */}
+                                                <div className="d-flex flex-wrap gap-1 mt-2">
+                                                    <button className="btn btn-sm btn-outline-primary py-0" onClick={addTextLayer} disabled={busy}>
+                                                        <i className="fas fa-font me-1" />Text
+                                                    </button>
+                                                    <button className="btn btn-sm btn-outline-primary py-0" disabled={busy || !tracks.length}
+                                                        title={tracks.length ? "Add a sound layer — placed on the timeline like everything else" : "No tracks in rotation — add some on /audio"}
+                                                        onClick={addSoundLayer}>
+                                                        <i className="fas fa-music me-1" />Sound
+                                                    </button>
+                                                    <span className="vr mx-1" />
+                                                    <button className="btn btn-sm btn-outline-warning py-0" disabled={busy || !productContext?.price}
+                                                        title={productContext?.price ? `Adds a chip showing ${productContext.price} — kept fresh at render time` : "Link a product to the post first"}
+                                                        onClick={() => addCommerceLayer("price")}>
+                                                        <i className="fas fa-tag me-1" />Price
+                                                    </button>
+                                                    <button className="btn btn-sm btn-outline-warning py-0" disabled={busy || !productContext?.discount}
+                                                        title={productContext?.discount ? `Adds "${productContext.discount} OFF"` : "Needs a product on sale (offer price below selling price)"}
+                                                        onClick={() => addCommerceLayer("discount")}>
+                                                        <i className="fas fa-percent me-1" />Discount
+                                                    </button>
+                                                    <button className="btn btn-sm btn-outline-warning py-0" disabled={busy || !productContext?.url}
+                                                        title={productContext?.url ? `QR to ${productContext.url}` : "Link a product to the post first"}
+                                                        onClick={() => addCommerceLayer("qr")}>
+                                                        <i className="fas fa-qrcode me-1" />QR
+                                                    </button>
+                                                    <button className="btn btn-sm btn-outline-secondary py-0" disabled={busy}
+                                                        onClick={() => addCommerceLayer("newSticker")}>NEW</button>
+                                                    <button className="btn btn-sm btn-outline-secondary py-0" disabled={busy}
+                                                        onClick={() => addCommerceLayer("saleSticker")}>SALE</button>
+                                                </div>
+
                                                 {/* ── the timeline: every layer is a lane ── */}
                                                 <VideoTimeline
                                                     plan={plan}
@@ -1101,43 +1153,6 @@ export default function VideoStudioPage() {
                                                     onRemove={(id) => { removePatchLayer(id); if (selectedLayerId === id) setSelectedLayerId(null); }}
                                                     onDuplicate={duplicateLayer}
                                                 />
-                                            </div>
-                                        )}
-
-                                        {/* ── image strip: order · exclude · seconds · focal ── */}
-                                        {plan && arrangement && arrangement.length > 1 && (
-                                            <div className="w-100 mt-2 d-flex gap-2 overflow-auto pb-1">
-                                                {arrangement.map((a, idx) => {
-                                                    const e = images.find((i) => i.path === a.path);
-                                                    if (!e) return null;
-                                                    return (
-                                                        <div key={a.path} className="text-center flex-shrink-0" style={{ width: 86, opacity: a.excluded ? 0.4 : 1 }}>
-                                                            <img src={e.objectUrl} alt="" style={{ width: 84, height: 60, objectFit: "cover", borderRadius: 4 }} />
-                                                            <div className="d-flex justify-content-center gap-1 mt-1">
-                                                                <button className="btn btn-sm btn-outline-secondary p-0 px-1" style={{ fontSize: 10 }} disabled={busy || idx === 0}
-                                                                    onClick={() => moveImage(idx, -1)} title="Earlier"><i className="fas fa-chevron-left" /></button>
-                                                                <button className="btn btn-sm btn-outline-secondary p-0 px-1" style={{ fontSize: 10 }} disabled={busy}
-                                                                    onClick={() => updateArrangement(idx, { excluded: !a.excluded })} title={a.excluded ? "Include" : "Exclude"}>
-                                                                    <i className={`fas ${a.excluded ? "fa-eye-slash" : "fa-eye"}`} /></button>
-                                                                <select className="form-select form-select-sm p-0 px-1" style={{ fontSize: 10, width: 34, height: 22 }} disabled={busy}
-                                                                    title="Focal point — what a cropped fit keeps in frame"
-                                                                    value={a.focal ? FOCAL_PRESETS.find((f) => f.fx === a.focal.fx && f.fy === a.focal.fy)?.k || "c" : "c"}
-                                                                    onChange={(ev) => {
-                                                                        const f = FOCAL_PRESETS.find((x) => x.k === ev.target.value);
-                                                                        updateArrangement(idx, { focal: f && f.k !== "c" ? { fx: f.fx, fy: f.fy } : null });
-                                                                    }}>
-                                                                    {FOCAL_PRESETS.map((f) => <option key={f.k} value={f.k}>{f.k}</option>)}
-                                                                </select>
-                                                                <button className="btn btn-sm btn-outline-secondary p-0 px-1" style={{ fontSize: 10 }} disabled={busy || idx === arrangement.length - 1}
-                                                                    onClick={() => moveImage(idx, 1)} title="Later"><i className="fas fa-chevron-right" /></button>
-                                                            </div>
-                                                            <input type="number" className="form-control form-control-sm mt-1 p-0 text-center" style={{ fontSize: 10, height: 20 }}
-                                                                min={0.5} max={20} step={0.5} placeholder={`${options.secondsPerImage}s`} disabled={busy || a.excluded}
-                                                                value={a.seconds ?? ""} title="Seconds for this image (blank = default)"
-                                                                onChange={(ev) => updateArrangement(idx, { seconds: ev.target.value === "" ? null : Math.max(0.5, Number(ev.target.value)) })} />
-                                                        </div>
-                                                    );
-                                                })}
                                             </div>
                                         )}
 
@@ -1200,75 +1215,189 @@ export default function VideoStudioPage() {
                                 </div>
                             </div>
 
-                        {/* ── settings rail ── */}
-                        <div className="flex-shrink-0" style={{ width: 400 }}>
+                        {/* ── the inspector: the SELECTED layer's properties, or the video's ── */}
+                        <div className="flex-shrink-0" style={{ width: 340 }}>
                             <div style={{ maxHeight: "calc(100vh - 140px)", overflowY: "auto", paddingRight: 4 }}>
-                                {/* ── layers ── */}
+                                <audio ref={trackAudioRef} className="d-none" onEnded={() => setPreviewingId(null)} />
+
+                                {/* ── selected-layer inspector ── */}
+                                {selectedLayer && (
                                 <div className="card mb-3">
-                                    <div className="card-header py-2 d-flex align-items-center">
-                                        <i className="fas fa-layer-group me-2" />Layers
-                                        <button className="btn btn-sm btn-link ms-auto p-0" onClick={addTextLayer} disabled={busy || !plan}>
-                                            <i className="fas fa-plus me-1" />Add text
+                                    <div className="card-header py-2 d-flex align-items-center gap-2">
+                                        <i className="fas fa-layer-group" />
+                                        <strong className="text-truncate">{selectedLayer.name || selectedLayer.text || selectedLayer.id}</strong>
+                                        {selectedLayer.timing && (
+                                            <span className="badge bg-secondary">{selectedLayer.timing.start.toFixed(1)}–{selectedLayer.timing.end.toFixed(1)}s</span>
+                                        )}
+                                        <button className="btn btn-sm btn-link ms-auto p-0" title="Back to the video's properties"
+                                            onClick={() => setSelectedLayerId(null)}>
+                                            <i className="fas fa-xmark" />
                                         </button>
                                     </div>
                                     <div className="card-body py-2">
-                                        {!plan && <p className="text-muted small mb-0">Pick a post to see its layers.</p>}
+                                        {/* ── photo: order · exclude · focal · seconds (the old image strip) ── */}
+                                        {selectedLayer.type === "photo" && (() => {
+                                            if (appendedIds.has(selectedLayer.id)) {
+                                                return <p className="text-muted small mb-0">A duplicated photo — place and trim it on its lane. Its look follows the original.</p>;
+                                            }
+                                            const ai = arrangementIndexForPhoto(selectedLayer.index);
+                                            const a = ai >= 0 ? arrangement?.[ai] : null;
+                                            const e = a ? images.find((i) => i.path === a.path) : null;
+                                            if (!a) return <p className="text-muted small mb-0">Retime this photo on its lane.</p>;
+                                            return (
+                                                <>
+                                                    <div className="d-flex align-items-center gap-2 mb-2">
+                                                        {e && <img src={e.objectUrl} alt="" style={{ width: 84, height: 60, objectFit: "cover", borderRadius: 4 }} />}
+                                                        <div className="btn-group btn-group-sm">
+                                                            <button className="btn btn-outline-secondary" disabled={busy || ai === 0}
+                                                                onClick={() => moveImage(ai, -1)} title="Earlier"><i className="fas fa-chevron-left" /></button>
+                                                            <button className="btn btn-outline-secondary" disabled={busy || ai === (arrangement?.length || 1) - 1}
+                                                                onClick={() => moveImage(ai, 1)} title="Later"><i className="fas fa-chevron-right" /></button>
+                                                        </div>
+                                                        <button className="btn btn-sm btn-outline-secondary" disabled={busy}
+                                                            onClick={() => { updateArrangement(ai, { excluded: true }); setSelectedLayerId(null); }}
+                                                            title="Take this photo out of the video (re-include it from the video properties)">
+                                                            <i className="fas fa-eye-slash" />
+                                                        </button>
+                                                    </div>
+                                                    <div className="row g-2 mb-2">
+                                                        <div className="col-6">
+                                                            <label className="form-label small mb-1">Focal point</label>
+                                                            <select className="form-select form-select-sm" disabled={busy}
+                                                                title="What a cropped fit keeps in frame"
+                                                                value={a.focal ? FOCAL_PRESETS.find((f) => f.fx === a.focal.fx && f.fy === a.focal.fy)?.k || "c" : "c"}
+                                                                onChange={(ev) => {
+                                                                    const f = FOCAL_PRESETS.find((x) => x.k === ev.target.value);
+                                                                    updateArrangement(ai, { focal: f && f.k !== "c" ? { fx: f.fx, fy: f.fy } : null });
+                                                                }}>
+                                                                {FOCAL_PRESETS.map((f) => <option key={f.k} value={f.k}>{f.k}</option>)}
+                                                            </select>
+                                                        </div>
+                                                        <div className="col-6">
+                                                            <label className="form-label small mb-1">Seconds</label>
+                                                            <input type="number" className="form-control form-control-sm" min={0.5} max={20} step={0.5}
+                                                                placeholder={`${options.secondsPerImage}s`} disabled={busy}
+                                                                value={a.seconds ?? ""} title="Seconds for this image (blank = default)"
+                                                                onChange={(ev) => updateArrangement(ai, { seconds: ev.target.value === "" ? null : Math.max(0.5, Number(ev.target.value)) })} />
+                                                        </div>
+                                                    </div>
+                                                    <p className="text-muted mb-0" style={{ fontSize: 11 }}>
+                                                        Order and seconds reflow every photo's slot; dragging the bar on the lane retimes just this one.
+                                                    </p>
+                                                </>
+                                            );
+                                        })()}
 
-                                        {/* commerce quick-adds — tokened layers off the linked product */}
-                                        {plan && (
-                                            <div className="d-flex flex-wrap gap-1 mb-2">
-                                                <button className="btn btn-sm btn-outline-warning py-0" disabled={busy || !productContext?.price}
-                                                    title={productContext?.price ? `Adds a chip showing ${productContext.price} — kept fresh at render time` : "Link a product to the post first"}
-                                                    onClick={() => addCommerceLayer("price")}>
-                                                    <i className="fas fa-tag me-1" />Price
-                                                </button>
-                                                <button className="btn btn-sm btn-outline-warning py-0" disabled={busy || !productContext?.discount}
-                                                    title={productContext?.discount ? `Adds "${productContext.discount} OFF"` : "Needs a product on sale (offer price below selling price)"}
-                                                    onClick={() => addCommerceLayer("discount")}>
-                                                    <i className="fas fa-percent me-1" />Discount
-                                                </button>
-                                                <button className="btn btn-sm btn-outline-warning py-0" disabled={busy || !productContext?.url}
-                                                    title={productContext?.url ? `QR to ${productContext.url}` : "Link a product to the post first"}
-                                                    onClick={() => addCommerceLayer("qr")}>
-                                                    <i className="fas fa-qrcode me-1" />QR
-                                                </button>
-                                                <button className="btn btn-sm btn-outline-secondary py-0" disabled={busy}
-                                                    onClick={() => addCommerceLayer("newSticker")}>NEW</button>
-                                                <button className="btn btn-sm btn-outline-secondary py-0" disabled={busy}
-                                                    onClick={() => addCommerceLayer("saleSticker")}>SALE</button>
-                                            </div>
+                                        {/* ── caption: the post's text (compiled), or the copy's own ── */}
+                                        {selectedLayer.type === "caption" && selectedLayer.id === "caption" && (
+                                            <>
+                                                <textarea className="form-control form-control-sm" rows={5} disabled={busy}
+                                                    value={captionText} onChange={(e) => setBodyOverride(e.target.value)} />
+                                                <div className="d-flex justify-content-between mt-1">
+                                                    <small className="text-muted">{captionText.length} characters — the video only, not the post.</small>
+                                                    {bodyOverride !== null && (
+                                                        <button className="btn btn-sm btn-link p-0" onClick={() => setBodyOverride(null)} disabled={busy}>Reset</button>
+                                                    )}
+                                                </div>
+                                                <Link className="btn btn-sm btn-link p-0" href={`/posts/${selected.documentId}`}>Edit the post →</Link>
+                                            </>
+                                        )}
+                                        {selectedLayer.type === "caption" && selectedLayer.id !== "caption" && (
+                                            <textarea className="form-control form-control-sm" rows={4} disabled={busy}
+                                                value={(layerPatches || []).find((p) => p.id === selectedLayer.id)?.text || ""}
+                                                onChange={(e) => upsertPatch({ id: selectedLayer.id, text: e.target.value })} />
                                         )}
 
-                                        {plan && (
-                                            <div className="list-group list-group-flush">
-                                                {[...plan.layers].reverse().map((l) => {
-                                                    const isCustom = (layerPatches || []).some((p) => p.id === l.id && (p.type === "text" || p.type === "qr"));
-                                                    const movable = l.type === "text" || l.type === "image" || l.type === "qr";
-                                                    const sel = selectedLayerId === l.id;
-                                                    return (
-                                                        <div key={l.id}
-                                                            className={`list-group-item d-flex align-items-center gap-2 py-1 px-2 ${sel ? "list-group-item-primary" : ""}`}
-                                                            style={{ cursor: movable ? "pointer" : "default" }}
-                                                            onClick={() => movable && setSelectedLayerId(sel ? null : l.id)}>
-                                                            <button className="btn btn-sm btn-link p-0" title={l.visible === false ? "Show" : "Hide"} disabled={busy}
-                                                                onClick={(ev) => { ev.stopPropagation(); upsertPatch({ id: l.id, visible: l.visible === false }); }}>
-                                                                <i className={`fas ${l.visible === false ? "fa-eye-slash text-muted" : "fa-eye"}`} />
-                                                            </button>
-                                                            <span className={`flex-grow-1 small text-truncate ${l.visible === false ? "text-muted" : ""}`}>
-                                                                {isCustom ? (l.type === "qr" ? "QR code" : l.text || "Text") : (l.name || LAYER_LABELS[l.id] || LAYER_LABELS[l.type] || l.id)}
-                                                                {l.missingToken && <i className="fas fa-triangle-exclamation text-warning ms-1" title="Uses a {token} with no data — link a product to the post" />}
-                                                            </span>
-                                                            {movable && <i className="fas fa-up-down-left-right text-muted" style={{ fontSize: 10 }} title="Drag on the preview to move" />}
-                                                            {isCustom && (
-                                                                <button className="btn btn-sm btn-link p-0 text-danger" title="Delete layer" disabled={busy}
-                                                                    onClick={(ev) => { ev.stopPropagation(); removePatchLayer(l.id); if (sel) setSelectedLayerId(null); }}>
-                                                                    <i className="fas fa-trash" style={{ fontSize: 11 }} />
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
+                                        {/* ── the brand mark (compiled logo) ── */}
+                                        {selectedLayer.type === "image" && selectedLayer.id === "logo" && (
+                                            <>
+                                                {logoError && <div className="alert alert-warning py-2 small">{logoError}</div>}
+                                                <div className="d-flex align-items-center gap-3 mb-2">
+                                                    {logo && (
+                                                        <img src={logo.objectUrl} alt="Site logo"
+                                                            style={{ width: 64, height: 40, objectFit: "contain", background: "#222", borderRadius: 4, padding: 4 }} />
+                                                    )}
+                                                    <div className="form-check form-switch mb-0">
+                                                        <input className="form-check-input" type="checkbox" id="opt-logo" disabled={busy || !logo}
+                                                            checked={options.showLogo && !!logo}
+                                                            onChange={(e) => setOpt({ showLogo: e.target.checked })} />
+                                                        <label className="form-check-label small" htmlFor="opt-logo">Show on the video</label>
+                                                    </div>
+                                                </div>
+                                                {options.showLogo && logo && (
+                                                    <>
+                                                        <label className="form-label small mb-1">Corner</label>
+                                                        <select className="form-select form-select-sm mb-2" value={options.logoPosition} disabled={busy}
+                                                            onChange={(e) => setOpt({ logoPosition: e.target.value })}>
+                                                            <option value="top-left">Top left</option>
+                                                            <option value="top-right">Top right</option>
+                                                            <option value="bottom-left">Bottom left</option>
+                                                            <option value="bottom-right">Bottom right</option>
+                                                        </select>
+                                                        <RangeRow label="Size" value={options.logoScale} min={0.06} max={0.32} step={0.01}
+                                                            suffix="× width" disabled={busy} onChange={(v) => setOpt({ logoScale: v })} />
+                                                        <RangeRow label="Opacity" value={options.logoOpacity} min={0.2} max={1} step={0.02}
+                                                            suffix="" disabled={busy} onChange={(v) => setOpt({ logoOpacity: v })} />
+                                                        <p className="text-muted mb-0" style={{ fontSize: 11 }}>Drag it on the preview to place it anywhere.</p>
+                                                    </>
+                                                )}
+                                            </>
+                                        )}
+                                        {/* ── an appended image (second logo / watermark) ── */}
+                                        {selectedLayer.type === "image" && selectedLayer.id !== "logo" && (() => {
+                                            const p = (layerPatches || []).find((x) => x.id === selectedLayer.id) || {};
+                                            return (
+                                                <>
+                                                    <RangeRow label="Size" value={p.fw || 0.16} min={0.04} max={0.5} step={0.01}
+                                                        suffix="× width" disabled={busy} onChange={(v) => upsertPatch({ id: selectedLayer.id, fw: v })} />
+                                                    <RangeRow label="Opacity" value={p.opacity ?? 1} min={0.1} max={1} step={0.02}
+                                                        suffix="" disabled={busy} onChange={(v) => upsertPatch({ id: selectedLayer.id, opacity: v })} />
+                                                    <p className="text-muted mb-0" style={{ fontSize: 11 }}>Drag it on the preview to place it.</p>
+                                                </>
+                                            );
+                                        })()}
+
+                                        {/* ── sound layer ── */}
+                                        {selectedSoundPatch && (
+                                            <>
+                                                <label className="form-label small mb-1">Track</label>
+                                                <select className="form-select form-select-sm mb-2" value={selectedSoundPatch.trackId || ""} disabled={busy}
+                                                    onChange={(e) => {
+                                                        const t = tracks.find((x) => String(x.documentId) === e.target.value);
+                                                        upsertPatch({ id: selectedSoundPatch.id, trackId: t?.documentId || null, name: t?.name || "Sound" });
+                                                    }}>
+                                                    {tracks.map((t) => <option key={t.documentId} value={t.documentId}>{t.name}</option>)}
+                                                </select>
+                                                <RangeRow label="Start inside the track" value={selectedSoundPatch.offset || 0} min={0} max={180} step={1}
+                                                    suffix="s" disabled={busy} onChange={(v) => upsertPatch({ id: selectedSoundPatch.id, offset: v })} />
+                                                <RangeRow label="Volume" value={selectedSoundPatch.volume ?? options.audioVolume} min={0} max={1} step={0.05}
+                                                    suffix="" disabled={busy} onChange={(v) => upsertPatch({ id: selectedSoundPatch.id, volume: v })} />
+                                                <RangeRow label="Fade in" value={selectedSoundPatch.enter?.seconds ?? 0} min={0} max={4} step={0.1}
+                                                    suffix="s" disabled={busy} onChange={(v) => upsertPatch({ id: selectedSoundPatch.id, enter: { kind: "fade", seconds: v } })} />
+                                                <RangeRow label="Fade out" value={selectedSoundPatch.exit?.seconds ?? 0} min={0} max={4} step={0.1}
+                                                    suffix="s" disabled={busy} onChange={(v) => upsertPatch({ id: selectedSoundPatch.id, exit: { kind: "fade", seconds: v } })} />
+                                                <p className="text-muted mb-0" style={{ fontSize: 11 }}>
+                                                    Heard in the finished file, not the preview. Place and trim it on its lane; it mixes over the music bed.
+                                                </p>
+                                            </>
+                                        )}
+
+                                        {/* ── the compiled footer line ── */}
+                                        {selectedLayer.type === "text" && !selectedTextPatch && (
+                                            <>
+                                                <label className="form-label small mb-1">Footer line</label>
+                                                <input className="form-control form-control-sm" value={options.footer} disabled={busy}
+                                                    placeholder="rutba.pk" onChange={(e) => setOpt({ footer: e.target.value })} />
+                                                <p className="text-muted mb-0 mt-1" style={{ fontSize: 11 }}>Drag it on the preview to place it.</p>
+                                            </>
+                                        )}
+
+                                        {/* ── chrome layers configure through the video's own properties ── */}
+                                        {["gradient", "title", "outro", "progress", "edges"].includes(selectedLayer.type) && (
+                                            <p className="text-muted mb-0" style={{ fontSize: 11 }}>
+                                                Part of the video's look — its options are in the video properties (press × above).
+                                                Use the lane to retime it, or its eye to hide it.
+                                            </p>
                                         )}
 
                                         {/* ── selected text layer editor ── */}
@@ -1348,14 +1477,16 @@ export default function VideoStudioPage() {
                                                 </p>
                                             </div>
                                         )}
-                                        {plan && !selectedTextPatch && !selectedQrPatch && (
-                                            <p className="text-muted mb-0 mt-2" style={{ fontSize: 11 }}>
-                                                Click a layer above (or on the preview) to select it; drag text and the logo directly on the preview.
-                                            </p>
-                                        )}
                                     </div>
                                 </div>
+                                )}
 
+                                {/* ── video inspector: nothing selected → the video's properties ── */}
+                                {!selectedLayer && (
+                                <>
+                                <p className="text-muted mb-2" style={{ fontSize: 11 }}>
+                                    Click a lane or a layer on the preview to edit that layer; these are the video's own properties.
+                                </p>
                                 <div className="card mb-3">
                                     <div className="card-header py-2 d-flex align-items-center">
                                         <i className="fas fa-sliders me-2" />Look
@@ -1484,45 +1615,27 @@ export default function VideoStudioPage() {
                                     </div>
                                 </div>
 
-                                {/* ── brand mark ── */}
-                                <div className="card mb-3">
-                                    <div className="card-header py-2 d-flex align-items-center">
-                                        <i className="fas fa-copyright me-2" />Logo
-                                        {logo && <span className="badge bg-success ms-2">from site settings</span>}
-                                        {!logo && logoError && <span className="badge bg-warning text-dark ms-2">unavailable</span>}
-                                    </div>
-                                    <div className="card-body">
-                                        {logoError && <div className="alert alert-warning py-2 small">{logoError}</div>}
-                                        <div className="d-flex align-items-center gap-3 mb-2">
-                                            {logo && (
-                                                <img src={logo.objectUrl} alt="Site logo"
-                                                    style={{ width: 64, height: 40, objectFit: "contain", background: "#222", borderRadius: 4, padding: 4 }} />
-                                            )}
-                                            <div className="form-check form-switch mb-0">
-                                                <input className="form-check-input" type="checkbox" id="opt-logo" disabled={busy || !logo}
-                                                    checked={options.showLogo && !!logo}
-                                                    onChange={(e) => setOpt({ showLogo: e.target.checked })} />
-                                                <label className="form-check-label small" htmlFor="opt-logo">Show on the video</label>
-                                            </div>
+                                {/* ── excluded photos, so a hidden one has a way back ── */}
+                                {arrangement?.some((a) => a.excluded) && (
+                                    <div className="card mb-3">
+                                        <div className="card-header py-2"><i className="fas fa-eye-slash me-2" />Excluded photos</div>
+                                        <div className="card-body py-2 d-flex flex-wrap gap-2">
+                                            {arrangement.map((a, ai) => {
+                                                if (!a.excluded) return null;
+                                                const e = images.find((i) => i.path === a.path);
+                                                return (
+                                                    <button key={a.path} className="btn btn-sm btn-outline-secondary p-1" disabled={busy}
+                                                        title="Put this photo back into the video"
+                                                        onClick={() => updateArrangement(ai, { excluded: false })}>
+                                                        {e ? <img src={e.objectUrl} alt="" style={{ width: 56, height: 40, objectFit: "cover", borderRadius: 3 }} />
+                                                            : <i className="fas fa-image" />}
+                                                        <i className="fas fa-rotate-left ms-1" />
+                                                    </button>
+                                                );
+                                            })}
                                         </div>
-                                        {options.showLogo && logo && (
-                                            <>
-                                                <label className="form-label small mb-1">Corner</label>
-                                                <select className="form-select form-select-sm mb-2" value={options.logoPosition} disabled={busy}
-                                                    onChange={(e) => setOpt({ logoPosition: e.target.value })}>
-                                                    <option value="top-left">Top left</option>
-                                                    <option value="top-right">Top right</option>
-                                                    <option value="bottom-left">Bottom left</option>
-                                                    <option value="bottom-right">Bottom right</option>
-                                                </select>
-                                                <RangeRow label="Size" value={options.logoScale} min={0.06} max={0.32} step={0.01}
-                                                    suffix="× width" disabled={busy} onChange={(v) => setOpt({ logoScale: v })} />
-                                                <RangeRow label="Opacity" value={options.logoOpacity} min={0.2} max={1} step={0.02}
-                                                    suffix="" disabled={busy} onChange={(v) => setOpt({ logoOpacity: v })} />
-                                            </>
-                                        )}
                                     </div>
-                                </div>
+                                )}
 
                                 {/* ── music ── */}
                                 <div className="card mb-3">
@@ -1599,11 +1712,11 @@ export default function VideoStudioPage() {
                                                 </div>
                                                 <p className="text-muted small mb-0 mt-2">
                                                     Music is heard in the finished file, not in the preview above — the preview draws
-                                                    frames only.
+                                                    frames only. Extra clips (a voice-over over the bed) are sound layers: the
+                                                    {" "}<strong>Sound</strong> button under the preview adds one as a lane.
                                                 </p>
                                             </>
                                         )}
-                                        <audio ref={trackAudioRef} className="d-none" onEnded={() => setPreviewingId(null)} />
                                     </div>
                                 </div>
 
@@ -1626,27 +1739,11 @@ export default function VideoStudioPage() {
                                             suffix="s" disabled={busy} onChange={(v) => setOpt({ edgeFadeSeconds: v })} />
                                         <p className="text-muted small mb-0">
                                             The video runs for whichever is longer — the images, or the time the caption needs to type out in full.
+                                            The caption itself is a layer — click its lane to edit the text.
                                         </p>
                                     </div>
                                 </div>
-
-                                {selected && (
-                                    <div className="card">
-                                        <div className="card-header py-2 d-flex align-items-center">
-                                            <i className="fas fa-keyboard me-2" />Caption
-                                            <Link className="btn btn-sm btn-link ms-auto p-0" href={`/posts/${selected.documentId}`}>Edit the post →</Link>
-                                        </div>
-                                        <div className="card-body">
-                                            <textarea className="form-control form-control-sm" rows={5} disabled={busy}
-                                                value={captionText} onChange={(e) => setBodyOverride(e.target.value)} />
-                                            <div className="d-flex justify-content-between mt-1">
-                                                <small className="text-muted">{captionText.length} characters — changes here affect the video only, not the post.</small>
-                                                {bodyOverride !== null && (
-                                                    <button className="btn btn-sm btn-link p-0" onClick={() => setBodyOverride(null)} disabled={busy}>Reset</button>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
+                                </>
                                 )}
                             </div>
                         </div>
