@@ -25,6 +25,7 @@ import {
     SiteSettingEndpoints, SocialAudioTracksEndpoints, SocialVideoTemplatesEndpoints,
 } from "@rutba/api-provider/endpoints";
 import { useToast } from "../../components/Toast";
+import useUnsavedGuard from "@rutba/pos-shared/hooks/useUnsavedGuard";
 import VideoTimeline from "../../components/VideoTimeline";
 import { resolveStorefrontBaseUrl, productShortUrl } from "../../lib/storefront-url";
 import {
@@ -105,18 +106,28 @@ export default function VideoStudioPage() {
     const [productContext, setProductContext] = useState(null); // {price, was, discount, product, url}
     const dragRef = useRef(null);
 
+    // Anything that changes what would be SAVED flips this; save/attach/load
+    // clear it. useUnsavedGuard turns it into the app-wide leave prompt.
+    const [dirty, setDirty] = useState(false);
+
     // Layer patches are the single write path for everything the editor does —
     // they persist to video_settings and templates as-is.
-    const upsertPatch = useCallback((patch) => setLayerPatches((list) => {
-        const arr = [...(list || [])];
-        const i = arr.findIndex((p) => p.id === patch.id);
-        if (i >= 0) arr[i] = { ...arr[i], ...patch }; else arr.push(patch);
-        return arr;
-    }), []);
-    const removePatchLayer = useCallback((id) => setLayerPatches((list) => {
-        const arr = (list || []).filter((p) => p.id !== id);
-        return arr.length ? arr : null;
-    }), []);
+    const upsertPatch = useCallback((patch) => {
+        setDirty(true);
+        setLayerPatches((list) => {
+            const arr = [...(list || [])];
+            const i = arr.findIndex((p) => p.id === patch.id);
+            if (i >= 0) arr[i] = { ...arr[i], ...patch }; else arr.push(patch);
+            return arr;
+        });
+    }, []);
+    const removePatchLayer = useCallback((id) => {
+        setDirty(true);
+        setLayerPatches((list) => {
+            const arr = (list || []).filter((p) => p.id !== id);
+            return arr.length ? arr : null;
+        });
+    }, []);
 
     const [previewTime, setPreviewTime] = useState(0);
     const [playing, setPlaying] = useState(false);
@@ -162,7 +173,7 @@ export default function VideoStudioPage() {
         try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(options)); } catch { /* private mode */ }
     }, [options]);
 
-    const setOpt = (patch) => setOptions((o) => ({ ...o, ...patch }));
+    const setOpt = (patch) => { setDirty(true); setOptions((o) => ({ ...o, ...patch })); };
 
     // ── post list ───────────────────────────────────────────
     const loadPosts = useCallback(async () => {
@@ -272,6 +283,7 @@ export default function VideoStudioPage() {
     useEffect(() => { loadTemplates(); }, [loadTemplates]);
 
     const applyTemplate = (t) => {
+        setDirty(true);
         if (!t) { setTemplateId(null); return; }
         setTemplateId(t.documentId);
         setOptions((o) => ({ ...o, ...(t.options || {}), ...(t.aspect ? { aspect: t.aspect } : {}) }));
@@ -481,6 +493,7 @@ export default function VideoStudioPage() {
         setSelectedLayerId(null);
         setArrangement(null);
         setProductContext(null);
+        setDirty(false); // a fresh load IS the saved state
         setSelected(post);
         if (!post) return;
 
@@ -784,12 +797,12 @@ export default function VideoStudioPage() {
     // no editable patch of their own unless one exists for visibility/position).
     const selectedTextPatch = (layerPatches || []).find((p) => p.id === selectedLayerId && p.type === "text") || null;
 
-    const updateArrangement = (idx, patch) => setArrangement((arr) => {
+    const updateArrangement = (idx, patch) => setDirty(true) || setArrangement((arr) => {
         const next = [...(arr || [])];
         next[idx] = { ...next[idx], ...patch };
         return next;
     });
-    const moveImage = (idx, dir) => setArrangement((arr) => {
+    const moveImage = (idx, dir) => setDirty(true) || setArrangement((arr) => {
         const next = [...(arr || [])];
         const j = idx + dir;
         if (j < 0 || j >= next.length) return arr;
@@ -892,6 +905,7 @@ export default function VideoStudioPage() {
             cur += durs[i];
             return { id: `caption-line-${i + 1}`, type: "caption", name: `Line ${i + 1}`, text: s, leadIn: lead, timing };
         });
+        setDirty(true);
         setLayerPatches((list) => [
             ...(list || []).filter((p) => !/^caption-line-/.test(p.id) && p.id !== "caption"),
             { id: "caption", visible: false },
@@ -902,6 +916,7 @@ export default function VideoStudioPage() {
     };
 
     const restoreSingleCaption = () => {
+        setDirty(true);
         setLayerPatches((list) => {
             const arr = (list || []).filter((p) => !/^caption-line-/.test(p.id) && p.id !== "caption");
             return arr.length ? arr : null;
@@ -950,6 +965,10 @@ export default function VideoStudioPage() {
     // Selecting a layer is a statement of intent — front its tab. The user
     // can still flip to Video without losing the selection.
     useEffect(() => { if (selectedLayerId) setRailTab("layer"); }, [selectedLayerId]);
+
+    // The app-wide leave prompt: browser close AND in-app navigation both ask
+    // while the recipe has edits that Save/Attach haven't written.
+    useUnsavedGuard(dirty && !!selected, "The video recipe has unsaved edits — leave anyway? Save (top right) keeps them on the post.");
 
     // Layers that exist because a patch appended them — the ones delete can
     // actually remove (compiled layers are hidden with the eye instead).
@@ -1080,6 +1099,7 @@ export default function VideoStudioPage() {
             // without a refetch.
             setSelected((p) => (p ? { ...p, video_settings } : p));
             setPosts((list) => list.map((p) => (p.documentId === selected.documentId ? { ...p, video_settings } : p)));
+            setDirty(false);
             toast("Recipe saved — this look re-opens with the post.", "success");
         } catch (err) {
             console.error("Failed to save the recipe", err);
@@ -1139,6 +1159,7 @@ export default function VideoStudioPage() {
         try {
             const { ids, republished } = await attachToPost(selected, result, alsoPublish);
             markAttached(selected.documentId, ids);
+            setDirty(false); // attach wrote the full recipe
             setResult((r) => { if (r?.url) URL.revokeObjectURL(r.url); return null; });
             toast(
                 `Attached to “${selected.title}”${republished ? " and re-published" : " — the post stays a draft"}.`,
@@ -1320,11 +1341,13 @@ export default function VideoStudioPage() {
                                             </span>
                                         )}
                                         {/* Save + Render live top-right — always in reach, never below the fold */}
-                                        <button className="btn btn-sm btn-outline-success ms-auto" onClick={saveRecipe}
+                                        <button className={`btn btn-sm ms-auto ${dirty ? "btn-success" : "btn-outline-success"}`} onClick={saveRecipe}
                                             disabled={!plan || busy || savingRecipe}
-                                            title="Persist this recipe to the post WITHOUT rendering — layers, timings, motion, everything. Re-opening the post restores it.">
+                                            title={dirty
+                                                ? "Unsaved edits — persist this recipe to the post (layers, timings, motion, everything)"
+                                                : "The recipe on the post matches what you see"}>
                                             {savingRecipe ? <span className="spinner-border spinner-border-sm me-1" /> : <i className="fas fa-save me-1" />}
-                                            Save
+                                            Save{dirty ? " •" : ""}
                                         </button>
                                         <button className="btn btn-sm btn-primary" onClick={handleRender} disabled={!plan || busy || !!blocked}>
                                             <i className="fas fa-clapperboard me-1" />
@@ -1618,11 +1641,11 @@ export default function VideoStudioPage() {
                                         {selectedLayer.type === "caption" && selectedLayer.id === "caption" && (
                                             <>
                                                 <textarea className="form-control form-control-sm" rows={5} disabled={busy}
-                                                    value={captionText} onChange={(e) => setBodyOverride(e.target.value)} />
+                                                    value={captionText} onChange={(e) => { setDirty(true); setBodyOverride(e.target.value); }} />
                                                 <div className="d-flex justify-content-between mt-1 mb-2">
                                                     <small className="text-muted">{captionText.length} characters — the video only, not the post.</small>
                                                     {bodyOverride !== null && (
-                                                        <button className="btn btn-sm btn-link p-0" onClick={() => setBodyOverride(null)} disabled={busy}>Reset</button>
+                                                        <button className="btn btn-sm btn-link p-0" onClick={() => { setDirty(true); setBodyOverride(null); }} disabled={busy}>Reset</button>
                                                     )}
                                                 </div>
                                                 <Link className="btn btn-sm btn-link p-0" href={`/posts/${selected.documentId}`}>Edit the post →</Link>
@@ -2173,11 +2196,11 @@ export default function VideoStudioPage() {
                                         </div>
                                         <div className="card-body py-2">
                                             <textarea className="form-control form-control-sm" rows={4} disabled={busy}
-                                                value={captionText} onChange={(e) => setBodyOverride(e.target.value)} />
+                                                value={captionText} onChange={(e) => { setDirty(true); setBodyOverride(e.target.value); }} />
                                             <div className="d-flex justify-content-between mt-1 mb-2">
                                                 <small className="text-muted">{captionText.length} characters — the video only, not the post.</small>
                                                 {bodyOverride !== null && (
-                                                    <button className="btn btn-sm btn-link p-0" onClick={() => setBodyOverride(null)} disabled={busy}>Reset</button>
+                                                    <button className="btn btn-sm btn-link p-0" onClick={() => { setDirty(true); setBodyOverride(null); }} disabled={busy}>Reset</button>
                                                 )}
                                             </div>
                                             <RangeRow label="Typing speed" value={options.charsPerSecond} min={4} max={45} step={1}
