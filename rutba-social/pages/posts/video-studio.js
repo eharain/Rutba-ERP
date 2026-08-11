@@ -843,6 +843,71 @@ export default function VideoStudioPage() {
         setSelectedLayerId(id);
     };
 
+    // Logo and footer are LAYERS — these are their quick-adds. If the layer
+    // already exists the button just selects its lane.
+    const addLogoLayer = () => {
+        if (!logo) return;
+        if (!options.showLogo) setOpt({ showLogo: true });
+        setSelectedLayerId("logo");
+    };
+    const addFooterLayer = () => {
+        if (!options.footer) setOpt({ footer: "rutba.pk" });
+        setSelectedLayerId("footer");
+    };
+
+    // ── caption → lines ─────────────────────────────────────
+    // Author line breaks first; failing those, sentences (incl. Urdu ۔).
+    // NEVER the wrapped visual lines — those depend on font and aspect, and a
+    // recipe must survive an aspect switch.
+    const splitCaptionSegments = (text) => {
+        const t = String(text || "").trim();
+        if (!t) return [];
+        let parts = t.split(/\n+/).map((s) => s.trim()).filter(Boolean);
+        if (parts.length < 2) {
+            parts = (t.match(/[^.!?۔…]+[.!?۔…]+["')\]]*\s*|[^.!?۔…]+$/g) || [t]).map((s) => s.trim()).filter(Boolean);
+        }
+        return parts;
+    };
+
+    const hasCaptionLines = (layerPatches || []).some((p) => /^caption-line-/.test(p.id));
+
+    // One caption layer per segment: sequential windows sharing the typing
+    // budget in proportion to their length, each with a short lead-in (the
+    // global 0.8s lead is a video opener, not a per-line delay). The compiled
+    // caption hides; its text still drives the video's duration.
+    const splitCaption = () => {
+        if (!plan) return;
+        const segs = splitCaptionSegments(captionText);
+        if (segs.length < 2) { toast("The caption is a single line — nothing to split.", "warning"); return; }
+        const lead = 0.2;
+        const t0 = options.leadInSeconds ?? 0.8;
+        const t1 = Math.max(t0 + 1, plan.contentDuration - 0.4);
+        let durs = segs.map((s) => lead + s.length / plan.cps + 0.5);
+        const k = (t1 - t0) / durs.reduce((a, b) => a + b, 0);
+        durs = durs.map((d) => d * k);
+        let cur = t0;
+        const linePatches = segs.map((s, i) => {
+            const timing = { start: +cur.toFixed(3), end: +(cur + durs[i]).toFixed(3) };
+            cur += durs[i];
+            return { id: `caption-line-${i + 1}`, type: "caption", name: `Line ${i + 1}`, text: s, leadIn: lead, timing };
+        });
+        setLayerPatches((list) => [
+            ...(list || []).filter((p) => !/^caption-line-/.test(p.id) && p.id !== "caption"),
+            { id: "caption", visible: false },
+            ...linePatches,
+        ]);
+        setSelectedLayerId(null);
+        toast(`Split into ${segs.length} timed lines — each has its own lane.`, "success");
+    };
+
+    const restoreSingleCaption = () => {
+        setLayerPatches((list) => {
+            const arr = (list || []).filter((p) => !/^caption-line-/.test(p.id) && p.id !== "caption");
+            return arr.length ? arr : null;
+        });
+        setSelectedLayerId(null);
+    };
+
     // ── motion (keyframe) helpers ───────────────────────────
     const keyCount = (l) => Object.values(l.keys || {}).reduce((n, list) => n + list.length, 0);
     const firstEase = (l) => {
@@ -1250,45 +1315,56 @@ export default function VideoStudioPage() {
                                                     </small>
                                                 </div>
 
-                                                {/* ── add layers: text, commerce, sound ── */}
-                                                <div className="d-flex flex-wrap gap-1 mt-2">
-                                                    <button className="btn btn-sm btn-outline-primary py-0" onClick={addTextLayer} disabled={busy}>
-                                                        <i className="fas fa-font me-1" />Text
-                                                    </button>
-                                                    <button className="btn btn-sm btn-outline-primary py-0" disabled={busy || !tracks.length}
-                                                        title={tracks.length ? "Add a sound layer — placed on the timeline like everything else" : "No tracks in rotation — add some on /audio"}
-                                                        onClick={addSoundLayer}>
-                                                        <i className="fas fa-music me-1" />Sound
-                                                    </button>
-                                                    <span className="vr mx-1" />
-                                                    <button className="btn btn-sm btn-outline-warning py-0" disabled={busy || !productContext?.price}
-                                                        title={productContext?.price ? `Adds a chip showing ${productContext.price} — kept fresh at render time` : "Link a product to the post first"}
-                                                        onClick={() => addCommerceLayer("price")}>
-                                                        <i className="fas fa-tag me-1" />Price
-                                                    </button>
-                                                    <button className="btn btn-sm btn-outline-warning py-0" disabled={busy || !productContext?.discount}
-                                                        title={productContext?.discount ? `Adds "${productContext.discount} OFF"` : "Needs a product on sale (offer price below selling price)"}
-                                                        onClick={() => addCommerceLayer("discount")}>
-                                                        <i className="fas fa-percent me-1" />Discount
-                                                    </button>
-                                                    <button className="btn btn-sm btn-outline-warning py-0" disabled={busy || !productContext?.url}
-                                                        title={productContext?.url ? `QR to ${productContext.url}` : "Link a product to the post first"}
-                                                        onClick={() => addCommerceLayer("qr")}>
-                                                        <i className="fas fa-qrcode me-1" />QR
-                                                    </button>
-                                                    <button className="btn btn-sm btn-outline-secondary py-0" disabled={busy}
-                                                        onClick={() => addCommerceLayer("newSticker")}>NEW</button>
-                                                    <button className="btn btn-sm btn-outline-secondary py-0" disabled={busy}
-                                                        onClick={() => addCommerceLayer("saleSticker")}>SALE</button>
-                                                </div>
-
-                                                {/* ── the timeline: every layer is a lane ── */}
+                                                {/* ── the timeline: every layer is a lane; adding layers is
+                                                       ITS top line, so everything layer lives in one place ── */}
                                                 <VideoTimeline
                                                     plan={plan}
                                                     previewTime={previewTime}
                                                     busy={busy}
                                                     selectedLayerId={selectedLayerId}
                                                     appendedIds={appendedIds}
+                                                    addRow={(
+                                                        <>
+                                                            <button className="btn btn-sm btn-outline-primary py-0" onClick={addTextLayer} disabled={busy}>
+                                                                <i className="fas fa-font me-1" />Text
+                                                            </button>
+                                                            <button className="btn btn-sm btn-outline-primary py-0" disabled={busy || !tracks.length}
+                                                                title={tracks.length ? "A clip from the audio library as a layer — placed and trimmed on its lane, mixed over the music bed" : "No tracks in rotation — add some on /audio"}
+                                                                onClick={addSoundLayer}>
+                                                                <i className="fas fa-music me-1" />Sound
+                                                            </button>
+                                                            <button className="btn btn-sm btn-outline-primary py-0" disabled={busy || !logo}
+                                                                title={logo ? "The brand mark from site settings — shown on the video, configured on its lane" : "No site logo available"}
+                                                                onClick={addLogoLayer}>
+                                                                <i className="fas fa-copyright me-1" />Logo
+                                                            </button>
+                                                            <button className="btn btn-sm btn-outline-primary py-0" disabled={busy}
+                                                                title="The footer line — a text layer along the bottom edge"
+                                                                onClick={addFooterLayer}>
+                                                                <i className="fas fa-shoe-prints me-1" />Footer
+                                                            </button>
+                                                            <span className="vr mx-1" />
+                                                            <button className="btn btn-sm btn-outline-warning py-0" disabled={busy || !productContext?.price}
+                                                                title={productContext?.price ? `Adds a chip showing ${productContext.price} — kept fresh at render time` : "Link a product to the post first"}
+                                                                onClick={() => addCommerceLayer("price")}>
+                                                                <i className="fas fa-tag me-1" />Price
+                                                            </button>
+                                                            <button className="btn btn-sm btn-outline-warning py-0" disabled={busy || !productContext?.discount}
+                                                                title={productContext?.discount ? `Adds "${productContext.discount} OFF"` : "Needs a product on sale (offer price below selling price)"}
+                                                                onClick={() => addCommerceLayer("discount")}>
+                                                                <i className="fas fa-percent me-1" />Discount
+                                                            </button>
+                                                            <button className="btn btn-sm btn-outline-warning py-0" disabled={busy || !productContext?.url}
+                                                                title={productContext?.url ? `QR to ${productContext.url}` : "Link a product to the post first"}
+                                                                onClick={() => addCommerceLayer("qr")}>
+                                                                <i className="fas fa-qrcode me-1" />QR
+                                                            </button>
+                                                            <button className="btn btn-sm btn-outline-secondary py-0" disabled={busy}
+                                                                onClick={() => addCommerceLayer("newSticker")}>NEW</button>
+                                                            <button className="btn btn-sm btn-outline-secondary py-0" disabled={busy}
+                                                                onClick={() => addCommerceLayer("saleSticker")}>SALE</button>
+                                                        </>
+                                                    )}
                                                     onSelect={setSelectedLayerId}
                                                     onScrub={(t) => { stopPreview(); setPreviewTime(t); }}
                                                     onPatch={upsertPatch}
@@ -1465,6 +1541,33 @@ export default function VideoStudioPage() {
                                                                 onChange={(ev) => updateArrangement(ai, { seconds: ev.target.value === "" ? null : Math.max(0.5, Number(ev.target.value)) })} />
                                                         </div>
                                                     </div>
+                                                    <div className="d-flex align-items-center gap-3 mb-2">
+                                                        <div className="form-check form-switch mb-0">
+                                                            <input className="form-check-input" type="checkbox" id="photo-kb" disabled={busy}
+                                                                checked={selectedLayer.kb ?? options.kenBurns}
+                                                                onChange={(e) => upsertPatch({ id: selectedLayer.id, kb: e.target.checked })} />
+                                                            <label className="form-check-label small" htmlFor="photo-kb"
+                                                                title="Slow zoom for THIS photo — the switch in the video's Look is the default">Slow zoom</label>
+                                                        </div>
+                                                        <select className="form-select form-select-sm" style={{ width: 110 }} disabled={busy}
+                                                            title="How THIS photo arrives — the video's Transition is the default"
+                                                            value={selectedLayer.enter?.kind || "none"}
+                                                            onChange={(e) => {
+                                                                const kind = e.target.value;
+                                                                upsertPatch({
+                                                                    id: selectedLayer.id,
+                                                                    enter: kind === "none"
+                                                                        ? { kind: "none", seconds: 0 }
+                                                                        : { kind, seconds: options.fadeSeconds || 0.7 },
+                                                                });
+                                                            }}>
+                                                            <option value="none">Cut in</option>
+                                                            <option value="fade">Fade in</option>
+                                                            <option value="slide-left">Slide in</option>
+                                                            <option value="push">Push in</option>
+                                                            <option value="zoom">Zoom in</option>
+                                                        </select>
+                                                    </div>
                                                     <p className="text-muted mb-0" style={{ fontSize: 11 }}>
                                                         Order and seconds reflow every photo's slot; dragging the bar on the lane retimes just this one.
                                                     </p>
@@ -1477,7 +1580,7 @@ export default function VideoStudioPage() {
                                             <>
                                                 <textarea className="form-control form-control-sm" rows={5} disabled={busy}
                                                     value={captionText} onChange={(e) => setBodyOverride(e.target.value)} />
-                                                <div className="d-flex justify-content-between mt-1">
+                                                <div className="d-flex justify-content-between mt-1 mb-2">
                                                     <small className="text-muted">{captionText.length} characters — the video only, not the post.</small>
                                                     {bodyOverride !== null && (
                                                         <button className="btn btn-sm btn-link p-0" onClick={() => setBodyOverride(null)} disabled={busy}>Reset</button>
@@ -1487,9 +1590,41 @@ export default function VideoStudioPage() {
                                             </>
                                         )}
                                         {selectedLayer.type === "caption" && selectedLayer.id !== "caption" && (
-                                            <textarea className="form-control form-control-sm" rows={4} disabled={busy}
+                                            <textarea className="form-control form-control-sm mb-2" rows={4} disabled={busy}
                                                 value={(layerPatches || []).find((p) => p.id === selectedLayer.id)?.text || ""}
                                                 onChange={(e) => upsertPatch({ id: selectedLayer.id, text: e.target.value })} />
+                                        )}
+                                        {selectedLayer.type === "caption" && (
+                                            <div className="row g-1 mt-1">
+                                                <div className="col-4">
+                                                    <label className="form-label small mb-1">Reveal</label>
+                                                    <select className="form-select form-select-sm" disabled={busy}
+                                                        title="How the text comes into view — on this layer's own clock"
+                                                        value={(layerPatches || []).find((p) => p.id === selectedLayer.id)?.reveal || selectedLayer.reveal || "type"}
+                                                        onChange={(e) => upsertPatch({ id: selectedLayer.id, reveal: e.target.value })}>
+                                                        <option value="type">Typewriter</option>
+                                                        <option value="word">Word by word</option>
+                                                        <option value="line">Line by line</option>
+                                                        <option value="all">All at once</option>
+                                                    </select>
+                                                </div>
+                                                <div className="col-4">
+                                                    <label className="form-label small mb-1">Position</label>
+                                                    <select className="form-select form-select-sm" value={options.textPosition} disabled={busy}
+                                                        onChange={(e) => setOpt({ textPosition: e.target.value })}>
+                                                        <option value="bottom">Bottom</option>
+                                                        <option value="middle">Middle</option>
+                                                    </select>
+                                                </div>
+                                                <div className="col-4">
+                                                    <label className="form-label small mb-1">Style</label>
+                                                    <select className="form-select form-select-sm" value={options.captionStyle || "box"} disabled={busy}
+                                                        onChange={(e) => setOpt({ captionStyle: e.target.value })}>
+                                                        <option value="box">Panel</option>
+                                                        <option value="bare">Bare text</option>
+                                                    </select>
+                                                </div>
+                                            </div>
                                         )}
 
                                         {/* ── the brand mark (compiled logo) ── */}
@@ -1578,8 +1713,13 @@ export default function VideoStudioPage() {
                                             </>
                                         )}
 
+                                        {/* ── the open/close dip owns its own fade ── */}
+                                        {selectedLayer.type === "edges" && (
+                                            <RangeRow label="Open/close fade" value={options.edgeFadeSeconds ?? 0.45} min={0} max={1.5} step={0.05}
+                                                suffix="s" disabled={busy} onChange={(v) => setOpt({ edgeFadeSeconds: v })} />
+                                        )}
                                         {/* ── chrome layers configure through the video's own properties ── */}
-                                        {["gradient", "title", "outro", "progress", "edges"].includes(selectedLayer.type) && (
+                                        {["gradient", "title", "outro", "progress"].includes(selectedLayer.type) && (
                                             <p className="text-muted mb-0" style={{ fontSize: 11 }}>
                                                 Part of the video's look — its options are in the video properties (press × above).
                                                 Use the lane to retime it, or its eye to hide it.
@@ -1770,22 +1910,6 @@ export default function VideoStudioPage() {
                                                 </select>
                                             </div>
                                             <div className="col-6">
-                                                <label className="form-label small mb-1">Caption position</label>
-                                                <select className="form-select form-select-sm" value={options.textPosition} disabled={busy}
-                                                    onChange={(e) => setOpt({ textPosition: e.target.value })}>
-                                                    <option value="bottom">Bottom</option>
-                                                    <option value="middle">Middle</option>
-                                                </select>
-                                            </div>
-                                            <div className="col-6">
-                                                <label className="form-label small mb-1">Caption style</label>
-                                                <select className="form-select form-select-sm" value={options.captionStyle || "box"} disabled={busy}
-                                                    onChange={(e) => setOpt({ captionStyle: e.target.value })}>
-                                                    <option value="box">Panel behind text</option>
-                                                    <option value="bare">Bare shadowed text</option>
-                                                </select>
-                                            </div>
-                                            <div className="col-6">
                                                 <label className="form-label small mb-1">Transition</label>
                                                 <select className="form-select form-select-sm" value={options.transition || "fade"} disabled={busy}
                                                     onChange={(e) => setOpt({ transition: e.target.value })}>
@@ -1824,10 +1948,6 @@ export default function VideoStudioPage() {
                                                 <label className="form-check-label small" htmlFor="opt-prog">Progress bar</label>
                                             </div>
                                         </div>
-
-                                        <label className="form-label small mb-1 mt-3">Footer line (optional)</label>
-                                        <input className="form-control form-control-sm" value={options.footer} disabled={busy}
-                                            placeholder="rutba.pk" onChange={(e) => setOpt({ footer: e.target.value })} />
 
                                         <hr className="my-3" />
                                         <RangeRow label="Outro card" value={options.outroSeconds || 0} min={0} max={4} step={0.2}
@@ -1983,25 +2103,24 @@ export default function VideoStudioPage() {
                                     </div>
                                 </div>
 
+                                {/* ── pace & render: what is genuinely VIDEO-level. Everything
+                                       that belonged to one layer now lives on that layer — typing
+                                       on the caption, open/close fade on its lane, per-image
+                                       seconds on each photo (these two are just the defaults). ── */}
                                 <div className="card mb-3">
-                                    <div className="card-header py-2"><i className="fas fa-stopwatch me-2" />Timing</div>
+                                    <div className="card-header py-2"><i className="fas fa-stopwatch me-2" />Pace &amp; render</div>
                                     <div className="card-body">
-                                        <RangeRow label="Seconds per image" value={options.secondsPerImage} min={1.5} max={8} step={0.5}
+                                        <RangeRow label="Seconds per image (default)" value={options.secondsPerImage} min={1.5} max={8} step={0.5}
                                             suffix="s" disabled={busy} onChange={(v) => setOpt({ secondsPerImage: v })} />
-                                        <RangeRow label="Crossfade" value={options.fadeSeconds} min={0} max={2} step={0.1}
+                                        <RangeRow label="Crossfade (default)" value={options.fadeSeconds} min={0} max={2} step={0.1}
                                             suffix="s" disabled={busy} onChange={(v) => setOpt({ fadeSeconds: v })} />
-                                        <RangeRow label="Typing speed" value={options.charsPerSecond} min={4} max={45} step={1}
-                                            suffix=" chars/s" disabled={busy} onChange={(v) => setOpt({ charsPerSecond: v })} />
-                                        <RangeRow label="Text size" value={options.fontScale} min={0.7} max={1.5} step={0.05}
-                                            suffix="×" disabled={busy} onChange={(v) => setOpt({ fontScale: v })} />
                                         <RangeRow label="Maximum length" value={options.maxSeconds} min={10} max={180} step={5}
                                             suffix="s" disabled={busy} onChange={(v) => setOpt({ maxSeconds: v })} />
                                         <RangeRow label="Frame rate" value={options.fps} min={15} max={60} step={5}
                                             suffix=" fps" disabled={busy} onChange={(v) => setOpt({ fps: v })} />
-                                        <RangeRow label="Open/close fade" value={options.edgeFadeSeconds ?? 0.45} min={0} max={1.5} step={0.05}
-                                            suffix="s" disabled={busy} onChange={(v) => setOpt({ edgeFadeSeconds: v })} />
                                         <p className="text-muted small mb-0">
-                                            The video runs for whichever is longer — the images, or the time the caption needs to type out in full.
+                                            The video runs for whichever is longer — the images, or the time the caption
+                                            needs. Per-photo seconds live on each photo's lane; these are the defaults.
                                         </p>
                                     </div>
                                 </div>
@@ -2016,12 +2135,28 @@ export default function VideoStudioPage() {
                                         <div className="card-body py-2">
                                             <textarea className="form-control form-control-sm" rows={4} disabled={busy}
                                                 value={captionText} onChange={(e) => setBodyOverride(e.target.value)} />
-                                            <div className="d-flex justify-content-between mt-1">
+                                            <div className="d-flex justify-content-between mt-1 mb-2">
                                                 <small className="text-muted">{captionText.length} characters — the video only, not the post.</small>
                                                 {bodyOverride !== null && (
                                                     <button className="btn btn-sm btn-link p-0" onClick={() => setBodyOverride(null)} disabled={busy}>Reset</button>
                                                 )}
                                             </div>
+                                            <RangeRow label="Typing speed" value={options.charsPerSecond} min={4} max={45} step={1}
+                                                suffix=" chars/s" disabled={busy} onChange={(v) => setOpt({ charsPerSecond: v })} />
+                                            <RangeRow label="Text size" value={options.fontScale} min={0.7} max={1.5} step={0.05}
+                                                suffix="×" disabled={busy} onChange={(v) => setOpt({ fontScale: v })} />
+                                            {!hasCaptionLines ? (
+                                                <button className="btn btn-sm btn-outline-primary w-100" disabled={busy || !plan}
+                                                    title="One caption layer per line/sentence, each with its own lane — retime, restyle or delete lines individually"
+                                                    onClick={splitCaption}>
+                                                    <i className="fas fa-grip-lines me-1" />Split into timed lines
+                                                </button>
+                                            ) : (
+                                                <button className="btn btn-sm btn-outline-secondary w-100" disabled={busy}
+                                                    onClick={restoreSingleCaption}>
+                                                    <i className="fas fa-paragraph me-1" />Back to one caption
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 )}

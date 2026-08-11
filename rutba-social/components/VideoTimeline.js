@@ -50,6 +50,7 @@ export default function VideoTimeline({
     busy,
     selectedLayerId,
     appendedIds, // Set<string> — patch-backed layers, the ones delete can remove
+    addRow, // host-provided "add a layer" buttons, shown in the toolbar
     onSelect,
     onScrub,
     onPatch,
@@ -202,8 +203,8 @@ export default function VideoTimeline({
 
     return (
         <div className="w-100 mt-2 border rounded" style={{ userSelect: "none", fontSize: 12 }}>
-            {/* toolbar */}
-            <div className="d-flex align-items-center gap-2 px-2 py-1 border-bottom" style={{ background: "rgba(0,0,0,0.03)" }}>
+            {/* toolbar — the layer list's top line: sort views, ADD buttons, zoom */}
+            <div className="d-flex align-items-center gap-2 px-2 py-1 border-bottom flex-wrap" style={{ background: "rgba(0,0,0,0.03)" }}>
                 <span className="text-muted">Timeline</span>
                 <div className="btn-group btn-group-sm ms-2" role="group" aria-label="sort">
                     {["z", "enter", "exit"].map((s) => (
@@ -215,6 +216,12 @@ export default function VideoTimeline({
                         </button>
                     ))}
                 </div>
+                {addRow && (
+                    <div className="d-flex align-items-center gap-1 flex-wrap ms-2 border-start ps-2">
+                        <span className="text-muted" style={{ fontSize: 11 }}>Add</span>
+                        {addRow}
+                    </div>
+                )}
                 <div className="btn-group btn-group-sm ms-auto" role="group" aria-label="zoom">
                     {[1, 2, 4].map((zf) => (
                         <button key={zf} type="button"

@@ -669,6 +669,7 @@ export function applyLayerPatches(plan, patches) {
                 // Geometry makes it an INSET (picture-in-picture); without it
                 // the copy fills the stage like the original.
                 fx: patch.fx, fy: patch.fy, fw: patch.fw, fh: patch.fh,
+                kb: patch.kb,
                 rot: patch.rot || 0,
                 keys: sanitizeKeys(patch.keys),
             });
@@ -731,6 +732,8 @@ export function applyLayerPatches(plan, patches) {
                 id: patch.id, type: 'caption',
                 name: patch.name || 'Caption again',
                 text: String(patch.text ?? plan.text),
+                leadIn: patch.leadIn,
+                reveal: patch.reveal,
                 visible: patch.visible !== false,
                 timing: patch.timing || null,
                 enter: patch.enter || { kind: 'none', seconds: 0 },
@@ -985,10 +988,10 @@ function backdropFor(entry, W, H, theme) {
     return off;
 }
 
-function drawImageLayer(ctx, plan, entry, index, p, alpha, stageRect) {
+function drawImageLayer(ctx, plan, entry, index, p, alpha, stageRect, kbOverride) {
     const { img } = entry;
     const { W, H, opts, theme } = plan;
-    const kb = kenBurns(index, p, opts.kenBurns);
+    const kb = kenBurns(index, p, kbOverride ?? opts.kenBurns);
 
     ctx.save();
     // Multiplied, not assigned — the entry/exit envelope may already have
@@ -1083,7 +1086,8 @@ function paintPhoto(ctx, plan, layer, time) {
     const local = (time - t0) / Math.max(0.0001, t1 - t0);
     // kbIndex keeps the alternating Ken Burns direction stable when a photo is
     // duplicated or reordered — it is the image's place in the arrangement.
-    drawImageLayer(ctx, plan, entry, layer.kbIndex ?? layer.index, local, 1, plan.stageRect);
+    // `kb` overrides the global slow-zoom for just this photo.
+    drawImageLayer(ctx, plan, entry, layer.kbIndex ?? layer.index, local, 1, plan.stageRect, layer.kb);
 }
 
 // Legibility gradient under the caption band.
@@ -1118,10 +1122,27 @@ function paintCaption(ctx, plan, layer, time) {
         rtl = /[֐-ࣿﭐ-﷿ﹰ-ﻼ]/.test(text);
     }
 
+    // A split-out caption line carries its own (short) lead-in — the global
+    // one is a video opener, not a per-line delay.
+    const lead = layer.leadIn ?? opts.leadInSeconds;
     const local = layer.timing ? time - layer.timing.start : time;
-    const revealed = Math.max(0, Math.floor((local - opts.leadInSeconds) * plan.cps));
-    const n = Math.min(totalChars, revealed);
-    const typing = n < totalChars && local > opts.leadInSeconds;
+    const revealed = Math.max(0, Math.floor((local - lead) * plan.cps));
+
+    // How the text comes into view — a property of the LAYER. 'type' is the
+    // legacy per-character typewriter; 'word' and 'line' ride the same clock
+    // but complete their unit the moment it starts; 'all' lands whole.
+    const reveal = layer.reveal || 'type';
+    let n = Math.min(totalChars, revealed);
+    if (reveal === 'all') {
+        n = local > lead ? totalChars : 0;
+    } else if (reveal === 'word' && n > 0 && n < totalChars) {
+        const m = /\s/.exec(text.slice(n));
+        n = m ? n + m.index : totalChars;
+    } else if (reveal === 'line' && n > 0 && n < totalChars) {
+        const line = lines.find((l) => n > l.start && n < l.end);
+        if (line) n = Math.min(totalChars, line.end);
+    }
+    const typing = reveal !== 'all' && n < totalChars && local > lead;
     if (n <= 0 && !typing) return;
 
     ctx.font = `500 ${bodySize}px ${FONT_STACK}`;

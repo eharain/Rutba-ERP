@@ -208,6 +208,19 @@ export default function TimelineFixturePage() {
         const b1 = layerBounds(x(), p1, p1.layers.find((l) => l.id === "sticker-1"));
         push("the opposite corner holds under resize", Math.abs(b1.x - b0.x) < 3 && Math.abs(b1.y - b0.y) < 3);
 
+        // Per-photo slow-zoom override reaches the pixels.
+        push("per-photo slow-zoom override changes pixels",
+            differs(snap(mk([...BASE_PATCHES, { id: "photo-1", kb: false }]), 1.5), snap(mk(BASE_PATCHES), 1.5)));
+
+        // A split caption line's own lead-in types earlier than the global one.
+        const seg = { id: "cl-1", type: "caption", text: "Hello there world", timing: { start: 1, end: 4 } };
+        push("caption leadIn override types earlier",
+            differs(snap(mk([...BASE_PATCHES, { ...seg, leadIn: 0.1 }]), 1.45), snap(mk([...BASE_PATCHES, seg]), 1.45)));
+
+        // Reveal 'all' lands whole while 'type' is still mid-word.
+        push("reveal method changes what is on screen",
+            differs(snap(mk([...BASE_PATCHES, { ...seg, leadIn: 0.1, reveal: "all" }]), 1.6), snap(mk([...BASE_PATCHES, { ...seg, leadIn: 0.1 }]), 1.6)));
+
         window.__GEO = { done: true, pass: results.every((r) => r.ok), results };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [plan]);
