@@ -16,7 +16,7 @@
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import VideoTimeline from "../../components/VideoTimeline";
-import { buildPlan, paintFrame } from "../../lib/video-maker";
+import { buildPlan, paintFrame, layerBounds, layerHandles, scaleFromDrag, resizePatch } from "../../lib/video-maker";
 
 function makePhoto(seed, w, h) {
     const c = document.createElement("canvas");
@@ -170,6 +170,45 @@ export default function TimelineFixturePage() {
         const pass = results.every((r) => r.ok);
         window.__T2 = { done: true, pass, results };
         setProbe({ pass, results });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [plan]);
+
+    // ── the geometry probe (v4-M1): rotation, insets, resize math ───────────
+    useEffect(() => {
+        if (!plan || window.__GEO) return;
+        const c = document.createElement("canvas");
+        const x = () => c.getContext("2d", { willReadFrequently: true });
+        const mk = (patches) => buildPlan({ canvas: c, ...buildArgs(patches) });
+        const snap = (p, t) => { paintFrame(x(), p, t); return new Uint32Array(x().getImageData(0, 0, c.width, c.height).data.buffer.slice(0)); };
+        const differs = (a, b) => { for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return true; return false; };
+        const results = [];
+        const push = (label, ok) => results.push({ label, ok });
+
+        // Rotation reaches the pixels.
+        const withRot = BASE_PATCHES.map((p) => (p.id === "sticker-1" ? { ...p, rot: 30 } : p));
+        push("rotating a sticker changes its pixels", differs(snap(mk(withRot), 3), snap(mk(BASE_PATCHES), 3)));
+
+        // A photo with geometry is an inset, not the stage.
+        const withPip = [...BASE_PATCHES, { id: "photo-1", fx: 0.06, fy: 0.06, fw: 0.4 }];
+        push("an inset photo paints differently from full-stage", differs(snap(mk(withPip), 1), snap(mk(BASE_PATCHES), 1)));
+
+        // Corner-resize math: k from the drag, size scales by k, and the
+        // OPPOSITE corner stays put after the patch round-trips a rebuild.
+        const p0 = mk(BASE_PATCHES);
+        const sticker = p0.layers.find((l) => l.id === "sticker-1");
+        const h0 = layerHandles(x(), p0, sticker);
+        const se = h0.handles.find((p) => p.kind === "se");
+        const hit = { ...se, center: h0.center, bounds: h0.bounds };
+        const k = scaleFromDrag(hit, { x: se.x, y: se.y }, { x: se.x + 60, y: se.y + 60 });
+        push("dragging a corner outward grows k", k > 1.1);
+        const patch = resizePatch(x(), p0, sticker, "se", k);
+        push("resize writes sizeFrac scaled by k", !!patch && Math.abs(patch.sizeFrac / (sticker.sizeFrac || 0.05) - k) < 0.02);
+        const b0 = layerBounds(x(), p0, sticker);
+        const p1 = mk(BASE_PATCHES.map((p) => (p.id === "sticker-1" ? { ...p, ...patch } : p)));
+        const b1 = layerBounds(x(), p1, p1.layers.find((l) => l.id === "sticker-1"));
+        push("the opposite corner holds under resize", Math.abs(b1.x - b0.x) < 3 && Math.abs(b1.y - b0.y) < 3);
+
+        window.__GEO = { done: true, pass: results.every((r) => r.ok), results };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [plan]);
 

@@ -573,6 +573,12 @@ export function applyLayerPatches(plan, patches) {
             } else if (existing.type === 'text') {
                 if (patch.fx !== undefined) existing.x = W * patch.fx;
                 if (patch.fy !== undefined) existing.y = H * patch.fy;
+                if (patch.sizeFrac !== undefined) {
+                    // A corner-drag resize on a compiled text layer (the
+                    // footer) — the font re-resolves like an appended one's.
+                    existing.sizePx = Math.max(10, Math.round(W * patch.sizeFrac));
+                    existing.font = `${existing.weight || 600} ${existing.sizePx}px ${FONT_STACK}`;
+                }
             } else if (existing.type === 'qr') {
                 if (patch.fx !== undefined) existing.x = W * patch.fx;
                 if (patch.fy !== undefined) existing.y = H * patch.fy;
@@ -616,6 +622,7 @@ export function applyLayerPatches(plan, patches) {
                 weight: patch.weight || 600,
                 colorToken: patch.color || 'text',
                 direction: patch.direction || 'auto',
+                rot: patch.rot || 0,
             });
             continue;
         }
@@ -636,6 +643,7 @@ export function applyLayerPatches(plan, patches) {
                 x: W * (patch.fx ?? 0.72), y: H * (patch.fy ?? 0.06),
                 size: sizePx,
                 fx: patch.fx ?? 0.72, fy: patch.fy ?? 0.06, fw: patch.fw || 0.22,
+                rot: patch.rot || 0,
             });
             continue;
         }
@@ -655,6 +663,10 @@ export function applyLayerPatches(plan, patches) {
                 enter: patch.enter || { kind: 'fade', seconds: 0.4 },
                 exit: patch.exit || { kind: 'fade', seconds: 0.4 },
                 z: patch.z ?? nextZ(),
+                // Geometry makes it an INSET (picture-in-picture); without it
+                // the copy fills the stage like the original.
+                fx: patch.fx, fy: patch.fy, fw: patch.fw, fh: patch.fh,
+                rot: patch.rot || 0,
             });
             continue;
         }
@@ -681,6 +693,7 @@ export function applyLayerPatches(plan, patches) {
                 opacity: patch.opacity ?? 1,
                 shadow: patch.shadow !== false,
                 fx: patch.fx ?? 0.5, fy: patch.fy ?? 0.5, fw,
+                rot: patch.rot || 0,
                 draggable: true,
             });
             continue;
@@ -919,6 +932,20 @@ function revealPosition(lines, n) {
 // This is the seam the v2 editor builds on: templates store a stack, the
 // editor manipulates plan.layers, and every painter stays oblivious to both.
 
+// Cover-fit `entry` into an arbitrary rect honoring its focal point — the
+// inset (picture-in-picture) form of a photo layer.
+function drawCoverInRect(ctx, plan, entry, x, y, w, h) {
+    const c = coverRect(entry.width, entry.height, w, h);
+    const f = entry.focal || { fx: 0.5, fy: 0.5 };
+    const ix = Math.min(x, Math.max(x + w - c.w, x + w / 2 - f.fx * c.w));
+    const iy = Math.min(y, Math.max(y + h - c.h, y + h / 2 - f.fy * c.h));
+    ctx.save();
+    roundRect(ctx, x, y, w, h, Math.round(plan.W * 0.015));
+    ctx.clip();
+    ctx.drawImage(entry.img, ix, iy, c.w, c.h);
+    ctx.restore();
+}
+
 // One photo, one layer. The crossfade that used to live inside a slideshow
 // painter is now this layer's `enter` overlapping the previous photo's window
 // — the envelope applies it before this runs, so all that is left is the Ken
@@ -926,6 +953,17 @@ function revealPosition(lines, n) {
 function paintPhoto(ctx, plan, layer, time) {
     const entry = plan.images[layer.index];
     if (!entry) return;
+
+    // A photo WITH geometry is an inset — a close-up over the wide shot, a
+    // side-by-side, a before/after. `fh` is optional: absent, the rect takes
+    // the photo's own aspect at `fw` width. No Ken Burns — insets hold still.
+    if (layer.fw) {
+        const w = plan.W * layer.fw;
+        const h = layer.fh ? plan.H * layer.fh : w * (entry.height / Math.max(1, entry.width));
+        drawCoverInRect(ctx, plan, entry, plan.W * (layer.fx ?? 0.3), plan.H * (layer.fy ?? 0.3), w, h);
+        return;
+    }
+
     const t0 = layer.timing ? layer.timing.start : 0;
     const t1 = layer.timing ? layer.timing.end : plan.duration;
     const local = (time - t0) / Math.max(0.0001, t1 - t0);
@@ -1618,6 +1656,14 @@ export function qrEncode(text) {
 export function layerBounds(ctx, plan, layer) {
     if (layer.type === 'image') return { x: layer.x, y: layer.y, w: layer.w, h: layer.h };
     if (layer.type === 'qr') return { x: layer.x, y: layer.y, w: layer._qrPx || layer.size, h: layer._qrPx || layer.size };
+    if (layer.type === 'photo' && layer.fw) {
+        // Only INSET photos report bounds — a full-stage photo is configured
+        // from its lane and the inspector, not dragged.
+        const entry = plan.images[layer.index];
+        const w = plan.W * layer.fw;
+        const h = layer.fh ? plan.H * layer.fh : (entry ? w * (entry.height / Math.max(1, entry.width)) : w);
+        return { x: plan.W * (layer.fx ?? 0.3), y: plan.H * (layer.fy ?? 0.3), w, h };
+    }
     if (layer.type === 'text') {
         ctx.save();
         ctx.font = layer.font;
@@ -1633,19 +1679,142 @@ export function layerBounds(ctx, plan, layer) {
     return null;
 }
 
+/** Rotate point (x, y) about (cx, cy) by `deg` degrees. */
+function rotatePoint(x, y, cx, cy, deg) {
+    const a = (deg * Math.PI) / 180;
+    const dx = x - cx;
+    const dy = y - cy;
+    return { x: cx + dx * Math.cos(a) - dy * Math.sin(a), y: cy + dx * Math.sin(a) + dy * Math.cos(a) };
+}
+
 /**
- * The topmost movable layer under canvas point (x, y), or null. Iterates the
- * stack top-down so what LOOKS frontmost is what a click selects.
+ * The topmost movable layer under canvas point (x, y), or null. Iterates in
+ * PAINT order (z descending) so what LOOKS frontmost is what a click selects;
+ * a rotated layer is tested by un-rotating the pointer into its frame.
  */
 export function hitTestLayers(ctx, plan, x, y) {
-    for (let i = plan.layers.length - 1; i >= 0; i--) {
-        const layer = plan.layers[i];
+    const ordered = [...plan.layers].sort((a, b) => (a.z || 0) - (b.z || 0));
+    for (let i = ordered.length - 1; i >= 0; i--) {
+        const layer = ordered[i];
         if (layer.visible === false) continue;
-        if (layer.type !== 'text' && layer.type !== 'image' && layer.type !== 'qr') continue;
+        const movable = layer.type === 'text' || layer.type === 'image' || layer.type === 'qr'
+            || (layer.type === 'photo' && layer.fw);
+        if (!movable) continue;
         const b = layerBounds(ctx, plan, layer);
-        if (b && x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) return { layer, bounds: b };
+        if (!b) continue;
+        let px = x;
+        let py = y;
+        if (layer.rot) ({ x: px, y: py } = rotatePoint(x, y, b.x + b.w / 2, b.y + b.h / 2, -layer.rot));
+        if (px >= b.x && px <= b.x + b.w && py >= b.y && py <= b.y + b.h) return { layer, bounds: b };
     }
     return null;
+}
+
+/**
+ * The selection instrument: four corner handles plus a rotation stalk, in
+ * canvas pixels, rotated with the layer. The editor draws these and feeds
+ * pointer hits back through hitTestHandles / resizePatch.
+ */
+export function layerHandles(ctx, plan, layer) {
+    const b = layerBounds(ctx, plan, layer);
+    if (!b) return null;
+    const cx = b.x + b.w / 2;
+    const cy = b.y + b.h / 2;
+    const stalk = Math.max(24, Math.round(plan.W * 0.022));
+    const pts = [
+        { kind: 'nw', x: b.x, y: b.y },
+        { kind: 'ne', x: b.x + b.w, y: b.y },
+        { kind: 'se', x: b.x + b.w, y: b.y + b.h },
+        { kind: 'sw', x: b.x, y: b.y + b.h },
+        { kind: 'rotate', x: cx, y: b.y - stalk },
+    ];
+    if (layer.rot) {
+        for (const p of pts) Object.assign(p, rotatePoint(p.x, p.y, cx, cy, layer.rot));
+    }
+    return { bounds: b, center: { x: cx, y: cy }, handles: pts };
+}
+
+/** The handle under (x, y) within `tolerance` canvas pixels, or null. */
+export function hitTestHandles(ctx, plan, layer, x, y, tolerance = 16) {
+    const h = layerHandles(ctx, plan, layer);
+    if (!h) return null;
+    for (const p of h.handles) {
+        if (Math.hypot(x - p.x, y - p.y) <= tolerance) {
+            return { ...p, center: h.center, bounds: h.bounds };
+        }
+    }
+    return null;
+}
+
+/**
+ * Uniform scale factor for a corner drag. The anchor is the corner OPPOSITE
+ * the grabbed one — the reflection of the handle through the centre, which is
+ * the same world point whatever the rotation. k is the ratio of the pointer's
+ * distance to that anchor now vs at grab time.
+ */
+export function scaleFromDrag(handleHit, start, current) {
+    const anchor = { x: handleHit.center.x * 2 - handleHit.x, y: handleHit.center.y * 2 - handleHit.y };
+    const d0 = Math.max(8, Math.hypot(start.x - anchor.x, start.y - anchor.y));
+    const d1 = Math.max(8, Math.hypot(current.x - anchor.x, current.y - anchor.y));
+    return d1 / d0;
+}
+
+/** The new box origin with the corner OPPOSITE the grabbed one held fixed. */
+function anchoredOrigin(b0, kind, newW, newH) {
+    if (kind === 'se') return { bx: b0.x, by: b0.y }; // anchor nw
+    if (kind === 'sw') return { bx: b0.x + b0.w - newW, by: b0.y }; // anchor ne
+    if (kind === 'ne') return { bx: b0.x, by: b0.y + b0.h - newH }; // anchor sw
+    return { bx: b0.x + b0.w - newW, by: b0.y + b0.h - newH }; // 'nw' → anchor se
+}
+
+/**
+ * The patch a corner-drag writes: size multiplied by k, position set so the
+ * anchor corner stays put. Computed from the BOUNDS, not by mapping the
+ * stored point affinely — text bounds carry constant padding and their width
+ * comes from font metrics, so the only exact way is to build the target box
+ * anchored, then invert the bounds formula back to the stored point. The
+ * measurement here mirrors what applyLayerPatches will do with the patch,
+ * so the anchor holds to the pixel after the plan rebuilds.
+ */
+export function resizePatch(ctx, plan, layer, kind, k) {
+    const b0 = layerBounds(ctx, plan, layer);
+    if (!b0 || !['nw', 'ne', 'se', 'sw'].includes(kind)) return null;
+    const patch = { id: layer.id };
+
+    if (layer.type === 'text') {
+        const base = layer.sizeFrac || 0.035;
+        const kk = Math.max(0.015 / base, Math.min(0.2 / base, k));
+        const newFrac = +(base * kk).toFixed(4);
+        const sizePx = Math.max(10, Math.round(plan.W * newFrac));
+        ctx.save();
+        ctx.font = `${layer.weight || 600} ${sizePx}px ${FONT_STACK}`;
+        if (layer.rtl) ctx.direction = 'rtl';
+        const tw = ctx.measureText(layer.text).width;
+        ctx.restore();
+        const newW = tw + 16; // the constants in layerBounds' text case
+        const newH = Math.round(sizePx * 1.3) + 8;
+        const { bx, by } = anchoredOrigin(b0, kind, newW, newH);
+        const x0 = bx + 8;
+        const yTop = by + 6;
+        const xPt = layer.align === 'center' ? x0 + tw / 2 : layer.align === 'right' ? x0 + tw : x0;
+        const yPt = layer.baseline === 'bottom' ? yTop + sizePx : layer.baseline === 'middle' ? yTop + sizePx / 2 : yTop;
+        patch.sizeFrac = newFrac;
+        patch.fx = +(xPt / plan.W).toFixed(4);
+        patch.fy = +(yPt / plan.H).toFixed(4);
+        return patch;
+    }
+
+    // image / qr / inset photo: top-left anchored boxes with no padding.
+    const baseFw = layer.fw ?? (layer.w ? layer.w / plan.W : 0.16);
+    const kk = Math.max(0.03 / baseFw, Math.min(0.9 / baseFw, k));
+    const newFw = +(baseFw * kk).toFixed(4);
+    const scale = newFw / baseFw;
+    const { bx, by } = anchoredOrigin(b0, kind, b0.w * scale, b0.h * scale);
+    patch.fw = newFw;
+    if (layer.fh) patch.fh = +(layer.fh * kk).toFixed(4);
+    patch.fx = +(bx / plan.W).toFixed(4);
+    patch.fy = +(by / plan.H).toFixed(4);
+    return patch;
 }
 
 /**
@@ -1683,6 +1852,19 @@ export function paintFrame(ctx, plan, t) {
                 ctx.translate(-plan.W / 2, -plan.H / 2);
             }
             if (env.alpha < 1) ctx.globalAlpha = env.alpha;
+        }
+        // Rotation lives here, not in the painters — the same trick as the
+        // envelope: rotate about the layer's own centre and every layer type
+        // gets it without its painter knowing.
+        if (layer.rot) {
+            const b = layerBounds(ctx, plan, layer);
+            if (b) {
+                const cx = b.x + b.w / 2;
+                const cy = b.y + b.h / 2;
+                ctx.translate(cx, cy);
+                ctx.rotate((layer.rot * Math.PI) / 180);
+                ctx.translate(-cx, -cy);
+            }
         }
         painter(ctx, plan, layer, time);
         ctx.restore();

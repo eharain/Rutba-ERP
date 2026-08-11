@@ -31,6 +31,7 @@ import {
     ASPECTS, THEMES, DEFAULTS,
     buildPlan, paintFrame, renderVideo, loadImage, loadImages, releaseImages,
     loadAudioTrack, setMediaAuth, layerBounds, hitTestLayers,
+    layerHandles, hitTestHandles, scaleFromDrag, resizePatch,
     soundLayers, clipFromSoundLayer,
     imageItems, isImageOnly, unsupportedReason, videoFileName,
 } from "../../lib/video-maker";
@@ -570,18 +571,43 @@ export default function VideoStudioPage() {
     }), [options, arranged.perImageSeconds, arrangement]);
 
     // The selection outline is editor chrome — painted OVER the frame, never
-    // part of it, and never while playing or recording.
+    // part of it, and never while playing or recording. It is an instrument:
+    // corner squares resize about the opposite corner, the stalk dot rotates.
     const drawSelection = useCallback((ctx, p) => {
         if (!selectedLayerId) return;
         const layer = p.layers.find((l) => l.id === selectedLayerId);
         if (!layer || layer.visible === false) return;
-        const b = layerBounds(ctx, p, layer);
-        if (!b) return;
+        const h = layerHandles(ctx, p, layer);
+        if (!h) return;
+        const { bounds: b, center, handles } = h;
         ctx.save();
         ctx.strokeStyle = "#4dabf7";
         ctx.lineWidth = Math.max(2, Math.round(p.W * 0.003));
         ctx.setLineDash([12, 8]);
+        if (layer.rot) {
+            ctx.translate(center.x, center.y);
+            ctx.rotate((layer.rot * Math.PI) / 180);
+            ctx.translate(-center.x, -center.y);
+        }
         ctx.strokeRect(b.x, b.y, b.w, b.h);
+        ctx.restore();
+        ctx.save();
+        const r = Math.max(7, Math.round(p.W * 0.009));
+        for (const pt of handles) {
+            ctx.beginPath();
+            if (pt.kind === "rotate") {
+                ctx.fillStyle = "#4dabf7";
+                ctx.arc(pt.x, pt.y, r * 0.9, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                ctx.fillStyle = "#fff";
+                ctx.strokeStyle = "#4dabf7";
+                ctx.lineWidth = Math.max(2, Math.round(p.W * 0.0025));
+                ctx.rect(pt.x - r, pt.y - r, r * 2, r * 2);
+                ctx.fill();
+                ctx.stroke();
+            }
+        }
         ctx.restore();
     }, [selectedLayerId]);
 
@@ -650,22 +676,61 @@ export default function VideoStudioPage() {
     const onCanvasDown = (e) => {
         if (!plan || busy || playing) return;
         const pt = canvasPoint(e);
-        const hit = hitTestLayers(canvasRef.current.getContext("2d"), plan, pt.x, pt.y);
+        const ctx2 = canvasRef.current.getContext("2d");
+
+        // Handles on the CURRENT selection win over layer bodies — grabbing a
+        // corner of the selected layer must never re-select what sits under it.
+        const sel = selectedLayerId ? plan.layers.find((l) => l.id === selectedLayerId) : null;
+        if (sel && sel.visible !== false) {
+            const handle = hitTestHandles(ctx2, plan, sel, pt.x, pt.y, Math.max(14, plan.W * 0.016));
+            if (handle) {
+                e.currentTarget.setPointerCapture?.(e.pointerId);
+                dragRef.current = handle.kind === "rotate"
+                    ? {
+                        id: sel.id, mode: "rotate", center: handle.center, baseRot: sel.rot || 0,
+                        startAngle: Math.atan2(pt.y - handle.center.y, pt.x - handle.center.x),
+                    }
+                    : {
+                        id: sel.id, mode: "resize", handle, start: pt,
+                        // A stable base: resize computes from the state at grab
+                        // time, or each move would compound on the last one.
+                        snap: { ...sel },
+                    };
+                return;
+            }
+        }
+
+        const hit = hitTestLayers(ctx2, plan, pt.x, pt.y);
         setSelectedLayerId(hit ? hit.layer.id : null);
         if (!hit) return;
         e.currentTarget.setPointerCapture?.(e.pointerId);
         dragRef.current = {
-            id: hit.layer.id,
+            id: hit.layer.id, mode: "move",
             startX: pt.x, startY: pt.y,
-            baseFx: hit.layer.x / plan.W,
-            baseFy: hit.layer.y / plan.H,
+            baseFx: hit.layer.type === "photo" ? (hit.layer.fx ?? 0.3) : hit.layer.x / plan.W,
+            baseFy: hit.layer.type === "photo" ? (hit.layer.fy ?? 0.3) : hit.layer.y / plan.H,
         };
     };
     const onCanvasMove = (e) => {
         const d = dragRef.current;
         if (!d || !plan) return;
         const pt = canvasPoint(e);
-        // The drag writes FRACTIONS, so the position survives an aspect switch.
+
+        if (d.mode === "resize") {
+            const k = scaleFromDrag(d.handle, d.start, pt);
+            const patch = resizePatch(canvasRef.current.getContext("2d"), plan, d.snap, d.handle.kind, k);
+            if (patch) upsertPatch(patch);
+            return;
+        }
+        if (d.mode === "rotate") {
+            const a = Math.atan2(pt.y - d.center.y, pt.x - d.center.x);
+            let rot = d.baseRot + ((a - d.startAngle) * 180) / Math.PI;
+            rot = ((((rot + 180) % 360) + 360) % 360) - 180;
+            for (const snap of [0, 90, -90, 180]) if (Math.abs(rot - snap) < 3) rot = snap;
+            upsertPatch({ id: d.id, rot: +rot.toFixed(1) });
+            return;
+        }
+        // move — the drag writes FRACTIONS, so it survives an aspect switch.
         const fx = Math.min(1, Math.max(0, d.baseFx + (pt.x - d.startX) / plan.W));
         const fy = Math.min(1, Math.max(0, d.baseFy + (pt.y - d.startY) / plan.H));
         upsertPatch({ id: d.id, fx: +fx.toFixed(4), fy: +fy.toFixed(4) });
@@ -767,7 +832,10 @@ export default function VideoStudioPage() {
         const srcPatch = (layerPatches || []).find((p) => p.id === l.id && p.type);
         let patch = null;
         if (srcPatch) patch = { ...srcPatch, id: newId, timing };
-        else if (l.type === "photo") patch = { id: newId, type: "photo", index: l.index, kbIndex: l.kbIndex ?? l.index, timing };
+        else if (l.type === "photo") patch = {
+            id: newId, type: "photo", index: l.index, kbIndex: l.kbIndex ?? l.index, timing,
+            ...(l.fw ? { fx: l.fx, fy: l.fy, fw: l.fw, fh: l.fh, rot: l.rot } : {}),
+        };
         else if (l.type === "image") patch = {
             id: newId, type: "image", src: "logo",
             fx: +Math.min(0.9, (l.x / plan.W) + 0.04).toFixed(4), fy: +Math.min(0.9, (l.y / plan.H) + 0.04).toFixed(4),
@@ -1235,6 +1303,33 @@ export default function VideoStudioPage() {
                                         </button>
                                     </div>
                                     <div className="card-body py-2">
+                                        {/* ── photo: inset geometry — full-stage or picture-in-picture ── */}
+                                        {selectedLayer.type === "photo" && (
+                                            <div className="border-bottom pb-2 mb-2">
+                                                <div className="form-check form-switch mb-1">
+                                                    <input className="form-check-input" type="checkbox" id="photo-inset" disabled={busy}
+                                                        checked={!!selectedLayer.fw}
+                                                        onChange={(e) => upsertPatch(e.target.checked
+                                                            ? { id: selectedLayer.id, fx: 0.3, fy: 0.3, fw: 0.42 }
+                                                            : { id: selectedLayer.id, fw: 0, fh: 0, rot: 0 })} />
+                                                    <label className="form-check-label small" htmlFor="photo-inset"
+                                                        title="An inset floats over the other layers — a close-up over the wide shot, a side-by-side. Off = the photo fills the stage.">
+                                                        Inset (picture-in-picture)
+                                                    </label>
+                                                </div>
+                                                {!!selectedLayer.fw && (
+                                                    <>
+                                                        <RangeRow label="Size" value={selectedLayer.fw} min={0.1} max={0.9} step={0.01}
+                                                            suffix="× width" disabled={busy} onChange={(v) => upsertPatch({ id: selectedLayer.id, fw: v })} />
+                                                        <RangeRow label="Rotation" value={selectedLayer.rot || 0} min={-180} max={180} step={1}
+                                                            suffix="°" disabled={busy} onChange={(v) => upsertPatch({ id: selectedLayer.id, rot: v })} />
+                                                        <p className="text-muted mb-0" style={{ fontSize: 11 }}>
+                                                            Drag it on the preview to place it; corner handles resize, the stalk rotates.
+                                                        </p>
+                                                    </>
+                                                )}
+                                            </div>
+                                        )}
                                         {/* ── photo: order · exclude · focal · seconds (the old image strip) ── */}
                                         {selectedLayer.type === "photo" && (() => {
                                             if (appendedIds.has(selectedLayer.id)) {
@@ -1352,6 +1447,8 @@ export default function VideoStudioPage() {
                                                         suffix="× width" disabled={busy} onChange={(v) => upsertPatch({ id: selectedLayer.id, fw: v })} />
                                                     <RangeRow label="Opacity" value={p.opacity ?? 1} min={0.1} max={1} step={0.02}
                                                         suffix="" disabled={busy} onChange={(v) => upsertPatch({ id: selectedLayer.id, opacity: v })} />
+                                                    <RangeRow label="Rotation" value={p.rot || 0} min={-180} max={180} step={1}
+                                                        suffix="°" disabled={busy} onChange={(v) => upsertPatch({ id: selectedLayer.id, rot: v })} />
                                                     <p className="text-muted mb-0" style={{ fontSize: 11 }}>Drag it on the preview to place it.</p>
                                                 </>
                                             );
@@ -1438,6 +1535,8 @@ export default function VideoStudioPage() {
                                                 </div>
                                                 <RangeRow label="Size" value={selectedTextPatch.sizeFrac || 0.05} min={0.02} max={0.14} step={0.005}
                                                     suffix="× width" disabled={busy} onChange={(v) => upsertPatch({ id: selectedTextPatch.id, sizeFrac: v })} />
+                                                <RangeRow label="Rotation" value={selectedTextPatch.rot || 0} min={-180} max={180} step={1}
+                                                    suffix="°" disabled={busy} onChange={(v) => upsertPatch({ id: selectedTextPatch.id, rot: v })} />
                                                 <div className="d-flex flex-wrap align-items-center gap-3">
                                                     <div className="form-check form-switch mb-0">
                                                         <input className="form-check-input" type="checkbox" id="tl-bg" checked={selectedTextPatch.bg !== false && !!selectedTextPatch.bg} disabled={busy}
@@ -1471,6 +1570,8 @@ export default function VideoStudioPage() {
                                             <div className="border rounded p-2 mt-2">
                                                 <RangeRow label="QR size" value={selectedQrPatch.fw || 0.24} min={0.12} max={0.45} step={0.01}
                                                     suffix="× width" disabled={busy} onChange={(v) => upsertPatch({ id: selectedQrPatch.id, fw: v })} />
+                                                <RangeRow label="Rotation" value={selectedQrPatch.rot || 0} min={-45} max={45} step={1}
+                                                    suffix="°" disabled={busy} onChange={(v) => upsertPatch({ id: selectedQrPatch.id, rot: v })} />
                                                 <p className="text-muted mb-0" style={{ fontSize: 11 }}>
                                                     Encodes the linked product's storefront page{productContext?.url ? `: ${productContext.url}` : ""} —
                                                     resolved fresh on every render. Drag it on the preview to place it.
