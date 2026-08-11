@@ -1,10 +1,33 @@
 # Video Studio v3 — everything is a layer, on a timeline
 
-**Status:** planned, not started · 2026-08-11
-**Checkpoint:** ERP `90e15fa`, poster `bd696e6` (v2 program M0–M6 complete).
-Nothing in this plan is built yet; the renderer is at its committed state.
+**Status:** BUILT — T1–T5 complete, all gates green · 2026-08-11
+**Checkpoint:** started from ERP `90e15fa` / poster `bd696e6` (v2 M0–M6).
+T1 `1249f12` · T2 `ca421f1` · T3 `5c9b713` (ERP); T4 `bb3aa06` (poster).
 **Builds on:** `docs/todo/video-studio-editor-plan.md` (v2 — layers, templates,
 editor, transitions, commerce, audio start points).
+
+**How the gates were proven** (all repeatable):
+- **A/B rig** `packages/video-maker/harness/` — `serve.cjs` materializes the
+  `90e15fa` baseline from git and serves it beside the working tree;
+  `ab.html` paints five legacy looks × 12 stamps through both and
+  byte-compares (a GPU-flake repaint rule: a mismatch only counts if a fresh
+  repaint of both sides still differs). Poster `tools/ab-check.js` runs the
+  same page in a hidden Electron window. 60/60 identical in BOTH hosts, and
+  the sound probe (two overlapping clips, Goertzel on the decoded file) 6/6.
+- **T2 rig** `rutba-social/pages/dev/timeline-fixture.js` (no auth, no
+  network) driven by poster `tools/t2-check.js` with real input events in a
+  visible Electron window (a hidden page never hydrates Next — rAF freeze):
+  retime probe 14/14, move/trim/scrub/duplicate/delete/zoom 8/8.
+- **T3 rig** poster `tools/t3-check.js`: no horizontal page scroll at
+  1366×768, fit and 4× zoom.
+- **T4 rig** poster `tools/t4-check.js`: synthetic recipe (BMP/WAV bytes)
+  with two sound layers + a duplicated logo through the real rutba-vm://
+  hidden-window pipeline — clips land at their instants, missing tracks
+  degrade. 11/11.
+
+**Still owed a human eye:** one pass over the real studio
+(`/posts/video-studio?post=…`, needs a session) to confirm the T3 layout
+feels right with real posts — the automated layout gate ran on the fixture.
 
 ## The one idea
 
@@ -268,9 +291,9 @@ commit both repos.
 - **No nested groups / compositions.** One flat stack of lanes.
 - **No per-platform re-renders.** One video per post.
 
-## Standing items (unchanged from the v2 close-out)
+## Standing items — CLEARED 2026-08-11
 
-- `rutba-social/pages/posts/video-studio.js` is still uncommitted — it carries
-  the M5/M6 studio edits entangled with a concurrent session's `/posts`
-  restructure. **Verify it has landed in a commit before building T2/T3 on it.**
-- Core on :4020 needs a restart to mount `/api/social-video-templates`.
+- ~~`video-studio.js` uncommitted~~ — landed as `97249ae` (social work) and
+  `f5f5a81` (short links) before T1 began.
+- ~~Core :4020 restart for `/api/social-video-templates`~~ — probed mounted
+  (401 with the auth gate, vs 404 for a nonexistent route); already restarted.

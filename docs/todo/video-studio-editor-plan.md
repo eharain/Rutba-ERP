@@ -1,5 +1,11 @@
 # Video Studio v2 — layers, editing, customization
 
+**Superseded by v3:** `docs/todo/video-studio-timeline-plan.md` (BUILT) made
+the layer model universal — photos and sounds are layers with one envelope
+(z, timing, enter/exit, geometry, state), edited on a timeline of lanes, with
+the right rail dissolved into a selection-driven inspector. Everything below
+still describes the shipped v2 substrate the v3 work compiles onto.
+
 **Status:** M0–M6 done · 2026-08-11 — the planned program is complete
 - M6 ✔ audio start points + per-post audio. The Audio Library grew a waveform picker
   (decode → 240 peak bins → canvas; click sets `social-audio-track.start_offset`, snapped
