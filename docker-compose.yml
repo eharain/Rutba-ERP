@@ -572,6 +572,19 @@ services:
       PORT: ${PORT_USERS:-4022}
       HOSTNAME: 0.0.0.0
 
+  helpdesk:
+    build:
+      context: .
+      target: helpdesk
+      args: *global-build-args
+    restart: unless-stopped
+    depends_on:
+      - strapi
+    ports:
+      - "${PORT_HELPDESK:-4023}:${PORT_HELPDESK:-4023}"
+    environment:
+      PORT: ${PORT_HELPDESK:-4023}
+      HOSTNAME: 0.0.0.0
 volumes:
   mysql_data:
   strapi_uploads:

@@ -491,6 +491,20 @@ COPY --from=mail-build /app/rutba-mail/public            ./rutba-mail/public
 CMD ["node", "rutba-mail/server.js"]
 
 # ----------------------------------------------------------
+#  rutba-helpdesk (Agent console: ticket queue, thread, desks, routing)
+# ----------------------------------------------------------
+FROM build-env AS helpdesk-build
+RUN mkdir -p rutba-helpdesk/public && npm run build --workspace=rutba-helpdesk
+
+FROM base AS helpdesk
+WORKDIR /app
+ENV NODE_ENV=production HOSTNAME=0.0.0.0
+COPY --from=helpdesk-build /app/rutba-helpdesk/.next/standalone ./
+COPY --from=helpdesk-build /app/rutba-helpdesk/.next/static     ./rutba-helpdesk/.next/static
+COPY --from=helpdesk-build /app/rutba-helpdesk/public            ./rutba-helpdesk/public
+CMD ["node", "rutba-helpdesk/server.js"]
+
+# ----------------------------------------------------------
 #  rutba-users (Central user management: users, roles, access)
 # ----------------------------------------------------------
 FROM build-env AS users-build
