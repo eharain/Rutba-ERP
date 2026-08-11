@@ -30,7 +30,7 @@ import { resolveStorefrontBaseUrl, productShortUrl } from "../../lib/storefront-
 import {
     ASPECTS, THEMES, DEFAULTS,
     buildPlan, paintFrame, renderVideo, loadImage, loadImages, releaseImages,
-    loadAudioTrack, setMediaAuth, layerBounds, hitTestLayers,
+    loadAudioTrack, setMediaAuth, hitTestLayers,
     layerHandles, hitTestHandles, scaleFromDrag, resizePatch, withLayerStateAt,
     soundLayers, clipFromSoundLayer,
     imageItems, isImageOnly, unsupportedReason, videoFileName,
