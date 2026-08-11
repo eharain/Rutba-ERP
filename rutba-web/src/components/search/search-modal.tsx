@@ -29,14 +29,20 @@ export default function SearchModal(props: propsInterface) {
 
   const debounceSearch = useDebounce(search, 1500);
 
+  // Search on the DEBOUNCED value, not the live one. Keying the cache by
+  // `debounceSearch` while querying `search` files each response under whatever
+  // had been typed 1.5s earlier, so a later keystroke can serve the wrong
+  // cached result set.
+  //
+  // The server also accepts identifiers here, not just names: a SKU, a barcode,
+  // a QR token, a slug, a short code, or a whole pasted storefront URL. Someone
+  // holding the product or a link to it can find it without knowing what it is
+  // called.
   const { data: products, isLoading } = useQuery({
     queryKey: ["search", debounceSearch],
     queryFn: async () => {
-      if (search) {
-        return await productsService.searchProduct(search);
-      } else {
-        return [];
-      }
+      if (!debounceSearch) return [];
+      return await productsService.searchProduct(debounceSearch);
     },
   });
 
@@ -111,7 +117,7 @@ export default function SearchModal(props: propsInterface) {
             <input
               type="text"
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Type to start searching product"
+              placeholder="Search by name, code, or paste a link"
               className="w-full font-normal focus:outline-none"
             />
           </DialogTitle>

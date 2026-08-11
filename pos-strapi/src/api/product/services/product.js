@@ -3,6 +3,7 @@
 const { createCoreService } = require('@strapi/strapi').factories;
 const { ACTIVE_PRODUCT_FILTER } = require('../../../utils/active-product');
 const { NOT_A_VARIANT, imagedProductIdSet, hasAnyImage } = require('../../../utils/public-product');
+const { decodeShortCode } = require('@rutba/api-provider/lib/short-code.cjs');
 
 // Drafts of nested relations can slip through Strapi 5 populate trees even
 // when the parent is fetched as published.
@@ -56,6 +57,39 @@ const DETAIL_POPULATE = {
 // NOT_A_VARIANT and the has-image gate both live in utils/public-product —
 // shared with the product-group and cms-page surfaces so "listable" means the
 // same thing everywhere.
+
+/**
+ * The part of a search query that could be an identifier, or null when the
+ * query is plainly prose.
+ *
+ * A phone camera pointed at a QR code hands its owner a URL, not a code, and
+ * that URL is what gets pasted into the search box — so a pasted
+ * `…/s/<code>`, `…/qr/<code>` or `…/product/<slug>` is reduced to its last
+ * path segment. Anything containing whitespace is a phrase, and phrases are
+ * names: no identifier in this system has a space in it.
+ */
+function identifierToken(query) {
+  const q = String(query ?? '').trim();
+  if (!q || /\s/.test(q)) return null;
+
+  if (/^https?:\/\//i.test(q)) {
+    let url;
+    try {
+      url = new URL(q);
+    } catch {
+      return null;
+    }
+    const last = url.pathname.split('/').filter(Boolean).pop();
+    if (!last) return null;
+    try {
+      return decodeURIComponent(last);
+    } catch {
+      return last;
+    }
+  }
+
+  return q;
+}
 
 function buildListFilters(filter = {}) {
   const and = [];
@@ -203,18 +237,79 @@ module.exports = createCoreService('api::product.product', ({ strapi }) => ({
     });
   },
 
+  /**
+   * Storefront search.
+   *
+   * Names are what most people type, but not all of them: a customer with the
+   * product in front of them types what is printed on it (SKU, barcode), and a
+   * customer who scanned a QR or was sent a short link pastes a URL. None of
+   * those contain the product's name, so a name-only search answers "no
+   * results" to someone holding the exact item — the worst possible moment to
+   * say it. Exact identifier matches are resolved first and pinned to the top;
+   * the name search is unchanged and supplies the rest.
+   *
+   * Identifier matches obey the same sellable/active/not-a-variant gate as
+   * every other storefront list. That is deliberately stricter than
+   * `/qr/<code>` and `/s/<code>`, which resolve any published product and let
+   * the detail page say "temporarily offline": a scanned label is a promise the
+   * page exists, whereas search is an offer to sell.
+   */
   async findPublicSearch(query, pageSize = 5) {
     const q = (query ?? '').trim();
     if (q.length === 0) return [];
     const sellable = await this._sellableProductIds();
     if (sellable.length === 0) return [];
-    return strapi.documents('api::product.product').findMany({
+
+    const gate = [{ id: { $in: sellable } }, ACTIVE, NOT_A_VARIANT];
+    const read = (filters) => strapi.documents('api::product.product').findMany({
       status: 'published',
-      filters: { $and: [{ name: { $containsi: q } }, { id: { $in: sellable } }, ACTIVE, NOT_A_VARIANT] },
+      filters: { $and: [filters, ...gate] },
       fields: DETAIL_FIELDS,
       populate: PUBLIC_POPULATE,
       pagination: { pageSize },
     });
+
+    const token = identifierToken(q);
+
+    // Unambiguous identifiers: a value equal to one of these was printed on or
+    // assigned to exactly this product, so it outranks any name that merely
+    // contains the same letters.
+    const exact = token
+      ? await read({
+        // $eqi throughout: a SKU read off a label and typed back in rarely
+        // comes back in the case it was stored in.
+        $or: [
+          { qr_code: { $eqi: token } },
+          { sku: { $eqi: token } },
+          { barcode: { $eqi: token } },
+          { slug: { $eqi: token } },
+          { documentId: { $eqi: token } },
+        ],
+      })
+      : [];
+
+    const byName = await read({ name: { $containsi: q } });
+
+    // Short codes go last, and only when nothing else answered. Most short
+    // words are valid Base32 — "sale" decodes to 829486 — so a decode that
+    // happens to hit a live product id must never displace a real name match.
+    let byShortCode = [];
+    if (exact.length === 0 && byName.length === 0) {
+      const id = decodeShortCode(token ?? '');
+      if (id !== null) byShortCode = await read({ id: { $eq: id } });
+    }
+
+    // Same product can arrive from two passes (a slug hit that also matches by
+    // name); first occurrence wins, which is the more authoritative one.
+    const seen = new Set();
+    const merged = [];
+    for (const row of [...exact, ...byShortCode, ...byName]) {
+      if (seen.has(row.documentId)) continue;
+      seen.add(row.documentId);
+      merged.push(row);
+      if (merged.length >= pageSize) break;
+    }
+    return merged;
   },
 
   async findPublicHighestPrice() {

@@ -155,6 +155,7 @@ export * from './social-accounts.js';
 export * from './social-audio-tracks.js';
 export * from './social-posts.js';
 export * from './social-replies.js';
+export * from './social-video-templates.js';
 export * from './stock-adjustments.js';
 export * from './stock-alerts.js';
 export * from './stock-batches.js';

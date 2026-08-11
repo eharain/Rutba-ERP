@@ -11,7 +11,8 @@
     "smoke": "node scripts/smoke-documents.js",
     "migrate": "node scripts/migrate.js up",
     "migrate:status": "node scripts/migrate.js status",
-    "migrate:down": "node scripts/migrate.js down"
+    "migrate:down": "node scripts/migrate.js down",
+    "social:shorten-urls": "node scripts/shorten-social-post-urls.js"
   },
   "dependencies": {
     "@koa/router": "^15.7.0",

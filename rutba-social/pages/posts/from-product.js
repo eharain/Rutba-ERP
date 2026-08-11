@@ -8,7 +8,7 @@ import { useToast } from "../../components/Toast";
 import PLATFORMS from "../../components/PlatformBadge";
 import FileView from "@rutba/pos-shared/components/FileView";
 import Link from "next/link";
-import { useStorefrontBaseUrl, productStorefrontUrl } from "../../lib/storefront-url";
+import { useStorefrontBaseUrl, productShortUrl } from "../../lib/storefront-url";
 
 // Turn products into a shoppable social post: a caption generated from the
 // product's name/price/summary + a "Shop now" deep-link to the storefront
@@ -43,8 +43,10 @@ function deriveTags(products) {
 }
 
 // The "Shop now" link is built against `baseUrl` — the storefront base resolved
-// from site-settings.site_url (env fallback) — using the same product path the
-// storefront itself uses (slug || documentId).
+// from site-settings.site_url (env fallback) — as a short link, `/s/<code>`.
+// A caption is read on a phone and often retyped or dictated, and the long
+// `/product/<slug>` form spends characters that could be selling the product;
+// the storefront redirects the short form to the same page.
 function buildCaption(products, baseUrl) {
     if (products.length === 0) return "";
     if (products.length === 1) {
@@ -54,7 +56,7 @@ function buildCaption(products, baseUrl) {
         const desc = String(p.summary || p.description || "").trim();
         if (desc) { lines.push(desc.length > 300 ? desc.slice(0, 297) + "…" : desc, ""); }
         lines.push(was ? `💰 ${money(price)}  (was ${money(was)})` : `💰 ${money(price)}`);
-        lines.push(`🛒 Shop now: ${productStorefrontUrl(baseUrl, p)}`);
+        lines.push(`🛒 Shop now: ${productShortUrl(baseUrl, p)}`);
         const tags = deriveTags([p]).map((t) => `#${t}`).join(" ");
         if (tags) lines.push("", tags);
         return lines.join("\n");

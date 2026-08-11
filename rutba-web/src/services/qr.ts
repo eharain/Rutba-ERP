@@ -17,7 +17,7 @@ export interface QrMatch {
   image: string | null;
   /** Host-relative storefront path this match points at. */
   path: string;
-  matched_on: 'qr_code' | 'slug' | 'documentId';
+  matched_on: 'qr_code' | 'slug' | 'documentId' | 'short_code';
 }
 
 /**
@@ -43,12 +43,20 @@ export class QrResolveTimeout extends Error {
  * Resolve a scanned QR token. The server searches every content type a printed
  * code can refer to, so a code that matches nothing here really is unknown —
  * there is no second lookup worth trying.
+ *
+ * `prefer` names the namespace the code arrived through. `/s/<code>` passes
+ * `'short'`, which tells the server a Base32 product id outranks any slug that
+ * happens to decode the same way; `/qr/<code>` leaves it unset, where a real
+ * slug wins and the short-code reading is only a fallback.
  */
-export async function resolveQrCodeSSR(code: string): Promise<QrMatch[]> {
+export async function resolveQrCodeSSR(
+  code: string,
+  prefer?: 'short',
+): Promise<QrMatch[]> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     const res = await Promise.race([
-      WebQrEndpoints.resolve(code),
+      WebQrEndpoints.resolve(code, prefer),
       new Promise((_, reject) => {
         timer = setTimeout(() => reject(new QrResolveTimeout()), RESOLVE_TIMEOUT_MS);
       }),

@@ -2,8 +2,8 @@ import { webApi } from '../../../../lib/api.js';
 import { strictEndpointGuard } from '../___core__.js';
 import { WebQrEndpoints as WebQrEndpointsApi } from '../../../../api/web/qr.js';
 
-async function resolve(code) {
-    const ep = WebQrEndpointsApi.resolve(code);
+async function resolve(code, prefer) {
+    const ep = WebQrEndpointsApi.resolve(code, prefer);
     return webApi.fetch(ep.path, ep.params);
 }
 
