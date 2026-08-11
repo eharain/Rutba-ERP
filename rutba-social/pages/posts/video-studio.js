@@ -121,6 +121,7 @@ export default function VideoStudioPage() {
     const [previewTime, setPreviewTime] = useState(0);
     const [playing, setPlaying] = useState(false);
 
+    const [savingRecipe, setSavingRecipe] = useState(false);
     const [rendering, setRendering] = useState(false);
     const [progress, setProgress] = useState(0);
     const [result, setResult] = useState(null); // { blob, url, mimeType, extension, duration }
@@ -1058,6 +1059,36 @@ export default function VideoStudioPage() {
 
     const cancelRender = () => { abortRef.current?.abort(); };
 
+    // ── save the recipe without rendering ───────────────────
+    // Everything the editor does lives in React state until something writes
+    // video_settings — and until now only attach did, AFTER a render. This
+    // writes the same snapshot on its own, so leaving the studio never loses
+    // an edit: re-opening the post restores exactly this state.
+    const saveRecipe = async () => {
+        if (!selected) return;
+        setSavingRecipe(true);
+        try {
+            const video_settings = {
+                template: templateId || null,
+                options: { ...effectiveOptions },
+                layers: layerPatches || [],
+                savedAt: new Date().toISOString(),
+                ...(selected.video_settings?.renderedAt ? { renderedAt: selected.video_settings.renderedAt } : {}),
+            };
+            await SocialPostsEndpoints.updateDraft(selected.documentId, { data: { video_settings } });
+            // Keep the local copies in sync so re-selecting restores this state
+            // without a refetch.
+            setSelected((p) => (p ? { ...p, video_settings } : p));
+            setPosts((list) => list.map((p) => (p.documentId === selected.documentId ? { ...p, video_settings } : p)));
+            toast("Recipe saved — this look re-opens with the post.", "success");
+        } catch (err) {
+            console.error("Failed to save the recipe", err);
+            toast("Failed to save the recipe.", "danger");
+        } finally {
+            setSavingRecipe(false);
+        }
+    };
+
     // ── attach to the post ──────────────────────────────────
     const attachToPost = async (post, out, publishToo) => {
         const name = videoFileName(post, out.extension);
@@ -1288,6 +1319,17 @@ export default function VideoStudioPage() {
                                                 typing sped up
                                             </span>
                                         )}
+                                        {/* Save + Render live top-right — always in reach, never below the fold */}
+                                        <button className="btn btn-sm btn-outline-success ms-auto" onClick={saveRecipe}
+                                            disabled={!plan || busy || savingRecipe}
+                                            title="Persist this recipe to the post WITHOUT rendering — layers, timings, motion, everything. Re-opening the post restores it.">
+                                            {savingRecipe ? <span className="spinner-border spinner-border-sm me-1" /> : <i className="fas fa-save me-1" />}
+                                            Save
+                                        </button>
+                                        <button className="btn btn-sm btn-primary" onClick={handleRender} disabled={!plan || busy || !!blocked}>
+                                            <i className="fas fa-clapperboard me-1" />
+                                            {rendering ? "Rendering…" : `Render ${plan ? fmtSeconds(plan.duration) : ""}`}
+                                        </button>
                                     </div>
                                     <div className="card-body d-flex flex-column align-items-center">
                                         <div className="bg-dark rounded w-100 d-flex justify-content-center" style={{ minHeight: 220 }}>
@@ -1398,10 +1440,7 @@ export default function VideoStudioPage() {
                                     </div>
 
                                     <div className="card-footer d-flex flex-wrap gap-2 align-items-center">
-                                        <button className="btn btn-sm btn-primary" onClick={handleRender} disabled={!plan || busy || !!blocked}>
-                                            <i className="fas fa-clapperboard me-1" />
-                                            {rendering ? "Rendering…" : `Render ${plan ? fmtSeconds(plan.duration) : ""}`}
-                                        </button>
+                                        {!result && <small className="text-muted">Render (top right) produces the video; the result lands here for download and attach.</small>}
                                         {result && (
                                             <>
                                                 <a className="btn btn-sm btn-outline-secondary" href={result.url}
