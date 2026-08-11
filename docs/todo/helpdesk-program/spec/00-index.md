@@ -202,7 +202,7 @@ The forty sections are a *specification* structure, not a build order. Build in 
 |---|---|---|
 | **W0 — Platform** | P1 event bus, P2 workflow service promotion, P7 migration story | Other modules can emit and subscribe; Helpdesk can own tables |
 | **W1 — Domain core** | §07 data model, §08 lifecycle, §09 workflows, §12 SLA, §27 API, §28 events, §30 audit | A ticket can be created, threaded, assigned, transitioned and SLA-tracked via API |
-| **W2 — Agent surface** | §18, §06, §26, §24, §25, §29 | Agents work tickets in `rutba-helpdesk` (:4019) |
+| **W2 — Agent surface** | §18, §06, §26, §24, §25, §29 | Agents work tickets in `rutba-helpdesk` (:4023) |
 | **W3 — Requester surfaces** | §16, §17, §10, §15 | Requesters file and track their own tickets across channels |
 | **W4 — Scale-out** | §13, §14, §11, §23, §19, §20, §21 | The desk runs without manual triage |
 | **W5 — Intelligence** | §22, §39, remote support epic | Differentiation |

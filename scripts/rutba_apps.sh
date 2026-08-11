@@ -66,6 +66,7 @@ RUTBA_SERVICES=(
     rutba_campaigns
     rutba_mail
     rutba_users
+    rutba_helpdesk
 )
 
 ###########################################
@@ -99,6 +100,7 @@ declare -A RUTBA_SVC_CMD=(
     [rutba_campaigns]="run start --workspace=rutba-campaigns"
     [rutba_mail]="run start --workspace=rutba-mail"
     [rutba_users]="run start --workspace=rutba-users"
+    [rutba_helpdesk]="run start --workspace=rutba-helpdesk"
 )
 
 ###########################################
@@ -130,6 +132,7 @@ declare -A RUTBA_SVC_DESC=(
     [rutba_campaigns]="Rutba ERP - Campaigns (rutba-campaigns)"
     [rutba_mail]="Rutba ERP - Mail (rutba-mail)"
     [rutba_users]="Rutba ERP - User Management (rutba-users)"
+    [rutba_helpdesk]="Rutba ERP - Helpdesk (rutba-helpdesk)"
 )
 
 ###########################################
@@ -165,6 +168,10 @@ declare -A RUTBA_SVC_PORT=(
     [rutba_campaigns]="4019"
     [rutba_mail]="4021"
     [rutba_users]="4022"
+    # 4019 was in the helpdesk spec but rutba_campaigns already owns it; moved to
+    # 4023 here, in roles.js APP_URLS, and in .env.* (RUTBA_HELPDESK__PORT +
+    # NEXT_PUBLIC_HELPDESK_URL).
+    [rutba_helpdesk]="4023"
 )
 
 ###########################################

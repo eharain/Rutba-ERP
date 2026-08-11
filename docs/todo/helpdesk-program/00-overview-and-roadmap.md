@@ -10,7 +10,7 @@
 > throughout.
 
 > Program-level plan for turning the existing `contact-ticket` primitive into a **general
-> service-desk platform** (`rutba-helpdesk`, port **4019**) that serves many areas — customer
+> service-desk platform** (`rutba-helpdesk`, port **4023**) that serves many areas — customer
 > support, IT, HR, facilities, field service, warranty/RMA, maintenance — and then extends
 > into **remote support** (remote control of enrolled devices) as a wider IT capability.
 >
@@ -106,7 +106,7 @@ stages arrive by configuration, not by code.
 | # | Phase | Owning code | Ships | Depends on |
 |---|-------|-------------|-------|-----------|
 | 1 | **Desk foundation** — generalise the ticket, add the thread, wire the platform primitives | `pos-strapi` + `rutba-core` + api-provider | A ticket that can be threaded, assigned, prioritised, SLA'd and pointed at any entity | — |
-| 2 | **`rutba-helpdesk` app (:4019)** — the agent console | new app + roles/domains registration | Agents work every desk from one queue | 1 |
+| 2 | **`rutba-helpdesk` app (:4023)** — the agent console | new app + roles/domains registration | Agents work every desk from one queue | 1 |
 | 3 | **Requester surfaces** — portal + omnichannel intake | `rutba-web-user`, `rutba-web`, HR/ESS, pos-shared | Requesters see and reply to their own tickets; tickets arrive from more than a form | 1, 2 |
 | 4 | **Automation & knowledge** — routing rules, canned replies, KB, CSAT, reports | `pos-strapi` + `rutba-helpdesk` | The desk scales past manual triage | 2, 3 |
 | 5 | **Remote support** — device enrolment, remote control sessions, consent + audit | new CTs + provider adapters + `rutba-helpdesk` | IT resolves device issues from inside the ticket | 2; asset model | 
@@ -201,7 +201,7 @@ convention. Mirror every new route in [rutba-core/src/modules/crm.js](../../../r
 
 ---
 
-## Phase 2 — `rutba-helpdesk` app (port 4019)
+## Phase 2 — `rutba-helpdesk` app (port 4023)
 
 Registration checklist (per the new-ERP-app convention):
 
@@ -212,7 +212,7 @@ Registration checklist (per the new-ERP-app convention):
   `VALID_APP_KEYS`, `APP_META` entry. Category: **`sales` (Sales & Customers)** — a customer-facing
   desk sits closer to CRM than to Administration.
 - `/auth/callback` page, `RoleSwitcher`, `PrimeReactProvider`.
-- `scripts/rutba_apps.sh`: `RUTBA_SVC_CMD` / `_DESC` / `_PORT[rutba_helpdesk]="4019"` — the
+- `scripts/rutba_apps.sh`: `RUTBA_SVC_CMD` / `_DESC` / `_PORT[rutba_helpdesk]="4023"` — the
   single-source registry; nothing else lists services.
 - docker-compose + Caddy route.
 

@@ -36,7 +36,7 @@ export const EnumsEndpoints = {
         path: `/enums/${name}/${field}`,
         action: 'find',
         method: 'get',
-        apps: ['cms', 'ess', 'hr', 'mail', 'stock', 'users'],
+        apps: ['cms', 'ess', 'hr', 'mail', 'stock', 'users', 'helpdesk'],
         approle: ['admin', 'manager', 'staff']
     }),
 

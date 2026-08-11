@@ -159,7 +159,7 @@ not a configuration choice.
 | Business calendar data | HR | SLA cannot honour working hours (RULE-8) |
 | Rutba-MTA inbound | Infra | Email channel drops from launch scope |
 | WhatsApp Business API | Roadmap H1 | WhatsApp channel slips |
-| `rutba-helpdesk` app registration (:4019) | This program | No agent surface |
+| `rutba-helpdesk` app registration (:4023) | This program | No agent surface |
 
 ---
 

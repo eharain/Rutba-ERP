@@ -7,7 +7,7 @@
 ## 5.1 Purpose
 
 How the module's concepts are organised, and where each lives across the four surfaces:
-the **agent app** (`rutba-helpdesk`, :4019), the **customer portal** (`rutba-web-user`), the
+the **agent app** (`rutba-helpdesk`, :4023), the **customer portal** (`rutba-web-user`), the
 **employee portal** (`rutba-ess`), and the **storefront** (`rutba-web`).
 
 ## 5.2 Concept hierarchy
@@ -51,7 +51,7 @@ sits on the ticket.
 Desks, teams, workflows, SLA policies, catalog items, automation rules, macros and KB articles
 are separate aggregates with their own lifecycles and their own endpoints.
 
-## 5.4 Agent app (`rutba-helpdesk`, :4019)
+## 5.4 Agent app (`rutba-helpdesk`, :4023)
 
 ```
 /                             Dashboard (role-aware: agent | manager | admin)
