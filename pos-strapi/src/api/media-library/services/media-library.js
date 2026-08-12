@@ -7,6 +7,12 @@
  * and file management, exposing them to the content API.
  */
 
+const path = require('path');
+
+const SCAN_MIME_BY_EXT = {
+    mp4: 'video/mp4', m4v: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm',
+};
+
 module.exports = ({ strapi }) => ({
 
     // ─── Folders ────────────────────────────────────────────
@@ -315,5 +321,156 @@ module.exports = ({ strapi }) => ({
         }
 
         return uploaded;
+    },
+
+    // ─── Media-server video surface (proxy) ─────────────────
+    //
+    // Video bytes, the drive scanner and the folder tree all belong to the
+    // Rutba Media FileServer: it owns the disks, so it is the only thing that
+    // can walk them, and it already has a resumable scanner and a metadata
+    // index. This backend keeps NO scanner of its own — it forwards to the
+    // media server using the upload token (the very credential the upload
+    // provider already holds), so ERP users need no media-server account and
+    // never talk to that origin directly.
+
+    /** Media-server origin + service token, from the upload provider's options. */
+    _mediaService() {
+        const cfg = strapi.config.get('plugin::upload') || {};
+        const opts = cfg.providerOptions || cfg.config?.providerOptions || {};
+        const baseUrl = String(opts.baseUrl || '').replace(/\/+$/, '');
+        return { baseUrl, token: opts.uploadToken || '' };
+    },
+
+    async _mediaFetch(routePath, { method = 'GET', params = null, body = null } = {}) {
+        const { baseUrl, token } = this._mediaService();
+        if (!baseUrl || !token) {
+            const err = new Error(
+                'No media server configured — set MEDIA_BASE_URL and MEDIA_UPLOAD_TOKEN. '
+                + 'The video library and its drive scan live on the media server.');
+            err.status = 503;
+            throw err;
+        }
+        let url = `${baseUrl}${routePath}`;
+        if (params) {
+            const qs = new URLSearchParams();
+            for (const [k, v] of Object.entries(params)) {
+                if (v !== undefined && v !== null && v !== '') qs.set(k, String(v));
+            }
+            const s = qs.toString();
+            if (s) url += `?${s}`;
+        }
+        const res = await fetch(url, {
+            method,
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'X-Upload-Token': token,
+                ...(body ? { 'Content-Type': 'application/json' } : {}),
+            },
+            ...(body ? { body: JSON.stringify(body) } : {}),
+        });
+        const text = await res.text();
+        let json = null;
+        try { json = text ? JSON.parse(text) : null; } catch { /* non-JSON body */ }
+        if (!res.ok) {
+            const err = new Error(json?.message || json?.error || `Media server ${res.status}`);
+            err.status = res.status;
+            throw err;
+        }
+        return json || {};
+    },
+
+    /** Videos the media server has indexed. Params: folder, recursive, q, limit, offset, sort. */
+    async mediaVideos(params = {}) {
+        const { baseUrl } = this._mediaService();
+        const out = await this._mediaFetch('/_api/videos', { params });
+        // The media server may hand back origin-relative urls; the ERP's callers
+        // need absolute ones, and only this side knows the configured origin.
+        const videos = (out.videos || []).map((v) => ({
+            ...v,
+            url: /^https?:\/\//i.test(v.url || '')
+                ? v.url
+                : `${baseUrl}/${String(v.url || v.path || '').replace(/^\/+/, '')}`,
+        }));
+        return { ...out, videos };
+    },
+
+    /** Folders that contain videos, with per-folder counts. */
+    async mediaVideoFolders() {
+        return this._mediaFetch('/_api/videos/folders');
+    },
+
+    /** State of the media server's drive scan. */
+    async videoScanStatus() {
+        return this._mediaFetch('/_api/videos/scan');
+    },
+
+    /** Ask the media server to (re)scan its drives. */
+    async videoScanRun({ folder = null } = {}) {
+        return this._mediaFetch('/_api/videos/scan', {
+            method: 'POST',
+            body: folder ? { folder } : {},
+        });
+    },
+
+    /**
+     * Point library rows at videos that already live on the media server, so a
+     * scanned file can be attached to a post (posts carry Strapi media
+     * relations, which are file ids). Nothing is copied or re-uploaded: the
+     * bytes stay put and the row records where they are.
+     *
+     * `caption` holds the media-server path — the provenance marker AND the
+     * dedupe key, so linking the same video twice returns the first row.
+     */
+    async linkMediaVideos(items = []) {
+        const { baseUrl } = this._mediaService();
+        const linked = [];
+        const errors = [];
+
+        for (const item of Array.isArray(items) ? items : [items]) {
+            const rel = String(item?.path || '').replace(/^\/+/, '');
+            if (!rel) { errors.push('An entry had no path.'); continue; }
+            try {
+                const url = /^https?:\/\//i.test(item.url || '') ? item.url : `${baseUrl}/${rel}`;
+                const existing = await strapi.db.query('plugin::upload.file').findOne({
+                    where: { $or: [{ url }, { caption: rel }] },
+                });
+                if (existing) { linked.push(existing); continue; }
+
+                const name = item.name || path.basename(rel);
+                const ext = path.extname(name) || path.extname(rel);
+                const bare = ext.slice(1).toLowerCase();
+                const values = {
+                    name,
+                    alternativeText: item.alternativeText || null,
+                    caption: rel,
+                    // Strapi derives nothing from `hash` for a remote file, but
+                    // every row has one and the media path is already unique.
+                    hash: rel.replace(/[^a-zA-Z0-9]+/g, '_').slice(0, 200),
+                    ext,
+                    mime: item.mime || SCAN_MIME_BY_EXT[bare] || 'video/mp4',
+                    // Strapi stores kB with 2 decimals; the server reports bytes.
+                    size: Math.round(((Number(item.size_bytes ?? item.size) || 0) / 1000) * 100) / 100,
+                    url,
+                    provider: (strapi.config.get('plugin::upload') || {}).provider || 'strapi-provider-upload-media',
+                    width: item.width ?? null,
+                    height: item.height ?? null,
+                    folderPath: '/',
+                };
+
+                // Two backends, one intent: register a row for bytes that are
+                // already stored. Core exposes registerRemote for exactly this;
+                // Strapi's db layer creates the row directly (its own
+                // upload.add() has the same no-provider-write semantics, but
+                // takes an admin user context this call has no business faking).
+                const uploadSvc = strapi.plugin('upload').service('upload');
+                const row = typeof uploadSvc.registerRemote === 'function'
+                    ? await uploadSvc.registerRemote(values)
+                    : await strapi.db.query('plugin::upload.file').create({ data: values });
+                linked.push(row);
+            } catch (e) {
+                errors.push(`${rel}: ${e.message}`);
+            }
+        }
+        return { linked, count: linked.length, errors };
     },
 });

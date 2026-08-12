@@ -90,5 +90,38 @@ module.exports = {
             handler: 'media-library.uploadToFolder',
             config: { policies: [] },
         },
+
+        // ── Media-server videos (proxied) ───────────────────
+        // Literal paths before any that could shadow them.
+        {
+            method: 'GET',
+            path: '/media-library/videos/folders',
+            handler: 'media-library.mediaVideoFolders',
+            config: { policies: [] },
+        },
+        {
+            method: 'POST',
+            path: '/media-library/videos/link',
+            handler: 'media-library.linkMediaVideos',
+            config: { policies: [] },
+        },
+        {
+            method: 'GET',
+            path: '/media-library/videos',
+            handler: 'media-library.mediaVideos',
+            config: { policies: [] },
+        },
+        {
+            method: 'GET',
+            path: '/media-library/video-scan',
+            handler: 'media-library.videoScanStatus',
+            config: { policies: [] },
+        },
+        {
+            method: 'POST',
+            path: '/media-library/video-scan',
+            handler: 'media-library.videoScan',
+            config: { policies: [] },
+        },
     ],
 };

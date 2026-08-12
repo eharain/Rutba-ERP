@@ -30,4 +30,14 @@ export const MediaLibraryEndpoints = {
     // todo: speculative stub — see uploadFile above. Confirm DELETE route is wired.
     delFile: (id) => ({ path: `/media-library/files/${id}`, action: 'delFile', method: 'delete' }),
 
+    // Media-server video surface. The backend proxies these to the Rutba Media
+    // FileServer, which owns the video bytes, the drives and the scanner.
+    mediaVideos: (params = {}) => ({ path: '/media-library/videos', params }),
+    mediaVideoFolders: () => ({ path: '/media-library/videos/folders' }),
+    // Register media-server videos as library rows so a post can attach them.
+    // Nothing is copied — the row points at the bytes where they already live.
+    linkMediaVideos: (data) => ({ path: '/media-library/videos/link', action: 'linkMediaVideos', method: 'post', data }),
+    videoScanStatus: () => ({ path: '/media-library/video-scan' }),
+    videoScan: (data = {}) => ({ path: '/media-library/video-scan', action: 'videoScan', method: 'post', data }),
+
 };

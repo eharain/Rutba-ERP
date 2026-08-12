@@ -189,6 +189,13 @@ function registerCatalogModule() {
     { method: 'put', path: '/api/media-library/files/:id', uid: MEDIA, action: 'updateFileInfo', handler: (c) => mediaLibrary.updateFileInfo(c) },
     { method: 'delete', path: '/api/media-library/files/:id', uid: MEDIA, action: 'deleteFile', handler: (c) => mediaLibrary.deleteFile(c) },
     { method: 'post', path: '/api/media-library/upload', uid: MEDIA, action: 'uploadToFolder', handler: (c) => mediaLibrary.uploadToFolder(c) },
+    // Media-server video surface. Literal paths first — koa-router matches in
+    // registration order, so /videos/folders must precede /videos.
+    { method: 'get', path: '/api/media-library/videos/folders', uid: MEDIA, action: 'mediaVideoFolders', handler: (c) => mediaLibrary.mediaVideoFolders(c) },
+    { method: 'post', path: '/api/media-library/videos/link', uid: MEDIA, action: 'linkMediaVideos', handler: (c) => mediaLibrary.linkMediaVideos(c) },
+    { method: 'get', path: '/api/media-library/videos', uid: MEDIA, action: 'mediaVideos', handler: (c) => mediaLibrary.mediaVideos(c) },
+    { method: 'get', path: '/api/media-library/video-scan', uid: MEDIA, action: 'videoScanStatus', handler: (c) => mediaLibrary.videoScanStatus(c) },
+    { method: 'post', path: '/api/media-library/video-scan', uid: MEDIA, action: 'videoScan', handler: (c) => mediaLibrary.videoScan(c) },
 
     // ── content-sync ──────────────────────────────────────────────────────
     { method: 'get', path: '/api/content-sync/config', uid: 'api::content-sync.content-sync', action: 'config', handler: (c) => contentSync.config(c) },

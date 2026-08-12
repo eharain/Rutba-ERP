@@ -67,6 +67,31 @@ async function delFile(id) {
     return authApi.del(withQuery(ep.path, ep.params));
 }
 
+async function mediaVideos(params = {}) {
+    const ep = MediaLibraryEndpointsApi.mediaVideos(params);
+    return authApi.fetch(ep.path, ep.params);
+}
+
+async function mediaVideoFolders() {
+    const ep = MediaLibraryEndpointsApi.mediaVideoFolders();
+    return authApi.fetch(ep.path, ep.params);
+}
+
+async function linkMediaVideos(data) {
+    const ep = MediaLibraryEndpointsApi.linkMediaVideos(data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
+async function videoScanStatus() {
+    const ep = MediaLibraryEndpointsApi.videoScanStatus();
+    return authApi.fetch(ep.path, ep.params);
+}
+
+async function videoScan(data = {}) {
+    const ep = MediaLibraryEndpointsApi.videoScan(data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
 const endpoints = strictEndpointGuard(
     'MediaLibraryEndpoints',
     {
@@ -83,9 +108,14 @@ const endpoints = strictEndpointGuard(
         updateFileInfo,
         uploadFile,
         delFile,
+        mediaVideos,
+        mediaVideoFolders,
+        linkMediaVideos,
+        videoScanStatus,
+        videoScan,
         meta: MediaLibraryEndpointsApi.meta,
     },
-    ["foldersTree","folders","folder","files","file","moveFiles","uploadToFolder","createFolder","renameFolder","deleteFolder","updateFileInfo","uploadFile","delFile","meta"],
+    ["foldersTree","folders","folder","files","file","moveFiles","uploadToFolder","createFolder","renameFolder","deleteFolder","updateFileInfo","uploadFile","delFile","mediaVideos","mediaVideoFolders","linkMediaVideos","videoScanStatus","videoScan","meta"],
 );
 
 export default endpoints;

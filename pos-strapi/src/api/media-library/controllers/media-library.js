@@ -149,4 +149,70 @@ module.exports = {
 
         ctx.body = { data: result };
     },
+
+    // ─── Media-server video surface ─────────────────────────
+    // Thin proxies. The media server owns the bytes, the drives and the
+    // scanner; these exist so ERP users reach it with their ERP session
+    // instead of a media-server credential.
+
+    /** Videos indexed on the media server. ?folder=&recursive=&q=&limit=&offset=&sort= */
+    async mediaVideos(ctx) {
+        const svc = strapi.service('api::media-library.media-library');
+        try {
+            ctx.body = { data: await svc.mediaVideos(ctx.query || {}) };
+        } catch (e) {
+            ctx.status = e.status || 502;
+            ctx.body = { error: { message: e.message } };
+        }
+    },
+
+    /** Folders on the media server that contain videos. */
+    async mediaVideoFolders(ctx) {
+        const svc = strapi.service('api::media-library.media-library');
+        try {
+            ctx.body = { data: await svc.mediaVideoFolders() };
+        } catch (e) {
+            ctx.status = e.status || 502;
+            ctx.body = { error: { message: e.message } };
+        }
+    },
+
+    /** State of the media server's drive scan. */
+    async videoScanStatus(ctx) {
+        const svc = strapi.service('api::media-library.media-library');
+        try {
+            ctx.body = { data: await svc.videoScanStatus() };
+        } catch (e) {
+            ctx.status = e.status || 502;
+            ctx.body = { error: { message: e.message } };
+        }
+    },
+
+    /** Ask the media server to rescan its drives. Body: { data: { folder? } }. */
+    async videoScan(ctx) {
+        const body = ctx.request.body?.data ?? ctx.request.body ?? {};
+        const svc = strapi.service('api::media-library.media-library');
+        try {
+            ctx.body = { data: await svc.videoScanRun({ folder: body.folder || null }) };
+        } catch (e) {
+            ctx.status = e.status || 502;
+            ctx.body = { error: { message: e.message } };
+        }
+    },
+
+    /** Register media-server videos as library rows. Body: { data: { videos: [...] } }. */
+    async linkMediaVideos(ctx) {
+        const body = ctx.request.body?.data ?? ctx.request.body ?? {};
+        const items = body.videos || body.items || [];
+        if (!Array.isArray(items) || items.length === 0) {
+            return ctx.badRequest('videos array is required');
+        }
+        const svc = strapi.service('api::media-library.media-library');
+        try {
+            ctx.body = { data: await svc.linkMediaVideos(items) };
+        } catch (e) {
+            ctx.status = e.status || 502;
+            ctx.body = { error: { message: e.message } };
+        }
+    },
 };

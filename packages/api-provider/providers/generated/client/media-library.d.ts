@@ -13,6 +13,11 @@ export interface MediaLibraryEndpointsType {
     updateFileInfo(id: any, data: any): Promise<any>;
     uploadFile(data: any): Promise<any>;
     delFile(id: any): Promise<any>;
+    mediaVideos(params?: any): Promise<any>;
+    mediaVideoFolders(): Promise<any>;
+    linkMediaVideos(data: any): Promise<any>;
+    videoScanStatus(): Promise<any>;
+    videoScan(data?: any): Promise<any>;
     meta: any;
 }
 
