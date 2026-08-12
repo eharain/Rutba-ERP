@@ -18,6 +18,43 @@ const OPERATORS = new Set([
   '$and', '$or', '$not',
 ]);
 
+// Operators whose operand is a COLUMN VALUE (and so must be read in the
+// column's type). The string operators are excluded deliberately: a LIKE
+// pattern is a string whatever the column is. $null/$notNull are excluded
+// because their operand is a flag, not a value — coerceFlag handles those.
+const VALUE_OPERATORS = new Set(['$eq', '$eqi', '$ne', '$nei', '$in', '$notIn', '$gt', '$gte', '$lt', '$lte', '$between']);
+
+/**
+ * REST filters arrive from the query string, where EVERY value is a string:
+ * `filters[is_active][$eq]=true` parses to the string 'true'. MySQL then reads
+ * 'true' against a TINYINT as 0, so a filter meant to select the active rows
+ * silently selects nothing. Read the operand in the attribute's declared type
+ * instead — the in-process callers that already pass real booleans/numbers are
+ * unaffected, since coercing those is the identity.
+ */
+function coerceScalar(type, value) {
+  if (value === null || value === undefined) return value;
+  if (Array.isArray(value)) return value.map((v) => coerceScalar(type, v));
+  if (type === 'boolean') {
+    if (typeof value === 'boolean') return value;
+    const s = String(value).toLowerCase();
+    if (s === 'true' || s === '1') return true;
+    if (s === 'false' || s === '0') return false;
+    return value;
+  }
+  if (type === 'integer' || type === 'biginteger' || type === 'float' || type === 'decimal') {
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string' && value.trim() !== '' && Number.isFinite(Number(value))) return Number(value);
+    return value;
+  }
+  return value;
+}
+
+/** `$null: false` also arrives as the string 'false', which is truthy. */
+function coerceFlag(value) {
+  return value === false || value === 'false' || value === '0' || value === 0 ? false : value;
+}
+
 function applyOperator(qb, column, op, value) {
   switch (op) {
     // MySQL default collation is case-insensitive, so $eqi/$nei coincide with
@@ -30,8 +67,8 @@ function applyOperator(qb, column, op, value) {
       return value === null ? qb.whereNotNull(column) : qb.whereNot(column, value);
     case '$in': return qb.whereIn(column, value);
     case '$notIn': return qb.whereNotIn(column, value);
-    case '$null': return value === false ? qb.whereNotNull(column) : qb.whereNull(column);
-    case '$notNull': return value === false ? qb.whereNull(column) : qb.whereNotNull(column);
+    case '$null': return coerceFlag(value) === false ? qb.whereNotNull(column) : qb.whereNull(column);
+    case '$notNull': return coerceFlag(value) === false ? qb.whereNull(column) : qb.whereNotNull(column);
     // MySQL default collation is case-insensitive, so $contains/$containsi
     // coincide here; revisit if a case-sensitive collation is introduced.
     case '$contains':
@@ -120,6 +157,13 @@ function scalarColumn(model, attr) {
   return scalar ? scalar.column : null;
 }
 
+/** The declared type behind `attr`, for reading a filter operand in it. */
+function scalarType(model, attr) {
+  if (attr === 'id') return 'integer';
+  const scalar = model.scalars.find((s) => s.attr === attr);
+  return scalar ? scalar.type : null;
+}
+
 function applyAttributeFilter(db, registry, qb, model, attr, value, alias) {
   // Strapi built-in admin-relation filters ({createdBy: {id: X}}) hit the
   // *_by_id columns directly.
@@ -138,15 +182,16 @@ function applyAttributeFilter(db, registry, qb, model, attr, value, alias) {
   const column = scalarColumn(model, attr);
   if (column) {
     const qualified = `${alias}.${column}`;
+    const type = scalarType(model, attr);
     if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
       for (const [op, opValue] of Object.entries(value)) {
         // Strapi silently strips invalid filter fragments — match that
         // (fail-soft) rather than erroring the whole request.
         if (!OPERATORS.has(op)) continue;
-        applyOperator(qb, qualified, op, opValue);
+        applyOperator(qb, qualified, op, VALUE_OPERATORS.has(op) ? coerceScalar(type, opValue) : opValue);
       }
     } else {
-      applyOperator(qb, qualified, '$eq', value);
+      applyOperator(qb, qualified, '$eq', coerceScalar(type, value));
     }
     return;
   }
