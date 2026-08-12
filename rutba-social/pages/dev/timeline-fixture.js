@@ -16,6 +16,7 @@
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import VideoTimeline from "../../components/VideoTimeline";
+import { TimingRows, LookRows } from "../../components/InspectorRows";
 import { buildPlan, paintFrame, layerBounds, layerHandles, scaleFromDrag, resizePatch } from "../../lib/video-maker";
 
 function makePhoto(seed, w, h) {
@@ -325,6 +326,63 @@ export default function TimelineFixturePage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [plan]);
 
+    // ── the rail's rows, mounted for real ───────────────────
+    // The studio page needs a session; these components do not, because they
+    // take props and nothing else. What they WRITE is the contract worth
+    // holding: Pace must not flatten an entry kind into a fade, and Look must
+    // write null rather than a defaults-shaped object.
+    useEffect(() => {
+        if (!plan || window.__ROWS) return;
+        const results = [];
+        const push = (label, ok) => results.push({ label, ok });
+        const writes = [];
+        const catcher = (p) => writes.push(p);
+
+        // Mounted for real, further down the page: if either threw, these are
+        // missing and every check below is moot.
+        push("Pace mounts in the DOM", !!document.querySelector('[data-rows-probe="pace"] input[type=range]'));
+        push("Look mounts in the DOM", !!document.querySelector('[data-rows-probe="look"] input[type=range]'));
+
+        // Then drive the callbacks: same components, asked what they WRITE.
+        const slid = { id: "x", type: "photo", timing: { start: 1, end: 4 }, enter: { kind: "slide-left", seconds: 0.4 }, exit: { kind: "none", seconds: 0 } };
+        const paceWrites = [];
+        const Pace = TimingRows({ layer: slid, duration: 10, busy: false, onPatch: (p) => paceWrites.push(p) });
+        const findRamp = (node, label) => {
+            const walk = (n) => {
+                if (!n || typeof n !== "object") return null;
+                if (n.props?.label === label) return n;
+                const kids = n.props?.children;
+                for (const k of (Array.isArray(kids) ? kids : [kids])) { const hit = walk(k); if (hit) return hit; }
+                return null;
+            };
+            return walk(node);
+        };
+        const fadeIn = findRamp(Pace, "Fade in");
+        push("Pace offers a fade-in row", !!fadeIn);
+        if (fadeIn) {
+            fadeIn.props.onChange(1.2);
+            const w = paceWrites[paceWrites.length - 1];
+            push("changing the seconds keeps the entry KIND", w?.enter?.kind === "slide-left" && w.enter.seconds === 1.2);
+        }
+        const noRamp = findRamp(TimingRows({ layer: { id: "y", type: "text", timing: null, enter: { kind: "none", seconds: 0 } }, duration: 10, busy: false, onPatch: catcher }), "Fade in");
+        noRamp?.props.onChange(0.5);
+        push("a layer with no ramp gets a fade", writes.some((w) => w.enter?.kind === "fade" && w.enter.seconds === 0.5));
+
+        const lookWrites = [];
+        const Look = LookRows({ layer: { id: "z", type: "image", opacity: 1 }, busy: false, onPatch: (p) => lookWrites.push(p), withFilters: true });
+        const bright = findRamp(Look, "Brightness");
+        push("Look offers a brightness row", !!bright);
+        if (bright) {
+            bright.props.onChange(1.3);
+            push("a changed filter writes an object", !!lookWrites[lookWrites.length - 1]?.filter?.brightness);
+            bright.props.onChange(1);
+            push("back at the default it writes null, not {}", lookWrites[lookWrites.length - 1]?.filter === null);
+        }
+
+        window.__ROWS = { done: true, pass: results.every((r) => r.ok), results };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [plan]);
+
     return (
         <div className="container-fluid py-3" style={{ maxWidth: 1100 }}>
             <h5>Timeline fixture <small className="text-muted">— dev only, no auth, no network</small></h5>
@@ -353,6 +411,20 @@ export default function TimelineFixturePage() {
                 onRemove={(id) => { removePatchLayer(id); if (selectedLayerId === id) setSelectedLayerId(null); }}
                 onDuplicate={duplicateLayer}
             />
+            {/* The rail's rows, mounted so the probe above can prove they render
+                as well as that their callbacks write the right thing. */}
+            {plan && (
+                <div className="row g-2 mt-2" style={{ maxWidth: 700 }}>
+                    <div className="col-6" data-rows-probe="pace">
+                        <TimingRows layer={plan.layers.find((l) => l.id === "sound-1") || plan.layers[0]}
+                            duration={plan.duration} busy={false} onPatch={upsertPatch} />
+                    </div>
+                    <div className="col-6" data-rows-probe="look">
+                        <LookRows layer={plan.layers.find((l) => l.id === "sticker-1") || plan.layers[0]}
+                            busy={false} onPatch={(p) => upsertPatch({ id: "sticker-1", ...p })} />
+                    </div>
+                </div>
+            )}
             <div className="mt-3">
                 <h6>Retime probe {probe ? (probe.pass ? <span className="text-success">PASS</span> : <span className="text-danger">FAIL</span>) : <span className="text-muted">running…</span>}</h6>
                 {probe && (
