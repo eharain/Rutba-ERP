@@ -88,7 +88,13 @@ export default function Seo({
   const siteName = settings.site_name || "Rutba";
   const siteUrl = (settings.site_url || "").replace(/\/$/, "");
   const currentPath = path ?? router.asPath ?? "/";
-  const canonical = siteUrl ? `${siteUrl}${currentPath.split("?")[0]}` : undefined;
+  // Query strings are variants of one page (?group=, ?offer=), never their own
+  // canonical. og:url must be absolute per Open Graph, so it stays gated on a
+  // configured site_url — but the canonical falls back to the host-relative
+  // path, which crawlers resolve against the page: a tenant that hasn't set
+  // site_url yet must still not get its query variants indexed separately.
+  const canonicalPath = currentPath.split("?")[0];
+  const canonical = siteUrl ? `${siteUrl}${canonicalPath}` : undefined;
 
   const resolvedTitle =
     title ||
@@ -185,7 +191,7 @@ export default function Seo({
       <meta key="robots" name="robots" content={noindex ? "noindex,nofollow" : "index,follow"} />
 
       <link key="favicon" rel="shortcut icon" href={faviconUrl} type="image/x-icon" />
-      {canonical && <link key="canonical" rel="canonical" href={canonical} />}
+      <link key="canonical" rel="canonical" href={canonical || canonicalPath} />
 
       {/* Open Graph.
           EVERY tag here carries a `key`, and that is load-bearing rather than
