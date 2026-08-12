@@ -127,6 +127,10 @@ export default function VideoStudioPage() {
     const imageAssetsRef = useRef({});
     const [showImagePicker, setShowImagePicker] = useState(false);
 
+    // The Sound buttons open this: the audio library as a picker, so the track
+    // is chosen BEFORE the layer exists — not defaulted and fixed up after.
+    const [showSoundPicker, setShowSoundPicker] = useState(false);
+
     // Layer patches are the single write path for everything the editor does —
     // they persist to video_settings and templates as-is.
     const upsertPatch = useCallback((patch) => {
@@ -968,12 +972,13 @@ export default function VideoStudioPage() {
         return -1;
     };
 
-    // A sound layer, placed on the timeline like everything else. It starts on
-    // the first track in rotation; the inspector is where the track changes.
-    const addSoundLayer = () => {
-        if (!plan || !tracks.length) return;
+    // A sound layer, placed on the timeline like everything else. The track is
+    // chosen up front — from the picker the Sound buttons open, or a row's +
+    // in the Music card's list; the inspector can still change it later.
+    const addSoundLayer = (track) => {
+        const t = track && track.documentId ? track : tracks[0];
+        if (!plan || !t) return;
         const id = "sound-" + Date.now().toString(36);
-        const t = tracks[0];
         upsertPatch({
             id, type: "sound", trackId: t.documentId, name: t.name || "Sound",
             timing: { start: 0, end: +Math.min(plan.duration, 8).toFixed(3) },
@@ -1569,6 +1574,38 @@ export default function VideoStudioPage() {
                             onClose={() => setShowImagePicker(false)}
                             onSelect={addImageLayer}
                         />
+                        {showSoundPicker && (
+                            <div className="modal d-block" tabIndex={-1} style={{ background: "rgba(0,0,0,0.5)", zIndex: 9999 }}
+                                onClick={() => setShowSoundPicker(false)}>
+                                <div className="modal-dialog modal-dialog-centered" onClick={(e) => e.stopPropagation()}>
+                                    <div className="modal-content">
+                                        <div className="modal-header py-2">
+                                            <h6 className="modal-title mb-0"><i className="fas fa-music me-2" />Add a sound layer</h6>
+                                            <Link className="btn btn-sm btn-link p-0 ms-auto me-3" href="/audio">Library →</Link>
+                                            <button type="button" className="btn-close" onClick={() => setShowSoundPicker(false)} />
+                                        </div>
+                                        <div className="modal-body py-2">
+                                            {tracks.length === 0 ? (
+                                                <div className="alert alert-secondary small mb-0">
+                                                    No tracks in rotation.{" "}
+                                                    <Link href="/audio">Add some to the audio library</Link> — a URL or an upload, either works.
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <TrackBrowser tracks={tracks} busy={busy} maxHeight={280}
+                                                        onAdd={(t) => { addSoundLayer(t); setShowSoundPicker(false); }}
+                                                        previewingId={previewingId} onAudition={previewTrack} />
+                                                    <p className="text-muted small mb-0">
+                                                        Play auditions a track; <i className="fas fa-plus mx-1" />places it on the
+                                                        timeline as its own lane, over the music bed.
+                                                    </p>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                         <div className="flex-grow-1" style={{ minWidth: 0 }}>
                                 <div className="card">
                                     <div className="card-header py-2 d-flex align-items-center gap-2">
@@ -1639,8 +1676,8 @@ export default function VideoStudioPage() {
                                                                 <i className="fas fa-font me-1" />Text
                                                             </button>
                                                             <button className="btn btn-sm btn-outline-primary py-0" disabled={busy || !tracks.length}
-                                                                title={tracks.length ? "A clip from the audio library as a layer — placed and trimmed on its lane, mixed over the music bed" : "No tracks in rotation — add some on /audio"}
-                                                                onClick={addSoundLayer}>
+                                                                title={tracks.length ? "Pick a track from the audio library and place it as a layer — trimmed on its lane, mixed over the music bed" : "No tracks in rotation — add some on /audio"}
+                                                                onClick={() => setShowSoundPicker(true)}>
                                                                 <i className="fas fa-music me-1" />Sound
                                                             </button>
                                                             <button className="btn btn-sm btn-outline-primary py-0" disabled={busy}
@@ -2418,9 +2455,9 @@ export default function VideoStudioPage() {
                                     <div className="card-header py-2 d-flex align-items-center">
                                         <i className="fas fa-music me-2" />Music
                                         {tracks.length > 0 && <span className="badge bg-secondary ms-2">{tracks.length} in rotation</span>}
-                                        <button className="btn btn-sm btn-link ms-auto p-0" onClick={addSoundLayer}
+                                        <button className="btn btn-sm btn-link ms-auto p-0" onClick={() => setShowSoundPicker(true)}
                                             disabled={busy || !plan || !tracks.length}
-                                            title="Add a clip from the library as a SOUND LAYER — placed and trimmed on the timeline, mixed over the bed below">
+                                            title="Pick a track from the library and add it as a SOUND LAYER — placed and trimmed on the timeline, mixed over the bed below">
                                             <i className="fas fa-plus me-1" />Sound layer
                                         </button>
                                         <Link className="btn btn-sm btn-link p-0 ms-2" href="/audio">Library →</Link>
@@ -2456,6 +2493,7 @@ export default function VideoStudioPage() {
                                                     <TrackBrowser tracks={tracks} busy={busy}
                                                         pickedId={options.audioMode === "pick" ? options.audioTrackId : null}
                                                         onPick={options.audioMode === "pick" ? (t) => setOpt({ audioTrackId: t.documentId }) : null}
+                                                        onAdd={plan ? addSoundLayer : null}
                                                         previewingId={previewingId} onAudition={previewTrack} />
                                                 )}
                                                 <RangeRow label="Volume" value={options.audioVolume} min={0} max={1} step={0.05}
@@ -2566,10 +2604,12 @@ function RangeRow({ label, value, min, max, step, suffix, disabled, onChange }) 
 /**
  * The track chooser everywhere a track gets picked: a search box plus the
  * library's tags as chips narrow the list; every row auditions; `onPick`
- * (when given) selects. Active chips AND together — "upbeat" + "retail" is
- * tracks tagged both.
+ * (when given) selects, `onAdd` (when given) places the row's track as a NEW
+ * sound layer — picking and adding are different acts, so they are different
+ * buttons. Active chips AND together — "upbeat" + "retail" is tracks tagged
+ * both.
  */
-function TrackBrowser({ tracks, busy, pickedId, onPick, previewingId, onAudition, maxHeight = 190 }) {
+function TrackBrowser({ tracks, busy, pickedId, onPick, onAdd, previewingId, onAudition, maxHeight = 190 }) {
     const [q, setQ] = useState("");
     const [tagsOn, setTagsOn] = useState([]);
     const norm = (s) => String(s || "").toLowerCase();
@@ -2632,6 +2672,12 @@ function TrackBrowser({ tracks, busy, pickedId, onPick, previewingId, onAudition
                                 <button className={`btn btn-sm ${chosen ? "btn-primary" : "btn-outline-secondary"}`} disabled={busy}
                                     onClick={() => onPick(t)}>
                                     {chosen ? <i className="fas fa-check" /> : "Use"}
+                                </button>
+                            )}
+                            {onAdd && (
+                                <button className="btn btn-sm btn-outline-primary" disabled={busy}
+                                    title="Add this track as a sound layer on the timeline" onClick={() => onAdd(t)}>
+                                    <i className="fas fa-plus" />
                                 </button>
                             )}
                         </div>
