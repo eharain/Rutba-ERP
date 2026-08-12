@@ -1,0 +1,59 @@
+{
+  "kind": "collectionType",
+  "collectionName": "social_relay_providers",
+  "info": {
+    "singularName": "social-relay-provider",
+    "pluralName": "social-relay-providers",
+    "displayName": "Social Relay Provider",
+    "description": "Third-party aggregator APIs (Ayrshare, Postiz, Zernio, ...) that relay a post to multiple platforms through one key"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "provider": {
+      "type": "enumeration",
+      "enum": [
+        "ayrshare",
+        "postiz",
+        "zernio",
+        "post_bridge",
+        "bundle_social",
+        "custom"
+      ],
+      "required": true
+    },
+    "api_key": {
+      "type": "text",
+      "private": true
+    },
+    "api_url": {
+      "type": "string"
+    },
+    "target_id": {
+      "type": "string"
+    },
+    "platforms": {
+      "type": "json"
+    },
+    "extra_config": {
+      "type": "json",
+      "private": true
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "last_validated_at": {
+      "type": "datetime"
+    },
+    "last_error": {
+      "type": "text"
+    }
+  }
+}

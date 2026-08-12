@@ -10,6 +10,7 @@ export interface SocialPostsEndpointsType {
     update(documentId: any, data: any): Promise<any>;
     replies(documentId: any): Promise<any>;
     publishSocial(documentId: any): Promise<any>;
+    publishRelay(documentId: any, data?: any): Promise<any>;
     unpublishSocial(documentId: any): Promise<any>;
     syncReplies(documentId: any): Promise<any>;
     sendReply(documentId: any, data: any): Promise<any>;

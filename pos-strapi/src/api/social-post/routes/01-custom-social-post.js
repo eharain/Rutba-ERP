@@ -53,6 +53,12 @@ module.exports = {
     },
     {
       method: 'POST',
+      path: '/social-posts/:id/publish-relay',
+      handler: 'social-post.publishRelay',
+      config: { auth: false },
+    },
+    {
+      method: 'POST',
       path: '/social-posts/:id/unpublish-social',
       handler: 'social-post.unpublishSocial',
       config: { auth: false },

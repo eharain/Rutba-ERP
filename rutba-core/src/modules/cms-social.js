@@ -90,9 +90,11 @@ function registerCmsSocialModule() {
   const bulk = posRequire('api/cms-bulk/controllers/cms-bulk.js'); // plain object
   const account = ctrl('social-account', strapi);
   const post = ctrl('social-post', strapi);
+  const relay = ctrl('social-relay-provider', strapi);
 
   const SEO = 'api::seo-meta.seo-meta';
   const ACC = 'api::social-account.social-account';
+  const RELAY = 'api::social-relay-provider.social-relay-provider';
 
   const selfAuth = [
     // ── cms-page (public read + D&P triad) ────────────────────────────────
@@ -153,6 +155,13 @@ function registerCmsSocialModule() {
     { method: 'get', path: '/api/social-posts/:documentId/replies', handler: (c) => post.listReplies(c) },
     { method: 'post', path: '/api/social-posts/:documentId/duplicate', handler: (c) => post.duplicate(c) },
     { method: 'post', path: '/api/social-posts/:documentId/record-result', handler: (c) => post.recordResult(c) },
+    { method: 'post', path: '/api/social-posts/:documentId/publish-relay', handler: (c) => post.publishRelay(c) },
+
+    // ── social-relay-provider (aggregator APIs; /meta literal before :id) ─
+    // meta = ensureUser (adapter catalogue, no secrets); validate =
+    // requireAppAdmin 'social' inside the handler (probes the stored key).
+    { method: 'get', path: '/api/social-relay-providers/meta', handler: (c) => relay.meta(c) },
+    { method: 'post', path: '/api/social-relay-providers/:documentId/validate', handler: (c) => relay.validate(c) },
   ].map((r) => ({ ...r, selfAuth: true }));
 
   const gated = [
@@ -163,6 +172,12 @@ function registerCmsSocialModule() {
     { method: 'post', path: '/api/social-accounts', uid: ACC, action: 'create', handler: (c) => account.create(c) },
     { method: 'put', path: '/api/social-accounts/:documentId', uid: ACC, action: 'update', handler: (c) => account.update(c) },
     { method: 'delete', path: '/api/social-accounts/:documentId', uid: ACC, action: 'delete', handler: (c) => account.delete(c) },
+
+    // Relay providers hold aggregator keys — same admin-gated write model as
+    // social-accounts (controller chains super.* after requireAppAdmin).
+    { method: 'post', path: '/api/social-relay-providers', uid: RELAY, action: 'create', handler: (c) => relay.create(c) },
+    { method: 'put', path: '/api/social-relay-providers/:documentId', uid: RELAY, action: 'update', handler: (c) => relay.update(c) },
+    { method: 'delete', path: '/api/social-relay-providers/:documentId', uid: RELAY, action: 'delete', handler: (c) => relay.delete(c) },
   ];
 
   const routes = [...selfAuth, ...gated].map((r) => ({ ...r, module: 'cms-social' }));

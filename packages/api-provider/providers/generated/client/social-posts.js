@@ -52,6 +52,11 @@ async function publishSocial(documentId) {
     return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
+async function publishRelay(documentId, data = {}) {
+    const ep = SocialPostsEndpointsApi.publishRelay(documentId, data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
 async function unpublishSocial(documentId) {
     const ep = SocialPostsEndpointsApi.unpublishSocial(documentId);
     return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
@@ -95,6 +100,7 @@ const endpoints = strictEndpointGuard(
         update,
         replies,
         publishSocial,
+        publishRelay,
         unpublishSocial,
         syncReplies,
         sendReply,
@@ -103,7 +109,7 @@ const endpoints = strictEndpointGuard(
         publishedMarker,
         meta: SocialPostsEndpointsApi.meta,
     },
-    ["updateDraft","publish","unpublish","create","del","list","byId","update","replies","publishSocial","unpublishSocial","syncReplies","sendReply","duplicate","recordResult","publishedMarker","meta"],
+    ["updateDraft","publish","unpublish","create","del","list","byId","update","replies","publishSocial","publishRelay","unpublishSocial","syncReplies","sendReply","duplicate","recordResult","publishedMarker","meta"],
 );
 
 export default endpoints;

@@ -4,14 +4,21 @@ const { createCoreService } = require('@strapi/strapi').factories;
 const crypto = require('crypto');
 const providers = require('../../../social-providers');
 const base = require('../../../social-providers/base');
+const relays = require('../../../social-relays');
 
 const POST_UID = 'api::social-post.social-post';
 const ACCOUNT_UID = 'api::social-account.social-account';
 const REPLY_UID = 'api::social-reply.social-reply';
+const RELAY_UID = 'api::social-relay-provider.social-relay-provider';
 
 // platform_results key: stable per (platform, account) so re-publishing overwrites
 // the previous attempt's row instead of appending duplicates.
 const resultKey = (platform, accountDocumentId) => `${platform}#${accountDocumentId}`;
+
+// Relay rows share the map under a namespaced pseudo-account id, so a relay
+// push and a direct-account push to the same platform never clobber each other.
+const relayAccountId = (relayDocumentId) => `relay:${relayDocumentId}`;
+const isRelayRow = (val) => !!val && String(val.account_id || '').startsWith('relay:');
 
 module.exports = createCoreService(POST_UID, ({ strapi }) => ({
   // ── account helpers ────────────────────────────────────────────────────────
@@ -262,6 +269,162 @@ module.exports = createCoreService(POST_UID, ({ strapi }) => ({
     return { post_status, successes, attempted, failures, browser_pending: browserPending, platform_results: results };
   },
 
+  // ── relay publish (aggregator APIs — Ayrshare, Postiz, …) ──────────────────
+
+  /**
+   * Push the post through one or more relay providers. Each relay fans out to
+   * its configured platforms (intersected with the post's platform selection
+   * when the post has one) and every platform outcome lands in
+   * platform_results keyed `${platform}#relay:${relayDocId}` — same shape as
+   * direct-account rows, so the existing badges/rollups just work.
+   */
+  async publishToRelays(documentId, { relayIds = null, platforms: platformsOverride = null } = {}) {
+    // Same invariant as publishToProviders: what goes out is the PUBLISHED
+    // version, so publish the CMS copy first.
+    try {
+      await strapi.documents(POST_UID).publish({ documentId });
+    } catch (e) {
+      throw new Error(`Post not found or could not be published: ${this._msg(e)}`);
+    }
+    const post = await this._loadPost(documentId, 'published');
+    if (!post) throw new Error('Post not found');
+
+    let targets;
+    if (Array.isArray(relayIds) && relayIds.length) {
+      targets = (await Promise.all(relayIds.map((id) =>
+        strapi.documents(RELAY_UID).findOne({ documentId: id })))).filter(Boolean);
+    } else {
+      targets = await strapi.documents(RELAY_UID).findMany({
+        filters: { is_active: true }, sort: ['createdAt:asc'],
+      });
+    }
+    targets = (targets || []).filter((r) => r.is_active !== false);
+    if (!targets.length) {
+      throw new Error('No active relay provider configured. Add one under Relays first.');
+    }
+
+    const media = this._prepareMedia(post);
+    const results = { ...(post.platform_results || {}) };
+    const postPlatforms = Array.isArray(post.platforms) ? post.platforms : [];
+    const skipped = [];
+    let successes = 0, failures = 0, pending = 0, attempted = 0;
+
+    await strapi.documents(POST_UID).update({ documentId, data: { post_status: 'publishing' } });
+
+    for (const relay of targets) {
+      const label = relay.name || relay.provider;
+      let adapter;
+      try {
+        adapter = relays.getRelayAdapter(relay.provider);
+      } catch (e) {
+        skipped.push({ relay: label, reason: this._msg(e) });
+        continue;
+      }
+
+      // The relay's configured platform set drives the fan-out; the post's own
+      // platform selection narrows it when present. An explicit override
+      // (the per-push platform picker) wins over both.
+      const configured = Array.isArray(relay.platforms) ? relay.platforms : [];
+      let requested = Array.isArray(platformsOverride) && platformsOverride.length
+        ? platformsOverride.filter((p) => configured.includes(p))
+        : (postPlatforms.length ? configured.filter((p) => postPlatforms.includes(p)) : configured);
+      if (!requested.length) {
+        skipped.push({
+          relay: label,
+          reason: configured.length
+            ? 'none of this relay\'s platforms are selected on the post'
+            : 'no platforms configured on this relay',
+        });
+        continue;
+      }
+
+      // Platforms this provider can't post to get their own error rows.
+      const unsupported = requested.filter((p) => !adapter.mapPlatform(p));
+      requested = requested.filter((p) => adapter.mapPlatform(p));
+      for (const p of unsupported) {
+        results[resultKey(p, relayAccountId(relay.documentId))] = {
+          status: 'error', platform: p,
+          account_id: relayAccountId(relay.documentId), account_name: label,
+          platform_post_id: null, url: null,
+          error: `${adapter.label} does not support ${p}`,
+          via: `relay:${relay.provider}`, relay_id: relay.documentId,
+          at: new Date().toISOString(),
+        };
+        failures += 1; attempted += 1;
+      }
+      if (!requested.length) continue;
+
+      attempted += requested.length;
+      try {
+        const out = await adapter.publishPost({ strapi, relay, post, media, platforms: requested });
+        for (const p of requested) {
+          const r = (out.perPlatform && out.perPlatform[p]) || { status: 'pending' };
+          results[resultKey(p, relayAccountId(relay.documentId))] = {
+            status: r.status || 'pending',
+            platform: p,
+            account_id: relayAccountId(relay.documentId),
+            account_name: label,
+            platform_post_id: r.platformPostId || null,
+            url: r.url || null,
+            error: r.error || null,
+            ...(r.note ? { note: r.note } : {}),
+            via: `relay:${relay.provider}`,
+            relay_id: relay.documentId,
+            relay_post_id: out.relayPostId || null,
+            at: new Date().toISOString(),
+          };
+          if (r.status === 'success') successes += 1;
+          else if (r.status === 'error') failures += 1;
+          else pending += 1;
+        }
+      } catch (e) {
+        for (const p of requested) {
+          results[resultKey(p, relayAccountId(relay.documentId))] = {
+            status: 'error', platform: p,
+            account_id: relayAccountId(relay.documentId), account_name: label,
+            platform_post_id: null, url: null,
+            error: this._msg(e),
+            via: `relay:${relay.provider}`, relay_id: relay.documentId,
+            at: new Date().toISOString(),
+          };
+          failures += 1;
+        }
+        strapi.log.warn(`[social] relay publish ${relay.provider}/${label} failed: ${this._msg(e)}`);
+      }
+    }
+
+    // Rollup over the FULL merged map (direct + relay rows) — a failed relay
+    // run must not downgrade a post already live via direct accounts.
+    const vals = Object.values(results).filter(Boolean);
+    const anySuccess = vals.some((v) => v.status === 'success');
+    const anyError = vals.some((v) => v.status === 'error');
+    const anyPending = vals.some((v) => v.status === 'pending');
+    const post_status = anySuccess && !anyError && !anyPending ? 'published'
+      : anySuccess ? 'partially_published'
+      : anyPending ? 'publishing'
+      : anyError ? 'failed'
+      : post.post_status;
+    const published_at_social = anySuccess
+      ? post.published_at_social || new Date().toISOString()
+      : post.published_at_social || null;
+    const outcome = { platform_results: results, post_status, published_at_social };
+
+    await strapi.documents(POST_UID).update({ documentId, data: outcome });
+    // Row-level mirror onto the published copy (no publish() — that would leak
+    // draft edits made while the relays ran).
+    try {
+      const pubRow = await strapi.db.query(POST_UID).findOne({
+        where: { documentId, publishedAt: { $notNull: true } },
+        select: ['id'],
+      });
+      if (pubRow) await strapi.db.query(POST_UID).update({ where: { id: pubRow.id }, data: outcome });
+    } catch (e) {
+      strapi.log.warn(`[social] relay result mirror to published row failed: ${e.message}`);
+    }
+
+    return { post_status, successes, failures, pending, attempted, skipped, platform_results: results };
+  },
+
   // ── unpublish (best-effort delete from each platform) ──────────────────────
 
   async unpublishFromProviders(documentId) {
@@ -269,7 +432,36 @@ module.exports = createCoreService(POST_UID, ({ strapi }) => ({
     if (!post) throw new Error('Post not found');
     const results = { ...(post.platform_results || {}) };
 
+    // Relay rows first: one delete per (relay, relay_post_id) — a single relay
+    // post covers several platform rows, and the platform adapters below must
+    // never see the relay's pseudo account_id.
+    const deletedRelayPosts = new Set();
     for (const [key, val] of Object.entries(results)) {
+      if (!isRelayRow(val)) continue;
+      if (!['success', 'pending'].includes(val.status)) continue;
+      if (!val.relay_post_id || !val.relay_id) continue;
+      const dedupeKey = `${val.relay_id}#${val.relay_post_id}`;
+      try {
+        const relay = await strapi.documents(RELAY_UID).findOne({ documentId: val.relay_id });
+        if (!relay) throw new Error('Relay provider no longer exists');
+        const adapter = relays.getRelayAdapter(relay.provider);
+        if (!adapter.capabilities?.delete) {
+          results[key] = { ...val, status: 'removed', note: `${adapter.label} keeps the post (no delete API)` };
+          continue;
+        }
+        if (!deletedRelayPosts.has(dedupeKey)) {
+          await adapter.deletePost({ strapi, relay, relayPostId: val.relay_post_id });
+          deletedRelayPosts.add(dedupeKey);
+        }
+        results[key] = { ...val, status: 'removed', error: null, at: new Date().toISOString() };
+      } catch (e) {
+        results[key] = { ...val, status: 'error', error: this._msg(e) };
+        strapi.log.warn(`[social] relay unpublish ${val.via || ''} failed: ${this._msg(e)}`);
+      }
+    }
+
+    for (const [key, val] of Object.entries(results)) {
+      if (isRelayRow(val)) continue; // handled above
       if (!val || val.status !== 'success' || !val.platform_post_id || !val.account_id) continue;
       try {
         const adapter = providers.getAdapter(val.platform);
@@ -414,6 +606,9 @@ module.exports = createCoreService(POST_UID, ({ strapi }) => ({
       // polling. A deny-list silently opts every future status in (pending,
       // failed, unverified all passed before).
       if (!val || val.status !== 'success' || !val.platform_post_id || !val.account_id) continue;
+      // Relay rows carry a pseudo account id — there is no direct-platform
+      // token to read comments with, so they are not pollable from here.
+      if (isRelayRow(val)) continue;
       try {
         const adapter = providers.getAdapter(val.platform);
         if (!adapter.capabilities?.comments) continue;

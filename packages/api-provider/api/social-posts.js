@@ -20,6 +20,9 @@ export const SocialPostsEndpoints = {
     // populates platform_results (distinct from `publish`, which only flips the
     // Strapi draft/published flag).
     publishSocial: (documentId) => ({ path: `/social-posts/${documentId}/publish-social`, action: 'publishSocial', method: 'post' }),
+    // Push the post through relay providers (aggregator APIs — Ayrshare, Postiz, …).
+    // data: { relayIds?: [documentId], platforms?: [key] } — no relayIds = every active relay.
+    publishRelay: (documentId, data = {}) => ({ path: `/social-posts/${documentId}/publish-relay`, action: 'publishRelay', method: 'post', data }),
     unpublishSocial: (documentId) => ({ path: `/social-posts/${documentId}/unpublish-social`, action: 'unpublishSocial', method: 'post' }),
     syncReplies: (documentId) => ({ path: `/social-posts/${documentId}/sync-replies`, action: 'syncReplies', method: 'post' }),
     sendReply: (documentId, data) => ({ path: `/social-posts/${documentId}/reply`, action: 'sendReply', method: 'post', data }),

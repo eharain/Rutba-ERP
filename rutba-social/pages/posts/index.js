@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { MediaUtilsEndpoints, SocialPostsEndpoints, SocialAccountsEndpoints } from "@rutba/api-provider/endpoints";
+import { MediaUtilsEndpoints, SocialPostsEndpoints, SocialAccountsEndpoints, SocialRelayProvidersEndpoints } from "@rutba/api-provider/endpoints";
 import { useToast } from "../../components/Toast";
 import PLATFORMS, { PlatformBadge } from "../../components/PlatformBadge";
 import ExcelIO from "../../components/ExcelIO";
@@ -92,6 +92,10 @@ function AccountFlags({ post, accounts }) {
         return (post.platforms || []).map((p) => <PlatformBadge key={p} platform={p} />);
     }
     const done = rows.filter((a) => results[`${a.platform}#${a.documentId}`]?.status === "success").length;
+    // Relay pushes land under `<platform>#relay:<relayDocId>` — surface them as
+    // their own chips so a relayed post doesn't look unposted.
+    const relayRows = Object.entries(results)
+        .filter(([, v]) => v && String(v.account_id || "").startsWith("relay:"));
     return (
         <div className="d-flex flex-wrap gap-1 align-items-center">
             <span className="badge bg-light text-dark border" title="Accounts posted / accounts targeted">
@@ -115,6 +119,63 @@ function AccountFlags({ post, accounts }) {
                     </span>
                 );
             })}
+            {relayRows.map(([key, r]) => {
+                const st = RESULT_STATE[r.status];
+                const p = PLATFORMS[r.platform] || {};
+                const detail = r.error || r.note || "";
+                return (
+                    <span
+                        key={key}
+                        className={`badge ${st ? st.cls : "bg-light text-muted border"} d-inline-flex align-items-center`}
+                        style={{ maxWidth: 190 }}
+                        title={`${r.account_name || "relay"} → ${r.platform} (relay) — ${st ? st.label : r.status}${detail ? ": " + detail : ""}`}
+                    >
+                        <i className={`${p.icon || "fas fa-share-nodes"} me-1`}></i>
+                        <i className="fas fa-tower-broadcast me-1"></i>
+                        <i className={`fas ${st ? st.icon : "fa-minus"}`}></i>
+                    </span>
+                );
+            })}
+        </div>
+    );
+}
+
+// Push-via-relay button. One relay = plain button; several = a small dropdown
+// with "All relays" plus one entry per relay. `iconOnly` fits the card footer.
+function RelayPushButton({ relays, count, iconOnly, dropUp, disabled, onPick }) {
+    const [open, setOpen] = useState(false);
+    if (!relays.length) return null;
+    const label = iconOnly ? null : `Relay${count > 1 ? ` (${count})` : ""}`;
+    if (relays.length === 1) {
+        return (
+            <button className={`btn btn-sm ${iconOnly ? "btn-outline-info" : "btn-info"}`} disabled={disabled}
+                onClick={() => onPick(relays[0])}
+                title={`Push via ${relays[0].name} (${(relays[0].platforms || []).join(", ") || "no platforms"})`}>
+                <i className={`fas fa-tower-broadcast${label ? " me-1" : ""}`}></i>{label}
+            </button>
+        );
+    }
+    return (
+        <div className="btn-group position-relative">
+            <button className={`btn btn-sm ${iconOnly ? "btn-outline-info" : "btn-info"} dropdown-toggle`}
+                disabled={disabled} onClick={() => setOpen((v) => !v)} title="Push via a relay provider">
+                <i className={`fas fa-tower-broadcast${label ? " me-1" : ""}`}></i>{label}
+            </button>
+            {open && (
+                <div className="dropdown-menu show shadow-sm"
+                    style={{ position: "absolute", right: 0, zIndex: 1050, ...(dropUp ? { bottom: "100%" } : { top: "100%" }) }}>
+                    <button className="dropdown-item" onClick={() => { setOpen(false); onPick(null); }}>
+                        <i className="fas fa-tower-broadcast me-1"></i>All relays
+                    </button>
+                    <div className="dropdown-divider"></div>
+                    {relays.map((r) => (
+                        <button key={r.documentId} className="dropdown-item" onClick={() => { setOpen(false); onPick(r); }}>
+                            {r.name}
+                            <span className="text-muted small ms-1">({(r.platforms || []).join(", ") || "no platforms"})</span>
+                        </button>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }
@@ -150,6 +211,8 @@ export default function PostsPage() {
     const [publishing, setPublishing] = useState({});
     // Active accounts drive the per-account "posted / not posted" flags.
     const [accounts, setAccounts] = useState([]);
+    // Active relay providers drive the "push via relay" buttons.
+    const [relays, setRelays] = useState([]);
 
     // ── filters ─────────────────────────────────────────────
     const [search, setSearch] = useState("");
@@ -186,6 +249,9 @@ export default function PostsPage() {
         SocialAccountsEndpoints.list({ filters: { is_active: { $eq: true } }, sort: ['platform:asc'] })
             .then((res) => setAccounts(res.data || []))
             .catch((err) => console.error("Failed to load accounts", err));
+        SocialRelayProvidersEndpoints.list({ filters: { is_active: { $eq: true } }, sort: ['createdAt:asc'] })
+            .then((res) => setRelays(res.data || []))
+            .catch((err) => console.error("Failed to load relay providers", err));
     }, [jwt]);
 
     const loadPosts = useCallback(async () => {
@@ -197,7 +263,9 @@ export default function PostsPage() {
                 const res = await SocialPostsEndpoints.list({
                     status: 'draft',
                     sort: ['createdAt:desc'],
-                    populate: ['cover', 'media', 'video', 'products'],
+                    // social_accounts rides along for bulk edit: platform
+                    // add/remove has to rewrite the linked accounts too.
+                    populate: ['cover', 'media', 'video', 'products', 'social_accounts'],
                     pagination: { page: p, pageSize: FETCH_PAGE },
                 });
                 const rows = res.data || [];
@@ -317,6 +385,48 @@ export default function PostsPage() {
         }
     };
 
+    // ── relay push ──────────────────────────────────────────
+    // relay = a specific provider row, or null for "all active relays". The
+    // server intersects each relay's configured platforms with the post's own
+    // platform selection, so this never posts wider than either choice.
+    const pushViaRelay = async (docIds, relay) => {
+        const ids = docIds.filter(Boolean);
+        if (!ids.length) { toast("No items selected.", "warning"); return; }
+        const name = relay ? relay.name : "all active relays";
+        if (ids.length > 1 && !confirm(`Push ${ids.length} post(s) via ${name}?`)) return;
+        let ok = 0, fail = 0, queued = 0;
+        const notes = new Set();
+        for (const docId of ids) {
+            setPublishing(prev => ({ ...prev, [docId]: true }));
+            try {
+                const res = await SocialPostsEndpoints.publishRelay(docId, {
+                    data: relay ? { relayIds: [relay.documentId] } : {},
+                });
+                const r = res?.data || res || {};
+                ok += r.successes || 0; fail += r.failures || 0; queued += r.pending || 0;
+                (r.skipped || []).forEach((s) => notes.add(`${s.relay}: ${s.reason}`));
+                if ((r.successes || 0) + (r.pending || 0) > 0) {
+                    setPosts(prev => prev.map(p => p.documentId === docId
+                        ? { ...p, _isPublished: true, post_status: r.post_status || p.post_status, platform_results: r.platform_results || p.platform_results }
+                        : p));
+                }
+            } catch (err) {
+                fail += 1;
+                console.error("Relay push failed", err);
+                const msg = err?.response?.data?.error?.message;
+                if (msg) notes.add(msg);
+            } finally {
+                setPublishing(prev => ({ ...prev, [docId]: false }));
+            }
+        }
+        const detail = notes.size ? ` — ${[...notes].join("; ")}` : "";
+        if (ok + queued > 0) {
+            toast(`Relay: ${ok} platform post(s) live${queued ? `, ${queued} queued at the provider` : ""}${fail ? `, ${fail} failed` : ""}${detail}`, fail ? "warning" : "success");
+        } else {
+            toast(`Relay push failed${detail || " — check the Relays page"}`, "danger");
+        }
+    };
+
     const bulkPublish = async () => {
         const ids = [...selectedIds].filter(id => filteredPostIds.includes(id));
         if (ids.length === 0) { toast("No items selected.", "warning"); return; }
@@ -345,6 +455,103 @@ export default function PostsPage() {
         }
         toast(`Unpublished ${ok} post(s)${fail ? `, ${fail} failed` : ""}.`, fail ? "warning" : "success");
         setSelectedIds(new Set());
+    };
+
+    // ── bulk edit ───────────────────────────────────────────
+    // Platform add/remove is the headline: an account connected AFTER posts
+    // were written (the "we added LinkedIn later" case) can be enabled across
+    // the backlog in one pass. Publishing only targets linked social_accounts
+    // whose platform is selected (see _resolveTargets server-side), so adding
+    // a platform here also links its active account(s) — without that the
+    // platform would sit in `missing` forever and never actually publish.
+    const [bulkOpen, setBulkOpen] = useState(false);
+    const [bulkPlatformOps, setBulkPlatformOps] = useState({}); // platform → 'add' | 'remove'
+    const [bulkAddTags, setBulkAddTags] = useState("");
+    const [bulkRemoveTags, setBulkRemoveTags] = useState("");
+    const [bulkSchedule, setBulkSchedule] = useState("leave"); // leave | set | clear
+    const [bulkScheduleAt, setBulkScheduleAt] = useState("");
+    const [bulkProgress, setBulkProgress] = useState(null); // { done, total }
+
+    const openBulkEdit = () => {
+        setBulkPlatformOps({});
+        setBulkAddTags(""); setBulkRemoveTags("");
+        setBulkSchedule("leave"); setBulkScheduleAt("");
+        setBulkProgress(null);
+        setBulkOpen(true);
+    };
+
+    // Each click cycles a platform: leave → add → remove → leave.
+    const cyclePlatformOp = (key) => setBulkPlatformOps((prev) => {
+        const next = { ...prev };
+        if (!next[key]) next[key] = "add";
+        else if (next[key] === "add") next[key] = "remove";
+        else delete next[key];
+        return next;
+    });
+
+    const parseTagList = (s) => String(s || "").split(",").map((t) => t.trim()).filter(Boolean);
+
+    const applyBulkEdit = async () => {
+        const ids = [...selectedIds].filter(id => filteredPostIds.includes(id));
+        if (!ids.length) { toast("No posts selected.", "warning"); return; }
+        const adds = Object.keys(bulkPlatformOps).filter((k) => bulkPlatformOps[k] === "add");
+        const removes = Object.keys(bulkPlatformOps).filter((k) => bulkPlatformOps[k] === "remove");
+        const addTags = parseTagList(bulkAddTags);
+        const removeTags = parseTagList(bulkRemoveTags);
+        const scheduling = bulkSchedule === "set" ? !!bulkScheduleAt : bulkSchedule === "clear";
+        if (!adds.length && !removes.length && !addTags.length && !removeTags.length && !scheduling) {
+            toast("Nothing to change — pick a platform, tag, or schedule first.", "warning");
+            return;
+        }
+
+        setBulkProgress({ done: 0, total: ids.length });
+        let ok = 0, fail = 0;
+        for (const docId of ids) {
+            const post = posts.find((p) => p.documentId === docId);
+            if (!post) { fail++; continue; }
+            const data = {};
+            if (adds.length || removes.length) {
+                const cur = Array.isArray(post.platforms) ? post.platforms : [];
+                data.platforms = [...new Set([...cur, ...adds])].filter((p) => !removes.includes(p));
+                // Accounts follow platforms: an added platform brings its
+                // active account(s) with it, a removed one takes its own away.
+                const curAccounts = Array.isArray(post.social_accounts) ? post.social_accounts : [];
+                const kept = curAccounts.filter((a) => !removes.includes(a.platform)).map((a) => a.id);
+                const linked = accounts.filter((a) => adds.includes(a.platform)).map((a) => a.id);
+                data.social_accounts = [...new Set([...kept, ...linked])];
+            }
+            if (addTags.length || removeTags.length) {
+                const cur = Array.isArray(post.tags) ? post.tags : [];
+                const gone = new Set(removeTags.map((t) => t.toLowerCase()));
+                const next = cur.filter((t) => !gone.has(String(t).toLowerCase()));
+                for (const t of addTags) {
+                    if (!next.some((x) => String(x).toLowerCase() === t.toLowerCase())) next.push(t);
+                }
+                data.tags = next;
+            }
+            if (bulkSchedule === "set" && bulkScheduleAt) {
+                data.scheduled_at = new Date(bulkScheduleAt).toISOString();
+                // Same rule as the editor: a schedule promotes draft → scheduled,
+                // but never touches the publish-flow states.
+                if ((post.post_status || "draft") === "draft") data.post_status = "scheduled";
+            } else if (bulkSchedule === "clear") {
+                data.scheduled_at = null;
+                if (post.post_status === "scheduled") data.post_status = "draft";
+            }
+            try { await SocialPostsEndpoints.updateDraft(docId, { data }); ok++; }
+            catch (err) { console.error(`Bulk edit failed for ${docId}`, err); fail++; }
+            setBulkProgress((prev) => ({ ...prev, done: (prev?.done || 0) + 1 }));
+        }
+
+        setBulkProgress(null);
+        setBulkOpen(false);
+        toast(
+            `Updated ${ok} post(s)${fail ? `, ${fail} failed` : ""}.`
+            + (adds.length && ok ? " Use Publish on the same selection to push the new platform(s) out." : ""),
+            fail ? "warning" : "success",
+        );
+        // Selection is kept on purpose — the natural next step is Publish (N).
+        await loadPosts();
     };
 
     const handleDelete = async (post) => {
@@ -390,9 +597,15 @@ export default function PostsPage() {
                     <div className="ms-auto d-flex gap-2 align-items-center flex-wrap">
                         {selectedCount > 0 && (
                             <>
+                                <button className="btn btn-warning btn-sm" onClick={openBulkEdit}
+                                    title="Change platforms, tags, or schedule on every selected post">
+                                    <i className="fas fa-pen-to-square me-1"></i>Bulk edit ({selectedCount})
+                                </button>
                                 <button className="btn btn-success btn-sm" onClick={bulkPublish}>
                                     <i className="fas fa-upload me-1"></i>Publish ({selectedCount})
                                 </button>
+                                <RelayPushButton relays={relays} count={selectedCount}
+                                    onPick={(relay) => pushViaRelay([...selectedIds].filter(id => filteredPostIds.includes(id)), relay)} />
                                 <button className="btn btn-outline-secondary btn-sm" onClick={bulkUnpublish}>
                                     <i className="fas fa-eye-slash me-1"></i>Unpublish ({selectedCount})
                                 </button>
@@ -503,7 +716,7 @@ export default function PostsPage() {
                                     <div key={post.documentId} className="col-sm-6 col-md-4 col-xl-3 col-xxl-2">
                                         <div className={`card h-100 shadow-sm ${checked ? "border-primary" : "border-0"}`}>
                                             <div className="position-relative">
-                                                <Link href={`/posts/${post.documentId}`} className="d-block bg-light d-flex align-items-center justify-content-center"
+                                                <Link href={`/posts/${post.documentId}`} className="bg-light d-flex align-items-center justify-content-center"
                                                     style={{ height: 140, overflow: "hidden", borderRadius: "6px 6px 0 0" }}>
                                                     {thumb ? (
                                                         <img src={MediaUtilsEndpoints.strapiImageUrl(thumb.formats?.small || thumb.formats?.thumbnail || thumb)} alt=""
@@ -566,6 +779,8 @@ export default function PostsPage() {
                                                         {busy ? <span className="spinner-border spinner-border-sm"></span> : <i className="fas fa-upload"></i>}
                                                     </button>
                                                 )}
+                                                <RelayPushButton relays={relays} count={1} iconOnly dropUp disabled={busy}
+                                                    onPick={(relay) => pushViaRelay([post.documentId], relay)} />
                                                 <button className="btn btn-sm btn-outline-primary" onClick={() => duplicateOne(post)} title="Repost — copy to a new draft">
                                                     <i className="fas fa-copy"></i>
                                                 </button>
@@ -604,6 +819,114 @@ export default function PostsPage() {
                             </nav>
                         )}
                     </>
+                )}
+
+                {/* ── bulk edit modal ── */}
+                {bulkOpen && (
+                    <div className="modal d-block" tabIndex={-1} style={{ background: "rgba(0,0,0,0.5)", zIndex: 9999 }}>
+                        <div className="modal-dialog modal-lg">
+                            <div className="modal-content">
+                                <div className="modal-header py-2">
+                                    <h5 className="modal-title">
+                                        <i className="fas fa-pen-to-square me-2"></i>Bulk edit {selectedCount} post{selectedCount === 1 ? "" : "s"}
+                                    </h5>
+                                    <button type="button" className="btn-close" onClick={() => setBulkOpen(false)} disabled={!!bulkProgress}></button>
+                                </div>
+                                <div className="modal-body">
+                                    <label className="form-label small fw-semibold mb-1">Platforms</label>
+                                    <p className="text-muted small mb-2">
+                                        Click a platform to cycle: leave as is → <span className="text-success">add</span> → <span className="text-danger">remove</span>.
+                                        Adding a platform also links its active account(s) to each post — publishing only
+                                        targets linked accounts, so a platform without its account would never go out.
+                                    </p>
+                                    <div className="d-flex flex-wrap gap-2 mb-1">
+                                        {Object.entries(PLATFORMS).map(([key, p]) => {
+                                            const op = bulkPlatformOps[key];
+                                            const activeCount = accounts.filter((a) => a.platform === key).length;
+                                            return (
+                                                <button key={key} type="button" disabled={!!bulkProgress}
+                                                    className={`btn btn-sm ${op === "add" ? "btn-success" : op === "remove" ? "btn-danger" : "btn-outline-secondary"}`}
+                                                    onClick={() => cyclePlatformOp(key)}
+                                                    title={`${p.label} — ${activeCount} active account${activeCount === 1 ? "" : "s"}`}>
+                                                    <i className={`${p.icon} me-1`}></i>{p.label}
+                                                    {op === "add" && <i className="fas fa-plus ms-1"></i>}
+                                                    {op === "remove" && <i className="fas fa-minus ms-1"></i>}
+                                                    {op === "add" && activeCount === 0 && <i className="fas fa-triangle-exclamation ms-1" title="No active account connected — the platform will be selected but cannot publish until one is"></i>}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    {Object.keys(bulkPlatformOps).length > 0 && (
+                                        <p className="small mb-3">
+                                            {Object.entries(bulkPlatformOps).filter(([, v]) => v === "add").length > 0 && (
+                                                <span className="text-success me-3">
+                                                    Add: {Object.keys(bulkPlatformOps).filter((k) => bulkPlatformOps[k] === "add").map((k) => PLATFORMS[k]?.label || k).join(", ")}
+                                                </span>
+                                            )}
+                                            {Object.entries(bulkPlatformOps).filter(([, v]) => v === "remove").length > 0 && (
+                                                <span className="text-danger">
+                                                    Remove: {Object.keys(bulkPlatformOps).filter((k) => bulkPlatformOps[k] === "remove").map((k) => PLATFORMS[k]?.label || k).join(", ")}
+                                                </span>
+                                            )}
+                                        </p>
+                                    )}
+
+                                    <div className="row g-2 mb-3">
+                                        <div className="col-md-6">
+                                            <label className="form-label small fw-semibold mb-1">Add tags</label>
+                                            <input className="form-control form-control-sm" placeholder="summer, sale" disabled={!!bulkProgress}
+                                                value={bulkAddTags} onChange={(e) => setBulkAddTags(e.target.value)} />
+                                        </div>
+                                        <div className="col-md-6">
+                                            <label className="form-label small fw-semibold mb-1">Remove tags</label>
+                                            <input className="form-control form-control-sm" placeholder="draft, old" disabled={!!bulkProgress}
+                                                value={bulkRemoveTags} onChange={(e) => setBulkRemoveTags(e.target.value)} />
+                                        </div>
+                                    </div>
+
+                                    <label className="form-label small fw-semibold mb-1">Schedule</label>
+                                    <div className="d-flex flex-wrap align-items-center gap-2">
+                                        <select className="form-select form-select-sm" style={{ width: "auto" }} disabled={!!bulkProgress}
+                                            value={bulkSchedule} onChange={(e) => setBulkSchedule(e.target.value)}>
+                                            <option value="leave">Leave as is</option>
+                                            <option value="set">Set schedule</option>
+                                            <option value="clear">Clear schedule</option>
+                                        </select>
+                                        {bulkSchedule === "set" && (
+                                            <input type="datetime-local" className="form-control form-control-sm" style={{ width: "auto" }}
+                                                value={bulkScheduleAt} onChange={(e) => setBulkScheduleAt(e.target.value)} disabled={!!bulkProgress} />
+                                        )}
+                                        {bulkSchedule === "set" && (
+                                            <span className="text-muted small">Drafts become scheduled; publish-flow states are left alone.</span>
+                                        )}
+                                        {bulkSchedule === "clear" && (
+                                            <span className="text-muted small">Scheduled posts go back to draft.</span>
+                                        )}
+                                    </div>
+
+                                    {bulkProgress && (
+                                        <div className="mt-3">
+                                            <div className="progress" style={{ height: 8 }}>
+                                                <div className="progress-bar progress-bar-striped progress-bar-animated"
+                                                    style={{ width: `${(bulkProgress.done / bulkProgress.total) * 100}%` }}></div>
+                                            </div>
+                                            <small className="text-muted">{bulkProgress.done}/{bulkProgress.total} updated…</small>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="modal-footer py-2">
+                                    <span className="me-auto text-muted small">
+                                        Changes are saved to each post's draft — hit Publish on the same selection to push them live.
+                                    </span>
+                                    <button className="btn btn-secondary btn-sm" onClick={() => setBulkOpen(false)} disabled={!!bulkProgress}>Cancel</button>
+                                    <button className="btn btn-warning btn-sm" onClick={applyBulkEdit} disabled={!!bulkProgress}>
+                                        {bulkProgress ? <span className="spinner-border spinner-border-sm me-1"></span> : <i className="fas fa-check me-1"></i>}
+                                        Apply to {selectedCount} post{selectedCount === 1 ? "" : "s"}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 )}
             </Layout>
         </ProtectedRoute>

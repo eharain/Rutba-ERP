@@ -154,6 +154,7 @@ export * from './site-setting';
 export * from './social-accounts';
 export * from './social-audio-tracks';
 export * from './social-posts';
+export * from './social-relay-providers';
 export * from './social-replies';
 export * from './social-video-templates';
 export * from './stock-adjustments';

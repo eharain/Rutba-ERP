@@ -44,6 +44,24 @@ module.exports = createCoreController(POST_UID, ({ strapi }) => ({
     }
   },
 
+  /** Push the post through one or more relay providers (aggregator APIs).
+   *  Body: { data: { relayIds?: [documentId], platforms?: [key] } } — no
+   *  relayIds = every active relay; platforms narrows the relay's own set. */
+  async publishRelay(ctx) {
+    if (!await requireSocialMember(ctx, strapi)) return;
+    const data = ctx.request.body?.data || ctx.request.body || {};
+    try {
+      const result = await strapi.service(POST_UID).publishToRelays(ctx.params.id, {
+        relayIds: Array.isArray(data.relayIds) ? data.relayIds
+          : (data.relayId ? [data.relayId] : null),
+        platforms: Array.isArray(data.platforms) ? data.platforms : null,
+      });
+      return ctx.send(result);
+    } catch (e) {
+      return ctx.badRequest(e.message || 'Relay publish failed');
+    }
+  },
+
   /** Best-effort delete from each platform + CMS unpublish. */
   async unpublishSocial(ctx) {
     if (!await requireSocialMember(ctx, strapi)) return;
