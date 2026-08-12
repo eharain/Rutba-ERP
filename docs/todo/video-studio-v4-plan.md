@@ -1,6 +1,6 @@
 # Video Studio v4 — geometry in hand, motion on the clock
 
-**Status:** M1+M2 BUILT · 2026-08-11 — geometry (ERP 265964c) and keyframes (ERP ea6aed3), all gates green: fixture suite 11/11 (retime 14, geometry 5, keyframes 4, interactions), A/B rig 60/60 byte-identical + 6/6 sound in both hosts. M3/M-AI/M5 remain planned.
+**Status:** M1+M2 BUILT · 2026-08-11 — geometry (ERP 265964c) and keyframes (ERP ea6aed3), all gates green: fixture suite 11/11 (retime 14, geometry 5, keyframes 4, interactions), A/B rig 60/60 byte-identical + 6/6 sound in both hosts. M5 (video clips as layers) BUILT ahead of schedule — ERP eb82c63 / poster 620531b: one clip = two lanes (video + sound on the same url), library picker with upload, poster parity; t4-check 18/18 incl. the tone-change-on-schedule proof of real-time playback in the hidden window. M3/M-AI remain planned.
 **Builds on:** v3 (`docs/todo/video-studio-timeline-plan.md`, BUILT — everything
 is a layer with one envelope, on a timeline of lanes).
 **This plan carries two things:** a competitive review of where the studio
