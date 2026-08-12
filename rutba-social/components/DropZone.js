@@ -15,9 +15,11 @@
  */
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
-/** Files matching the wanted mime prefix, with directories and junk dropped. */
-function filesFrom(dataTransfer, prefix) {
-    const all = Array.from(dataTransfer?.files || []);
+/** Files matching the wanted mime prefix, with directories and junk dropped.
+ *  Takes anything with a `.files` list — a DataTransfer (drop) or a file input
+ *  (browse) — because BOTH paths have to pass the same filter. */
+function filesFrom(source, prefix) {
+    const all = Array.from(source?.files || []);
     // A dropped folder shows up as a zero-byte, type-less entry; there is no way
     // to read it from `files` alone, so it is simply not a file we can upload.
     const files = all.filter((f) => f && f.type);
@@ -39,8 +41,8 @@ export default function DropZone({
     const depth = useRef(0);
     const inputRef = useRef(null);
 
-    const take = useCallback((dt) => {
-        const { wanted, skipped } = filesFrom(dt, accept);
+    const take = useCallback((source) => {
+        const { wanted, skipped } = filesFrom(source, accept);
         if (skipped && onSkipped) onSkipped(skipped);
         if (wanted.length) onFiles(wanted);
     }, [accept, onFiles, onSkipped]);
@@ -93,9 +95,12 @@ export default function DropZone({
             <input ref={inputRef} type="file" multiple className="d-none"
                 accept={`${accept}*`}
                 onChange={(e) => {
+                    // `accept` is only a hint to the file dialog — the user can
+                    // switch it to "All files" — so browse goes through the same
+                    // mime gate as drop, or a PNG could be uploaded as a track.
                     const files = Array.from(e.target.files || []);
+                    if (files.length) take({ files });
                     e.target.value = ""; // same file twice in a row must still fire
-                    if (files.length) onFiles(files);
                 }} />
 
             <div
