@@ -177,29 +177,48 @@ the same header. Mostly a naming and ordering change on top of §1.
 
 Each step is a commit that leaves the studio working.
 
-1. ~~core filter coercion~~ — **landed (3c2b9f6)**
-2. Rail skeleton: the card set of §1, context-driven; delete the duplicate
-   video-level Logo and Caption cards; Music → Sound. *(Largest diff; no
-   renderer change.)*
-3. Bed-as-lane + `VideoTimeline extraLanes` + the picker's bed/layer choice.
-4. Caption/text unification + the Caption add button.
-5. Logo as an ordinary image: renderer `src` re-resolve + t4 gate.
-6. Per-layer Pace.
-7. Layout: sticky full-height rail, collapse, focus mode.
-8. Gates, docs, memory.
+**ALL LANDED, 2026-08-12.** The "rail skeleton" step dissolved into the
+four that follow it: moving each card is what made the set contextual, so
+there was no skeleton to build first.
 
-**Gates:** A/B 60/60 + 6/6 (renderer untouched except step 5, which needs a
-fresh baseline check), t2 fixture suite, t4 including the new logo-url
-case, a compile check on :4011 — and a human pass, which is the only thing
-that can judge whether the rail actually feels simpler.
+1. ~~core filter coercion~~ — **3c2b9f6**
+2. ~~Logo as an ordinary image: renderer `src` re-resolve + t4 gate~~ —
+   **1388f94** (ERP) + **f4c2123** (poster)
+3. ~~Bed-as-lane + `VideoTimeline extraLanes` + the picker's bed/layer
+   choice + the Music card gone~~ — **c0181f6** + **3e42da5**
+4. ~~Caption edited on its lane; captions join Look~~ — **b53d726**
+5. ~~Per-layer Pace~~ — **1fd8891**
+6. ~~Layout: sticky full-height rail, hide, focus mode + InspectorRows
+   extraction~~ — **b9cbd34** + **6daa94e**
 
-## 9. Risks
+Two plan items turned out not to be needed, and both were worth checking
+rather than building:
 
-- **Stranded options.** The §1 rule is the mitigation; check it per
-  deletion, not at the end.
-- **The synthetic bed lane leaking into a render.** Keep it out of
-  `plan.layers`; assert it in the studio's plan build.
-- **Focus mode remounting the canvas.** See §7.
-- **Step 2 is a big single-file diff** in `video-studio.js` (~2600 lines
-  already). Worth extracting the inspector into its own component file
-  while the cards are being moved anyway.
+- **No Caption add button.** `buildPlan` pushes the caption layer
+  unconditionally, so the lane always exists — there was never a dead end
+  to guard.
+- **No renderer work for per-caption opacity/filters.** Those ride in the
+  paint WRAPPER, which every painter already goes through, so adding
+  `caption` to the Look card was the whole change. Rotation stayed out:
+  it needs `layerBounds`, and a caption has none.
+
+**Gates, all green at the end:** A/B 60/60 frames + 6/6 sound, t2 (14
+retime + 8 geometry + 4 keyframe + 6 extra-lane + 8 inspector-rows + the
+drag/duplicate/zoom checks), t3 at 1366×768, t4 24/24 in the poster
+pipeline, and the studio compiling on :4011. Still owed: **a human pass**
+— nothing here can judge whether the rail feels simpler.
+
+## 9. Risks, and how they went
+
+- **Stranded options.** Checked per deletion. The logo survives on the
+  Logo add button (which already set `showLogo`), the caption lane always
+  exists, and the bed comes back through the Sound picker's Bed choice.
+- **The synthetic bed lane leaking into a render.** Held by the t2
+  extra-lane probe: the lane renders, it is absent from `plan.layers`, it
+  offers no trim handles and no buttons, while a real lane offers both.
+- **Focus mode remounting the canvas.** Avoided — focus is style on the
+  mounted containers, and hiding the rail collapses its width rather than
+  unmounting it.
+- **A big single-file diff.** `video-studio.js` ended up ~200 lines
+  SHORTER than it started, with the rail's rows in
+  `components/InspectorRows.js` — where the fixture can mount them.
