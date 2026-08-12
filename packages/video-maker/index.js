@@ -709,6 +709,8 @@ export function applyLayerPatches(plan, patches) {
                 fx: patch.fx, fy: patch.fy, fw: patch.fw, fh: patch.fh,
                 kb: patch.kb,
                 rot: patch.rot || 0,
+                opacity: patch.opacity,
+                filter: patch.filter || null,
                 keys: sanitizeKeys(patch.keys),
             });
             continue;
@@ -734,6 +736,7 @@ export function applyLayerPatches(plan, patches) {
                 z: patch.z ?? nextZ(),
                 x: W * (patch.fx ?? 0.5), y: H * (patch.fy ?? 0.5), w, h,
                 opacity: patch.opacity ?? 1,
+                filter: patch.filter || null,
                 shadow: patch.shadow !== false,
                 fx: patch.fx ?? 0.5, fy: patch.fy ?? 0.5, fw,
                 rot: patch.rot || 0,
@@ -763,6 +766,8 @@ export function applyLayerPatches(plan, patches) {
                 z: patch.z ?? nextZ(),
                 fx: patch.fx, fy: patch.fy, fw: patch.fw, fh: patch.fh,
                 rot: patch.rot || 0,
+                opacity: patch.opacity,
+                filter: patch.filter || null,
                 keys: sanitizeKeys(patch.keys),
             });
             continue;
@@ -779,6 +784,10 @@ export function applyLayerPatches(plan, patches) {
                 url: patch.url || null,
                 offset: Number(patch.offset) || 0,
                 volume: patch.volume ?? null, // null = the host's default
+                // How this clip meets OTHER audio it overlaps: 'mix' sums
+                // (the default), 'duck' dips the rest while it plays, 'solo'
+                // silences the rest entirely.
+                mix: patch.mix || 'mix',
                 loop: !!patch.loop,
                 visible: patch.visible !== false,
                 timing: patch.timing || null,
@@ -826,6 +835,27 @@ export function applyLayerPatches(plan, patches) {
 // an animated QR is unscannable anyway. fx/fy/opacity/rot still work on it.
 
 const KEYABLE = ['fx', 'fy', 'fw', 'sizeFrac', 'opacity', 'rot'];
+
+/**
+ * A layer's `filter` → a canvas filter string, or null when every field is
+ * at its default (the common case — and the guard that keeps pre-filter
+ * plans byte-identical: ctx.filter is only ever assigned when this is set).
+ * blur is in canvas pixels; both hosts paint at the full render size, so
+ * the same number means the same softness everywhere.
+ */
+function filterCss(f) {
+    if (!f || typeof f !== 'object') return null;
+    const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : null);
+    const parts = [];
+    const b = num(f.brightness); if (b !== null && b !== 1) parts.push(`brightness(${b})`);
+    const c = num(f.contrast); if (c !== null && c !== 1) parts.push(`contrast(${c})`);
+    const s = num(f.saturate); if (s !== null && s !== 1) parts.push(`saturate(${s})`);
+    const g = num(f.grayscale); if (g !== null && g > 0) parts.push(`grayscale(${Math.min(1, g)})`);
+    const sp = num(f.sepia); if (sp !== null && sp > 0) parts.push(`sepia(${Math.min(1, sp)})`);
+    const h = num(f.hue); if (h !== null && h !== 0) parts.push(`hue-rotate(${h}deg)`);
+    const bl = num(f.blur); if (bl !== null && bl > 0) parts.push(`blur(${bl}px)`);
+    return parts.length ? parts.join(' ') : null;
+}
 
 function easeP(p, ease) {
     if (ease === 'in') return p * p;
@@ -1340,7 +1370,8 @@ function paintImage(ctx, plan, layer) {
     const entry = layer.src;
     if (!entry?.img) return;
     ctx.save();
-    ctx.globalAlpha *= Math.max(0, Math.min(1, layer.opacity ?? 1));
+    // Opacity multiplies in paintFrame's wrapper now — one mechanism for
+    // every layer type, not a special case here.
     if (layer.shadow) {
         // Most brand marks are transparent PNGs; over a busy photo they vanish
         // without something to lift them off it.
@@ -1893,6 +1924,13 @@ export function layerBounds(ctx, plan, layer) {
         const h = layer.fh ? plan.H * layer.fh : (entry ? w * (entry.height / Math.max(1, entry.width)) : w);
         return { x: plan.W * (layer.fx ?? 0.3), y: plan.H * (layer.fy ?? 0.3), w, h };
     }
+    if (layer.type === 'photo' || layer.type === 'video') {
+        // Full-stage: the whole frame. Bounds exist so a selected cover
+        // photo/clip gets corner handles — the first drag carves it into an
+        // inset via resizePatch. hitTestLayers still ignores the body (its
+        // `movable` gate needs fw), so clicks on the stage don't select it.
+        return { x: 0, y: 0, w: plan.W, h: plan.H };
+    }
     if (layer.type === 'text') {
         ctx.save();
         ctx.font = layer.font;
@@ -1955,8 +1993,12 @@ export function layerHandles(ctx, plan, layer) {
         { kind: 'ne', x: b.x + b.w, y: b.y },
         { kind: 'se', x: b.x + b.w, y: b.y + b.h },
         { kind: 'sw', x: b.x, y: b.y + b.h },
-        { kind: 'rotate', x: cx, y: b.y - stalk },
     ];
+    // A full-stage photo/clip has corners (they carve an inset) but no
+    // rotation stalk — it would sit off-canvas, and rotating a cover fit
+    // only exposes the stage's own corners.
+    const fullStage = (layer.type === 'photo' || layer.type === 'video') && !layer.fw;
+    if (!fullStage) pts.push({ kind: 'rotate', x: cx, y: b.y - stalk });
     if (layer.rot) {
         for (const p of pts) Object.assign(p, rotatePoint(p.x, p.y, cx, cy, layer.rot));
     }
@@ -2033,6 +2075,22 @@ export function resizePatch(ctx, plan, layer, kind, k) {
         return patch;
     }
 
+    // Full-stage photo/clip: the first corner-drag carves the cover fit into
+    // an inset. The new box is the stage scaled by k about the OPPOSITE
+    // corner; cover-fit fills whatever box results, so both fractions are
+    // written explicitly and the grabbed corner tracks the pointer.
+    if ((layer.type === 'photo' || layer.type === 'video') && !layer.fw) {
+        const kk = Math.max(0.12, Math.min(1, k));
+        const newW = b0.w * kk;
+        const newH = b0.h * kk;
+        const { bx, by } = anchoredOrigin(b0, kind, newW, newH);
+        patch.fx = +(bx / plan.W).toFixed(4);
+        patch.fy = +(by / plan.H).toFixed(4);
+        patch.fw = +(newW / plan.W).toFixed(4);
+        patch.fh = +(newH / plan.H).toFixed(4);
+        return patch;
+    }
+
     // image / qr / inset photo: top-left anchored boxes with no padding.
     const baseFw = layer.fw ?? (layer.w ? layer.w / plan.W : 0.16);
     const kk = Math.max(0.03 / baseFw, Math.min(0.9 / baseFw, k));
@@ -2091,6 +2149,12 @@ export function paintFrame(ctx, plan, t) {
         // interior. They multiply — one mechanism per job, never fighting.
         const kOpacity = layer.keys ? keyValueAt(layer.keys.opacity, localT) : null;
         if (kOpacity !== null) ctx.globalAlpha *= Math.max(0, Math.min(1, kOpacity));
+        // A layer's own still opacity (the inspector slider) multiplies in
+        // here for EVERY type — the same one mechanism, painters never touch
+        // globalAlpha for it.
+        if (layer.opacity != null && layer.opacity !== 1) {
+            ctx.globalAlpha *= Math.max(0, Math.min(1, Number(layer.opacity) || 0));
+        }
         // Rotation lives here, not in the painters — the same trick as the
         // envelope: rotate about the layer's own centre and every layer type
         // gets it without its painter knowing.
@@ -2106,6 +2170,10 @@ export function paintFrame(ctx, plan, t) {
                 ctx.translate(-cx, -cy);
             }
         }
+        // Picture filters (brightness/contrast/…) wrap the painter the same
+        // way — canvas filter state is scoped by the save/restore around it.
+        const flt = filterCss(layer.filter);
+        if (flt) ctx.filter = flt;
         painter(ctx, plan, layer, time);
         if (undoKeys) undoKeys();
         ctx.restore();
@@ -2180,6 +2248,7 @@ export function clipFromSoundLayer(layer, buffer, plan, defaults = {}) {
         volume: layer.volume ?? defaults.volume,
         fadeIn: layer.enter?.seconds ?? defaults.fadeIn ?? 0,
         fadeOut: layer.exit?.seconds ?? defaults.fadeOut ?? 0,
+        mix: layer.mix || 'mix',
         loop: !!layer.loop,
     };
 }
@@ -2210,10 +2279,159 @@ function normalizeAudioClips(audio, plan) {
             vol: Math.max(0, Math.min(1, c.volume ?? 0.7)),
             fadeIn: Math.max(0, Math.min(c.fadeIn ?? 1.2, dur / 3)),
             fadeOut: Math.max(0, Math.min(c.fadeOut ?? 1.6, dur / 3)),
+            mix: c.mix === 'duck' || c.mix === 'solo' ? c.mix : 'mix',
             loop: !!c.loop,
         });
     }
     return clips;
+}
+
+/**
+ * How overlapping clips meet: a clip whose mix is 'duck' pulls every OTHER
+ * clip down to a fifth while it plays (the classic voice-over dip); 'solo'
+ * pulls them to silence. Returns one vertex list [{t, v}, …] per clip — the
+ * envelope for an EXTRA gain stage — or null where nothing ducks that clip,
+ * which is every clip in a plan with no duck/solo anywhere (the gate that
+ * keeps legacy audio graphs untouched). Ramps run 0.35s OUTSIDE the ducking
+ * window, so the dip is settled by the time the clip speaks.
+ */
+function duckEnvelopes(clips) {
+    const RAMP = 0.35;
+    return clips.map((clip, i) => {
+        const windows = [];
+        for (let j = 0; j < clips.length; j++) {
+            if (i === j) continue;
+            const d = clips[j];
+            if (d.mix !== 'duck' && d.mix !== 'solo') continue;
+            windows.push({ s: d.start, e: d.start + d.dur, v: d.mix === 'solo' ? 0 : 0.2 });
+        }
+        if (!windows.length) return null;
+        windows.sort((a, b) => a.s - b.s);
+        const merged = [];
+        for (const w of windows) {
+            const last = merged[merged.length - 1];
+            if (last && w.s <= last.e + RAMP * 2) {
+                last.e = Math.max(last.e, w.e);
+                last.v = Math.min(last.v, w.v);
+            } else merged.push({ ...w });
+        }
+        const pts = [];
+        for (const w of merged) {
+            pts.push({ t: Math.max(0, w.s - RAMP), v: 1 });
+            pts.push({ t: w.s, v: w.v });
+            pts.push({ t: w.e, v: w.v });
+            pts.push({ t: w.e + RAMP, v: 1 });
+        }
+        return pts;
+    });
+}
+
+/** Piecewise-linear value of a duck vertex list at time t (hold outside). */
+function envValueAt(pts, t) {
+    if (t <= pts[0].t) return pts[0].v;
+    for (let i = 1; i < pts.length; i++) {
+        if (t <= pts[i].t) {
+            const a = pts[i - 1];
+            const b = pts[i];
+            return a.v + (b.v - a.v) * ((t - a.t) / Math.max(1e-6, b.t - a.t));
+        }
+    }
+    return pts[pts.length - 1].v;
+}
+
+/**
+ * Play a plan's audio OUT LOUD, aligned to a preview clock that enters the
+ * timeline at `from` seconds. Same clip semantics as renderVideo — the same
+ * normalization, one source + gain per clip, the same fade envelope — but
+ * into the speakers instead of a recorded stream, and able to join
+ * mid-timeline: a clip already underway starts at the right point inside its
+ * buffer, at the gain its envelope would have reached by then.
+ *
+ * `audio` takes every shape renderVideo takes. Returns { stop } — idempotent,
+ * call it when the preview pauses, scrubs or ends — or null when there is
+ * nothing to play (no clips, or no AudioContext in this environment).
+ */
+export function startAudioPreview(audio, plan, from = 0) {
+    const clips = normalizeAudioClips(audio, plan);
+    if (!clips.length) return null;
+    const ac = audioContext();
+    if (!ac) return null;
+    if (ac.state === 'suspended') { try { ac.resume(); } catch { /* stays silent */ } }
+
+    const master = ac.createGain();
+    master.connect(ac.destination);
+    const sources = [];
+    // A breath after "now", so ramps written below are never in the past.
+    const t0 = ac.currentTime + 0.03;
+    const at = (videoT) => t0 + (videoT - from);
+    const ducks = duckEnvelopes(clips);
+
+    for (let i = 0; i < clips.length; i++) {
+        const clip = clips[i];
+        const end = clip.start + clip.dur;
+        if (end - from <= 0.05) continue; // already over at this playhead
+        const source = ac.createBufferSource();
+        source.buffer = clip.buffer;
+        source.loop = clip.loop;
+        const gain = ac.createGain();
+        source.connect(gain);
+        if (ducks[i]) {
+            // The dip other clips demand of this one — same envelope the
+            // render writes, picked up mid-line when joining mid-timeline.
+            const duck = ac.createGain();
+            gain.connect(duck);
+            duck.connect(master);
+            duck.gain.setValueAtTime(envValueAt(ducks[i], Math.max(0, from)), t0);
+            for (const p of ducks[i]) if (p.t > from) duck.gain.linearRampToValueAtTime(p.v, at(p.t));
+        } else {
+            gain.connect(master);
+        }
+
+        // normalizeAudioClips caps both fades at dur/3, so the breakpoints
+        // are always ordered: start ≤ start+fadeIn ≤ holdT ≤ end.
+        const holdT = clip.start + Math.max(clip.fadeIn, clip.dur - clip.fadeOut);
+
+        if (from <= clip.start) {
+            // Not started yet — schedule exactly what renderVideo schedules.
+            gain.gain.setValueAtTime(0, at(clip.start));
+            gain.gain.linearRampToValueAtTime(clip.vol, at(clip.start + clip.fadeIn));
+            gain.gain.setValueAtTime(clip.vol, at(holdT));
+            gain.gain.linearRampToValueAtTime(0, at(end));
+            if (clip.loop) source.start(at(clip.start), clip.offset);
+            else source.start(at(clip.start), clip.offset, clip.dur);
+        } else {
+            // Mid-clip: pick up the envelope where it would be.
+            const elapsed = from - clip.start;
+            const v = elapsed < clip.fadeIn
+                ? clip.vol * (elapsed / Math.max(1e-6, clip.fadeIn))
+                : elapsed > clip.dur - clip.fadeOut
+                    ? clip.vol * ((clip.dur - elapsed) / Math.max(1e-6, clip.fadeOut))
+                    : clip.vol;
+            gain.gain.setValueAtTime(Math.max(0, Math.min(clip.vol, v)), t0);
+            if (elapsed < clip.fadeIn) gain.gain.linearRampToValueAtTime(clip.vol, at(clip.start + clip.fadeIn));
+            if (holdT > from) gain.gain.setValueAtTime(clip.vol, at(holdT));
+            gain.gain.linearRampToValueAtTime(0, at(end));
+            if (clip.loop) {
+                source.start(t0, clip.buffer.duration > 0 ? (clip.offset + elapsed) % clip.buffer.duration : 0);
+            } else {
+                const off = clip.offset + elapsed;
+                if (off >= clip.buffer.duration) { try { gain.disconnect(); } catch { /* nothing to hear */ } continue; }
+                source.start(t0, off, clip.dur - elapsed);
+            }
+        }
+        sources.push(source);
+    }
+    if (!sources.length) { try { master.disconnect(); } catch { /* nothing scheduled */ } return null; }
+
+    let stopped = false;
+    return {
+        stop() {
+            if (stopped) return;
+            stopped = true;
+            for (const s of sources) { try { s.stop(); } catch { /* not started or already done */ } }
+            try { master.disconnect(); } catch { /* context died */ }
+        },
+    };
 }
 
 /**
@@ -2281,14 +2499,25 @@ export async function renderVideo({ canvas, plan, audio, onProgress, signal }) {
         // by simple summation into the single recorded audio track.
         const { ac } = audioNodes;
         const dest = ac.createMediaStreamDestination();
-        const sources = clips.map((clip) => {
+        const ducks = duckEnvelopes(clips);
+        const sources = clips.map((clip, i) => {
             const source = ac.createBufferSource();
             source.buffer = clip.buffer;
             source.loop = clip.loop;
             const gain = ac.createGain();
             source.connect(gain);
-            gain.connect(dest);
-            return { source, gain, clip };
+            // A clip something ducks gets an extra gain stage for the dip —
+            // inserted ONLY then, so a plan with no duck/solo anywhere keeps
+            // the exact legacy graph.
+            let duck = null;
+            if (ducks[i]) {
+                duck = ac.createGain();
+                gain.connect(duck);
+                duck.connect(dest);
+            } else {
+                gain.connect(dest);
+            }
+            return { source, gain, duck, pts: ducks[i], clip };
         });
         tracks.push(...dest.stream.getAudioTracks());
         Object.assign(audioNodes, { dest, sources });
@@ -2319,12 +2548,17 @@ export async function renderVideo({ canvas, plan, audio, onProgress, signal }) {
     if (audioNodes) {
         const { ac, sources } = audioNodes;
         const t0a = ac.currentTime;
-        for (const { source, gain, clip } of sources) {
+        for (const { source, gain, duck, pts, clip } of sources) {
             const at = t0a + clip.start;
             gain.gain.setValueAtTime(0, at);
             gain.gain.linearRampToValueAtTime(clip.vol, at + clip.fadeIn);
             gain.gain.setValueAtTime(clip.vol, at + Math.max(clip.fadeIn, clip.dur - clip.fadeOut));
             gain.gain.linearRampToValueAtTime(0, at + clip.dur);
+            // The dip other clips demand of this one rides its own stage.
+            if (duck && pts) {
+                duck.gain.setValueAtTime(envValueAt(pts, 0), t0a);
+                for (const p of pts) if (p.t > 0) duck.gain.linearRampToValueAtTime(p.v, t0a + p.t);
+            }
             // A looped clip runs until the explicit stop below; a one-shot is
             // bounded here so it can never spill past its window.
             if (clip.loop) source.start(at, clip.offset);

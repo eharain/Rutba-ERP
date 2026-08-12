@@ -270,6 +270,41 @@ photos nobody customized.
 | **M-AI** | auto-storyboard from product (photos+caption+template+commerce layers, one click, operator edits after); TTS voice-over → audio library → sound layer | storyboard produces a valid v4 recipe; TTS clip lands at its instants via the t4 rig |
 | **M5** | *exploratory:* video clips as layers (§7) — spike first, gate hard | §7 spike criteria |
 
+**Landed since (2026-08-12), user-driven — audio-in-hand + per-layer look:**
+
+- **Audible preview.** The studio's Play now plays what a render records:
+  `startAudioPreview(audio, plan, from)` in the renderer mirrors
+  `renderVideo`'s clip scheduling (same normalization, same envelope) into
+  the speakers, joining mid-timeline at the playhead's gain. Stops on pause,
+  scrub, post-switch, unmount, render.
+- **Sound overlap modes.** A sound layer carries `mix: mix|duck|solo` — duck
+  dips every OTHER clip to a 0.2 gain floor while it plays (0.35s ramps
+  outside its window), solo dips them to 0. One shared `duckEnvelopes`
+  drives render and preview; the extra gain stage is inserted ONLY when a
+  duck/solo clip exists, so legacy graphs stay byte-identical. Gated in t4
+  phase 1b: the bed's 440 energy falls to ~4% inside the voice-over's window.
+- **Track search + tags.** `TrackBrowser` (search box + library-tag chips,
+  AND-narrowing, audition, pick) replaces the Music-card list and the sound
+  inspector's `<select>`. /audio itself got full filters in the concurrent
+  media-gallery session (e087afb) — not re-done here.
+- **Per-layer look.** Static `opacity` moved from paintImage into the paint
+  wrapper (every type, multiply — byte-identical for the logo), plus
+  `layer.filter` {brightness, contrast, saturate, blur px, grayscale, sepia,
+  hue} → `ctx.filter`, assigned only when non-default. Inspector Look card
+  for photo/video/image (+ opacity for text). This delivers M3's
+  `ctx.filter` slice ahead of the pack.
+- **Full-stage resize.** A selected cover photo/clip now shows corner
+  handles (no rotate stalk); the first drag carves it into an inset —
+  `layerBounds` reports the stage, `resizePatch` writes fx/fy/fw/fh about
+  the opposite corner. `hitTestLayers` still ignores the body, so stage
+  clicks don't steal selection.
+- **Honest offsets.** The sound offset slider is bounded by the real source
+  length (track `duration_seconds`, or the loaded clip for a video's audio
+  lane) minus the lane window; label names the source length.
+
+Gates re-run green: A/B 60/60 + 6/6 (Electron host), t2 full suite,
+t4 21/21 incl. the new duck proof.
+
 Optional after M2: per-platform multi-aspect render on attach (one recipe,
 three files) — a poster/attach change, not a renderer one; revisits the
 "one video per post" rule deliberately and separately.

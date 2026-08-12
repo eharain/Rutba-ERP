@@ -35,7 +35,7 @@ import {
     buildPlan, paintFrame, renderVideo, loadImage, loadImages, releaseImages,
     loadAudioTrack, setMediaAuth, hitTestLayers, loadVideo, releaseVideos,
     layerHandles, hitTestHandles, scaleFromDrag, resizePatch, withLayerStateAt,
-    soundLayers, clipFromSoundLayer,
+    soundLayers, clipFromSoundLayer, startAudioPreview,
     imageItems, isImageOnly, unsupportedReason, videoFileName,
 } from "../../lib/video-maker";
 
@@ -72,6 +72,8 @@ export default function VideoStudioPage() {
     const canvasRef = useRef(null);
     const previewRaf = useRef(0);
     const previewStart = useRef(0);
+    const previewAudio = useRef(null); // startAudioPreview handle while playing
+    const previewArming = useRef(false); // decode in flight — one press at a time
     const abortRef = useRef(null);
     const batchCancelRef = useRef(false);
     const loadedRef = useRef([]); // blob-backed images awaiting revoke
@@ -373,8 +375,8 @@ export default function VideoStudioPage() {
         if (!track) {
             toast(
                 options.audioTrackId
-                    ? "The chosen track is no longer in rotation — rendering without music."
-                    : "No track chosen yet — pick one below, or switch to Random.",
+                    ? "The chosen track is no longer in rotation — there will be no music."
+                    : "No track chosen yet — pick one in Music, or switch to Random.",
                 "warning",
             );
             return null;
@@ -456,7 +458,12 @@ export default function VideoStudioPage() {
         loadedRef.current = [];
     }, []);
 
-    useEffect(() => () => { releaseLoaded(); cancelAnimationFrame(previewRaf.current); }, [releaseLoaded]);
+    useEffect(() => () => {
+        releaseLoaded();
+        cancelAnimationFrame(previewRaf.current);
+        previewAudio.current?.stop();
+        previewAudio.current = null;
+    }, [releaseLoaded]);
 
     // Render-time data for {token} layers, from the FIRST product linked to
     // the post: {price} {was} {discount} {product} {url}. Derived, never
@@ -491,6 +498,8 @@ export default function VideoStudioPage() {
 
     const selectPost = useCallback(async (post) => {
         cancelAnimationFrame(previewRaf.current);
+        previewAudio.current?.stop();
+        previewAudio.current = null;
         setPlaying(false);
         setPreviewTime(0);
         setResult((r) => { if (r?.url) URL.revokeObjectURL(r.url); return null; });
@@ -750,13 +759,39 @@ export default function VideoStudioPage() {
     // ── preview playback ────────────────────────────────────
     const stopPreview = useCallback(() => {
         cancelAnimationFrame(previewRaf.current);
+        previewAudio.current?.stop();
+        previewAudio.current = null;
         setPlaying(false);
     }, []);
 
-    const togglePreview = () => {
+    const togglePreview = async () => {
         if (playing) { stopPreview(); return; }
-        if (!plan) return;
+        if (!plan || previewArming.current) return;
         const from = previewTime >= plan.duration - 0.05 ? 0 : previewTime;
+
+        // The preview plays what a render would record: the bed (per the
+        // audio mode) plus every sound layer. Decoded buffers cache, so only
+        // the first press of a given track waits; a failure means a silent
+        // preview, never a stuck button.
+        previewArming.current = true;
+        let audioArg = null;
+        try {
+            const bed = await audioForRender();
+            const soundClips = await clipsFromSoundLayers(plan);
+            audioArg = soundClips.length
+                ? { clips: [...(bed ? [{ ...bed, loop: true }] : []), ...soundClips] }
+                : bed;
+        } catch (err) {
+            console.error("Preview audio failed to arm", err);
+        } finally {
+            previewArming.current = false;
+        }
+        // The library audition must not double up under the timed preview.
+        trackAudioRef.current?.pause();
+        setPreviewingId(null);
+        previewAudio.current?.stop();
+        previewAudio.current = audioArg ? startAudioPreview(audioArg, plan, from) : null;
+
         previewStart.current = performance.now() - from * 1000;
         setPlaying(true);
         const step = () => {
@@ -764,6 +799,8 @@ export default function VideoStudioPage() {
             if (t >= plan.duration) {
                 paintFrame(canvasRef.current.getContext("2d"), plan, plan.duration);
                 setPreviewTime(plan.duration);
+                previewAudio.current?.stop();
+                previewAudio.current = null;
                 setPlaying(false);
                 return;
             }
@@ -1697,6 +1734,11 @@ export default function VideoStudioPage() {
                                                         Inset (picture-in-picture)
                                                     </label>
                                                 </div>
+                                                {!selectedLayer.fw && (
+                                                    <p className="text-muted mb-1" style={{ fontSize: 11 }}>
+                                                        Or grab a corner handle on the preview — dragging one carves the full-frame photo into an inset.
+                                                    </p>
+                                                )}
                                                 {!!selectedLayer.fw && (
                                                     <>
                                                         <RangeRow label="Size" value={selectedLayer.fw} min={0.1} max={0.9} step={0.01}
@@ -1884,27 +1926,42 @@ export default function VideoStudioPage() {
                                                 <>
                                                     <RangeRow label="Size" value={p.fw || 0.16} min={0.04} max={0.5} step={0.01}
                                                         suffix="× width" disabled={busy} onChange={(v) => upsertPatch({ id: selectedLayer.id, fw: v })} />
-                                                    <RangeRow label="Opacity" value={p.opacity ?? 1} min={0.1} max={1} step={0.02}
-                                                        suffix="" disabled={busy} onChange={(v) => upsertPatch({ id: selectedLayer.id, opacity: v })} />
                                                     <RangeRow label="Rotation" value={p.rot || 0} min={-180} max={180} step={1}
                                                         suffix="°" disabled={busy} onChange={(v) => upsertPatch({ id: selectedLayer.id, rot: v })} />
-                                                    <p className="text-muted mb-0" style={{ fontSize: 11 }}>Drag it on the preview to place it.</p>
+                                                    <p className="text-muted mb-0" style={{ fontSize: 11 }}>Drag it on the preview to place it. Opacity is in Look below.</p>
                                                 </>
                                             );
                                         })()}
 
                                         {/* ── sound layer ── */}
-                                        {selectedSoundPatch && (
+                                        {selectedSoundPatch && (() => {
+                                            // A video's audio lane carries a url instead of a
+                                            // trackId — its source length comes off the loaded clip.
+                                            const soundTrack = selectedSoundPatch.trackId
+                                                ? tracks.find((x) => String(x.documentId) === String(selectedSoundPatch.trackId)) : null;
+                                            const srcDur = Number(soundTrack?.duration_seconds)
+                                                || videoLib[selectedSoundPatch.url]?.duration || 0;
+                                            const winLen = selectedLayer.timing
+                                                ? selectedLayer.timing.end - selectedLayer.timing.start
+                                                : (plan?.duration || 0);
+                                            // The start point matters exactly when the source is
+                                            // longer than its window — the slider covers the slack.
+                                            const offMax = srcDur > winLen + 1
+                                                ? Math.max(1, Math.ceil(srcDur - winLen))
+                                                : Math.max(1, Math.ceil(srcDur || 180));
+                                            return (
                                             <>
-                                                <label className="form-label small mb-1">Track</label>
-                                                <select className="form-select form-select-sm mb-2" value={selectedSoundPatch.trackId || ""} disabled={busy}
-                                                    onChange={(e) => {
-                                                        const t = tracks.find((x) => String(x.documentId) === e.target.value);
-                                                        upsertPatch({ id: selectedSoundPatch.id, trackId: t?.documentId || null, name: t?.name || "Sound" });
-                                                    }}>
-                                                    {tracks.map((t) => <option key={t.documentId} value={t.documentId}>{t.name}</option>)}
-                                                </select>
-                                                <RangeRow label="Start inside the track" value={selectedSoundPatch.offset || 0} min={0} max={180} step={1}
+                                                {!selectedSoundPatch.url && (
+                                                    <>
+                                                        <label className="form-label small mb-1">Track</label>
+                                                        <TrackBrowser tracks={tracks} busy={busy} maxHeight={150}
+                                                            pickedId={selectedSoundPatch.trackId}
+                                                            onPick={(t) => upsertPatch({ id: selectedSoundPatch.id, trackId: t.documentId, name: t.name || "Sound" })}
+                                                            previewingId={previewingId} onAudition={previewTrack} />
+                                                    </>
+                                                )}
+                                                <RangeRow label={srcDur ? `Start inside the ${Math.round(srcDur)}s source` : "Start inside the track"}
+                                                    value={selectedSoundPatch.offset || 0} min={0} max={offMax} step={1}
                                                     suffix="s" disabled={busy} onChange={(v) => upsertPatch({ id: selectedSoundPatch.id, offset: v })} />
                                                 <RangeRow label="Volume" value={selectedSoundPatch.volume ?? options.audioVolume} min={0} max={1} step={0.05}
                                                     suffix="" disabled={busy} onChange={(v) => upsertPatch({ id: selectedSoundPatch.id, volume: v })} />
@@ -1912,11 +1969,21 @@ export default function VideoStudioPage() {
                                                     suffix="s" disabled={busy} onChange={(v) => upsertPatch({ id: selectedSoundPatch.id, enter: { kind: "fade", seconds: v } })} />
                                                 <RangeRow label="Fade out" value={selectedSoundPatch.exit?.seconds ?? 0} min={0} max={4} step={0.1}
                                                     suffix="s" disabled={busy} onChange={(v) => upsertPatch({ id: selectedSoundPatch.id, exit: { kind: "fade", seconds: v } })} />
+                                                <label className="form-label small mb-1 mt-1">When it overlaps other sound</label>
+                                                <select className="form-select form-select-sm mb-1" value={selectedSoundPatch.mix || "mix"} disabled={busy}
+                                                    onChange={(e) => upsertPatch({ id: selectedSoundPatch.id, mix: e.target.value })}>
+                                                    <option value="mix">Mix together</option>
+                                                    <option value="duck">Duck the rest — they dip while this plays</option>
+                                                    <option value="solo">Only this one — everything else goes silent</option>
+                                                </select>
                                                 <p className="text-muted mb-0" style={{ fontSize: 11 }}>
-                                                    Heard in the finished file, not the preview. Place and trim it on its lane; it mixes over the music bed.
+                                                    Plays in the preview and the finished file. Place and trim it on its lane;
+                                                    the fades above are its edges, the overlap rule is how it treats the music
+                                                    bed and other clips under it.
                                                 </p>
                                             </>
-                                        )}
+                                            );
+                                        })()}
 
                                         {/* ── the compiled footer line ── */}
                                         {selectedLayer.type === "text" && !selectedTextPatch && (
@@ -1950,6 +2017,11 @@ export default function VideoStudioPage() {
                                                             Inset (picture-in-picture) — off = the clip covers the frame
                                                         </label>
                                                     </div>
+                                                    {!selectedVideoPatch.fw && (
+                                                        <p className="text-muted mb-1" style={{ fontSize: 11 }}>
+                                                            Or grab a corner handle on the preview — dragging one carves the full-frame clip into an inset.
+                                                        </p>
+                                                    )}
                                                     {!!selectedVideoPatch.fw && (
                                                         <RangeRow label="Size" value={selectedVideoPatch.fw} min={0.1} max={0.9} step={0.01}
                                                             suffix="× width" disabled={busy} onChange={(v) => upsertPatch({ id: selectedVideoPatch.id, fw: v })} />
@@ -1978,6 +2050,13 @@ export default function VideoStudioPage() {
                                                 Part of the video's look — its options are in the video properties (press × above).
                                                 Use the lane to retime it, or its eye to hide it.
                                             </p>
+                                        )}
+
+                                        {/* ── look: opacity + picture filters, per layer ── */}
+                                        {["photo", "video", "image", "text"].includes(selectedLayer.type) && (
+                                            <LookRows layer={selectedLayer} busy={busy}
+                                                withFilters={selectedLayer.type !== "text"}
+                                                onPatch={(p) => upsertPatch({ id: selectedLayer.id, ...p })} />
                                         )}
 
                                         {/* ── motion: keys on the layer's local clock ── */}
@@ -2309,29 +2388,10 @@ export default function VideoStudioPage() {
                                                     </div>
                                                 )}
                                                 {tracks.length > 0 && (
-                                                    <div className="list-group list-group-flush mb-2" style={{ maxHeight: 190, overflowY: "auto" }}>
-                                                        {tracks.map((t) => {
-                                                            const chosen = options.audioMode === "pick" && String(options.audioTrackId) === String(t.documentId);
-                                                            return (
-                                                                <div key={t.documentId} className={`list-group-item d-flex align-items-center gap-2 py-1 px-2 ${chosen ? "list-group-item-primary" : ""}`}>
-                                                                    <button className="btn btn-sm btn-link p-0" title="Listen" disabled={busy}
-                                                                        onClick={() => previewTrack(t)}>
-                                                                        <i className={`fas ${previewingId === t.documentId ? "fa-pause" : "fa-play"}`} />
-                                                                    </button>
-                                                                    <span className="flex-grow-1 text-truncate small" title={t.credit || t.name}>
-                                                                        {t.name}
-                                                                        {!t.audio_file?.id && <i className="fas fa-link ms-1 text-muted" title="foreign URL" style={{ fontSize: 10 }} />}
-                                                                    </span>
-                                                                    {options.audioMode === "pick" && (
-                                                                        <button className={`btn btn-sm ${chosen ? "btn-primary" : "btn-outline-secondary"}`}
-                                                                            disabled={busy} onClick={() => setOpt({ audioTrackId: t.documentId })}>
-                                                                            {chosen ? <i className="fas fa-check" /> : "Use"}
-                                                                        </button>
-                                                                    )}
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
+                                                    <TrackBrowser tracks={tracks} busy={busy}
+                                                        pickedId={options.audioMode === "pick" ? options.audioTrackId : null}
+                                                        onPick={options.audioMode === "pick" ? (t) => setOpt({ audioTrackId: t.documentId }) : null}
+                                                        previewingId={previewingId} onAudition={previewTrack} />
                                                 )}
                                                 <RangeRow label="Volume" value={options.audioVolume} min={0} max={1} step={0.05}
                                                     suffix="" disabled={busy} onChange={(v) => setOpt({ audioVolume: v })} />
@@ -2348,8 +2408,8 @@ export default function VideoStudioPage() {
                                                     </label>
                                                 </div>
                                                 <p className="text-muted small mb-0 mt-2">
-                                                    Music is heard in the finished file, not in the preview above — the preview draws
-                                                    frames only. Extra clips (a voice-over over the bed) are sound layers: the
+                                                    The Play button under the preview plays the music too — what you hear is what
+                                                    the file gets. Extra clips (a voice-over over the bed) are sound layers: the
                                                     {" "}<strong>Sound</strong> button under the preview adds one as a lane.
                                                 </p>
                                             </>
@@ -2434,6 +2494,131 @@ function RangeRow({ label, value, min, max, step, suffix, disabled, onChange }) 
             </div>
             <input type="range" className="form-range" min={min} max={max} step={step} value={value} disabled={disabled}
                 onChange={(e) => onChange(Number(e.target.value))} />
+        </div>
+    );
+}
+
+/**
+ * The track chooser everywhere a track gets picked: a search box plus the
+ * library's tags as chips narrow the list; every row auditions; `onPick`
+ * (when given) selects. Active chips AND together — "upbeat" + "retail" is
+ * tracks tagged both.
+ */
+function TrackBrowser({ tracks, busy, pickedId, onPick, previewingId, onAudition, maxHeight = 190 }) {
+    const [q, setQ] = useState("");
+    const [tagsOn, setTagsOn] = useState([]);
+    const norm = (s) => String(s || "").toLowerCase();
+    const allTags = useMemo(() => {
+        const s = new Set();
+        for (const t of tracks) for (const x of (Array.isArray(t.tags) ? t.tags : [])) s.add(String(x));
+        return [...s].sort((a, b) => a.localeCompare(b));
+    }, [tracks]);
+    const shown = useMemo(() => {
+        const needle = norm(q).trim();
+        return tracks.filter((t) => {
+            const tags = Array.isArray(t.tags) ? t.tags.map(norm) : [];
+            if (tagsOn.length && !tagsOn.every((x) => tags.includes(norm(x)))) return false;
+            if (!needle) return true;
+            return norm(t.name).includes(needle) || norm(t.credit).includes(needle)
+                || tags.some((x) => x.includes(needle));
+        });
+    }, [tracks, q, tagsOn]);
+    const toggleTag = (x) => setTagsOn((on) => (on.includes(x) ? on.filter((y) => y !== x) : [...on, x]));
+    return (
+        <>
+            {(tracks.length > 5 || allTags.length > 0) && (
+                <input className="form-control form-control-sm mb-1" placeholder="Search tracks…" value={q}
+                    onChange={(e) => setQ(e.target.value)} disabled={busy} />
+            )}
+            {allTags.length > 0 && (
+                <div className="d-flex flex-wrap gap-1 mb-1">
+                    {allTags.map((x) => (
+                        <button key={x} type="button" disabled={busy}
+                            className={`btn btn-sm py-0 px-2 ${tagsOn.includes(x) ? "btn-primary" : "btn-outline-secondary"}`}
+                            style={{ fontSize: 11 }} onClick={() => toggleTag(x)}>{x}</button>
+                    ))}
+                    {tagsOn.length > 0 && (
+                        <button type="button" className="btn btn-sm btn-link py-0 px-1" style={{ fontSize: 11 }}
+                            onClick={() => setTagsOn([])}>clear</button>
+                    )}
+                </div>
+            )}
+            <div className="list-group list-group-flush mb-2" style={{ maxHeight, overflowY: "auto" }}>
+                {shown.length === 0 && (
+                    <div className="text-muted small py-2 px-2">No track matches — clear the search or the tags.</div>
+                )}
+                {shown.map((t) => {
+                    const chosen = pickedId != null && String(pickedId) === String(t.documentId);
+                    return (
+                        <div key={t.documentId} className={`list-group-item d-flex align-items-center gap-2 py-1 px-2 ${chosen ? "list-group-item-primary" : ""}`}>
+                            {onAudition && (
+                                <button className="btn btn-sm btn-link p-0" title="Listen" disabled={busy} onClick={() => onAudition(t)}>
+                                    <i className={`fas ${previewingId === t.documentId ? "fa-pause" : "fa-play"}`} />
+                                </button>
+                            )}
+                            <span className="flex-grow-1 text-truncate small" title={t.credit || t.name}>
+                                {t.name}
+                                {!t.audio_file?.id && <i className="fas fa-link ms-1 text-muted" title="foreign URL" style={{ fontSize: 10 }} />}
+                                {(Array.isArray(t.tags) ? t.tags : []).slice(0, 3).map((x) => (
+                                    <span key={x} className="badge bg-light text-dark border ms-1" style={{ fontSize: 9 }}>{x}</span>
+                                ))}
+                            </span>
+                            {onPick && (
+                                <button className={`btn btn-sm ${chosen ? "btn-primary" : "btn-outline-secondary"}`} disabled={busy}
+                                    onClick={() => onPick(t)}>
+                                    {chosen ? <i className="fas fa-check" /> : "Use"}
+                                </button>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+        </>
+    );
+}
+
+/**
+ * Per-layer look: opacity plus the picture filters (the renderer's
+ * layer.filter). Defaults write as null so an untouched layer stays exactly
+ * the pre-filter patch it was.
+ */
+function LookRows({ layer, busy, onPatch, withFilters = true }) {
+    const f = layer.filter || {};
+    const put = (k, v, dflt) => {
+        const next = { ...f };
+        if (v === dflt) delete next[k]; else next[k] = v;
+        onPatch({ filter: Object.keys(next).length ? next : null });
+    };
+    const isDefault = !layer.filter && (layer.opacity == null || layer.opacity === 1);
+    return (
+        <div className="border rounded p-2 mt-2">
+            <div className="d-flex align-items-center">
+                <strong className="small">Look</strong>
+                {!isDefault && (
+                    <button className="btn btn-sm btn-link py-0 ms-auto" style={{ fontSize: 11 }} disabled={busy}
+                        title="Back to the plain picture" onClick={() => onPatch({ opacity: null, filter: null })}>Reset</button>
+                )}
+            </div>
+            <RangeRow label="Opacity" value={layer.opacity ?? 1} min={0.05} max={1} step={0.05} suffix=""
+                disabled={busy} onChange={(v) => onPatch({ opacity: v === 1 ? null : v })} />
+            {withFilters && (
+                <>
+                    <RangeRow label="Brightness" value={f.brightness ?? 1} min={0.4} max={1.6} step={0.05} suffix="×"
+                        disabled={busy} onChange={(v) => put("brightness", v, 1)} />
+                    <RangeRow label="Contrast" value={f.contrast ?? 1} min={0.4} max={1.6} step={0.05} suffix="×"
+                        disabled={busy} onChange={(v) => put("contrast", v, 1)} />
+                    <RangeRow label="Saturation" value={f.saturate ?? 1} min={0} max={2} step={0.05} suffix="×"
+                        disabled={busy} onChange={(v) => put("saturate", v, 1)} />
+                    <RangeRow label="Blur" value={f.blur ?? 0} min={0} max={16} step={0.5} suffix="px"
+                        disabled={busy} onChange={(v) => put("blur", v, 0)} />
+                    <div className="form-check form-switch">
+                        <input className="form-check-input" type="checkbox" id={`look-bw-${layer.id}`} disabled={busy}
+                            checked={(f.grayscale ?? 0) >= 1}
+                            onChange={(e) => put("grayscale", e.target.checked ? 1 : 0, 0)} />
+                        <label className="form-check-label small" htmlFor={`look-bw-${layer.id}`}>Black &amp; white</label>
+                    </div>
+                </>
+            )}
         </div>
     );
 }
