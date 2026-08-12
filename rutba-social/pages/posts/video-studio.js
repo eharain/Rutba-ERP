@@ -2072,6 +2072,18 @@ export default function VideoStudioPage() {
                                                     )}
                                                 </div>
                                                 <Link className="btn btn-sm btn-link p-0" href={`/posts/${selected.documentId}`}>Edit the post →</Link>
+                                                {!hasCaptionLines ? (
+                                                    <button className="btn btn-sm btn-outline-primary w-100 mt-2" disabled={busy || !plan}
+                                                        title="One caption layer per line/sentence, each with its own lane — retime, restyle or delete lines individually"
+                                                        onClick={splitCaption}>
+                                                        <i className="fas fa-grip-lines me-1" />Split into timed lines
+                                                    </button>
+                                                ) : (
+                                                    <button className="btn btn-sm btn-outline-secondary w-100 mt-2" disabled={busy}
+                                                        onClick={restoreSingleCaption}>
+                                                        <i className="fas fa-paragraph me-1" />Back to one caption
+                                                    </button>
+                                                )}
                                             </>
                                         )}
                                         {selectedLayer.type === "caption" && selectedLayer.id !== "caption" && (
@@ -2110,6 +2122,20 @@ export default function VideoStudioPage() {
                                                     </select>
                                                 </div>
                                             </div>
+                                        )}
+                                        {selectedLayer.type === "caption" && (
+                                            <>
+                                                <div className="mt-2">
+                                                    <RangeRow label="Typing speed" value={options.charsPerSecond} min={4} max={45} step={1}
+                                                        suffix=" chars/s" disabled={busy} onChange={(v) => setOpt({ charsPerSecond: v })} />
+                                                    <RangeRow label="Text size" value={options.fontScale} min={0.7} max={1.5} step={0.05}
+                                                        suffix="×" disabled={busy} onChange={(v) => setOpt({ fontScale: v })} />
+                                                </div>
+                                                <p className="text-muted mb-0" style={{ fontSize: 11 }}>
+                                                    Position, style, speed and size are how EVERY caption is set — the words,
+                                                    the reveal and the lane are this one's own.
+                                                </p>
+                                            </>
                                         )}
 
                                         {/* ── the brand mark: an image layer whose picture DEFAULTS to
@@ -2301,7 +2327,9 @@ export default function VideoStudioPage() {
                                         )}
 
                                         {/* ── look: opacity + picture filters, per layer ── */}
-                                        {["photo", "video", "image", "text"].includes(selectedLayer.type) && (
+                                        {/* Opacity and filters ride in the paint WRAPPER, which every
+                                            painter goes through — so a caption fades like a sticker. */}
+                                        {["photo", "video", "image", "text", "caption"].includes(selectedLayer.type) && (
                                             <LookRows layer={selectedLayer} busy={busy}
                                                 withFilters={selectedLayer.type !== "text"}
                                                 onPatch={(p) => upsertPatch({ id: selectedLayer.id, ...p })} />
@@ -2596,41 +2624,9 @@ export default function VideoStudioPage() {
                                     </div>
                                 </div>
 
-                                {/* ── caption text — also editable from its lane ── */}
-                                {selected && (
-                                    <div className="card mb-3">
-                                        <div className="card-header py-2 d-flex align-items-center">
-                                            <i className="fas fa-keyboard me-2" />Caption
-                                            <Link className="btn btn-sm btn-link ms-auto p-0" href={`/posts/${selected.documentId}`}>Edit the post →</Link>
-                                        </div>
-                                        <div className="card-body py-2">
-                                            <textarea className="form-control form-control-sm" rows={4} disabled={busy}
-                                                value={captionText} onChange={(e) => { setDirty(true); setBodyOverride(e.target.value); }} />
-                                            <div className="d-flex justify-content-between mt-1 mb-2">
-                                                <small className="text-muted">{captionText.length} characters — the video only, not the post.</small>
-                                                {bodyOverride !== null && (
-                                                    <button className="btn btn-sm btn-link p-0" onClick={() => { setDirty(true); setBodyOverride(null); }} disabled={busy}>Reset</button>
-                                                )}
-                                            </div>
-                                            <RangeRow label="Typing speed" value={options.charsPerSecond} min={4} max={45} step={1}
-                                                suffix=" chars/s" disabled={busy} onChange={(v) => setOpt({ charsPerSecond: v })} />
-                                            <RangeRow label="Text size" value={options.fontScale} min={0.7} max={1.5} step={0.05}
-                                                suffix="×" disabled={busy} onChange={(v) => setOpt({ fontScale: v })} />
-                                            {!hasCaptionLines ? (
-                                                <button className="btn btn-sm btn-outline-primary w-100" disabled={busy || !plan}
-                                                    title="One caption layer per line/sentence, each with its own lane — retime, restyle or delete lines individually"
-                                                    onClick={splitCaption}>
-                                                    <i className="fas fa-grip-lines me-1" />Split into timed lines
-                                                </button>
-                                            ) : (
-                                                <button className="btn btn-sm btn-outline-secondary w-100" disabled={busy}
-                                                    onClick={restoreSingleCaption}>
-                                                    <i className="fas fa-paragraph me-1" />Back to one caption
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
+                                {/* The caption has no card here either — the words, the reveal,
+                                   the speed and the split all live on the caption lane, which
+                                   always exists, so there is nothing to get back to. */}
                                 </>
                                 )}
                             </div>
