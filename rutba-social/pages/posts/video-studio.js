@@ -576,10 +576,10 @@ export default function VideoStudioPage() {
                 if (!documentId) throw new Error("The draft post was not created.");
             } else {
                 const target = posts.find((p) => p.documentId === documentId);
-                const existing = [
-                    ...(target?.cover ? [target.cover.id] : []),
-                    ...(target?.media || []).map((m) => m.id),
-                ].filter(Boolean);
+                // Gallery only — `cover` is its own single-file relation. Seeding
+                // from cover+media would write the cover INTO the gallery, so it
+                // would show up twice in the post editor forever after.
+                const existing = (target?.media || []).map((m) => m.id).filter(Boolean);
                 await SocialPostsEndpoints.updateDraft(documentId, {
                     data: { media: [...new Set([...existing, ...photoIds])] },
                 });
