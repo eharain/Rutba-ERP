@@ -73,6 +73,36 @@ async function getDeskCarryover(strapi, deskId) {
   };
 }
 
+/**
+ * The most recent Expired register that was never closed, for this desk or
+ * this user. Closing one is a manager/admin job (see `close`), so it can sit
+ * unclosed for a while — long enough that the desk needs to start its next
+ * session regardless. Returns null when there is none.
+ */
+async function findUnclosedExpired(strapi, deskId, userDocId) {
+  const base = { status: { $eq: 'Expired' }, closed_at: { $null: true } };
+  const query = {
+    sort: [{ opened_at: 'desc' }],
+    limit: 1,
+    fields: ['desk_id', 'desk_name', 'opened_at', 'opened_by', 'opening_cash'],
+  };
+  if (deskId) {
+    const byDesk = await strapi.documents('api::cash-register.cash-register').findMany({
+      ...query,
+      filters: { ...base, desk_id: { $eq: Number(deskId) } },
+    });
+    if (byDesk[0]) return byDesk[0];
+  }
+  if (userDocId) {
+    const byUser = await strapi.documents('api::cash-register.cash-register').findMany({
+      ...query,
+      filters: { ...base, opened_by_user: { documentId: { $eq: userDocId } } },
+    });
+    if (byUser[0]) return byUser[0];
+  }
+  return null;
+}
+
 /** Build the opening mismatch warning string, or null when opening matches carryover. */
 function buildOpeningNote(opening, carryover) {
   if (!carryover || carryover.amount == null) return null;
@@ -308,6 +338,33 @@ module.exports = createCoreController('api::cash-register.cash-register', ({ str
       strapi.log.warn(`cash-register open: carryover lookup failed — ${e.message}`);
     }
 
+    // ── An expired register may still be sitting unclosed ────────────────
+    // Only a manager/admin can close one, and staff must not be stranded
+    // until that happens — a desk with an unclosed expired register can
+    // still start its next session. The invariant that actually matters is
+    // enforced above: one ACTIVE, non-expired register per desk and per
+    // user. What the expired register does earn is a note on the new one,
+    // so whoever eventually closes it knows the drawer was rolled over and
+    // its cash count is not the count for that shift alone.
+    let pendingExpired = null;
+    try {
+      pendingExpired = await findUnclosedExpired(strapi, desk_id, currentUserDocId);
+    } catch (e) {
+      strapi.log.warn(`cash-register open: pending-expired lookup failed — ${e.message}`);
+    }
+    let pendingNote = null;
+    if (pendingExpired) {
+      const detail = [
+        pendingExpired.opened_at ? `opened ${new Date(pendingExpired.opened_at).toISOString()}` : null,
+        pendingExpired.opened_by ? `by ${pendingExpired.opened_by}` : null,
+      ].filter(Boolean).join(' ');
+      pendingNote = `ℹ Opened while register #${pendingExpired.id} was still expired and unclosed`
+        + `${detail ? ` (${detail})` : ''}. The drawer was handed over to this session — `
+        + `reconcile #${pendingExpired.id} against this register's opening cash ${Number(opening_cash || 0).toFixed(2)}.`;
+    }
+
+    const combinedNote = [openingNote, pendingNote].filter(Boolean).join('\n') || null;
+
     // Stamp the opener from the AUTHENTICATED user, not from the request body.
     // The POS client reads its user out of storage once at mount, so it can
     // post an empty `opened_by`/`opened_by_user` — which left registers with no
@@ -333,7 +390,7 @@ module.exports = createCoreController('api::cash-register.cash-register', ({ str
         opened_by: openerName,
         opened_by_id: openerId,
         ...(carryover && carryover.amount != null ? { carry_over_expected: carryover.amount } : {}),
-        ...(openingNote ? { opening_note: openingNote } : {}),
+        ...(combinedNote ? { opening_note: combinedNote } : {}),
         ...(branchConnect ? { branch: branchConnect } : {}),
         ...(openerConnect ? { opened_by_user: openerConnect } : {}),
       },
@@ -368,7 +425,7 @@ module.exports = createCoreController('api::cash-register.cash-register', ({ str
       strapi.log.error(`[cash-register open] accounting failed: ${err.message}`);
     }
 
-    return ctx.send({ data: created, meta: { carryover, openingNote } });
+    return ctx.send({ data: created, meta: { carryover, openingNote: combinedNote, pendingExpired } });
   },
 
   /* ── PUT /cash-registers/:id/close ─────────────────────────── */

@@ -159,9 +159,18 @@ export default function CashRegisterGuard({ children }) {
                 </div>
             )}
             {status === 'expired' && (
-                <div className="alert alert-danger py-2 mb-2 d-flex align-items-center">
+                <div className="alert alert-danger py-2 mb-2 d-flex align-items-center flex-wrap gap-2">
                     <i className="fas fa-exclamation-triangle me-2"></i>
-                    <span>Cash register has <strong>expired</strong>. <Link href="/cash-register">Close it</Link> or open a new one to process payments.</span>
+                    {/* Closing an expired register needs a manager — opening the next
+                        one does not, so the button here is the one every cashier can
+                        actually use, and the link stays for whoever can close. */}
+                    <span className="flex-grow-1">
+                        Cash register has <strong>expired</strong>. Open a new one to keep taking payments —{' '}
+                        <Link href="/cash-register">closing the expired one</Link> is a manager/admin job.
+                    </span>
+                    <button type="button" className="btn btn-sm btn-light" onClick={() => setShowModal(true)}>
+                        <i className="fas fa-cash-register me-1"></i>Open New Register
+                    </button>
                 </div>
             )}
 

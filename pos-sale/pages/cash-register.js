@@ -235,7 +235,16 @@ export default function CashRegisterPage() {
             const res = await CashRegistersEndpoints.fetchActive({ deskId: desk?.id, userId });
             const register = res?.data ?? null;
 
+            // The desk's previous float is needed on BOTH paths — an expired
+            // register does not stop the user opening the next one, and that
+            // form wants the same carry-over hint.
+            setLastCarryover(res?.meta?.carryover ?? null);
+
             if (res?.meta?.expired) {
+                // Keep the expired register on screen: a manager reconciles and
+                // closes it from here, and staff start the next session from the
+                // same page. It is not the live register, so the POS-wide context
+                // is cleared — no checkout runs against it.
                 setActiveRegister(res.meta.expired);
                 setCashRegister(null);
                 return;
@@ -243,7 +252,6 @@ export default function CashRegisterPage() {
 
             setActiveRegister(register);
             setCashRegister(register);
-            setLastCarryover(res?.meta?.carryover ?? null);
         } catch (err) {
             console.error("Failed to load cash register", err);
             setError("Failed to load cash register");
@@ -303,6 +311,11 @@ export default function CashRegisterPage() {
             };
             const res = await CashRegistersEndpoints.postOpen(payload);
             const created = res?.data ?? res;
+            // Opening from an expired register swaps one register for another on
+            // the same screen — drop the old one's payments and ledger now rather
+            // than letting them sit under the new register until the reload lands.
+            setRegisterPayments([]);
+            setRegisterTransactions([]);
             setActiveRegister(created);
             setCashRegister(created);
             setOpeningCash("");
@@ -403,7 +416,11 @@ export default function CashRegisterPage() {
                     {isExpired && activeRegister && (
                         <div className="alert alert-danger py-2 d-flex align-items-center mb-3">
                             <i className="fas fa-exclamation-triangle me-2"></i>
-                            <span>This register has <strong>expired</strong> (exceeded {EXPIRY_HOURS}h). No new transactions allowed. Please close the register below.</span>
+                            <span>
+                                This register has <strong>expired</strong> (exceeded {EXPIRY_HOURS}h). No new transactions on it —
+                                start a new register below to continue.
+                                {userIsPrivileged ? ' Close this one whenever the cash is counted.' : ' A manager or admin closes it.'}
+                            </span>
                         </div>
                     )}
                     {warningHours && activeRegister && !isExpired && (
@@ -513,6 +530,52 @@ export default function CashRegisterPage() {
                                 By: {activeRegister.opened_by}
                             </div>
 
+                            {/* ── Expired: start the next session without waiting ──
+                                Closing an expired register is a manager/admin job, but
+                                waiting for one would stop the desk selling. Opening a new
+                                register is allowed while the expired one waits in the
+                                close queue — the server keeps the real invariant (one
+                                active, non-expired register per desk and per user) and
+                                notes the hand-over on the new register. */}
+                            {isExpired && (
+                                <div className="card border-success mb-2">
+                                    <div className="card-body py-2">
+                                        <form onSubmit={handleOpenRegister} className="row g-2 align-items-center">
+                                            <div className="col-auto text-success small fw-semibold" style={{ minWidth: 70 }}>
+                                                <i className="fas fa-play-circle me-1"></i>New
+                                            </div>
+                                            <div className="col-6 col-md-2">
+                                                <div className="input-group input-group-sm">
+                                                    <span className="input-group-text">{currency}</span>
+                                                    <input type="number" step="0.01" min="0" className="form-control" value={openingCash}
+                                                        onChange={(e) => setOpeningCash(e.target.value)} placeholder="Opening cash" required />
+                                                </div>
+                                            </div>
+                                            <div className="col small text-muted">
+                                                {userIsPrivileged
+                                                    ? <>Close register #{activeRegister.id} below, or start a new one now — #{activeRegister.id} stays in the close queue.</>
+                                                    : <>A manager or admin will close register #{activeRegister.id}. Count the drawer and start a new register to keep selling.</>}
+                                                {!paymentsLoading && (
+                                                    <>
+                                                        {' '}
+                                                        <button type="button" className="btn btn-link btn-sm p-0 align-baseline"
+                                                            onClick={() => setOpeningCash(roundCash(expectedCash))}>
+                                                            Use expected {fmt(expectedCash)}
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </div>
+                                            <div className="col-auto">
+                                                <button className="btn btn-success btn-sm" type="submit" disabled={loading}>
+                                                    {loading ? <span className="spinner-border spinner-border-sm me-1"></span> : <i className="fas fa-cash-register me-1"></i>}
+                                                    Start New Register
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* ── Record Transaction strip (first line) ── */}
                             {!isExpired && (
                                 <div className="card mb-2">
@@ -559,6 +622,7 @@ export default function CashRegisterPage() {
                                         <div className="text-warning small mb-0">
                                             <i className="fas fa-lock me-1"></i>
                                             Register expired — only a <strong>manager</strong> or <strong>admin</strong> can close it.
+                                            It stays in their close queue; start a new register above to keep selling.
                                         </div>
                                     ) : (
                                         <form onSubmit={handleCloseDayClick} className="row g-2 align-items-center">

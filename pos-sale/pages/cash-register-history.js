@@ -293,12 +293,22 @@ export default function CashRegisterHistoryPage() {
             <Link href="/cash-register" className="btn btn-sm btn-light">Open <i className="fas fa-arrow-right ms-1"></i></Link>
         </div>
     ) : currentExpired ? (
+        // An expired register does not block the next session — only a manager
+        // or admin can close it, and the desk would otherwise stop selling until
+        // one shows up. Point each role at the action it can actually perform.
         <div className="alert alert-danger py-2 d-flex align-items-center justify-content-between mb-2">
             <span>
                 <i className="fas fa-exclamation-triangle me-2"></i>
-                Register #{currentExpired.id} <strong>expired</strong> and is still open — close it before starting a new one.
+                Register #{currentExpired.id} <strong>expired</strong> and is still open —{' '}
+                {canCloseAny
+                    ? 'close it, or start a new register now and close it once the cash is counted.'
+                    : 'a manager or admin closes it. You can start a new register to keep selling.'}
             </span>
-            <Link href="/cash-register" className="btn btn-sm btn-light">Close it <i className="fas fa-arrow-right ms-1"></i></Link>
+            <Link href="/cash-register" className="btn btn-sm btn-light">
+                {canCloseAny
+                    ? <>Close it <i className="fas fa-arrow-right ms-1"></i></>
+                    : <><i className="fas fa-plus me-1"></i>Start new register</>}
+            </Link>
         </div>
     ) : (
         <div className="alert alert-secondary py-2 d-flex align-items-center justify-content-between mb-2">
