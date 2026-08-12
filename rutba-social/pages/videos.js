@@ -126,7 +126,11 @@ export default function VideosPage() {
             setTotal(d.total || 0);
             setServerError(null);
         } catch (err) {
-            console.error("Failed to load videos from the media server", err);
+            // warn, not error: an unreachable or not-yet-deployed media server
+            // is a condition this page EXPECTS and explains in its own banner.
+            // console.error puts it in Next's dev error overlay, where it reads
+            // as a crash the page has already handled.
+            console.warn("Failed to load videos from the media server", err);
             if (mine !== reqSeq.current) return;
             setVideos([]);
             setServerError(
@@ -142,10 +146,6 @@ export default function VideosPage() {
 
     useEffect(() => { loadVideos(); }, [loadVideos]);
 
-    // Any filter change puts you back on page 1 — page 7 of a narrower result
-    // set is usually empty, and an empty grid reads as "nothing matched".
-    useEffect(() => { setPage(1); }, [folder, recursive, search, tag, dateFrom, dateTo, sort]);
-
     // Tags are a facet of what is on screen: scoped to the folder in view, so
     // the filter never offers a tag that would return nothing here.
     const loadTags = useCallback(async () => {
@@ -159,7 +159,7 @@ export default function VideosPage() {
         } catch (err) {
             // An older media server has no tag route; the rest of the gallery
             // works, so lose the filter rather than the page.
-            console.error("Failed to load video tags", err);
+            console.warn("Failed to load video tags", err);
             setTags([]);
         }
     }, [jwt, folder, recursive]);
@@ -301,7 +301,7 @@ export default function VideosPage() {
             );
             await loadScanStatus();
         } catch (err) {
-            console.error("Scan request failed", err);
+            console.warn("Scan request failed", err);
             toast(
                 err?.response?.data?.error?.message
                 || "Could not start the scan — the media server may not have its video API deployed yet.",
@@ -472,7 +472,7 @@ export default function VideosPage() {
                                 </div>
                                 <select className={`form-select form-select-sm ${tag ? "border-primary" : ""}`}
                                     style={{ width: "auto" }} value={tag}
-                                    onChange={(e) => setTag(e.target.value)}
+                                    onChange={(e) => applyFilter(setTag)(e.target.value)}
                                     title={tags.length ? "Filter by tag" : "No tags on the videos in view"}>
                                     <option value="">
                                         {tags.length ? "All tags" : "No tags yet"}
@@ -484,13 +484,13 @@ export default function VideosPage() {
                                 <div className="input-group input-group-sm" style={{ width: "auto" }} title="Uploaded between">
                                     <span className="input-group-text"><i className="fas fa-calendar"></i></span>
                                     <input type="date" className="form-control" value={dateFrom} max={dateTo || undefined}
-                                        onChange={(e) => setDateFrom(e.target.value)} />
+                                        onChange={(e) => applyFilter(setDateFrom)(e.target.value)} />
                                     <span className="input-group-text">→</span>
                                     <input type="date" className="form-control" value={dateTo} min={dateFrom || undefined}
-                                        onChange={(e) => setDateTo(e.target.value)} />
+                                        onChange={(e) => applyFilter(setDateTo)(e.target.value)} />
                                 </div>
                                 <select className="form-select form-select-sm" style={{ width: "auto" }} value={sort}
-                                    onChange={(e) => setSort(e.target.value)}>
+                                    onChange={(e) => applyFilter(setSort)(e.target.value)}>
                                     <option value="newest">Newest first</option>
                                     <option value="oldest">Oldest first</option>
                                     <option value="name">Name A–Z</option>
@@ -542,7 +542,7 @@ export default function VideosPage() {
                                                                     className={`badge border-0 ${t === tag ? "bg-primary" : "bg-light text-dark border"}`}
                                                                     style={{ fontSize: 10, cursor: "pointer" }}
                                                                     title={t === tag ? "Clear this tag filter" : `Show only videos tagged “${t}”`}
-                                                                    onClick={() => setTag(t === tag ? "" : t)}>
+                                                                    onClick={() => applyFilter(setTag)(t === tag ? "" : t)}>
                                                                     <i className="fas fa-tag me-1"></i>{t}
                                                                 </button>
                                                             ))}

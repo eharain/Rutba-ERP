@@ -74,6 +74,29 @@ const CUSTOM_ACTIONS = {
   ],
 };
 
+// Controllers that have routes but NO content-type schema of their own.
+//
+// collectDescriptorUids below only yields uids that start with `api::` AND
+// exist in strapi.contentTypes, so these are invisible to it: the media
+// library's descriptor declares `plugin::upload.file` (the thing it fronts),
+// and there is no `api::media-library` content type to find. Their grants
+// therefore existed only as rows someone created by hand — which works until
+// the next environment, and leaves every route added later answering 403 with
+// nothing in the tree explaining why.
+//
+// Listed here they are reproducible, and a new media-library route gets its
+// grant by being added to this list rather than by someone rediscovering this.
+const ROUTE_ONLY_ACTIONS = {
+  'api::media-library.media-library': [
+    // folder + file management (these already existed as hand-made rows)
+    'folderTree', 'getFolders', 'getFolder', 'createFolder', 'renameFolder', 'deleteFolder',
+    'getFiles', 'getFile', 'moveFiles', 'updateFileInfo', 'deleteFile', 'uploadToFolder',
+    // the media-server video surface, proxied for the ERP's own API users
+    'mediaVideos', 'mediaVideoFolders', 'mediaVideoTags', 'linkMediaVideos',
+    'videoScanStatus', 'videoScan',
+  ],
+};
+
 function resolveApiProviderRoot(strapi) {
   const cwd = strapi?.dirs?.app?.root || process.cwd();
   try {
@@ -140,16 +163,25 @@ async function ensureUpPermissions(strapi) {
   const have = new Set(existing.map((p) => p.action));
 
   let granted = 0;
+  const grant = async (actionUid) => {
+    if (have.has(actionUid)) return;
+    await strapi.db.query('plugin::users-permissions.permission').create({
+      data: { action: actionUid, role: role.id },
+    });
+    have.add(actionUid);
+    granted += 1;
+  };
+
   for (const uid of uids) {
     const actions = [...STANDARD_ACTIONS, ...(CUSTOM_ACTIONS[uid] || [])];
-    for (const action of actions) {
-      const actionUid = `${uid}.${action}`;
-      if (have.has(actionUid)) continue;
-      await strapi.db.query('plugin::users-permissions.permission').create({
-        data: { action: actionUid, role: role.id },
-      });
-      granted += 1;
-    }
+    for (const action of actions) await grant(`${uid}.${action}`);
+  }
+
+  // Route-only controllers — see ROUTE_ONLY_ACTIONS. No STANDARD_ACTIONS here:
+  // these have no content-type, so find/findOne/create/update/delete are not
+  // routes that exist, and granting them would be noise in the permission table.
+  for (const [uid, actions] of Object.entries(ROUTE_ONLY_ACTIONS)) {
+    for (const action of actions) await grant(`${uid}.${action}`);
   }
 
   if (granted > 0) {

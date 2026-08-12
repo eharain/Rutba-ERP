@@ -32,15 +32,23 @@ export const MediaLibraryEndpoints = {
 
     // Media-server video surface. The backend proxies these to the Rutba Media
     // FileServer, which owns the video bytes, the drives and the scanner.
-    mediaVideos: (params = {}) => ({ path: '/media-library/videos', params }),
-    mediaVideoFolders: () => ({ path: '/media-library/videos/folders' }),
+    //
+    // `action` is spelled out on every one of these, including the GETs, and it
+    // must stay that way. The seeder infers an action from the method name and
+    // the HTTP verb, and infers NOTHING from a name like `mediaVideos` on a
+    // descriptor with no `method` — it returns null and skips the descriptor
+    // entirely, so no policy row is ever written and api-pro's deny-by-default
+    // answers every call with 403. The value is the controller's handler name,
+    // which is what the runtime matches a custom route against.
+    mediaVideos: (params = {}) => ({ path: '/media-library/videos', action: 'mediaVideos', method: 'get', params }),
+    mediaVideoFolders: () => ({ path: '/media-library/videos/folders', action: 'mediaVideoFolders', method: 'get' }),
     // Tags actually carried by videos, with counts — `folder` narrows them to
     // the folder in view so the filter matches what is on screen.
-    mediaVideoTags: (params = {}) => ({ path: '/media-library/videos/tags', params }),
+    mediaVideoTags: (params = {}) => ({ path: '/media-library/videos/tags', action: 'mediaVideoTags', method: 'get', params }),
     // Register media-server videos as library rows so a post can attach them.
     // Nothing is copied — the row points at the bytes where they already live.
     linkMediaVideos: (data) => ({ path: '/media-library/videos/link', action: 'linkMediaVideos', method: 'post', data }),
-    videoScanStatus: () => ({ path: '/media-library/video-scan' }),
+    videoScanStatus: () => ({ path: '/media-library/video-scan', action: 'videoScanStatus', method: 'get' }),
     videoScan: (data = {}) => ({ path: '/media-library/video-scan', action: 'videoScan', method: 'post', data }),
 
 };
