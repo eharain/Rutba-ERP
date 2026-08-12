@@ -21,20 +21,20 @@ const LANE_H = 26;
 const HEADER_W = 156;
 
 const TYPE_ICONS = {
-    photo: "fa-image", image: "fa-star", text: "fa-font", caption: "fa-keyboard",
+    photo: "fa-image", video: "fa-film", image: "fa-star", text: "fa-font", caption: "fa-keyboard",
     qr: "fa-qrcode", sound: "fa-music", gradient: "fa-adjust", title: "fa-heading",
     outro: "fa-flag-checkered", progress: "fa-bars-progress", edges: "fa-circle-half-stroke",
 };
 
 const TYPE_COLORS = {
-    photo: "#3f6fce", image: "#8a5fbf", text: "#b5852c", caption: "#7a4fb0",
+    photo: "#3f6fce", video: "#b03a48", image: "#8a5fbf", text: "#b5852c", caption: "#7a4fb0",
     qr: "#2c7a6e", sound: "#2f9e6e",
     gradient: "#5a5a66", title: "#5a5a66", outro: "#5a5a66", progress: "#5a5a66", edges: "#5a5a66",
 };
 
 // Layer types a lane can duplicate — the appendable set. Chrome layers
 // (gradient, title, outro, progress, edges) exist once by construction.
-const DUPLICABLE = new Set(["photo", "image", "text", "qr", "caption", "sound"]);
+const DUPLICABLE = new Set(["photo", "video", "image", "text", "qr", "caption", "sound"]);
 
 const fmtT = (s) => {
     if (s >= 60) {

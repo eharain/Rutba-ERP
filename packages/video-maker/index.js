@@ -290,6 +290,39 @@ export function isAudioFile(file) {
     return /^audio\//i.test(file?.mime || '') || /\.(mp3|m4a|aac|wav|ogg|opus|flac)(\?|$)/i.test(file?.url || file?.name || '');
 }
 
+/**
+ * A video clip, via the same transport as images (blob → object url, so the
+ * canvas stays untainted), decoded into a <video> element ready to draw.
+ * Muted always — a clip's SOUND is its own sound layer on the same url, so
+ * the two are placed and trimmed separately on the timeline.
+ */
+export async function loadVideo(url, { signal, fetchMedia, timeoutMs = 30000 } = {}) {
+    const blob = await mediaFetcher(fetchMedia)(url, { signal });
+    const objectUrl = URL.createObjectURL(blob);
+    const el = document.createElement('video');
+    el.muted = true;
+    el.playsInline = true;
+    el.preload = 'auto';
+    el.src = objectUrl;
+    await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('timed out decoding the video')), timeoutMs);
+        el.onloadeddata = () => { clearTimeout(timer); resolve(); };
+        el.onerror = () => { clearTimeout(timer); reject(new Error('the browser could not decode this video')); };
+    });
+    // `img` aliases the element so every drawImage path that takes an entry
+    // (insets, cover fits) works for photos and videos alike.
+    return { el, img: el, width: el.videoWidth, height: el.videoHeight, duration: el.duration, objectUrl, url };
+}
+
+/** Release a plan's video map (or an array of entries). */
+export function releaseVideos(videos) {
+    const list = Array.isArray(videos) ? videos : Object.values(videos || {});
+    for (const v of list) {
+        try { v.el.pause(); v.el.removeAttribute('src'); v.el.load(); } catch { /* already gone */ }
+        try { URL.revokeObjectURL(v.objectUrl); } catch { /* already gone */ }
+    }
+}
+
 export function releaseImages(images) {
     (images || []).forEach((i) => {
         try { URL.revokeObjectURL(i.objectUrl); } catch { /* already gone */ }
@@ -383,7 +416,7 @@ function layoutLines(ctx, text, maxWidth) {
  * blow past maxSeconds the typing speeds up to fit rather than getting cut off
  * mid-sentence — `plan.spedUp` says so, and the UI reports it.
  */
-export function buildPlan({ canvas, images, title, body, logo, options, layerPatches, context, assets }) {
+export function buildPlan({ canvas, images, title, body, logo, options, layerPatches, context, assets, videos }) {
     const opts = { ...DEFAULTS, ...(options || {}) };
     const aspect = ASPECTS[opts.aspect] || ASPECTS.vertical;
     const W = aspect.width;
@@ -489,6 +522,11 @@ export function buildPlan({ canvas, images, title, body, logo, options, layerPat
     // watermark), keyed by the url the recipe stores. Loading is the host's
     // job — compile is synchronous and must stay that way.
     plan.assets = assets && typeof assets === 'object' ? assets : {};
+
+    // Pre-loaded <video> entries for video layers (loadVideo), keyed by url.
+    // Same contract as assets: hosts load, compile stays synchronous, and a
+    // missing entry degrades that layer to not drawing.
+    plan.videos = videos && typeof videos === 'object' ? videos : {};
 
     plan.layers = compileLayers(plan);
     if (Array.isArray(layerPatches) && layerPatches.length) applyLayerPatches(plan, layerPatches);
@@ -705,6 +743,31 @@ export function applyLayerPatches(plan, patches) {
             continue;
         }
 
+        // A video clip's VISUAL half. Its audio is a separate sound layer on
+        // the same url, so picture and sound trim independently on the
+        // timeline. `offset` is where inside the source clip this window
+        // starts. Geometry (fx/fy/fw/fh) makes it an inset like a photo;
+        // without it the clip covers the frame.
+        if (patch.type === 'video') {
+            const entry = plan.videos[patch.url] || null;
+            plan.layers.push({
+                id: patch.id, type: 'video',
+                name: patch.name || 'Video',
+                url: patch.url || null,
+                fileId: patch.fileId ?? null,
+                offset: Number(patch.offset) || 0,
+                visible: patch.visible !== false && !!entry,
+                timing: patch.timing || null,
+                enter: patch.enter || { kind: 'none', seconds: 0 },
+                exit: patch.exit || { kind: 'none', seconds: 0 },
+                z: patch.z ?? nextZ(),
+                fx: patch.fx, fy: patch.fy, fw: patch.fw, fh: patch.fh,
+                rot: patch.rot || 0,
+                keys: sanitizeKeys(patch.keys),
+            });
+            continue;
+        }
+
         // A sound clip. It never paints — the host resolves trackId/url to a
         // decoded buffer and hands renderVideo the clips (see soundLayers /
         // clipFromSoundLayer). enter/exit seconds are its audio fades.
@@ -823,7 +886,7 @@ function applyKeyedGeometry(plan, layer, t) {
     const kfw = keyValueAt(keys.fw, t);
     const kfrac = keyValueAt(keys.sizeFrac, t);
 
-    if (layer.type === 'photo') {
+    if (layer.type === 'photo' || layer.type === 'video') {
         if (kfx !== null) set('fx', kfx);
         if (kfy !== null) set('fy', kfy);
         if (kfw !== null) set('fw', kfw);
@@ -1088,6 +1151,36 @@ function paintPhoto(ctx, plan, layer, time) {
     // duplicated or reordered — it is the image's place in the arrangement.
     // `kb` overrides the global slow-zoom for just this photo.
     drawImageLayer(ctx, plan, entry, layer.kbIndex ?? layer.index, local, 1, plan.stageRect, layer.kb);
+}
+
+// A video clip's picture. The <video> element is drawn like any bitmap; the
+// PLAYBACK is managed outside the painter — renderVideo plays/pauses it in
+// real time along the wall clock, and a scrubbing preview seeks it here (the
+// current decoded frame draws immediately, the seeked frame lands a beat
+// later when the host repaints). Always cover-fit: full frame, or the inset
+// rect when the layer carries geometry. No Ken Burns — footage moves itself.
+function paintVideo(ctx, plan, layer, time) {
+    const entry = plan.videos[layer.url];
+    if (!entry || !entry.el || entry.el.readyState < 2) return;
+
+    // A paused element (the preview) follows the playhead by seeking; the
+    // 0.08s threshold stops scrubbing from thrashing the decoder.
+    const w = layer.timing || { start: 0, end: plan.duration };
+    const target = (layer.offset || 0) + (time - w.start);
+    if (entry.el.paused && Math.abs(entry.el.currentTime - target) > 0.08) {
+        try {
+            entry.el.currentTime = Math.min(Math.max(0, target), Math.max(0, (entry.duration || 1) - 0.05));
+        } catch { /* not seekable yet */ }
+    }
+
+    if (layer.fw) {
+        const rw = plan.W * layer.fw;
+        const rh = layer.fh ? plan.H * layer.fh : rw * (entry.height / Math.max(1, entry.width));
+        drawCoverInRect(ctx, plan, entry, plan.W * (layer.fx ?? 0.3), plan.H * (layer.fy ?? 0.3), rw, rh);
+        return;
+    }
+    const c = coverRect(entry.width, entry.height, plan.W, plan.H);
+    ctx.drawImage(entry.el, (plan.W - c.w) / 2, (plan.H - c.h) / 2, c.w, c.h);
 }
 
 // Legibility gradient under the caption band.
@@ -1388,6 +1481,7 @@ function paintEdges(ctx, plan, layer, time) {
 
 const PAINTERS = {
     photo: paintPhoto,
+    video: paintVideo,
     gradient: paintGradient,
     caption: paintCaption,
     title: paintTitle,
@@ -1791,10 +1885,10 @@ export function qrEncode(text) {
 export function layerBounds(ctx, plan, layer) {
     if (layer.type === 'image') return { x: layer.x, y: layer.y, w: layer.w, h: layer.h };
     if (layer.type === 'qr') return { x: layer.x, y: layer.y, w: layer._qrPx || layer.size, h: layer._qrPx || layer.size };
-    if (layer.type === 'photo' && layer.fw) {
-        // Only INSET photos report bounds — a full-stage photo is configured
-        // from its lane and the inspector, not dragged.
-        const entry = plan.images[layer.index];
+    if ((layer.type === 'photo' || layer.type === 'video') && layer.fw) {
+        // Only INSET photos/videos report bounds — full-stage ones are
+        // configured from their lane and the inspector, not dragged.
+        const entry = layer.type === 'photo' ? plan.images[layer.index] : plan.videos[layer.url];
         const w = plan.W * layer.fw;
         const h = layer.fh ? plan.H * layer.fh : (entry ? w * (entry.height / Math.max(1, entry.width)) : w);
         return { x: plan.W * (layer.fx ?? 0.3), y: plan.H * (layer.fy ?? 0.3), w, h };
@@ -1833,7 +1927,7 @@ export function hitTestLayers(ctx, plan, x, y) {
         const layer = ordered[i];
         if (layer.visible === false) continue;
         const movable = layer.type === 'text' || layer.type === 'image' || layer.type === 'qr'
-            || (layer.type === 'photo' && layer.fw);
+            || ((layer.type === 'photo' || layer.type === 'video') && layer.fw);
         if (!movable) continue;
         const b = layerBounds(ctx, plan, layer);
         if (!b) continue;
@@ -2244,6 +2338,31 @@ export async function renderVideo({ canvas, plan, audio, onProgress, signal }) {
     // instead of merely stuttering. A timer always fires (throttled to ~1Hz in a
     // backgrounded tab, which freezes the picture but still ends on schedule,
     // because the clock below is wall time and not a frame count).
+    // Video layers play in REAL TIME alongside the paint loop: an element
+    // starts when the clock enters its window (seeked to its offset), pauses
+    // when it leaves, and is nudged back if it drifts — a decoder hiccup then
+    // costs one visible jump instead of growing desync.
+    const videoLayers = plan.layers.filter(
+        (l) => l.type === 'video' && l.visible !== false && plan.videos[l.url]?.el,
+    );
+    const driveVideos = (t) => {
+        for (const l of videoLayers) {
+            const el = plan.videos[l.url].el;
+            const w = l.timing || { start: 0, end: plan.duration };
+            if (t >= w.start && t <= w.end) {
+                const target = (l.offset || 0) + (t - w.start);
+                if (el.paused) {
+                    try { el.currentTime = target; } catch { /* not seekable */ }
+                    el.play().catch(() => { /* a clip that cannot play just holds its frame */ });
+                } else if (Math.abs(el.currentTime - target) > 0.3) {
+                    try { el.currentTime = target; } catch { /* mid-seek */ }
+                }
+            } else if (!el.paused) {
+                el.pause();
+            }
+        }
+    };
+
     const frameMs = 1000 / plan.fps;
     const t0 = performance.now();
     let timer = 0;
@@ -2252,7 +2371,8 @@ export async function renderVideo({ canvas, plan, audio, onProgress, signal }) {
         const step = () => {
             if (signal?.aborted) { cancelled = true; resolve(); return; }
             const t = (performance.now() - t0) / 1000;
-            if (t >= plan.duration) { paintFrame(ctx, plan, plan.duration); pushFrame(); resolve(); return; }
+            if (t >= plan.duration) { driveVideos(plan.duration + 1); paintFrame(ctx, plan, plan.duration); pushFrame(); resolve(); return; }
+            driveVideos(t);
             paintFrame(ctx, plan, t);
             pushFrame();
             onProgress?.(t / plan.duration);

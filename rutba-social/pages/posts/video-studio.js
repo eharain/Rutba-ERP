@@ -26,12 +26,13 @@ import {
 } from "@rutba/api-provider/endpoints";
 import { useToast } from "../../components/Toast";
 import useUnsavedGuard from "@rutba/pos-shared/hooks/useUnsavedGuard";
+import StrapiMediaLibrary from "@rutba/pos-shared/components/StrapiMediaLibrary";
 import VideoTimeline from "../../components/VideoTimeline";
 import { resolveStorefrontBaseUrl, productShortUrl } from "../../lib/storefront-url";
 import {
     ASPECTS, THEMES, DEFAULTS,
     buildPlan, paintFrame, renderVideo, loadImage, loadImages, releaseImages,
-    loadAudioTrack, setMediaAuth, hitTestLayers,
+    loadAudioTrack, setMediaAuth, hitTestLayers, loadVideo, releaseVideos,
     layerHandles, hitTestHandles, scaleFromDrag, resizePatch, withLayerStateAt,
     soundLayers, clipFromSoundLayer,
     imageItems, isImageOnly, unsupportedReason, videoFileName,
@@ -109,6 +110,13 @@ export default function VideoStudioPage() {
     // Anything that changes what would be SAVED flips this; save/attach/load
     // clear it. useUnsavedGuard turns it into the app-wide leave prompt.
     const [dirty, setDirty] = useState(false);
+
+    // Loaded <video> entries for video layers, url → loadVideo entry. Declared
+    // early because the plan-build effect depends on it; the loading effect
+    // and the picker live further down with the other video-layer machinery.
+    const [videoLib, setVideoLib] = useState({});
+    const videoLibRef = useRef({});
+    const [showVideoPicker, setShowVideoPicker] = useState(false);
 
     // Layer patches are the single write path for everything the editor does —
     // they persist to video_settings and templates as-is.
@@ -649,6 +657,7 @@ export default function VideoStudioPage() {
             options: effectiveOptions,
             layerPatches,
             context: productContext || {},
+            videos: videoLib,
         });
         setPlan(p);
         paintFrame(canvas.getContext("2d"), p, Math.min(previewTime, p.duration));
@@ -656,13 +665,23 @@ export default function VideoStudioPage() {
         // scrub tick would rebuild the whole plan (and re-wrap the text) 60
         // times a second. The scrub effect below repaints on its own.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selected, arranged, captionText, effectiveOptions, logo, layerPatches, productContext]);
+    }, [selected, arranged, captionText, effectiveOptions, logo, layerPatches, productContext, videoLib]);
 
     useEffect(() => {
         if (!plan || playing || rendering) return;
         const ctx = canvasRef.current.getContext("2d");
         paintFrame(ctx, plan, previewTime);
         drawSelection(ctx, plan);
+        // A video layer seeks asynchronously — paint once more when the frame
+        // has had a beat to land, so scrubbing settles on the right picture.
+        if (plan.layers.some((l) => l.type === "video" && l.visible !== false)) {
+            const timer = setTimeout(() => {
+                if (!canvasRef.current) return;
+                paintFrame(ctx, plan, previewTime);
+                drawSelection(ctx, plan);
+            }, 160);
+            return () => clearTimeout(timer);
+        }
     }, [previewTime, plan, playing, rendering, drawSelection]);
 
     // ── preview playback ────────────────────────────────────
@@ -856,6 +875,59 @@ export default function VideoStudioPage() {
         });
         setSelectedLayerId(id);
     };
+
+    // ── video clips as layers ───────────────────────────────
+    // A clip is TWO lanes: its picture (`video` layer) and its sound (a
+    // `sound` layer on the same url) — placed and trimmed separately. The
+    // elements load through the media proxy like everything else; a url that
+    // fails just leaves its layer not drawing.
+    useEffect(() => {
+        const urls = [...new Set((layerPatches || []).filter((p) => p.type === "video" && p.url).map((p) => p.url))];
+        const missing = urls.filter((u) => !videoLibRef.current[u]);
+        if (!missing.length) return;
+        let dead = false;
+        (async () => {
+            for (const url of missing) {
+                try {
+                    const entry = await loadVideo(url);
+                    if (dead) { releaseVideos([entry]); return; }
+                    videoLibRef.current = { ...videoLibRef.current, [url]: entry };
+                    setVideoLib(videoLibRef.current);
+                } catch (err) {
+                    console.error("Failed to load a video clip", err);
+                    toast(`Could not load a video clip — its layer will not draw. (${String(err?.message || err)})`, "warning");
+                }
+            }
+        })();
+        return () => { dead = true; };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [layerPatches]);
+    useEffect(() => () => releaseVideos(videoLibRef.current), []);
+
+    // From the library picker (which also takes uploads — a new file lands in
+    // the media library first, then here): one video lane + one audio lane.
+    const addVideoLayers = (files) => {
+        const file = Array.isArray(files) ? files[0] : files;
+        if (!file) return;
+        const url = MediaUtilsEndpoints.strapiImageUrl(file);
+        if (!url) { toast("That file has no usable url.", "warning"); return; }
+        const stamp = Date.now().toString(36);
+        const clipName = String(file.name || "Clip").replace(/\.[a-z0-9]+$/i, "");
+        upsertPatch({
+            id: `video-${stamp}`, type: "video", url, fileId: file.id ?? null,
+            name: clipName, offset: 0, timing: null,
+        });
+        upsertPatch({
+            id: `video-${stamp}-audio`, type: "sound", url,
+            name: `${clipName} · audio`, timing: null,
+            enter: { kind: "fade", seconds: 0 }, exit: { kind: "fade", seconds: 0 },
+        });
+        setSelectedLayerId(`video-${stamp}`);
+        setShowVideoPicker(false);
+        toast("Two lanes added — the clip's picture and its audio, trimmed separately.", "success");
+    };
+
+    const selectedVideoPatch = (layerPatches || []).find((p) => p.id === selectedLayerId && p.type === "video") || null;
 
     // Logo and footer are LAYERS — these are their quick-adds. If the layer
     // already exists the button just selects its lane.
@@ -1201,7 +1273,7 @@ export default function VideoStudioPage() {
                 if (!imgs.length) throw new Error("no images could be loaded");
                 const ctxData = layerPatches && JSON.stringify(layerPatches).includes("{")
                     ? await fetchProductContext(post) : null;
-                const p = buildPlan({ canvas: canvasRef.current, images: imgs, title: post.title, body: post.body, logo, options, layerPatches, context: ctxData || {} });
+                const p = buildPlan({ canvas: canvasRef.current, images: imgs, title: post.title, body: post.body, logo, options, layerPatches, context: ctxData || {}, videos: videoLibRef.current });
                 const out = await doRender(p);
                 const { ids } = await attachToPost(post, out, alsoPublish);
                 URL.revokeObjectURL(out.url);
@@ -1324,6 +1396,13 @@ export default function VideoStudioPage() {
                 {/* ── the editor: one big canvas, one settings rail ── */}
                 {selected && (
                     <div className="d-flex gap-3 align-items-start">
+                        <StrapiMediaLibrary
+                            show={showVideoPicker}
+                            accept="video"
+                            multiple={false}
+                            onClose={() => setShowVideoPicker(false)}
+                            onSelect={addVideoLayers}
+                        />
                         <div className="flex-grow-1" style={{ minWidth: 0 }}>
                                 <div className="card">
                                     <div className="card-header py-2 d-flex align-items-center gap-2">
@@ -1397,6 +1476,11 @@ export default function VideoStudioPage() {
                                                                 title={tracks.length ? "A clip from the audio library as a layer — placed and trimmed on its lane, mixed over the music bed" : "No tracks in rotation — add some on /audio"}
                                                                 onClick={addSoundLayer}>
                                                                 <i className="fas fa-music me-1" />Sound
+                                                            </button>
+                                                            <button className="btn btn-sm btn-outline-primary py-0" disabled={busy}
+                                                                title="A clip from the media library (or an upload — it lands in the library first). Adds TWO lanes: the picture and its audio, trimmed separately."
+                                                                onClick={() => setShowVideoPicker(true)}>
+                                                                <i className="fas fa-film me-1" />Video
                                                             </button>
                                                             <button className="btn btn-sm btn-outline-primary py-0" disabled={busy || !logo}
                                                                 title={logo ? "The brand mark from site settings — shown on the video, configured on its lane" : "No site logo available"}
@@ -1775,6 +1859,45 @@ export default function VideoStudioPage() {
                                             </>
                                         )}
 
+                                        {/* ── video clip: its picture half ── */}
+                                        {selectedVideoPatch && (() => {
+                                            const entry = videoLib[selectedVideoPatch.url];
+                                            const audioId = `${selectedVideoPatch.id}-audio`;
+                                            const hasAudioLane = (layerPatches || []).some((p) => p.id === audioId);
+                                            return (
+                                                <>
+                                                    {!entry && <p className="text-muted small mb-2">Loading the clip…</p>}
+                                                    <RangeRow label="Start inside the clip" value={selectedVideoPatch.offset || 0}
+                                                        min={0} max={Math.max(1, Math.floor((entry?.duration || 60) - 0.5))} step={0.5}
+                                                        suffix="s" disabled={busy}
+                                                        onChange={(v) => upsertPatch({ id: selectedVideoPatch.id, offset: v })} />
+                                                    <div className="form-check form-switch mb-1">
+                                                        <input className="form-check-input" type="checkbox" id="video-inset" disabled={busy}
+                                                            checked={!!selectedVideoPatch.fw}
+                                                            onChange={(e) => upsertPatch(e.target.checked
+                                                                ? { id: selectedVideoPatch.id, fx: 0.3, fy: 0.3, fw: 0.42 }
+                                                                : { id: selectedVideoPatch.id, fw: 0, fh: 0, rot: 0 })} />
+                                                        <label className="form-check-label small" htmlFor="video-inset">
+                                                            Inset (picture-in-picture) — off = the clip covers the frame
+                                                        </label>
+                                                    </div>
+                                                    {!!selectedVideoPatch.fw && (
+                                                        <RangeRow label="Size" value={selectedVideoPatch.fw} min={0.1} max={0.9} step={0.01}
+                                                            suffix="× width" disabled={busy} onChange={(v) => upsertPatch({ id: selectedVideoPatch.id, fw: v })} />
+                                                    )}
+                                                    <p className="text-muted mb-0" style={{ fontSize: 11 }}>
+                                                        {entry ? `${entry.duration.toFixed(1)}s source clip. ` : ""}
+                                                        The picture and its sound are separate lanes —{" "}
+                                                        {hasAudioLane
+                                                            ? <button className="btn btn-link p-0 align-baseline" style={{ fontSize: 11 }}
+                                                                onClick={() => setSelectedLayerId(audioId)}>its audio lane</button>
+                                                            : "its audio lane was removed (the clip plays silent)"}
+                                                        {hasAudioLane ? " trims independently; delete it to mute the clip." : ""}
+                                                    </p>
+                                                </>
+                                            );
+                                        })()}
+
                                         {/* ── the open/close dip owns its own fade ── */}
                                         {selectedLayer.type === "edges" && (
                                             <RangeRow label="Open/close fade" value={options.edgeFadeSeconds ?? 0.45} min={0} max={1.5} step={0.05}
@@ -1790,7 +1913,7 @@ export default function VideoStudioPage() {
 
                                         {/* ── motion: keys on the layer's local clock ── */}
                                         {(["text", "qr", "image"].includes(selectedLayer.type)
-                                            || (selectedLayer.type === "photo" && !!selectedLayer.fw)) && (
+                                            || ((selectedLayer.type === "photo" || selectedLayer.type === "video") && !!selectedLayer.fw)) && (
                                             <div className="border rounded p-2 mt-2">
                                                 <div className="d-flex align-items-center gap-2">
                                                     <strong className="small">Motion</strong>
