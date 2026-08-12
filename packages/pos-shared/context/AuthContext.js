@@ -379,10 +379,13 @@ export function AuthProvider({ children }) {
      * @param {boolean} [rememberMe=false] — when true, session survives browser restart
      */
     const login = useCallback(async (identifier, password, rememberMe = false) => {
-        storage.setRememberMe(rememberMe);
-
         const authRes = await api.post('/auth/local', { identifier, password });
         const { user, jwt, refreshToken } = authRes;
+
+        // Only after a successful login — applying it before the request let a
+        // FAILED attempt migrate an existing remembered session out of
+        // localStorage, silently un-remembering it.
+        storage.setRememberMe(rememberMe);
 
         const me = await fetchPermissions(jwt);
         const authData = {
@@ -466,13 +469,17 @@ export function AuthProvider({ children }) {
      */
     const logout = useCallback(() => {
         const jwt = storage.getItem("jwt");
+        const refreshToken = storage.getItem("refreshToken");
         if (jwt) {
             const headers = { Authorization: `Bearer ${jwt}` };
             const appName = getAppName();
             if (appName) headers['X-Rutba-App'] = appName;
 
-            // Fire-and-forget — don't block the UI on server logout
-            axios.post(`${API_URL}/auth/logout`, {}, {
+            // Fire-and-forget — don't block the UI on server logout.
+            // Name the session being ended: without it the server contract
+            // (Strapi UP refresh mode) falls back to revoking EVERY session
+            // the user owns, killing remembered sessions on other devices.
+            axios.post(`${API_URL}/auth/logout`, refreshToken ? { refreshToken } : {}, {
                 headers,
             }).catch(() => {});
         }

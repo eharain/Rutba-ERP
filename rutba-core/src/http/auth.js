@@ -67,6 +67,7 @@ function createAuthMiddleware({ isBypassed, optional = false } = {}) {
       try {
         const payload = jwt.verify(token, jwtSecret);
         let userId = null;
+        let sessionId = null;
         if (payload && payload.type === 'access' && payload.userId && payload.sessionId) {
           const db = getDb();
           // A ROTATED session still authenticates its already-issued access
@@ -85,6 +86,7 @@ function createAuthMiddleware({ isBypassed, optional = false } = {}) {
               && (!session.absolute_expires_at
                   || new Date(session.absolute_expires_at) > new Date())) {
             userId = payload.userId;
+            sessionId = payload.sessionId;
           }
         } else if (payload && payload.id) {
           userId = payload.id;
@@ -97,6 +99,11 @@ function createAuthMiddleware({ isBypassed, optional = false } = {}) {
             return reject(ctx, next, 'User blocked or unconfirmed');
           }
           ctx.state.user = user;
+          // Strapi's UP session strategy also exposes the authenticated
+          // session; modules/auth.js reads it so logout revokes only the
+          // CURRENT session instead of falling back to every session the
+          // user owns, and GET /auth/sessions can mark the current one.
+          if (sessionId) ctx.state.session = { id: sessionId };
           return next();
         }
       } catch {

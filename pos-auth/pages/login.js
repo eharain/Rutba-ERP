@@ -132,11 +132,11 @@ export default function Login() {
                                 <form onSubmit={onLogin}>
                                     <div className="mb-3">
                                         <label className="form-label">Email or Username</label>
-                                        <input className="form-control" placeholder="Enter email or username" value={identifier} onChange={e => setIdentifier(e.target.value)} autoFocus />
+                                        <input className="form-control" placeholder="Enter email or username" name="identifier" autoComplete="username" value={identifier} onChange={e => setIdentifier(e.target.value)} autoFocus />
                                     </div>
                                     <div className="mb-3">
                                         <label className="form-label">Password</label>
-                                        <input className="form-control" placeholder="Enter password" type="password" value={password} onChange={e => setPassword(e.target.value)} />
+                                        <input className="form-control" placeholder="Enter password" type="password" name="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} />
                                     </div>
                                     <div className="mb-3 form-check">
                                         <input className="form-check-input" type="checkbox" id="rememberMe" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} />
