@@ -278,13 +278,23 @@ export default function AudioLibraryPage() {
     // this instance's provider sends them — the media file server on a
     // configured instance. The track then just points at the resulting file.
     const uploadFiles = async (picked) => {
-        const files = Array.from(picked || []);
+        const all = Array.from(picked || []);
+        // The gate lives HERE, not on each input: the page has two ways in (the
+        // drop zone and the "Upload audio files" button) and `accept` is only a
+        // hint the file dialog lets the user switch off. An image that got
+        // through became an active track the renderer could draw.
+        const files = all.filter((f) => f.type?.startsWith("audio/"));
+        const ignored = all.length - files.length;
+        if (ignored) toast(`${ignored} file(s) ignored — the audio library takes audio only.`, "warning");
         if (!files.length) return;
         setUploading(true);
         let added = 0;
         try {
-            for (const file of files) {
-                setUploadProgress(`${added + 1} of ${files.length} — ${file.name}`);
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                // Count the file being worked on, not the successes — a skipped
+                // file would otherwise freeze the counter short of the total.
+                setUploadProgress(`${i + 1} of ${files.length} — ${file.name}`);
                 const uploaded = await UploadEndpoints.uploadFiles([file], null, null, null, {
                     name: file.name, alt: null, caption: null,
                 });

@@ -213,7 +213,13 @@ export default function VideosPage() {
     // refuses) doesn't sink the rest of the drop — and so the drop zone can name
     // the file it is on.
     const handleUpload = async (picked) => {
-        const files = Array.from(picked || []);
+        const all = Array.from(picked || []);
+        // Same reason as the audio library: two entry paths (drop zone and the
+        // upload button) and `accept` is only a dialog hint, so the mime gate
+        // belongs on the upload itself rather than on each input.
+        const files = all.filter((f) => f.type?.startsWith("video/"));
+        const ignored = all.length - files.length;
+        if (ignored) toast(`${ignored} file(s) ignored — this library takes video only.`, "warning");
         if (!files.length) return;
         setUploading(true);
         let ok = 0;
