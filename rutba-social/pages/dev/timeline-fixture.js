@@ -60,6 +60,14 @@ const BASE_PATCHES = [
     { id: "sound-1", type: "sound", url: "about:none", name: "Voice-over", timing: { start: 2, end: 8 }, enter: { kind: "fade", seconds: 0.5 }, exit: { kind: "fade", seconds: 0.5 } },
 ];
 
+// The studio's music bed: a lane the timeline SHOWS but the plan never holds,
+// because the bed lives in the render options. The probe below is what keeps
+// "display only" true — an extra lane that could be trimmed would be writing
+// timing nothing reads.
+const EXTRA_LANES = [
+    { id: "music-bed", type: "sound", name: "Music bed · fixture", readOnly: true, visible: true, z: -1, timing: null, enter: { kind: "fade", seconds: 0.5 }, exit: { kind: "fade", seconds: 1 } },
+];
+
 export default function TimelineFixturePage() {
     const canvasRef = useRef(null);
     const [layerPatches, setLayerPatches] = useState(BASE_PATCHES);
@@ -292,6 +300,31 @@ export default function TimelineFixturePage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [plan]);
 
+    // ── extra lanes (the music bed): shown on the timeline, absent from the
+    //    plan. A DOM probe, because "display only" is a property of what the
+    //    lane OFFERS — a trim handle on it would write timing nothing reads.
+    useEffect(() => {
+        if (!plan || window.__LANES) return;
+        const results = [];
+        const push = (label, ok) => results.push({ label, ok });
+        const lane = (id) => document.querySelector(`[data-lane-id="${id}"]`);
+        const all = [...document.querySelectorAll("[data-lane-id]")];
+
+        push("the bed lane is on the timeline", !!lane("music-bed"));
+        push("it did NOT become a plan layer", !plan.layers.some((l) => l.id === "music-bed"));
+        push("every other lane is a plan layer",
+            all.filter((el) => el.dataset.laneId !== "music-bed").length === plan.layers.length);
+        push("the bed lane offers no trim handles",
+            !!lane("music-bed") && lane("music-bed").querySelectorAll("[data-trim]").length === 0);
+        push("a real lane still offers both trim handles",
+            !!lane("sound-1") && lane("sound-1").querySelectorAll("[data-trim]").length === 2);
+        push("the bed lane cannot be hidden, duplicated or deleted",
+            !!lane("music-bed") && lane("music-bed").querySelectorAll("button").length === 0);
+
+        window.__LANES = { done: true, pass: results.every((r) => r.ok), results };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [plan]);
+
     return (
         <div className="container-fluid py-3" style={{ maxWidth: 1100 }}>
             <h5>Timeline fixture <small className="text-muted">— dev only, no auth, no network</small></h5>
@@ -313,6 +346,7 @@ export default function TimelineFixturePage() {
                 busy={false}
                 selectedLayerId={selectedLayerId}
                 appendedIds={appendedIds}
+                extraLanes={EXTRA_LANES}
                 onSelect={setSelectedLayerId}
                 onScrub={setPreviewTime}
                 onPatch={upsertPatch}

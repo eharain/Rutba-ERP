@@ -61,6 +61,10 @@ const SETTINGS_KEY = "rutba-social-video-studio";
 const FETCH_PAGE = 50;
 const MAX_PAGES = 20;
 
+// The music bed's lane id. Not a layer id — nothing with this id is ever
+// compiled or persisted; it names the lane the bed's options are edited from.
+const BED_ID = "music-bed";
+
 const fmtSeconds = (s) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
 const fmtBytes = (b) => (b > 1024 * 1024 ? `${(b / 1024 / 1024).toFixed(1)} MB` : `${Math.round(b / 1024)} KB`);
 
@@ -960,6 +964,28 @@ export default function VideoStudioPage() {
         setSelectedLayerId(id);
     };
 
+    /**
+     * The music bed as a LANE. It is not a plan layer — it lives in
+     * `options.audioMode/audioTrackId/...` because that is the shape the
+     * poster's recipe precedence reads — but it is audio the video really
+     * carries, so it belongs on the timeline where the other sounds are.
+     * Display only: `extraLanes` never reaches renderVideo.
+     */
+    const bedTrack = tracks.find((t) => String(t.documentId) === String(options.audioTrackId)) || null;
+    const bedLanes = useMemo(() => {
+        if (!plan || options.audioMode === "none") return [];
+        return [{
+            id: BED_ID, type: "sound", readOnly: true, visible: true, z: -1,
+            name: options.audioMode === "random"
+                ? "Music bed · random"
+                : `Music bed · ${bedTrack?.name || "no track chosen"}`,
+            timing: null, // the whole video, by construction
+            enter: { kind: "fade", seconds: options.audioFadeIn || 0 },
+            exit: { kind: "fade", seconds: options.audioFadeOut || 0 },
+        }];
+    }, [plan, options.audioMode, options.audioFadeIn, options.audioFadeOut, bedTrack]);
+    const bedSelected = selectedLayerId === BED_ID && bedLanes.length > 0;
+
     const selectedQrPatch = (layerPatches || []).find((p) => p.id === selectedLayerId && p.type === "qr") || null;
     const selectedSoundPatch = (layerPatches || []).find((p) => p.id === selectedLayerId && p.type === "sound") || null;
     const selectedLayer = plan && selectedLayerId ? plan.layers.find((l) => l.id === selectedLayerId) || null : null;
@@ -1614,10 +1640,19 @@ export default function VideoStudioPage() {
                                                 <>
                                                     <TrackBrowser tracks={tracks} busy={busy} maxHeight={280}
                                                         onAdd={(t) => { addSoundLayer(t); setShowSoundPicker(false); }}
+                                                        pickLabel="Bed"
+                                                        onPick={options.audioMode === "none" ? (t) => {
+                                                            setOpt({ audioMode: "pick", audioTrackId: t.documentId });
+                                                            setSelectedLayerId(BED_ID);
+                                                            setShowSoundPicker(false);
+                                                        } : null}
                                                         previewingId={previewingId} onAudition={previewTrack} />
                                                     <p className="text-muted small mb-0">
                                                         Play auditions a track; <i className="fas fa-plus mx-1" />places it on the
-                                                        timeline as its own lane, over the music bed.
+                                                        timeline as its own lane
+                                                        {options.audioMode === "none"
+                                                            ? <>, and <strong>Bed</strong> makes it the music that loops under the whole video.</>
+                                                            : <>, over the music bed.</>}
                                                     </p>
                                                 </>
                                             )}
@@ -1690,13 +1725,14 @@ export default function VideoStudioPage() {
                                                     busy={busy}
                                                     selectedLayerId={selectedLayerId}
                                                     appendedIds={appendedIds}
+                                                    extraLanes={bedLanes}
                                                     addRow={(
                                                         <>
                                                             <button className="btn btn-sm btn-outline-primary py-0" onClick={addTextLayer} disabled={busy}>
                                                                 <i className="fas fa-font me-1" />Text
                                                             </button>
                                                             <button className="btn btn-sm btn-outline-primary py-0" disabled={busy || !tracks.length}
-                                                                title={tracks.length ? "Pick a track from the audio library and place it as a layer — trimmed on its lane, mixed over the music bed" : "No tracks in rotation — add some on /audio"}
+                                                                title={tracks.length ? "Pick a track from the audio library — as its own trimmed lane, or as the music bed that loops under the whole video" : "No tracks in rotation — add some on /audio"}
                                                                 onClick={() => setShowSoundPicker(true)}>
                                                                 <i className="fas fa-music me-1" />Sound
                                                             </button>
@@ -1813,11 +1849,12 @@ export default function VideoStudioPage() {
                                 <audio ref={trackAudioRef} className="d-none" onEnded={() => setPreviewingId(null)} />
 
                                 {/* ── rail tabs: the selected layer, or the video ── */}
-                                {selectedLayer && (
+                                {(selectedLayer || bedSelected) && (
                                     <div className="btn-group btn-group-sm w-100 mb-2">
                                         <button type="button" className={`btn ${railTab === "layer" ? "btn-secondary" : "btn-outline-secondary"} text-truncate`}
                                             onClick={() => setRailTab("layer")}>
-                                            <i className="fas fa-layer-group me-1" />{selectedLayer.name || selectedLayer.text || "Layer"}
+                                            <i className="fas fa-layer-group me-1" />
+                                            {selectedLayer ? (selectedLayer.name || selectedLayer.text || "Layer") : "Music bed"}
                                         </button>
                                         <button type="button" className={`btn ${railTab === "video" ? "btn-secondary" : "btn-outline-secondary"}`}
                                             title="The video's own properties — look, music, timing — without dropping the selection"
@@ -1825,6 +1862,75 @@ export default function VideoStudioPage() {
                                             <i className="fas fa-film me-1" />Video
                                         </button>
                                     </div>
+                                )}
+
+                                {/* ── the music bed's inspector: its own card, because the bed is
+                                       options rather than a layer and shares none of the geometry
+                                       every real layer has ── */}
+                                {bedSelected && railTab === "layer" && (
+                                <div className="card mb-3">
+                                    <div className="card-header py-2 d-flex align-items-center gap-2">
+                                        <i className="fas fa-music" />
+                                        <strong className="text-truncate">Music bed</strong>
+                                        <span className="badge bg-secondary">whole video</span>
+                                        <button className="btn btn-sm btn-link ms-auto p-0" title="Back to the video's properties"
+                                            onClick={() => setSelectedLayerId(null)}>
+                                            <i className="fas fa-xmark" />
+                                        </button>
+                                    </div>
+                                    <div className="card-body py-2">
+                                        <div className="btn-group btn-group-sm w-100 mb-2">
+                                            {[
+                                                { k: "pick", label: "Chosen track" },
+                                                { k: "random", label: "Random" },
+                                            ].map((m) => (
+                                                <button key={m.k} type="button" disabled={busy}
+                                                    className={`btn ${options.audioMode === m.k ? "btn-primary" : "btn-outline-secondary"}`}
+                                                    onClick={() => setOpt({ audioMode: m.k })}>{m.label}</button>
+                                            ))}
+                                        </div>
+                                        {options.audioMode === "random" && (
+                                            <p className="text-muted small mb-2">
+                                                A different track is drawn for every video, including each one in a batch run.
+                                            </p>
+                                        )}
+                                        {tracksLoading && <div className="text-center py-2"><span className="spinner-border spinner-border-sm" /></div>}
+                                        {!tracksLoading && tracks.length === 0 && (
+                                            <div className="alert alert-secondary py-2 small mb-2">
+                                                No tracks in rotation.{" "}
+                                                <Link href="/audio">Add some to the audio library</Link> — a URL or an upload, either works.
+                                            </div>
+                                        )}
+                                        {options.audioMode === "pick" && tracks.length > 0 && (
+                                            <TrackBrowser tracks={tracks} busy={busy} maxHeight={160}
+                                                pickedId={options.audioTrackId}
+                                                onPick={(t) => setOpt({ audioTrackId: t.documentId })}
+                                                previewingId={previewingId} onAudition={previewTrack} />
+                                        )}
+                                        <RangeRow label="Volume" value={options.audioVolume} min={0} max={1} step={0.05}
+                                            suffix="" disabled={busy} onChange={(v) => setOpt({ audioVolume: v })} />
+                                        <RangeRow label="Fade in" value={options.audioFadeIn} min={0} max={4} step={0.1}
+                                            suffix="s" disabled={busy} onChange={(v) => setOpt({ audioFadeIn: v })} />
+                                        <RangeRow label="Fade out" value={options.audioFadeOut} min={0} max={4} step={0.1}
+                                            suffix="s" disabled={busy} onChange={(v) => setOpt({ audioFadeOut: v })} />
+                                        <div className="form-check form-switch mt-2">
+                                            <input className="form-check-input" type="checkbox" id="opt-randstart" disabled={busy}
+                                                checked={!!options.audioRandomStart}
+                                                onChange={(e) => setOpt({ audioRandomStart: e.target.checked })} />
+                                            <label className="form-check-label small" htmlFor="opt-randstart">
+                                                Start at a random point in the track
+                                            </label>
+                                        </div>
+                                        <button className="btn btn-sm btn-outline-danger w-100 mt-2" disabled={busy}
+                                            title="No music bed. Sound layers are unaffected — and the Sound button brings a bed back."
+                                            onClick={() => { setOpt({ audioMode: "none" }); setSelectedLayerId(null); }}>
+                                            <i className="fas fa-volume-xmark me-1" />Remove the bed
+                                        </button>
+                                        <p className="text-muted small mb-0 mt-2">
+                                            The bed loops under the whole video. Play hears it exactly as the file will.
+                                        </p>
+                                    </div>
+                                </div>
                                 )}
 
                                 {/* ── selected-layer inspector ── */}
@@ -2325,7 +2431,7 @@ export default function VideoStudioPage() {
                                 )}
 
                                 {/* ── video inspector: the video's own properties ── */}
-                                {(!selectedLayer || railTab === "video") && (
+                                {((!selectedLayer && !bedSelected) || railTab === "video") && (
                                 <>
                                 <p className="text-muted mb-2" style={{ fontSize: 11 }}>
                                     Click a lane or a layer on the preview to edit that layer; these are the video's own properties.
@@ -2464,75 +2570,9 @@ export default function VideoStudioPage() {
                                     </div>
                                 )}
 
-                                {/* ── music ── */}
-                                <div className="card mb-3">
-                                    <div className="card-header py-2 d-flex align-items-center">
-                                        <i className="fas fa-music me-2" />Music
-                                        {tracks.length > 0 && <span className="badge bg-secondary ms-2">{tracks.length} in rotation</span>}
-                                        <button className="btn btn-sm btn-link ms-auto p-0" onClick={() => setShowSoundPicker(true)}
-                                            disabled={busy || !plan || !tracks.length}
-                                            title="Pick a track from the library and add it as a SOUND LAYER — placed and trimmed on the timeline, mixed over the bed below">
-                                            <i className="fas fa-plus me-1" />Sound layer
-                                        </button>
-                                        <Link className="btn btn-sm btn-link p-0 ms-2" href="/audio">Library →</Link>
-                                    </div>
-                                    <div className="card-body">
-                                        <div className="btn-group btn-group-sm w-100 mb-2">
-                                            {[
-                                                { k: "none", label: "None" },
-                                                { k: "pick", label: "Chosen track" },
-                                                { k: "random", label: "Random" },
-                                            ].map((m) => (
-                                                <button key={m.k} type="button" disabled={busy}
-                                                    className={`btn ${options.audioMode === m.k ? "btn-primary" : "btn-outline-secondary"}`}
-                                                    onClick={() => setOpt({ audioMode: m.k })}>{m.label}</button>
-                                            ))}
-                                        </div>
-                                        {options.audioMode === "random" && (
-                                            <p className="text-muted small mb-2">
-                                                A different track is drawn for every video, including each one in a batch run.
-                                            </p>
-                                        )}
-
-                                        {options.audioMode !== "none" && (
-                                            <>
-                                                {tracksLoading && <div className="text-center py-2"><span className="spinner-border spinner-border-sm" /></div>}
-                                                {!tracksLoading && tracks.length === 0 && (
-                                                    <div className="alert alert-secondary py-2 small mb-2">
-                                                        No tracks in rotation.{" "}
-                                                        <Link href="/audio">Add some to the audio library</Link> — a URL or an upload, either works.
-                                                    </div>
-                                                )}
-                                                {tracks.length > 0 && (
-                                                    <TrackBrowser tracks={tracks} busy={busy}
-                                                        pickedId={options.audioMode === "pick" ? options.audioTrackId : null}
-                                                        onPick={options.audioMode === "pick" ? (t) => setOpt({ audioTrackId: t.documentId }) : null}
-                                                        onAdd={plan ? addSoundLayer : null}
-                                                        previewingId={previewingId} onAudition={previewTrack} />
-                                                )}
-                                                <RangeRow label="Volume" value={options.audioVolume} min={0} max={1} step={0.05}
-                                                    suffix="" disabled={busy} onChange={(v) => setOpt({ audioVolume: v })} />
-                                                <RangeRow label="Fade in" value={options.audioFadeIn} min={0} max={4} step={0.1}
-                                                    suffix="s" disabled={busy} onChange={(v) => setOpt({ audioFadeIn: v })} />
-                                                <RangeRow label="Fade out" value={options.audioFadeOut} min={0} max={4} step={0.1}
-                                                    suffix="s" disabled={busy} onChange={(v) => setOpt({ audioFadeOut: v })} />
-                                                <div className="form-check form-switch">
-                                                    <input className="form-check-input" type="checkbox" id="opt-randstart" disabled={busy}
-                                                        checked={options.audioRandomStart}
-                                                        onChange={(e) => setOpt({ audioRandomStart: e.target.checked })} />
-                                                    <label className="form-check-label small" htmlFor="opt-randstart">
-                                                        Start at a random point in the track
-                                                    </label>
-                                                </div>
-                                                <p className="text-muted small mb-0 mt-2">
-                                                    The Play button under the preview plays the music too — what you hear is what
-                                                    the file gets. Extra clips (a voice-over over the bed) are sound layers: the
-                                                    {" "}<strong>Sound</strong> button under the preview adds one as a lane.
-                                                </p>
-                                            </>
-                                        )}
-                                    </div>
-                                </div>
+                                {/* The music bed has no card here either: it is a lane on the
+                                   timeline, and its properties open when that lane is selected.
+                                   The Sound button makes one when there is none. */}
 
                                 {/* ── pace & render: what is genuinely VIDEO-level. Everything
                                        that belonged to one layer now lives on that layer — typing
@@ -2623,7 +2663,7 @@ function RangeRow({ label, value, min, max, step, suffix, disabled, onChange }) 
  * buttons. Active chips AND together — "upbeat" + "retail" is tracks tagged
  * both.
  */
-function TrackBrowser({ tracks, busy, pickedId, onPick, onAdd, previewingId, onAudition, maxHeight = 190 }) {
+function TrackBrowser({ tracks, busy, pickedId, onPick, pickLabel = "Use", onAdd, previewingId, onAudition, maxHeight = 190 }) {
     const [q, setQ] = useState("");
     const [tagsOn, setTagsOn] = useState([]);
     const norm = (s) => String(s || "").toLowerCase();
@@ -2685,7 +2725,7 @@ function TrackBrowser({ tracks, busy, pickedId, onPick, onAdd, previewingId, onA
                             {onPick && (
                                 <button className={`btn btn-sm ${chosen ? "btn-primary" : "btn-outline-secondary"}`} disabled={busy}
                                     onClick={() => onPick(t)}>
-                                    {chosen ? <i className="fas fa-check" /> : "Use"}
+                                    {chosen ? <i className="fas fa-check" /> : pickLabel}
                                 </button>
                             )}
                             {onAdd && (

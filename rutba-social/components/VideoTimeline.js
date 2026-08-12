@@ -51,6 +51,12 @@ export default function VideoTimeline({
     selectedLayerId,
     appendedIds, // Set<string> — patch-backed layers, the ones delete can remove
     addRow, // host-provided "add a layer" buttons, shown in the toolbar
+    // Lanes that are NOT plan layers — audio the video really carries, but
+    // that lives in the options rather than the layer stack (the music bed).
+    // They draw and select like any lane; they cannot be dragged, trimmed,
+    // hidden, duplicated or deleted, because none of that would have anywhere
+    // to be written. Display only: these never reach renderVideo.
+    extraLanes,
     onSelect,
     onScrub,
     onPatch,
@@ -71,13 +77,13 @@ export default function VideoTimeline({
 
     const lanes = useMemo(() => {
         if (!plan) return [];
-        const ls = [...plan.layers];
+        const ls = [...plan.layers, ...(extraLanes || [])];
         if (sortBy === "enter") ls.sort((a, b) => winOf(a).start - winOf(b).start);
         else if (sortBy === "exit") ls.sort((a, b) => winOf(b).end - winOf(a).end);
         else ls.sort((a, b) => (b.z || 0) - (a.z || 0)); // top lane paints on top
         return ls;
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [plan, sortBy, duration]);
+    }, [plan, extraLanes, sortBy, duration]);
 
     // Ruler ticks at a step that keeps labels readable at any zoom.
     const [trackW, setTrackW] = useState(600);
@@ -188,7 +194,9 @@ export default function VideoTimeline({
     // new z is midway between the target and whatever sits above it.
     const dropOnLane = (targetId) => {
         if (!laneDrag || laneDrag === targetId || sortBy !== "z") { setLaneDrag(null); return; }
-        const ordered = lanes.filter((l) => l.id !== laneDrag); // z-descending, without the dragged one
+        // Extra lanes have no z to trade places with — dropping on one is a
+        // no-op rather than a z computed against something that isn't stacked.
+        const ordered = lanes.filter((l) => l.id !== laneDrag && !l.readOnly); // z-descending, without the dragged one
         const to = ordered.findIndex((l) => l.id === targetId);
         if (to < 0) { setLaneDrag(null); return; }
         const above = ordered[to - 1] || null;
@@ -269,27 +277,30 @@ export default function VideoTimeline({
                                 ? Math.min(1, l.exit.seconds / barLen) : 0;
                             const name = l.name || l.text || l.id;
                             const appended = appendedIds?.has(l.id) || false;
+                            const fixed = !!l.readOnly; // an extra lane: selectable, not editable here
                             return (
-                                <div key={l.id} className="d-flex border-bottom" style={{ height: LANE_H, opacity: hidden ? 0.45 : 1, background: sel ? "rgba(13,110,253,0.08)" : "transparent" }}>
+                                <div key={l.id} data-lane-id={l.id} className="d-flex border-bottom" style={{ height: LANE_H, opacity: hidden ? 0.45 : 1, background: sel ? "rgba(13,110,253,0.08)" : "transparent" }}>
                                     {/* header */}
                                     <div className={`flex-shrink-0 border-end d-flex align-items-center gap-1 px-1 ${sel ? "fw-bold" : ""}`}
                                         style={{ width: HEADER_W, cursor: "pointer" }}
-                                        draggable={sortBy === "z" && !busy}
+                                        draggable={sortBy === "z" && !busy && !fixed}
                                         onDragStart={() => setLaneDrag(l.id)}
                                         onDragOver={(e) => { if (laneDrag) e.preventDefault(); }}
                                         onDrop={() => dropOnLane(l.id)}
                                         onClick={() => onSelect?.(sel ? null : l.id)}>
-                                        {sortBy === "z" && (
+                                        {sortBy === "z" && !fixed && (
                                             <i className="fas fa-grip-vertical text-muted" style={{ fontSize: 9, cursor: "grab" }} title="Drag to reorder — the top lane paints on top" />
                                         )}
-                                        <button className="btn btn-sm p-0 border-0" disabled={busy}
-                                            title={hidden ? "Show" : "Hide"}
-                                            onClick={(e) => { e.stopPropagation(); onPatch?.({ id: l.id, visible: hidden }); }}>
-                                            <i className={`fas ${hidden ? "fa-eye-slash text-muted" : "fa-eye"}`} style={{ fontSize: 10 }} />
-                                        </button>
+                                        {!fixed && (
+                                            <button className="btn btn-sm p-0 border-0" disabled={busy}
+                                                title={hidden ? "Show" : "Hide"}
+                                                onClick={(e) => { e.stopPropagation(); onPatch?.({ id: l.id, visible: hidden }); }}>
+                                                <i className={`fas ${hidden ? "fa-eye-slash text-muted" : "fa-eye"}`} style={{ fontSize: 10 }} />
+                                            </button>
+                                        )}
                                         <i className={`fas ${TYPE_ICONS[l.type] || "fa-square"} text-muted`} style={{ fontSize: 9 }} />
                                         <span className="text-truncate flex-grow-1" title={name}>{name}</span>
-                                        {DUPLICABLE.has(l.type) && (
+                                        {!fixed && DUPLICABLE.has(l.type) && (
                                             <button className="btn btn-sm p-0 border-0 text-muted" disabled={busy}
                                                 title="Duplicate — same layer again, nudged later"
                                                 onClick={(e) => { e.stopPropagation(); onDuplicate?.(l); }}>
@@ -313,10 +324,14 @@ export default function VideoTimeline({
                                                 top: 4, bottom: 4,
                                                 background: color, opacity: hidden ? 0.4 : 0.9,
                                                 outline: sel ? "2px solid #0d6efd" : "1px solid rgba(0,0,0,0.25)",
-                                                cursor: "grab", minWidth: 6,
+                                                cursor: fixed ? "pointer" : "grab", minWidth: 6,
+                                                ...(fixed ? { backgroundImage: "repeating-linear-gradient(45deg, rgba(255,255,255,0.16) 0 6px, transparent 6px 12px)" } : {}),
                                             }}
-                                            title={`${name}: ${fmtT(w.start)} → ${fmtT(w.end)}${l.timing ? "" : " (whole video)"}`}
-                                            onPointerDown={(e) => beginDrag(e, l, "move")} onPointerMove={onPointerMove} onPointerUp={onPointerUp}>
+                                            title={fixed
+                                                ? `${name} — under the whole video; its properties are in the rail`
+                                                : `${name}: ${fmtT(w.start)} → ${fmtT(w.end)}${l.timing ? "" : " (whole video)"}`}
+                                            onPointerDown={(e) => (fixed ? onSelect?.(l.id) : beginDrag(e, l, "move"))}
+                                            onPointerMove={onPointerMove} onPointerUp={onPointerUp}>
                                             {/* entry / exit wedges */}
                                             {enterFrac > 0 && (
                                                 <div className="position-absolute" style={{
@@ -335,10 +350,14 @@ export default function VideoTimeline({
                                                 }} />
                                             )}
                                             {/* trim handles */}
-                                            <div className="position-absolute" style={{ left: -3, top: 0, bottom: 0, width: 8, cursor: "ew-resize" }}
-                                                onPointerDown={(e) => beginDrag(e, l, "trim-start")} onPointerMove={onPointerMove} onPointerUp={onPointerUp} />
-                                            <div className="position-absolute" style={{ right: -3, top: 0, bottom: 0, width: 8, cursor: "ew-resize" }}
-                                                onPointerDown={(e) => beginDrag(e, l, "trim-end")} onPointerMove={onPointerMove} onPointerUp={onPointerUp} />
+                                            {!fixed && (
+                                                <>
+                                                    <div data-trim="start" className="position-absolute" style={{ left: -3, top: 0, bottom: 0, width: 8, cursor: "ew-resize" }}
+                                                        onPointerDown={(e) => beginDrag(e, l, "trim-start")} onPointerMove={onPointerMove} onPointerUp={onPointerUp} />
+                                                    <div data-trim="end" className="position-absolute" style={{ right: -3, top: 0, bottom: 0, width: 8, cursor: "ew-resize" }}
+                                                        onPointerDown={(e) => beginDrag(e, l, "trim-end")} onPointerMove={onPointerMove} onPointerUp={onPointerUp} />
+                                                </>
+                                            )}
                                             {/* keyframe diamonds — the union of all keyed properties' times */}
                                             {sel && l.keys && [...new Set(
                                                 Object.values(l.keys).flat().map((k) => +k.t.toFixed(3)),
