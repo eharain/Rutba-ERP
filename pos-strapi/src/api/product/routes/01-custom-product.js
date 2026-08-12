@@ -12,6 +12,15 @@ module.exports = {
       config: { auth: false },
     },
     {
+      // Share text for the storefront's share sheet — the latest caption the
+      // brand posted about this product. Fetched on demand, not with the
+      // detail, so the hot path never pays for the social-post join.
+      method: 'GET',
+      path: '/products/public/share/:documentId',
+      handler: 'product.publicShare',
+      config: { auth: false },
+    },
+    {
       // Public list with the same server-built populate tree. Accepts
       // collection/brand/category/minPrice/maxPrice/sort/page/pageSize as
       // flat query params.

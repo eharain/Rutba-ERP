@@ -176,6 +176,29 @@ module.exports = createCoreController('api::product.product', ({ strapi }) => ({
     return ctx.send({ data: data ?? null, meta: { offerContext, availability } });
   },
 
+  /**
+   * Share text for a product — the most recent caption the brand actually
+   * posted about it, or null.
+   *
+   * Split out of publicDetail rather than folded into its meta: the detail
+   * route is the hottest page on the storefront and every visitor would pay for
+   * a social-post join, while only the few who open the share sheet need it.
+   * The storefront fetches this when the sheet opens, which also keeps the
+   * request off the click that calls navigator.share() — consuming the user
+   * gesture on a fetch makes Safari reject the share.
+   */
+  async publicShare(ctx) {
+    if (!requireApp(ctx, 'web')) return;
+    const slugOrDocumentId = ctx.params?.documentId;
+    if (!slugOrDocumentId) return ctx.badRequest('slug is required');
+
+    const data = await strapi
+      .service('api::product.product')
+      .findPublicShareCaption(slugOrDocumentId);
+
+    return ctx.send({ data: data ?? null });
+  },
+
   async publicByIds(ctx) {
     if (!requireApp(ctx, 'web')) return;
     const raw = ctx.query?.ids;

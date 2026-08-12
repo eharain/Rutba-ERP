@@ -109,6 +109,7 @@ function registerCatalogModule() {
     { method: 'get', path: '/api/products/public/search', handler: (c) => product.publicSearch(c) },
     { method: 'get', path: '/api/products/public/by-ids', handler: (c) => product.publicByIds(c) },
     { method: 'get', path: '/api/products/public/highest-price', handler: (c) => product.publicHighestPrice(c) },
+    { method: 'get', path: '/api/products/public/share/:documentId', handler: (c) => product.publicShare(c) },
     { method: 'get', path: '/api/products/public/by-id/:documentId', handler: (c) => product.publicDetail(c) },
     { method: 'get', path: '/api/brands/public/list', handler: (c) => brand.publicList(c) },
     { method: 'get', path: '/api/product-groups/by-slug/:slug', handler: (c) => productGroup.findBySlug(c) },

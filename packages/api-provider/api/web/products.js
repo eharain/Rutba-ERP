@@ -46,6 +46,17 @@ export const WebProductsEndpoints = {
     params: groupId ? { groupId } : {},
   }),
 
+  // Share text for the share sheet: the most recent caption the brand actually
+  // posted about this product, with its own links stripped (every share target
+  // takes text and URL separately). Returns null when nothing has been posted —
+  // the storefront falls back to the product summary. Deliberately not folded
+  // into detail(): only the visitors who open the sheet should pay for it.
+  share: (slug) => ({
+    path: `/products/public/share/${encodeURIComponent(slug)}`,
+    method: 'get',
+    params: {},
+  }),
+
   // /product-groups is a different content type; keep its existing shape.
   featured: () => ({
     path: '/product-groups',

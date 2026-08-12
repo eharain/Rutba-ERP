@@ -12,6 +12,11 @@ async function detail(slug, groupId) {
     return webApi.fetch(ep.path, ep.params);
 }
 
+async function share(slug) {
+    const ep = WebProductsEndpointsApi.share(slug);
+    return webApi.fetch(ep.path, ep.params);
+}
+
 async function featured() {
     const ep = WebProductsEndpointsApi.featured();
     return webApi.fetch(ep.path, ep.params);
@@ -37,12 +42,13 @@ const endpoints = strictEndpointGuard(
     {
         list,
         detail,
+        share,
         featured,
         search,
         byIds,
         highestPrice,
     },
-    ["list","detail","featured","search","byIds","highestPrice"],
+    ["list","detail","share","featured","search","byIds","highestPrice"],
 );
 
 export default endpoints;

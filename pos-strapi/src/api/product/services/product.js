@@ -91,6 +91,48 @@ function identifierToken(query) {
   return q;
 }
 
+/**
+ * Remove links back to the storefront from a social caption.
+ *
+ * Share targets take text and URL as separate arguments and compose them, so a
+ * caption that still carries `…/s/<code>` posts the same link twice. A line
+ * left empty once its URL is gone was only ever a label for it ("🛒 Shop now:")
+ * and goes with it.
+ *
+ * Origin-agnostic: captions in one database can carry several origins
+ * (localhost, the LAN box, rutba.pk) depending on where they were authored, and
+ * all of them are the same link as far as the reader is concerned.
+ */
+function stripStorefrontLinks(body) {
+  if (!body) return null;
+
+  const kept = [];
+  for (const line of String(body).split('\n')) {
+    let removed = false;
+    const stripped = line.replace(/https?:\/\/[^\s<>"'`]+/gi, (raw) => {
+      let url;
+      try {
+        url = new URL(raw.replace(/[.,;:!?)\]}]*$/, ''));
+      } catch {
+        return raw;
+      }
+      const segments = url.pathname.split('/').filter(Boolean);
+      if (segments.length !== 2 || (segments[0] !== 'product' && segments[0] !== 's')) return raw;
+      removed = true;
+      return '';
+    });
+
+    // "🛒 Shop now:" existed only to introduce the link. Left on its own it
+    // reads like the caption was truncated, so it goes with the URL.
+    const trimmed = stripped.trim();
+    if (removed && (!trimmed || /[:\-–—]$/.test(trimmed))) continue;
+
+    kept.push(stripped.replace(/[ \t]+$/, ''));
+  }
+
+  return kept.join('\n').replace(/\n{3,}/g, '\n\n').trim() || null;
+}
+
 function buildListFilters(filter = {}) {
   const and = [];
   if (filter.collection) and.push({ collections: { slug: { $eq: filter.collection } } });
@@ -218,6 +260,59 @@ module.exports = createCoreService('api::product.product', ({ strapi }) => ({
       ...base,
       filters: { $and: [{ documentId: { $eq: slugOrDocumentId } }, ACTIVE] },
     });
+  },
+
+  /**
+   * The brand's own words for a product, for the storefront's share sheet.
+   *
+   * When a shopper shares a product we would rather hand them the caption the
+   * brand already wrote and posted than a machine-assembled one — it is written
+   * for social, it carries the tone and hashtags, and it has already proven
+   * acceptable in public.
+   *
+   * Only posts that actually went out qualify: `published_at_social` must be
+   * set. This endpoint is unauthenticated, so a looser rule would publish
+   * scheduled-but-unposted campaign copy to anyone who asked for it. A product
+   * with no posted caption returns null and the storefront falls back to its
+   * own summary.
+   *
+   * The product's own links are stripped from the caption. Every share target
+   * takes text and URL as separate arguments and composes them itself, so
+   * leaving the link in produces the URL twice.
+   */
+  async findPublicShareCaption(slugOrDocumentId) {
+    if (!slugOrDocumentId) return null;
+
+    const product = await strapi.documents('api::product.product').findFirst({
+      status: 'published',
+      fields: ['name'],
+      filters: {
+        $and: [
+          { $or: [{ slug: { $eq: slugOrDocumentId } }, { documentId: { $eq: slugOrDocumentId } }] },
+          ACTIVE,
+        ],
+      },
+    });
+    if (!product) return null;
+
+    const posts = await strapi.documents('api::social-post.social-post').findMany({
+      status: 'published',
+      filters: {
+        $and: [
+          { products: { documentId: { $eq: product.documentId } } },
+          { published_at_social: { $notNull: true } },
+        ],
+      },
+      fields: ['title', 'body', 'published_at_social'],
+      sort: ['published_at_social:desc'],
+      pagination: { pageSize: 1 },
+    });
+
+    const post = posts?.[0];
+    const caption = stripStorefrontLinks(post?.body);
+    if (!caption) return null;
+
+    return { caption, title: post.title || null, posted_at: post.published_at_social ?? null };
   },
 
   async findPublicByIds(ids = []) {
