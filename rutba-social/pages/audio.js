@@ -19,6 +19,7 @@ import {
     SocialAudioTracksEndpoints, UploadEndpoints, MediaUtilsEndpoints,
 } from "@rutba/api-provider/endpoints";
 import { useToast } from "../components/Toast";
+import DropZone from "../components/DropZone";
 import { isAudioFile, loadAudioTrack, setMediaAuth } from "../lib/video-maker";
 
 const BLANK = { name: "", url: "", credit: "", tags: "", volume: "" };
@@ -40,6 +41,7 @@ export default function AudioLibraryPage() {
     const [editing, setEditing] = useState(null); // documentId being edited
     const [playingId, setPlayingId] = useState(null);
     const [uploading, setUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState("");
     const audioRef = useRef(null);
     const fileRef = useRef(null);
 
@@ -275,14 +277,14 @@ export default function AudioLibraryPage() {
     // Upload goes through the normal /upload route, so the bytes land wherever
     // this instance's provider sends them — the media file server on a
     // configured instance. The track then just points at the resulting file.
-    const uploadFiles = async (e) => {
-        const files = Array.from(e.target.files || []);
-        e.target.value = "";
+    const uploadFiles = async (picked) => {
+        const files = Array.from(picked || []);
         if (!files.length) return;
         setUploading(true);
         let added = 0;
         try {
             for (const file of files) {
+                setUploadProgress(`${added + 1} of ${files.length} — ${file.name}`);
                 const uploaded = await UploadEndpoints.uploadFiles([file], null, null, null, {
                     name: file.name, alt: null, caption: null,
                 });
@@ -310,6 +312,7 @@ export default function AudioLibraryPage() {
             toast("Upload failed.", "danger");
         } finally {
             setUploading(false);
+            setUploadProgress("");
         }
     };
 
@@ -428,7 +431,8 @@ export default function AudioLibraryPage() {
                                         onClick={() => { setEditing(null); setForm(BLANK); }}>Cancel</button>
                                 )}
                                 <span className="text-muted small ms-2">or</span>
-                                <input ref={fileRef} type="file" accept="audio/*" multiple className="d-none" onChange={uploadFiles} />
+                                <input ref={fileRef} type="file" accept="audio/*" multiple className="d-none"
+                                    onChange={(e) => { const f = Array.from(e.target.files || []); e.target.value = ""; uploadFiles(f); }} />
                                 <button className="btn btn-sm btn-outline-primary" type="button"
                                     disabled={uploading} onClick={() => fileRef.current?.click()}>
                                     <i className={`fas ${uploading ? "fa-spinner fa-spin" : "fa-cloud-upload-alt"} me-1`} />
@@ -445,6 +449,16 @@ export default function AudioLibraryPage() {
                         </form>
                     </div>
                 </div>
+
+                <DropZone
+                    accept="audio/"
+                    label="Drop audio files here to add them to the library"
+                    hint="Drop anywhere on this page, or click to browse. Each file is uploaded, its length measured, and a track added — in rotation straight away."
+                    onFiles={uploadFiles}
+                    busy={uploading}
+                    progress={uploadProgress}
+                    onSkipped={(n) => toast(`${n} file(s) ignored — the audio library takes audio only.`, "warning")}
+                />
 
                 <div className="card">
                     <div className="card-header py-2"><i className="fas fa-list me-2" />Tracks</div>

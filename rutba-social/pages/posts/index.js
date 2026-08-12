@@ -189,6 +189,46 @@ const POST_STATUS_BADGES = {
     failed: "bg-danger",
 };
 
+// Sorts worth having: each answers a question someone actually asks of this
+// list. `oldest` finds the backlog, `updated` finds what was just worked on,
+// `scheduled` is the queue in the order it will go out, `accounts` surfaces
+// the widest-reach posts, and `reach` ranks by how much of that reach has
+// actually been delivered.
+const SORTS = {
+    newest: { label: "Newest first", cmp: (a, b) => str(b.createdAt).localeCompare(str(a.createdAt)) },
+    oldest: { label: "Oldest first", cmp: (a, b) => str(a.createdAt).localeCompare(str(b.createdAt)) },
+    updated: { label: "Recently updated", cmp: (a, b) => str(b.updatedAt).localeCompare(str(a.updatedAt)) },
+    title: { label: "Title A–Z", cmp: (a, b) => str(a.title).localeCompare(str(b.title)) },
+    status: {
+        label: "Status",
+        cmp: (a, b) => STATUS_ORDER.indexOf(a.post_status || "draft") - STATUS_ORDER.indexOf(b.post_status || "draft")
+            || str(b.createdAt).localeCompare(str(a.createdAt)),
+    },
+    scheduled: {
+        // Unscheduled posts sink; among the scheduled, soonest first — the
+        // order they will actually go out in.
+        label: "Scheduled soonest",
+        cmp: (a, b) => (a.scheduled_at ? 0 : 1) - (b.scheduled_at ? 0 : 1)
+            || str(a.scheduled_at).localeCompare(str(b.scheduled_at)),
+    },
+    published: {
+        label: "Recently published",
+        cmp: (a, b) => str(b.published_at_social).localeCompare(str(a.published_at_social)),
+    },
+    accounts: { label: "Most accounts posted", cmp: (a, b) => successCount(b) - successCount(a) },
+    reach: {
+        // Least-delivered first: the posts still owing the most destinations.
+        label: "Least delivered",
+        cmp: (a, b) => successCount(a) - successCount(b) || str(b.createdAt).localeCompare(str(a.createdAt)),
+    },
+    photos: { label: "Most photos", cmp: (a, b) => imageItems(b).length - imageItems(a).length },
+};
+
+const STATUS_ORDER = ["failed", "partially_published", "publishing", "scheduled", "draft", "published"];
+const str = (v) => (v == null ? "" : String(v));
+const successCount = (post) =>
+    Object.values(post.platform_results || {}).filter((v) => v?.status === "success").length;
+
 // Did any destination on this platform confirm the post? Keys are
 // `<platform>#<accountDocId>` (bare `<platform>` on old rows).
 const publishedOn = (post, platform) => Object.entries(post.platform_results || {})
@@ -224,6 +264,7 @@ export default function PostsPage() {
     // YouTube that still owe TikTok. "" = off, "any" = any platform.
     const [publishedOnFilter, setPublishedOnFilter] = useState("");
     const [notPublishedOnFilter, setNotPublishedOnFilter] = useState("");
+    const [sortKey, setSortKey] = useState("newest");
 
     // Deep links (e.g. the studio's "posts without a video") preset filters:
     // ?video=with|without, ?published_on=tiktok|any, ?not_published_on=youtube|any
@@ -294,7 +335,7 @@ export default function PostsPage() {
         const q = search.trim().toLowerCase();
         const from = dateFrom ? new Date(dateFrom) : null;
         const to = dateTo ? new Date(`${dateTo}T23:59:59.999`) : null;
-        return posts.filter((p) => {
+        const rows = posts.filter((p) => {
             if (q && !`${p.title || ""} ${p.body || ""}`.toLowerCase().includes(q)) return false;
             if (statusFilter !== "all" && (p.post_status || "draft") !== statusFilter) return false;
             if (videoFilter === "with" && !hasVideo(p)) return false;
@@ -316,9 +357,14 @@ export default function PostsPage() {
             }
             return true;
         });
-    }, [posts, search, statusFilter, videoFilter, dateFrom, dateTo, publishedOnFilter, notPublishedOnFilter]);
+        // Sorted here rather than in the query: the same reason the filters are
+        // client-side — several of these rank on platform_results, which the API
+        // cannot order by.
+        const cmp = (SORTS[sortKey] || SORTS.newest).cmp;
+        return rows.sort(cmp);
+    }, [posts, search, statusFilter, videoFilter, dateFrom, dateTo, publishedOnFilter, notPublishedOnFilter, sortKey]);
 
-    useEffect(() => { setPage(1); }, [search, statusFilter, videoFilter, dateFrom, dateTo, publishedOnFilter, notPublishedOnFilter]);
+    useEffect(() => { setPage(1); }, [search, statusFilter, videoFilter, dateFrom, dateTo, publishedOnFilter, notPublishedOnFilter, sortKey]);
 
     const pageCount = Math.max(1, Math.ceil(filtered.length / CARDS_PER_PAGE));
     const clampedPage = Math.min(page, pageCount);
@@ -657,6 +703,15 @@ export default function PostsPage() {
                             <option value="with">With video</option>
                             <option value="without">Without video</option>
                         </select>
+                        <div className="input-group input-group-sm" style={{ width: "auto" }} title="Sort">
+                            <span className="input-group-text"><i className="fas fa-arrow-down-wide-short"></i></span>
+                            <select className="form-select form-select-sm" style={{ width: "auto" }} value={sortKey}
+                                onChange={(e) => setSortKey(e.target.value)}>
+                                {Object.entries(SORTS).map(([key, s]) => (
+                                    <option key={key} value={key}>{s.label}</option>
+                                ))}
+                            </select>
+                        </div>
                         <select className={`form-select form-select-sm ${publishedOnFilter ? "border-success" : ""}`}
                             style={{ width: "auto" }} value={publishedOnFilter}
                             onChange={(e) => setPublishedOnFilter(e.target.value)}

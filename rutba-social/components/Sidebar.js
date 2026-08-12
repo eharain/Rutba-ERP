@@ -8,6 +8,7 @@ import { getAppName } from "@rutba/api-provider/lib/api";
 const SECTIONS = [
     { href: "/posts",    label: "Posts",    icon: "fa-pen-to-square" },
     { href: "/posts/video-studio", label: "Video Studio", icon: "fa-film" },
+    { href: "/videos",   label: "Videos",   icon: "fa-clapperboard" },
     { href: "/audio",    label: "Audio",    icon: "fa-music" },
     { href: "/products", label: "Products", icon: "fa-box" },
     { href: "/replies",  label: "Replies",  icon: "fa-reply" },

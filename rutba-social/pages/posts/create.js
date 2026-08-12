@@ -157,11 +157,15 @@ export default function CreatePostPage() {
                             <div className="card mb-3">
                                 <div className="card-header"><i className="fas fa-image me-2"></i>Cover Image</div>
                                 <div className="card-body">
+                                    {/* uploadWithoutRef: the post doesn't exist yet, so uploads go
+                                        straight to the media library and come back with real ids —
+                                        without it a fresh upload is a local preview with no id and
+                                        silently drops off the created post. */}
                                     <FileView
                                         single={null}
                                         field="cover"
                                         name={title}
-                                        autoUpload={false}
+                                        uploadWithoutRef
                                         onFileChange={(f, file) => setCoverId(file?.id || null)}
                                     />
                                     <div className="form-text">Single image used as the post cover/thumbnail.</div>
@@ -170,19 +174,28 @@ export default function CreatePostPage() {
 
                             {/* Video */}
                             <div className="card mb-3">
-                                <div className="card-header"><i className="fas fa-video me-2"></i>Videos</div>
+                                <div className="card-header d-flex align-items-center">
+                                    <span><i className="fas fa-video me-2"></i>Videos</span>
+                                    <Link className="btn btn-sm btn-outline-secondary ms-auto" href="/videos" target="_blank"
+                                        title="Browse the whole video gallery — media-server folders, metadata, drive scan">
+                                        <i className="fas fa-clapperboard me-1"></i>Video Library
+                                    </Link>
+                                </div>
                                 <div className="card-body">
                                     <FileView
                                         gallery={[]}
                                         multiple
                                         field="video"
                                         name={title}
-                                        autoUpload={false}
+                                        uploadWithoutRef
                                         accept="video/*"
                                         buttonLabel="Upload Video"
                                         onFileChange={(f, files) => setVideoIds((files || []).map(v => v.id).filter(Boolean))}
                                     />
-                                    <div className="form-text">Attach videos for the post.</div>
+                                    <div className="form-text">
+                                        Uploads land in the media library; Browse Gallery picks an existing
+                                        library video — studio renders and drive-scanned files included.
+                                    </div>
                                 </div>
                             </div>
 

@@ -28,6 +28,7 @@ import { useToast } from "../../components/Toast";
 import useUnsavedGuard from "@rutba/pos-shared/hooks/useUnsavedGuard";
 import StrapiMediaLibrary from "@rutba/pos-shared/components/StrapiMediaLibrary";
 import VideoTimeline from "../../components/VideoTimeline";
+import VideoComposer from "../../components/VideoComposer";
 import { resolveStorefrontBaseUrl, productShortUrl } from "../../lib/storefront-url";
 import {
     ASPECTS, THEMES, DEFAULTS,
@@ -548,6 +549,68 @@ export default function VideoStudioPage() {
             setLoadingImages(false);
         }
     }, [releaseLoaded, toast]);
+
+    // ── composer → editor ───────────────────────────────────
+    // The composer gathers ingredients while nothing is selected; opening them
+    // means giving them a post to live on, because a post is the only subject
+    // the editor, the recipe, Attach and the poster all understand. A new one
+    // is created as a DRAFT: it exists so the work has somewhere to be saved,
+    // and publishing stays an explicit act elsewhere.
+    const [composing, setComposing] = useState(false);
+
+    const openComposed = useCallback(async ({ photoIds, title, body, destination, postDocumentId }) => {
+        setComposing(true);
+        try {
+            let documentId = postDocumentId;
+            if (destination === "new") {
+                const res = await SocialPostsEndpoints.create({
+                    data: {
+                        title, body,
+                        media: photoIds,
+                        platforms: [],
+                        post_status: "draft",
+                        tags: [],
+                    },
+                });
+                documentId = (res?.data || res)?.documentId;
+                if (!documentId) throw new Error("The draft post was not created.");
+            } else {
+                const target = posts.find((p) => p.documentId === documentId);
+                const existing = [
+                    ...(target?.cover ? [target.cover.id] : []),
+                    ...(target?.media || []).map((m) => m.id),
+                ].filter(Boolean);
+                await SocialPostsEndpoints.updateDraft(documentId, {
+                    data: { media: [...new Set([...existing, ...photoIds])] },
+                });
+            }
+
+            // Re-read what was actually written — the editor needs full media
+            // rows (urls, formats), not the ids the composer held.
+            const fresh = await SocialPostsEndpoints.byId(documentId, {
+                status: "draft",
+                populate: ["cover", "media", "video", "products"],
+            });
+            const post = fresh?.data || fresh;
+            if (!post) throw new Error("The post could not be read back.");
+
+            setPosts((list) => (list.some((p) => p.documentId === documentId)
+                ? list.map((p) => (p.documentId === documentId ? { ...p, ...post } : p))
+                : [{ ...post, _isPublished: false }, ...list]));
+            await selectPost(post);
+            toast(
+                destination === "new"
+                    ? `Draft “${title}” created — arrange and render it here.`
+                    : "Photos added — arrange and render the video here.",
+                "success",
+            );
+        } catch (err) {
+            console.error("Failed to open the composed video", err);
+            toast(err?.response?.data?.error?.message || err.message || "Could not start the video.", "danger");
+        } finally {
+            setComposing(false);
+        }
+    }, [posts, selectPost, toast]);
 
     // Deep link from the post editor: /posts/video-studio?post=<documentId>
     const autoSelected = useRef(false);
@@ -1354,42 +1417,48 @@ export default function VideoStudioPage() {
                     </div>
                 )}
 
-                {/* ── no post chosen: browsing lives on /posts now ── */}
+                {/* ── no post chosen: compose a new video from ingredients ── */}
                 {!selected && (
                     <>
                         {/* a batch run still needs a canvas to render on */}
                         <canvas ref={canvasRef} style={{ display: "none" }} />
-                        <div className="card">
-                            <div className="card-body text-center py-5">
-                                {loading ? (
-                                    <span className="spinner-border" />
-                                ) : (
-                                    <>
-                                        <i className="fas fa-film fa-3x text-muted mb-3 d-block" />
-                                        <p className="mb-1">Pick a post to edit its video.</p>
-                                        <p className="text-muted small mb-3" style={{ maxWidth: 520, margin: "0 auto" }}>
-                                            Posts are browsed and filtered on the Posts page — every card there has an
-                                            {" "}<i className="fas fa-film" /> Edit video action, and the
-                                            {" "}“without video” filter singles out the ones still missing one.
-                                        </p>
-                                        <div className="d-flex justify-content-center gap-2">
-                                            <Link className="btn btn-sm btn-primary" href="/posts?video=without">
-                                                <i className="fas fa-list me-1" />Posts without a video
-                                            </Link>
-                                            <Link className="btn btn-sm btn-outline-secondary" href="/posts">
-                                                All posts
-                                            </Link>
-                                        </div>
-                                        {pendingCount > 0 && (
-                                            <p className="text-muted small mt-3 mb-0">
-                                                Or use <strong>Render all pending</strong> above to batch-render the
-                                                {" "}{pendingCount} image-only post{pendingCount === 1 ? "" : "s"} with the current look.
-                                            </p>
-                                        )}
-                                    </>
+                        {loading ? (
+                            <div className="card"><div className="card-body text-center py-5"><span className="spinner-border" /></div></div>
+                        ) : (
+                            <>
+                                <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
+                                    <h5 className="mb-0"><i className="fas fa-wand-magic-sparkles me-2" />New video</h5>
+                                    <span className="text-muted small">
+                                        Gather the ingredients, then open the editor to arrange, time and render them.
+                                    </span>
+                                    <div className="ms-auto d-flex gap-2">
+                                        <Link className="btn btn-sm btn-outline-primary" href="/posts?video=without">
+                                            <i className="fas fa-list me-1" />Edit an existing post&apos;s video
+                                        </Link>
+                                        <Link className="btn btn-sm btn-outline-secondary" href="/videos">
+                                            <i className="fas fa-clapperboard me-1" />Video library
+                                        </Link>
+                                    </div>
+                                </div>
+                                <VideoComposer
+                                    posts={posts}
+                                    templates={templates}
+                                    tracks={tracks}
+                                    busy={busy}
+                                    opening={composing}
+                                    options={options}
+                                    onOptionChange={setOpt}
+                                    onApplyTemplate={applyTemplate}
+                                    onOpen={openComposed}
+                                />
+                                {pendingCount > 0 && (
+                                    <p className="text-muted small mt-3 mb-0">
+                                        Or use <strong>Render all pending</strong> above to batch-render the
+                                        {" "}{pendingCount} image-only post{pendingCount === 1 ? "" : "s"} with the current look.
+                                    </p>
                                 )}
-                            </div>
-                        </div>
+                            </>
+                        )}
                     </>
                 )}
 

@@ -1,15 +1,19 @@
 /**
- * Video Library — every video in the media library, and where each one is used.
+ * Video Library — the gallery of every video the business has, browsed by the
+ * media server's own folders.
  *
- * Two sources meet here: the media library's video files (mime video/*) and
- * the posts that reference them, either in the `video` attachment slot or in a
- * `media` gallery. The library list is the spine — a video uploaded but not
- * yet used by any post still shows, which is what makes this a gallery and
- * not just an index of attachments. From any card a video can be watched,
- * downloaded, uploaded fresh, or ATTACHED to a post: that appends it to the
- * post's `video` field (the slot every publishing path reads), and re-publishes
- * posts that are already live so the poster and the public API see it —
- * mirroring the studio's attach semantics, a draft is never first-published.
+ * WHERE THINGS LIVE. The Rutba Media FileServer owns video bytes, the drives
+ * they sit on, the folder tree and the extracted metadata; it runs the drive
+ * scanner too, because it is the only thing with the disks mounted. This page
+ * never talks to it directly — the ERP backend proxies (/media-library/videos,
+ * .../videos/folders, .../video-scan) so an ERP session is the only credential
+ * anyone needs.
+ *
+ * Two things then meet on screen: the media server's file list, and the ERP's
+ * knowledge of which posts use which video. A video is attachable to a post
+ * once a library row points at it (posts carry Strapi media relations), so the
+ * Attach flow links first — registering a row against bytes that never move —
+ * and then writes the post. Nothing is ever copied.
  */
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Layout from "../components/Layout";
@@ -19,12 +23,13 @@ import {
     MediaUtilsEndpoints, MediaLibraryEndpoints, SocialPostsEndpoints, UploadEndpoints,
 } from "@rutba/api-provider/endpoints";
 import { useToast } from "../components/Toast";
+import DropZone from "../components/DropZone";
 import Link from "next/link";
 import { imageItems, isVideoFile } from "../lib/video-maker";
 
 const FETCH_PAGE = 100;
 const MAX_PAGES = 20;
-const CARDS_PER_PAGE = 12;
+const PAGE_SIZE = 24;
 
 const POST_STATUS_BADGES = {
     draft: "bg-secondary",
@@ -35,55 +40,111 @@ const POST_STATUS_BADGES = {
     failed: "bg-danger",
 };
 
-// Strapi reports `size` in KB.
-function formatBytes(kb) {
-    if (!kb && kb !== 0) return "";
-    if (kb < 1) return `${Math.round(kb * 1024)} B`;
-    if (kb < 1024) return `${Math.round(kb)} KB`;
-    return `${(kb / 1024).toFixed(1)} MB`;
-}
+const fmtBytes = (bytes) => {
+    const b = Number(bytes) || 0;
+    if (b < 1024) return `${b} B`;
+    if (b < 1024 * 1024) return `${Math.round(b / 1024)} KB`;
+    return `${(b / 1024 / 1024).toFixed(1)} MB`;
+};
+const fmtDuration = (s) => {
+    const n = Number(s);
+    if (!Number.isFinite(n) || n <= 0) return null;
+    return `${Math.floor(n / 60)}:${String(Math.round(n % 60)).padStart(2, "0")}`;
+};
 
 export default function VideosPage() {
     const { jwt } = useAuth();
     const { toast, ToastContainer } = useToast();
     const uploadInputRef = useRef();
 
-    const [files, setFiles] = useState([]); // library video files
-    const [posts, setPosts] = useState([]); // all posts, for usage + attach
+    // Media-server side
+    const [videos, setVideos] = useState([]);
+    const [total, setTotal] = useState(0);
+    const [folders, setFolders] = useState([]);
+    const [folder, setFolder] = useState("");
+    const [recursive, setRecursive] = useState(true);
     const [loading, setLoading] = useState(false);
-    const [uploading, setUploading] = useState(false);
+    const [serverError, setServerError] = useState(null);
+
+    // ERP side: which posts use which video (matched on url).
+    const [posts, setPosts] = useState([]);
+
     const [page, setPage] = useState(1);
-
     const [search, setSearch] = useState("");
-    const [dateFrom, setDateFrom] = useState("");
-    const [dateTo, setDateTo] = useState("");
-    const [usageFilter, setUsageFilter] = useState("all"); // all | attached | unattached
-    const [sort, setSort] = useState("createdAt:desc");
+    const [sort, setSort] = useState("newest");
+    const [uploading, setUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState("");
 
-    // Attach flow: which file the picker is open for, and its own state.
-    const [attachFile, setAttachFile] = useState(null);
+    const [scanInfo, setScanInfo] = useState(null);
+    const [scanning, setScanning] = useState(false);
+
+    const [detail, setDetail] = useState(null); // video shown in the metadata panel
+    const [attachFor, setAttachFor] = useState(null); // video being attached
     const [attachSearch, setAttachSearch] = useState("");
-    const [attachingTo, setAttachingTo] = useState(null); // post documentId in flight
+    const [attachingTo, setAttachingTo] = useState(null);
     const [republishLive, setRepublishLive] = useState(true);
 
-    const loadAll = useCallback(async () => {
+    // ── media-server reads ──────────────────────────────────
+    const loadVideos = useCallback(async () => {
         if (!jwt) return;
         setLoading(true);
         try {
-            const libFiles = [];
-            for (let p = 1; p <= MAX_PAGES; p++) {
-                const res = await MediaLibraryEndpoints.files({
-                    mime: "video", sort: "createdAt:desc", page: p, pageSize: FETCH_PAGE,
-                });
-                const rows = res.data || [];
-                // A server that predates the `video` mime filter returns every
-                // file — keep only real videos either way.
-                libFiles.push(...rows.filter(isVideoFile));
-                const pc = res.meta?.pagination?.pageCount || 1;
-                if (p >= pc || rows.length === 0) break;
-            }
+            const res = await MediaLibraryEndpoints.mediaVideos({
+                folder: folder || undefined,
+                recursive: recursive ? 1 : 0,
+                q: search.trim() || undefined,
+                sort,
+                limit: PAGE_SIZE,
+                offset: (page - 1) * PAGE_SIZE,
+            });
+            const d = res.data || res;
+            setVideos(d.videos || []);
+            setTotal(d.total || 0);
+            setServerError(null);
+        } catch (err) {
+            console.error("Failed to load videos from the media server", err);
+            setVideos([]);
+            setServerError(
+                err?.response?.data?.error?.message
+                || "Could not reach the media server. Check MEDIA_BASE_URL / MEDIA_UPLOAD_TOKEN, and that its video API is deployed.",
+            );
+        } finally {
+            setLoading(false);
+        }
+    }, [jwt, folder, recursive, search, sort, page]);
 
-            const allPosts = [];
+    useEffect(() => { loadVideos(); }, [loadVideos]);
+    useEffect(() => { setPage(1); }, [folder, recursive, search, sort]);
+
+    const loadFolders = useCallback(async () => {
+        if (!jwt) return;
+        try {
+            const res = await MediaLibraryEndpoints.mediaVideoFolders();
+            setFolders((res.data || res).folders || []);
+        } catch {
+            setFolders([]);
+        }
+    }, [jwt]);
+
+    useEffect(() => { loadFolders(); }, [loadFolders]);
+
+    const loadScanStatus = useCallback(async () => {
+        if (!jwt) return;
+        try {
+            const res = await MediaLibraryEndpoints.videoScanStatus();
+            setScanInfo(res.data || res);
+        } catch {
+            setScanInfo(null);
+        }
+    }, [jwt]);
+
+    useEffect(() => { loadScanStatus(); }, [loadScanStatus]);
+
+    // ── ERP side: usage ─────────────────────────────────────
+    const loadPosts = useCallback(async () => {
+        if (!jwt) return;
+        try {
+            const all = [];
             for (let p = 1; p <= MAX_PAGES; p++) {
                 const res = await SocialPostsEndpoints.list({
                     status: "draft",
@@ -92,7 +153,7 @@ export default function VideosPage() {
                     pagination: { page: p, pageSize: FETCH_PAGE },
                 });
                 const rows = res.data || [];
-                allPosts.push(...rows);
+                all.push(...rows);
                 const pc = res.meta?.pagination?.pageCount || 1;
                 if (p >= pc || rows.length < FETCH_PAGE) break;
             }
@@ -100,123 +161,143 @@ export default function VideosPage() {
             try {
                 const pub = await SocialPostsEndpoints.publishedMarker();
                 pubIds = new Set((pub.data || []).map((x) => x.documentId));
-            } catch { /* treat everything as draft-only */ }
-
-            setFiles(libFiles);
-            setPosts(allPosts.map((p) => ({ ...p, _isPublished: pubIds.has(p.documentId) })));
+            } catch { /* draft-only */ }
+            setPosts(all.map((p) => ({ ...p, _isPublished: pubIds.has(p.documentId) })));
         } catch (err) {
-            console.error("Failed to load the video library", err);
-            toast("Failed to load the video library.", "danger");
-        } finally {
-            setLoading(false);
+            console.error("Failed to load posts", err);
         }
     }, [jwt]);
 
-    useEffect(() => { loadAll(); }, [loadAll]);
+    useEffect(() => { loadPosts(); }, [loadPosts]);
 
-    // file id → the posts using it. Also folds in videos a post references that
-    // the library listing missed (page cap), so nothing in use can be unlisted.
-    const { rows, usage } = useMemo(() => {
-        const use = new Map();
-        const extra = [];
-        const known = new Set(files.map((f) => f.id));
+    // A video's users, matched on the file url — the one identifier the media
+    // server and the ERP's library rows share.
+    const usageByUrl = useMemo(() => {
+        const map = new Map();
+        const add = (file, post, source) => {
+            const key = String(file?.url || "").replace(/^https?:\/\/[^/]+/i, "");
+            if (!key) return;
+            if (!map.has(key)) map.set(key, []);
+            map.get(key).push({ post, source });
+        };
         for (const post of posts) {
-            const note = (file, source) => {
-                if (!file?.url) return;
-                if (!use.has(file.id)) use.set(file.id, []);
-                use.get(file.id).push({ post, source });
-                if (!known.has(file.id)) { known.add(file.id); extra.push(file); }
-            };
-            (post.video || []).forEach((f) => note(f, "attached"));
-            (post.media || []).filter(isVideoFile).forEach((f) => note(f, "gallery"));
+            (post.video || []).forEach((f) => add(f, post, "attached"));
+            (post.media || []).filter(isVideoFile).forEach((f) => add(f, post, "gallery"));
         }
-        return { rows: [...files, ...extra], usage: use };
-    }, [files, posts]);
+        return map;
+    }, [posts]);
 
-    const filtered = useMemo(() => {
-        const q = search.trim().toLowerCase();
-        const from = dateFrom ? new Date(dateFrom) : null;
-        const to = dateTo ? new Date(`${dateTo}T23:59:59.999`) : null;
-        const list = rows.filter((file) => {
-            const used = usage.get(file.id) || [];
-            if (usageFilter === "attached" && used.length === 0) return false;
-            if (usageFilter === "unattached" && used.length > 0) return false;
-            if (q) {
-                const hay = `${file.name || ""} ${file.alternativeText || ""} ${used.map((u) => u.post.title || "").join(" ")}`.toLowerCase();
-                if (!hay.includes(q)) return false;
+    const usersOf = useCallback((v) => {
+        const key = String(v.url || "").replace(/^https?:\/\/[^/]+/i, "");
+        return usageByUrl.get(key) || usageByUrl.get(`/${String(v.path || "").replace(/^\/+/, "")}`) || [];
+    }, [usageByUrl]);
+
+    // ── actions ─────────────────────────────────────────────
+    // One at a time, so a single rejected file (too large, codec the provider
+    // refuses) doesn't sink the rest of the drop — and so the drop zone can name
+    // the file it is on.
+    const handleUpload = async (picked) => {
+        const files = Array.from(picked || []);
+        if (!files.length) return;
+        setUploading(true);
+        let ok = 0;
+        const failed = [];
+        try {
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                setUploadProgress(`${i + 1} of ${files.length} — ${file.name}`);
+                try {
+                    // The upload provider stores masters on the media server, so an
+                    // upload here IS a media-server file — it shows up in this gallery
+                    // (after its index catches up) and on every post picker.
+                    await UploadEndpoints.uploadFiles([file], null, null, null, { name: file.name, alt: null, caption: null });
+                    ok++;
+                } catch (err) {
+                    console.error(`Upload failed for ${file.name}`, err);
+                    failed.push(file.name);
+                }
             }
-            const created = file.createdAt ? new Date(file.createdAt) : null;
-            if (from && (!created || created < from)) return false;
-            if (to && (!created || created > to)) return false;
-            return true;
-        });
-        const [field, order] = sort.split(":");
-        const dir = order === "asc" ? 1 : -1;
-        list.sort((a, b) => {
-            if (field === "size") return ((a.size || 0) - (b.size || 0)) * dir;
-            if (field === "name") return String(a.name || "").localeCompare(String(b.name || "")) * dir;
-            return String(a.createdAt || "").localeCompare(String(b.createdAt || "")) * dir;
-        });
-        return list;
-    }, [rows, usage, search, dateFrom, dateTo, usageFilter, sort]);
+            if (ok) {
+                toast(
+                    `Uploaded ${ok} video(s) to the media server${failed.length ? `, ${failed.length} failed` : ""}.`,
+                    failed.length ? "warning" : "success",
+                );
+            } else {
+                toast(`Upload failed: ${failed.join(", ")}`, "danger");
+            }
+            await Promise.all([loadVideos(), loadFolders(), loadPosts()]);
+        } finally {
+            setUploading(false);
+            setUploadProgress("");
+        }
+    };
 
-    useEffect(() => { setPage(1); }, [search, dateFrom, dateTo, usageFilter, sort]);
+    const runScan = async () => {
+        setScanning(true);
+        try {
+            const res = await MediaLibraryEndpoints.videoScan(folder ? { folder } : {});
+            const r = res.data || res;
+            toast(
+                r.queued === false
+                    ? "The media server is already scanning — check back shortly."
+                    : "Drive scan queued on the media server. New videos appear as it indexes them.",
+                "success",
+            );
+            await loadScanStatus();
+        } catch (err) {
+            console.error("Scan request failed", err);
+            toast(
+                err?.response?.data?.error?.message
+                || "Could not start the scan — the media server may not have its video API deployed yet.",
+                "danger",
+            );
+        } finally {
+            setScanning(false);
+        }
+    };
 
-    const pageCount = Math.max(1, Math.ceil(filtered.length / CARDS_PER_PAGE));
-    const clampedPage = Math.min(page, pageCount);
-    const pageItems = filtered.slice((clampedPage - 1) * CARDS_PER_PAGE, clampedPage * CARDS_PER_PAGE);
-
-    const copyUrl = (file) => {
-        navigator.clipboard.writeText(MediaUtilsEndpoints.strapiImageUrl(file))
+    const copyUrl = (v) => {
+        navigator.clipboard.writeText(v.url)
             .then(() => toast("URL copied to clipboard.", "success"))
             .catch(() => toast("Failed to copy URL.", "danger"));
     };
 
-    const handleUpload = async (e) => {
-        const picked = Array.from(e.target.files || []);
-        if (!picked.length) return;
-        setUploading(true);
-        try {
-            await UploadEndpoints.uploadFiles(picked, null, null, null, { name: null, alt: null, caption: null });
-            toast(`Uploaded ${picked.length} video(s).`, "success");
-            await loadAll();
-        } catch (err) {
-            console.error("Upload failed", err);
-            toast("Upload failed.", "danger");
-        } finally {
-            setUploading(false);
-            e.target.value = "";
-        }
-    };
-
-    // ── attach to post ──────────────────────────────────────
-    const openAttach = (file) => { setAttachFile(file); setAttachSearch(""); };
-
     const attachToPost = async (post) => {
-        if (!attachFile) return;
-        const existing = (post.video || []).map((v) => v.id).filter(Boolean);
-        if (existing.includes(attachFile.id)) {
-            toast("That post already has this video attached.", "info");
-            return;
-        }
+        if (!attachFor) return;
         setAttachingTo(post.documentId);
         try {
-            await SocialPostsEndpoints.updateDraft(post.documentId, {
-                data: { video: [...existing, attachFile.id] },
+            // Link first: the post needs a library row id, and the row is only
+            // a pointer — the bytes stay on the media server.
+            const linkRes = await MediaLibraryEndpoints.linkMediaVideos({
+                videos: [{
+                    path: attachFor.path, url: attachFor.url, name: attachFor.name,
+                    mime: attachFor.mime, size_bytes: attachFor.size_bytes,
+                    width: attachFor.width, height: attachFor.height,
+                }],
             });
-            // A post that is already live needs re-publishing or the new video
-            // stays invisible to the poster and the public API. A draft is left
-            // a draft — attaching must never be what first publishes it.
+            const linked = (linkRes.data || linkRes).linked || [];
+            const fileId = linked[0]?.id;
+            if (!fileId) throw new Error("The media server file could not be linked into the library.");
+
+            const existing = (post.video || []).map((v) => v.id).filter(Boolean);
+            if (existing.includes(fileId)) {
+                toast("That post already has this video.", "info");
+                return;
+            }
+            await SocialPostsEndpoints.updateDraft(post.documentId, {
+                data: { video: [...existing, fileId] },
+            });
             const republished = !!(republishLive && post._isPublished);
             if (republished) await SocialPostsEndpoints.publish(post.documentId);
-            setPosts((list) => list.map((p) => (p.documentId === post.documentId
-                ? { ...p, video: [...(p.video || []), attachFile] }
-                : p)));
-            setAttachFile(null);
-            toast(`Attached to “${post.title || post.documentId}”${republished ? " and re-published" : " — the post stays a draft"}.`, "success");
+            setAttachFor(null);
+            toast(
+                `Attached to “${post.title || post.documentId}”${republished ? " and re-published" : " — the post stays a draft"}.`,
+                "success",
+            );
+            await loadPosts();
         } catch (err) {
             console.error("Failed to attach the video", err);
-            toast(err?.response?.data?.error?.message || "Failed to attach the video.", "danger");
+            toast(err?.response?.data?.error?.message || err.message || "Failed to attach the video.", "danger");
         } finally {
             setAttachingTo(null);
         }
@@ -224,13 +305,17 @@ export default function VideosPage() {
 
     const attachCandidates = useMemo(() => {
         const q = attachSearch.trim().toLowerCase();
-        const list = q
-            ? posts.filter((p) => `${p.title || ""} ${p.body || ""}`.toLowerCase().includes(q))
-            : posts;
+        const list = q ? posts.filter((p) => `${p.title || ""} ${p.body || ""}`.toLowerCase().includes(q)) : posts;
         return list.slice(0, 30);
     }, [posts, attachSearch]);
 
-    const filtersActive = search.trim() || dateFrom || dateTo || usageFilter !== "all";
+    const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    // Folder rows come back flat with a full path; indent by depth so the list
+    // still reads as a tree without a second data shape.
+    const folderRows = useMemo(() => folders
+        .slice()
+        .sort((a, b) => String(a.path).localeCompare(String(b.path)))
+        .map((f) => ({ ...f, depth: String(f.path || "").split("/").filter(Boolean).length - 1 })), [folders]);
 
     return (
         <ProtectedRoute>
@@ -238,175 +323,268 @@ export default function VideosPage() {
                 <ToastContainer />
                 <div className="d-flex align-items-center flex-wrap gap-2 mb-3">
                     <h3 className="mb-0"><i className="fas fa-clapperboard me-2"></i>Video Library</h3>
-                    <span className="badge bg-secondary align-self-center">
-                        {filtersActive ? `${filtered.length} of ${rows.length}` : `${rows.length}`} videos
-                    </span>
+                    <span className="badge bg-secondary align-self-center">{total} videos</span>
+                    {folder && <span className="badge bg-info align-self-center">/{folder}</span>}
                     <div className="ms-auto d-flex gap-2">
-                        <input ref={uploadInputRef} type="file" accept="video/*" multiple className="d-none" onChange={handleUpload} />
+                        <input ref={uploadInputRef} type="file" accept="video/*" multiple className="d-none"
+                            onChange={(e) => { const f = Array.from(e.target.files || []); e.target.value = ""; handleUpload(f); }} />
+                        <button className="btn btn-sm btn-outline-primary" onClick={runScan} disabled={scanning}
+                            title="Ask the media server to walk its drives and index new videos">
+                            {scanning ? <span className="spinner-border spinner-border-sm me-1"></span> : <i className="fas fa-hard-drive me-1"></i>}
+                            Scan drives
+                            {scanInfo?.job?.state === "running" || scanInfo?.job?.state === "queued" ? " (running)" : ""}
+                        </button>
                         <button className="btn btn-sm btn-primary" onClick={() => uploadInputRef.current?.click()} disabled={uploading}>
                             <i className="fas fa-cloud-upload-alt me-1"></i>{uploading ? "Uploading…" : "Upload Videos"}
                         </button>
-                        <Link className="btn btn-sm btn-outline-warning" href="/posts?video=without"
-                            title="Posts that still need a video">
+                        <Link className="btn btn-sm btn-outline-warning" href="/posts?video=without">
                             <i className="fas fa-film me-1"></i>Posts without a video
                         </Link>
-                        <button className="btn btn-sm btn-outline-secondary" onClick={loadAll} disabled={loading} title="Refresh">
+                        <button className="btn btn-sm btn-outline-secondary" onClick={() => { loadVideos(); loadFolders(); loadScanStatus(); }}
+                            disabled={loading} title="Refresh">
                             <i className={`fas fa-sync-alt ${loading ? "fa-spin" : ""}`}></i>
                         </button>
                     </div>
                 </div>
 
-                <div className="card mb-3">
-                    <div className="card-body py-2 d-flex flex-wrap align-items-center gap-2">
-                        <div className="input-group input-group-sm" style={{ maxWidth: 300 }}>
-                            <span className="input-group-text"><i className="fas fa-search"></i></span>
-                            <input className="form-control" placeholder="Search by file or post title…" value={search}
-                                onChange={(e) => setSearch(e.target.value)} />
-                        </div>
-                        <select className="form-select form-select-sm" style={{ width: "auto" }} value={usageFilter}
-                            onChange={(e) => setUsageFilter(e.target.value)}>
-                            <option value="all">Attached & unattached</option>
-                            <option value="attached">Attached to a post</option>
-                            <option value="unattached">Not attached yet</option>
-                        </select>
-                        <div className="input-group input-group-sm" style={{ width: "auto" }} title="Uploaded between">
-                            <span className="input-group-text"><i className="fas fa-calendar"></i></span>
-                            <input type="date" className="form-control" value={dateFrom} max={dateTo || undefined}
-                                onChange={(e) => setDateFrom(e.target.value)} />
-                            <span className="input-group-text">→</span>
-                            <input type="date" className="form-control" value={dateTo} min={dateFrom || undefined}
-                                onChange={(e) => setDateTo(e.target.value)} />
-                        </div>
-                        <select className="form-select form-select-sm" style={{ width: "auto" }} value={sort}
-                            onChange={(e) => setSort(e.target.value)}>
-                            <option value="createdAt:desc">Newest first</option>
-                            <option value="createdAt:asc">Oldest first</option>
-                            <option value="name:asc">Name A–Z</option>
-                            <option value="size:desc">Largest first</option>
-                        </select>
-                        {filtersActive && (
-                            <button className="btn btn-sm btn-link p-0"
-                                onClick={() => { setSearch(""); setDateFrom(""); setDateTo(""); setUsageFilter("all"); }}>
-                                Clear filters
-                            </button>
-                        )}
-                        {loading && <span className="spinner-border spinner-border-sm ms-auto"></span>}
+                {serverError && (
+                    <div className="alert alert-warning py-2">
+                        <i className="fas fa-triangle-exclamation me-2"></i>{serverError}
                     </div>
-                </div>
+                )}
 
-                {loading && rows.length === 0 ? (
-                    <div className="text-center py-5"><div className="spinner-border"></div></div>
-                ) : filtered.length === 0 ? (
-                    <div className="text-center text-muted py-5">
-                        <i className="fas fa-clapperboard fa-3x mb-3 d-block"></i>
-                        {rows.length === 0
-                            ? <>No videos yet. Render one in the <Link href="/posts/video-studio">Video Studio</Link>, or upload one here.</>
-                            : "No videos match the current filters."}
+                <DropZone
+                    accept="video/"
+                    label="Drop videos here to add them to the library"
+                    hint={folder
+                        ? `Drop anywhere on this page, or click to browse. Uploads go to the media server (not into /${folder} — the provider decides the path).`
+                        : "Drop anywhere on this page, or click to browse. Uploads go straight to the media server."}
+                    onFiles={handleUpload}
+                    busy={uploading}
+                    progress={uploadProgress}
+                    onSkipped={(n) => toast(`${n} file(s) ignored — this library takes video only.`, "warning")}
+                />
+
+                <div className="d-flex gap-3 align-items-start">
+                    {/* ── folder rail (media server's own tree) ── */}
+                    <div className="flex-shrink-0" style={{ width: 230 }}>
+                        <div className="card">
+                            <div className="card-header py-2 d-flex align-items-center">
+                                <i className="fas fa-folder-tree me-2"></i><strong className="small">Folders</strong>
+                                <span className="badge bg-secondary ms-auto">{folderRows.length}</span>
+                            </div>
+                            <div className="list-group list-group-flush" style={{ maxHeight: "60vh", overflowY: "auto" }}>
+                                <button type="button"
+                                    className={`list-group-item list-group-item-action py-1 px-2 small ${folder === "" ? "active" : ""}`}
+                                    onClick={() => setFolder("")}>
+                                    <i className="fas fa-globe me-1"></i>All videos
+                                </button>
+                                {folderRows.map((f) => (
+                                    <button key={f.path} type="button"
+                                        className={`list-group-item list-group-item-action py-1 px-2 small d-flex align-items-center ${folder === f.path ? "active" : ""}`}
+                                        style={{ paddingLeft: 8 + f.depth * 12 }}
+                                        onClick={() => setFolder(f.path)} title={f.path}>
+                                        <i className="fas fa-folder text-warning me-1"></i>
+                                        <span className="text-truncate flex-grow-1">{f.name || f.path}</span>
+                                        <span className="badge bg-light text-dark border ms-1">{f.videos}</span>
+                                    </button>
+                                ))}
+                                {folderRows.length === 0 && (
+                                    <div className="list-group-item small text-muted">
+                                        No folders reported. Run a drive scan.
+                                    </div>
+                                )}
+                            </div>
+                            <div className="card-footer py-1">
+                                <div className="form-check form-switch mb-0">
+                                    <input className="form-check-input" type="checkbox" id="recursive"
+                                        checked={recursive} onChange={(e) => setRecursive(e.target.checked)} />
+                                    <label className="form-check-label small" htmlFor="recursive">Include subfolders</label>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                ) : (
-                    <>
-                        <div className="row g-3">
-                            {pageItems.map((file) => {
-                                const used = usage.get(file.id) || [];
-                                return (
-                                    <div key={file.id} className="col-sm-6 col-md-4 col-xl-3">
-                                        <div className="card h-100 shadow-sm border-0">
-                                            <div className="bg-dark d-flex align-items-center justify-content-center"
-                                                style={{ borderRadius: "6px 6px 0 0", overflow: "hidden" }}>
-                                                <video
-                                                    src={MediaUtilsEndpoints.strapiImageUrl(file)}
-                                                    controls
-                                                    preload="metadata"
-                                                    style={{ width: "100%", maxHeight: 260, display: "block" }}
-                                                />
-                                            </div>
-                                            <div className="card-body p-2">
-                                                <div className="fw-semibold text-truncate" style={{ fontSize: 13 }} title={file.name}>
-                                                    {file.name}
+
+                    {/* ── grid ── */}
+                    <div className="flex-grow-1" style={{ minWidth: 0 }}>
+                        <div className="card mb-3">
+                            <div className="card-body py-2 d-flex flex-wrap align-items-center gap-2">
+                                <div className="input-group input-group-sm" style={{ maxWidth: 300 }}>
+                                    <span className="input-group-text"><i className="fas fa-search"></i></span>
+                                    <input className="form-control" placeholder="Search videos…" value={search}
+                                        onChange={(e) => setSearch(e.target.value)} />
+                                </div>
+                                <select className="form-select form-select-sm" style={{ width: "auto" }} value={sort}
+                                    onChange={(e) => setSort(e.target.value)}>
+                                    <option value="newest">Newest first</option>
+                                    <option value="oldest">Oldest first</option>
+                                    <option value="name">Name A–Z</option>
+                                    <option value="size">Largest first</option>
+                                </select>
+                                {loading && <span className="spinner-border spinner-border-sm ms-auto"></span>}
+                            </div>
+                        </div>
+
+                        {!loading && videos.length === 0 ? (
+                            <div className="text-center text-muted py-5">
+                                <i className="fas fa-clapperboard fa-3x mb-3 d-block"></i>
+                                {serverError ? "The media server did not answer." : "No videos here. Upload one, or run a drive scan."}
+                            </div>
+                        ) : (
+                            <div className="row g-3">
+                                {videos.map((v) => {
+                                    const used = usersOf(v);
+                                    const dur = fmtDuration(v.duration);
+                                    return (
+                                        <div key={v.id || v.path} className="col-sm-6 col-xl-4">
+                                            <div className="card h-100 shadow-sm border-0">
+                                                <div className="bg-dark d-flex align-items-center justify-content-center"
+                                                    style={{ borderRadius: "6px 6px 0 0", overflow: "hidden" }}>
+                                                    <video src={v.url} controls preload="metadata"
+                                                        style={{ width: "100%", maxHeight: 240, display: "block" }} />
                                                 </div>
-                                                <div className="text-muted d-flex align-items-center gap-2 flex-wrap" style={{ fontSize: 11 }}>
-                                                    <span>{formatBytes(file.size)}</span>
-                                                    {file.createdAt && <span>{new Date(file.createdAt).toLocaleDateString()}</span>}
-                                                    {used.length === 0 && (
-                                                        <span className="badge bg-light text-dark border">unattached</span>
+                                                <div className="card-body p-2">
+                                                    <div className="fw-semibold text-truncate" style={{ fontSize: 13 }} title={v.path}>
+                                                        {v.name}
+                                                    </div>
+                                                    <div className="text-muted d-flex flex-wrap gap-2" style={{ fontSize: 11 }}>
+                                                        <span>{fmtBytes(v.size_bytes)}</span>
+                                                        {dur && <span><i className="fas fa-stopwatch"></i> {dur}</span>}
+                                                        {v.width && v.height && <span>{v.width}×{v.height}</span>}
+                                                        {v.folder && <span title={v.folder}><i className="fas fa-folder"></i> {v.folder.split("/").pop()}</span>}
+                                                        {used.length === 0 && <span className="badge bg-light text-dark border">unused</span>}
+                                                    </div>
+                                                    {used.slice(0, 2).map(({ post, source }) => (
+                                                        <Link key={`${post.documentId}-${source}`} href={`/posts/${post.documentId}`}
+                                                            className="text-decoration-none d-block text-truncate mt-1" style={{ fontSize: 12 }}>
+                                                            <i className="fas fa-paper-plane me-1"></i>{post.title || "(untitled)"}
+                                                        </Link>
+                                                    ))}
+                                                    {used.length > 2 && (
+                                                        <span className="text-muted d-block" style={{ fontSize: 11 }}>+{used.length - 2} more</span>
                                                     )}
                                                 </div>
-                                                {used.slice(0, 2).map(({ post, source }) => (
-                                                    <Link key={`${post.documentId}-${source}`} href={`/posts/${post.documentId}`}
-                                                        className="text-decoration-none d-block text-truncate mt-1"
-                                                        style={{ fontSize: 12 }}
-                                                        title={`${post.title || "(untitled)"}${source === "gallery" ? " — in the media gallery, not the video slot" : ""}`}>
-                                                        <i className="fas fa-paper-plane me-1"></i>{post.title || "(untitled)"}
-                                                        {source === "gallery" && <span className="badge bg-light text-dark border ms-1">gallery</span>}
-                                                    </Link>
-                                                ))}
-                                                {used.length > 2 && (
-                                                    <span className="text-muted d-block mt-1" style={{ fontSize: 11 }}>
-                                                        +{used.length - 2} more post{used.length - 2 === 1 ? "" : "s"}
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div className="card-footer p-1 d-flex gap-1 justify-content-center">
-                                                <button className="btn btn-sm btn-outline-success" onClick={() => openAttach(file)}
-                                                    title="Attach this video to a post">
-                                                    <i className="fas fa-paperclip"></i>
-                                                </button>
-                                                {used[0] && (
-                                                    <Link className="btn btn-sm btn-outline-primary" href={`/posts/${used[0].post.documentId}`}
-                                                        title="Open the post">
-                                                        <i className="fas fa-pen"></i>
-                                                    </Link>
-                                                )}
-                                                {used[0] && imageItems(used[0].post).length > 0 && (
-                                                    <Link className="btn btn-sm btn-outline-warning" href={`/posts/video-studio?post=${used[0].post.documentId}`}
-                                                        title="Re-edit / re-render in the Video Studio">
-                                                        <i className="fas fa-film"></i>
-                                                    </Link>
-                                                )}
-                                                <a className="btn btn-sm btn-outline-secondary" href={MediaUtilsEndpoints.strapiImageUrl(file)}
-                                                    download={file.name} title="Download">
-                                                    <i className="fas fa-download"></i>
-                                                </a>
-                                                <button className="btn btn-sm btn-outline-secondary" onClick={() => copyUrl(file)} title="Copy URL">
-                                                    <i className="fas fa-link"></i>
-                                                </button>
+                                                <div className="card-footer p-1 d-flex gap-1 justify-content-center">
+                                                    <button className="btn btn-sm btn-outline-success" onClick={() => { setAttachFor(v); setAttachSearch(""); }}
+                                                        title="Attach to a post">
+                                                        <i className="fas fa-paperclip"></i>
+                                                    </button>
+                                                    <button className="btn btn-sm btn-outline-secondary" onClick={() => setDetail(v)} title="Details & metadata">
+                                                        <i className="fas fa-circle-info"></i>
+                                                    </button>
+                                                    {used[0] && (
+                                                        <Link className="btn btn-sm btn-outline-primary" href={`/posts/${used[0].post.documentId}`} title="Open the post">
+                                                            <i className="fas fa-pen"></i>
+                                                        </Link>
+                                                    )}
+                                                    {used[0] && imageItems(used[0].post).length > 0 && (
+                                                        <Link className="btn btn-sm btn-outline-warning" href={`/posts/video-studio?post=${used[0].post.documentId}`}
+                                                            title="Re-edit in the Video Studio">
+                                                            <i className="fas fa-film"></i>
+                                                        </Link>
+                                                    )}
+                                                    <a className="btn btn-sm btn-outline-secondary" href={v.url} download={v.name} title="Download">
+                                                        <i className="fas fa-download"></i>
+                                                    </a>
+                                                    <button className="btn btn-sm btn-outline-secondary" onClick={() => copyUrl(v)} title="Copy URL">
+                                                        <i className="fas fa-link"></i>
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
 
                         {pageCount > 1 && (
                             <nav className="mt-3">
                                 <ul className="pagination pagination-sm justify-content-center">
-                                    <li className={`page-item ${clampedPage <= 1 ? "disabled" : ""}`}>
-                                        <button className="page-link" onClick={() => setPage(clampedPage - 1)}>Prev</button>
+                                    <li className={`page-item ${page <= 1 ? "disabled" : ""}`}>
+                                        <button className="page-link" onClick={() => setPage(page - 1)}>Prev</button>
                                     </li>
-                                    {Array.from({ length: pageCount }, (_, i) => i + 1).map((p) => (
-                                        <li key={p} className={`page-item ${p === clampedPage ? "active" : ""}`}>
-                                            <button className="page-link" onClick={() => setPage(p)}>{p}</button>
-                                        </li>
-                                    ))}
-                                    <li className={`page-item ${clampedPage >= pageCount ? "disabled" : ""}`}>
-                                        <button className="page-link" onClick={() => setPage(clampedPage + 1)}>Next</button>
+                                    {Array.from({ length: Math.min(pageCount, 9) }, (_, i) => {
+                                        let p;
+                                        if (pageCount <= 9) p = i + 1;
+                                        else if (page <= 5) p = i + 1;
+                                        else if (page >= pageCount - 4) p = pageCount - 8 + i;
+                                        else p = page - 4 + i;
+                                        return (
+                                            <li key={p} className={`page-item ${p === page ? "active" : ""}`}>
+                                                <button className="page-link" onClick={() => setPage(p)}>{p}</button>
+                                            </li>
+                                        );
+                                    })}
+                                    <li className={`page-item ${page >= pageCount ? "disabled" : ""}`}>
+                                        <button className="page-link" onClick={() => setPage(page + 1)}>Next</button>
                                     </li>
                                 </ul>
                             </nav>
                         )}
-                    </>
+                    </div>
+                </div>
+
+                {/* ── metadata panel ── */}
+                {detail && (
+                    <div className="modal d-block" tabIndex={-1} style={{ background: "rgba(0,0,0,0.5)", zIndex: 9999 }}>
+                        <div className="modal-dialog modal-lg modal-dialog-scrollable">
+                            <div className="modal-content">
+                                <div className="modal-header py-2">
+                                    <h5 className="modal-title text-truncate"><i className="fas fa-circle-info me-2"></i>{detail.name}</h5>
+                                    <button type="button" className="btn-close" onClick={() => setDetail(null)}></button>
+                                </div>
+                                <div className="modal-body">
+                                    <video src={detail.url} controls preload="metadata" className="w-100 mb-3 bg-dark rounded" style={{ maxHeight: 320 }} />
+                                    <table className="table table-sm small mb-3">
+                                        <tbody>
+                                            <tr><td className="text-muted" style={{ width: 140 }}>Path</td><td className="text-break">{detail.path}</td></tr>
+                                            <tr><td className="text-muted">Folder</td><td>{detail.folder || <span className="text-muted">root</span>}</td></tr>
+                                            <tr><td className="text-muted">Type</td><td>{detail.mime}</td></tr>
+                                            <tr><td className="text-muted">Size</td><td>{fmtBytes(detail.size_bytes)}</td></tr>
+                                            {fmtDuration(detail.duration) && <tr><td className="text-muted">Duration</td><td>{fmtDuration(detail.duration)}</td></tr>}
+                                            {detail.width && detail.height && <tr><td className="text-muted">Dimensions</td><td>{detail.width} × {detail.height}</td></tr>}
+                                            {detail.visibility && <tr><td className="text-muted">Visibility</td><td>{detail.visibility}</td></tr>}
+                                            {detail.created_at && <tr><td className="text-muted">Added</td><td>{new Date(detail.created_at).toLocaleString()}</td></tr>}
+                                            <tr><td className="text-muted">URL</td><td className="text-break"><a href={detail.url} target="_blank" rel="noopener noreferrer">{detail.url}</a></td></tr>
+                                        </tbody>
+                                    </table>
+                                    <div>
+                                        <strong className="small">Used by</strong>
+                                        {usersOf(detail).length === 0 ? (
+                                            <p className="text-muted small mb-0">No post uses this video yet.</p>
+                                        ) : (
+                                            <ul className="list-unstyled mb-0 small">
+                                                {usersOf(detail).map(({ post, source }) => (
+                                                    <li key={`${post.documentId}-${source}`}>
+                                                        <Link href={`/posts/${post.documentId}`}>{post.title || "(untitled)"}</Link>
+                                                        {source === "gallery" && <span className="badge bg-light text-dark border ms-1">gallery</span>}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="modal-footer py-2">
+                                    <button className="btn btn-sm btn-success" onClick={() => { setAttachFor(detail); setDetail(null); }}>
+                                        <i className="fas fa-paperclip me-1"></i>Attach to a post
+                                    </button>
+                                    <button className="btn btn-secondary btn-sm" onClick={() => setDetail(null)}>Close</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 )}
 
                 {/* ── attach-to-post picker ── */}
-                {attachFile && (
+                {attachFor && (
                     <div className="modal d-block" tabIndex={-1} style={{ background: "rgba(0,0,0,0.5)", zIndex: 9999 }}>
                         <div className="modal-dialog modal-lg modal-dialog-scrollable">
                             <div className="modal-content">
                                 <div className="modal-header py-2">
                                     <h5 className="modal-title text-truncate">
-                                        <i className="fas fa-paperclip me-2"></i>Attach “{attachFile.name}” to a post
+                                        <i className="fas fa-paperclip me-2"></i>Attach “{attachFor.name}” to a post
                                     </h5>
-                                    <button type="button" className="btn-close" onClick={() => setAttachFile(null)}></button>
+                                    <button type="button" className="btn-close" onClick={() => setAttachFor(null)}></button>
                                 </div>
                                 <div className="modal-body">
                                     <div className="d-flex flex-wrap align-items-center gap-3 mb-2">
@@ -418,66 +596,54 @@ export default function VideosPage() {
                                         <div className="form-check form-switch mb-0">
                                             <input className="form-check-input" type="checkbox" id="attach-republish"
                                                 checked={republishLive} onChange={(e) => setRepublishLive(e.target.checked)} />
-                                            <label className="form-check-label small" htmlFor="attach-republish"
-                                                title="Posts that are already live are re-published so the poster and the public API see the new video. Drafts are never published by this.">
+                                            <label className="form-check-label small" htmlFor="attach-republish">
                                                 Re-publish already-live posts
                                             </label>
                                         </div>
                                     </div>
-                                    {attachCandidates.length === 0 ? (
-                                        <p className="text-muted small mb-0">No posts match.</p>
-                                    ) : (
-                                        <div className="list-group">
-                                            {attachCandidates.map((post) => {
-                                                const already = (post.video || []).some((v) => v.id === attachFile.id);
-                                                const thumb = post.cover || imageItems(post)[0];
-                                                const busy = attachingTo === post.documentId;
-                                                return (
-                                                    <div key={post.documentId} className="list-group-item d-flex align-items-center gap-2 py-1 px-2">
-                                                        {thumb ? (
-                                                            <img src={MediaUtilsEndpoints.strapiImageUrl(thumb.formats?.thumbnail || thumb)} alt=""
-                                                                style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 4 }} />
-                                                        ) : (
-                                                            <div className="bg-light rounded d-flex align-items-center justify-content-center"
-                                                                style={{ width: 40, height: 40 }}>
-                                                                <i className="fas fa-image text-muted"></i>
-                                                            </div>
-                                                        )}
-                                                        <div className="flex-grow-1" style={{ minWidth: 0 }}>
-                                                            <div className="text-truncate fw-semibold" style={{ fontSize: 13 }}>
-                                                                {post.title || "(untitled)"}
-                                                            </div>
-                                                            <div className="d-flex gap-1" style={{ fontSize: 10 }}>
-                                                                <span className={`badge ${POST_STATUS_BADGES[post.post_status] || "bg-secondary"}`}>
-                                                                    {(post.post_status || "draft").replace("_", " ")}
-                                                                </span>
-                                                                <span className={`badge ${post._isPublished ? "bg-success" : "bg-secondary"}`}>
-                                                                    {post._isPublished ? "Live" : "Draft"}
-                                                                </span>
-                                                                {(post.video || []).length > 0 && (
-                                                                    <span className="badge bg-dark" title="Already has a video">
-                                                                        <i className="fas fa-film"></i> {(post.video || []).length}
-                                                                    </span>
-                                                                )}
-                                                            </div>
+                                    <div className="list-group">
+                                        {attachCandidates.map((post) => {
+                                            const thumb = post.cover || imageItems(post)[0];
+                                            const busy = attachingTo === post.documentId;
+                                            return (
+                                                <div key={post.documentId} className="list-group-item d-flex align-items-center gap-2 py-1 px-2">
+                                                    {thumb ? (
+                                                        <img src={MediaUtilsEndpoints.strapiImageUrl(thumb.formats?.thumbnail || thumb)} alt=""
+                                                            style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 4 }} />
+                                                    ) : (
+                                                        <div className="bg-light rounded d-flex align-items-center justify-content-center" style={{ width: 40, height: 40 }}>
+                                                            <i className="fas fa-image text-muted"></i>
                                                         </div>
-                                                        <button className={`btn btn-sm ${already ? "btn-outline-secondary" : "btn-success"}`}
-                                                            disabled={already || !!attachingTo}
-                                                            onClick={() => attachToPost(post)}>
-                                                            {busy ? <span className="spinner-border spinner-border-sm"></span>
-                                                                : already ? "Attached" : "Attach"}
-                                                        </button>
+                                                    )}
+                                                    <div className="flex-grow-1" style={{ minWidth: 0 }}>
+                                                        <div className="text-truncate fw-semibold" style={{ fontSize: 13 }}>{post.title || "(untitled)"}</div>
+                                                        <div className="d-flex gap-1" style={{ fontSize: 10 }}>
+                                                            <span className={`badge ${POST_STATUS_BADGES[post.post_status] || "bg-secondary"}`}>
+                                                                {(post.post_status || "draft").replace("_", " ")}
+                                                            </span>
+                                                            <span className={`badge ${post._isPublished ? "bg-success" : "bg-secondary"}`}>
+                                                                {post._isPublished ? "Live" : "Draft"}
+                                                            </span>
+                                                            {(post.video || []).length > 0 && (
+                                                                <span className="badge bg-dark"><i className="fas fa-film"></i> {(post.video || []).length}</span>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
+                                                    <button className="btn btn-sm btn-success" disabled={!!attachingTo}
+                                                        onClick={() => attachToPost(post)}>
+                                                        {busy ? <span className="spinner-border spinner-border-sm"></span> : "Attach"}
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
+                                        {attachCandidates.length === 0 && <p className="text-muted small mb-0">No posts match.</p>}
+                                    </div>
                                 </div>
                                 <div className="modal-footer py-2">
                                     <span className="me-auto text-muted small">
-                                        The video is appended to the post's video slot — existing videos stay.
+                                        The video stays on the media server — the post just points at it.
                                     </span>
-                                    <button className="btn btn-secondary btn-sm" onClick={() => setAttachFile(null)}>Close</button>
+                                    <button className="btn btn-secondary btn-sm" onClick={() => setAttachFor(null)}>Close</button>
                                 </div>
                             </div>
                         </div>
