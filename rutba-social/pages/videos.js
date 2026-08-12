@@ -49,7 +49,10 @@ const fmtBytes = (bytes) => {
 const fmtDuration = (s) => {
     const n = Number(s);
     if (!Number.isFinite(n) || n <= 0) return null;
-    return `${Math.floor(n / 60)}:${String(Math.round(n % 60)).padStart(2, "0")}`;
+    // Round to whole seconds BEFORE splitting, so a remainder that rounds up to
+    // 60 carries into the minutes instead of rendering "1:60".
+    const t = Math.round(n);
+    return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
 };
 
 export default function VideosPage() {
@@ -78,6 +81,10 @@ export default function VideosPage() {
     const [scanInfo, setScanInfo] = useState(null);
     const [scanning, setScanning] = useState(false);
 
+    // Any filter change resets to page 1 IN THE SAME update as the filter, so a
+    // request can never carry a new filter with the previous page's offset.
+    const applyFilter = (setter) => (value) => { setter(value); setPage(1); };
+
     const [detail, setDetail] = useState(null); // video shown in the metadata panel
     const [attachFor, setAttachFor] = useState(null); // video being attached
     const [attachSearch, setAttachSearch] = useState("");
@@ -85,8 +92,14 @@ export default function VideosPage() {
     const [republishLive, setRepublishLive] = useState(true);
 
     // ── media-server reads ──────────────────────────────────
+    // Requests are unabortable and the listing is filtered SERVER-side, so a
+    // slow earlier response could land after a newer one and repaint the grid
+    // with results for a filter the user has already moved on from. Every
+    // request takes a ticket; only the newest ticket may write state.
+    const reqSeq = useRef(0);
     const loadVideos = useCallback(async () => {
         if (!jwt) return;
+        const mine = ++reqSeq.current;
         setLoading(true);
         try {
             const res = await MediaLibraryEndpoints.mediaVideos({
@@ -98,23 +111,26 @@ export default function VideosPage() {
                 offset: (page - 1) * PAGE_SIZE,
             });
             const d = res.data || res;
+            if (mine !== reqSeq.current) return; // a newer request owns the grid
             setVideos(d.videos || []);
             setTotal(d.total || 0);
             setServerError(null);
         } catch (err) {
             console.error("Failed to load videos from the media server", err);
+            if (mine !== reqSeq.current) return;
             setVideos([]);
             setServerError(
                 err?.response?.data?.error?.message
                 || "Could not reach the media server. Check MEDIA_BASE_URL / MEDIA_UPLOAD_TOKEN, and that its video API is deployed.",
             );
         } finally {
-            setLoading(false);
+            // Only the newest request may clear the spinner — otherwise a stale
+            // response ends the loading state while the live one is still out.
+            if (mine === reqSeq.current) setLoading(false);
         }
     }, [jwt, folder, recursive, search, sort, page]);
 
     useEffect(() => { loadVideos(); }, [loadVideos]);
-    useEffect(() => { setPage(1); }, [folder, recursive, search, sort]);
 
     const loadFolders = useCallback(async () => {
         if (!jwt) return;
@@ -376,14 +392,14 @@ export default function VideosPage() {
                             <div className="list-group list-group-flush" style={{ maxHeight: "60vh", overflowY: "auto" }}>
                                 <button type="button"
                                     className={`list-group-item list-group-item-action py-1 px-2 small ${folder === "" ? "active" : ""}`}
-                                    onClick={() => setFolder("")}>
+                                    onClick={() => applyFilter(setFolder)("")}>
                                     <i className="fas fa-globe me-1"></i>All videos
                                 </button>
                                 {folderRows.map((f) => (
                                     <button key={f.path} type="button"
                                         className={`list-group-item list-group-item-action py-1 px-2 small d-flex align-items-center ${folder === f.path ? "active" : ""}`}
                                         style={{ paddingLeft: 8 + f.depth * 12 }}
-                                        onClick={() => setFolder(f.path)} title={f.path}>
+                                        onClick={() => applyFilter(setFolder)(f.path)} title={f.path}>
                                         <i className="fas fa-folder text-warning me-1"></i>
                                         <span className="text-truncate flex-grow-1">{f.name || f.path}</span>
                                         <span className="badge bg-light text-dark border ms-1">{f.videos}</span>
@@ -398,7 +414,7 @@ export default function VideosPage() {
                             <div className="card-footer py-1">
                                 <div className="form-check form-switch mb-0">
                                     <input className="form-check-input" type="checkbox" id="recursive"
-                                        checked={recursive} onChange={(e) => setRecursive(e.target.checked)} />
+                                        checked={recursive} onChange={(e) => applyFilter(setRecursive)(e.target.checked)} />
                                     <label className="form-check-label small" htmlFor="recursive">Include subfolders</label>
                                 </div>
                             </div>
@@ -412,7 +428,7 @@ export default function VideosPage() {
                                 <div className="input-group input-group-sm" style={{ maxWidth: 300 }}>
                                     <span className="input-group-text"><i className="fas fa-search"></i></span>
                                     <input className="form-control" placeholder="Search videos…" value={search}
-                                        onChange={(e) => setSearch(e.target.value)} />
+                                        onChange={(e) => applyFilter(setSearch)(e.target.value)} />
                                 </div>
                                 <select className="form-select form-select-sm" style={{ width: "auto" }} value={sort}
                                     onChange={(e) => setSort(e.target.value)}>
