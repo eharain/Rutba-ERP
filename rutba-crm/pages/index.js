@@ -3,6 +3,13 @@ import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { CrmLeadsEndpoints, CrmActivitiesEndpoints, CrmContactsEndpoints } from "@rutba/api-provider/endpoints";
+import AppHome, {
+    AppHomeStats,
+    AppHomeStat,
+    AppHomePanel,
+    AppHomeEmpty,
+    AppHomeSection,
+} from "@rutba/pos-shared/components/AppHome";
 import Link from "next/link";
 import { LEAD_STATUSES, leadStatusColor } from "../components/leadStatus";
 
@@ -59,60 +66,64 @@ export default function Home() {
     return (
         <ProtectedRoute>
             <Layout>
-                <h2>Welcome to Rutba CRM 🤝</h2>
-                <p className="text-muted mb-4">
-                    Manage customer relationships, track leads, and monitor interactions.
-                </p>
+                <AppHome
+                    app="crm"
+                    eyebrow="Sales & customers"
+                    title="CRM"
+                    subtitle="Manage customer relationships, track leads through the pipeline and keep every interaction on the record."
+                    actions={
+                        <>
+                            <Link href="/leads" className="btn btn-accent">
+                                <i className="fa-solid fa-bullseye me-2"></i>Leads board
+                            </Link>
+                            <Link href="/contacts" className="btn btn-outline-secondary">
+                                <i className="fa-solid fa-address-book me-2"></i>Contacts
+                            </Link>
+                        </>
+                    }
+                >
+                    <AppHomeSection title="At a glance" />
+                    <AppHomeStats>
+                        <AppHomeStat
+                            label="Open leads"
+                            value={openLeads.length}
+                            icon="fa-bullseye"
+                            tone="primary"
+                            href="/leads"
+                            loading={loading}
+                        />
+                        <AppHomeStat
+                            label="Pipeline value"
+                            value={pipelineValue.toLocaleString()}
+                            icon="fa-sack-dollar"
+                            tone="success"
+                            loading={loading}
+                        />
+                        <AppHomeStat
+                            label="New leads"
+                            value={newThisWeek}
+                            icon="fa-arrow-trend-up"
+                            tone="info"
+                            hint="last 7 days"
+                            loading={loading}
+                        />
+                        <AppHomeStat
+                            label="Contacts"
+                            value={contactCount ?? "—"}
+                            icon="fa-address-book"
+                            tone="teal"
+                            href="/contacts"
+                            loading={loading}
+                        />
+                    </AppHomeStats>
 
-                {loading && <p>Loading dashboard...</p>}
-
-                {!loading && (
-                    <>
-                        <div className="row g-3 mb-4">
-                            <div className="col-6 col-md-3">
-                                <div className="card border-primary h-100">
-                                    <div className="card-body text-center">
-                                        <div className="fs-3 fw-bold">{openLeads.length}</div>
-                                        <div className="text-muted">Open Leads</div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="col-6 col-md-3">
-                                <div className="card border-success h-100">
-                                    <div className="card-body text-center">
-                                        <div className="fs-3 fw-bold">{pipelineValue.toLocaleString()}</div>
-                                        <div className="text-muted">Pipeline Value</div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="col-6 col-md-3">
-                                <div className="card border-info h-100">
-                                    <div className="card-body text-center">
-                                        <div className="fs-3 fw-bold">{newThisWeek}</div>
-                                        <div className="text-muted">New Leads (7d)</div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="col-6 col-md-3">
-                                <div className="card border-secondary h-100">
-                                    <div className="card-body text-center">
-                                        <div className="fs-3 fw-bold">{contactCount ?? "—"}</div>
-                                        <div className="text-muted">Contacts</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="row g-3">
-                            <div className="col-lg-4">
-                                <div className="card h-100">
-                                    <div className="card-header d-flex justify-content-between">
-                                        <strong>Pipeline</strong>
-                                        <Link className="small" href="/leads">View board</Link>
-                                    </div>
-                                    <ul className="list-group list-group-flush">
-                                        {byStatus.map((s) => (
-                                            <li key={s.status} className="list-group-item d-flex justify-content-between align-items-center">
+                    <div className="row g-3">
+                        <div className="col-lg-4">
+                            <AppHomePanel title="Pipeline" icon="fa-chart-simple" tone="primary" href="/leads" linkLabel="View board" flush>
+                                <ul className="app-list">
+                                    {byStatus.map((s) => (
+                                        <li key={s.status}>
+                                            <div className="app-list-row">
                                                 <span>
                                                     <span className={`badge bg-${leadStatusColor(s.status)} me-2`}>{s.count}</span>
                                                     {s.status}
@@ -120,72 +131,71 @@ export default function Home() {
                                                 <small className="text-muted">
                                                     {s.value > 0 ? s.value.toLocaleString() : ""}
                                                 </small>
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </AppHomePanel>
+                        </div>
+
+                        <div className="col-lg-4">
+                            <AppHomePanel title="Recent activities" icon="fa-clock-rotate-left" tone="info" href="/activities" flush>
+                                {recentActivities.length === 0 ? (
+                                    <AppHomeEmpty>
+                                        {loading ? "Loading…" : "No activities yet."}
+                                    </AppHomeEmpty>
+                                ) : (
+                                    <ul className="app-list">
+                                        {recentActivities.map((a) => (
+                                            <li key={a.documentId || a.id}>
+                                                <div className="app-list-row">
+                                                    <span className="text-truncate me-2">{a.subject}</span>
+                                                    <small className="text-muted text-nowrap">
+                                                        {new Date(a.date).toLocaleDateString()}
+                                                    </small>
+                                                </div>
+                                                <div className="app-list-meta">
+                                                    {a.type || "Note"}
+                                                    {a.contact ? ` · ${a.contact.name}` : ""}
+                                                </div>
                                             </li>
                                         ))}
                                     </ul>
-                                </div>
-                            </div>
-
-                            <div className="col-lg-4">
-                                <div className="card h-100">
-                                    <div className="card-header d-flex justify-content-between">
-                                        <strong>Recent Activities</strong>
-                                        <Link className="small" href="/activities">View all</Link>
-                                    </div>
-                                    {recentActivities.length === 0 ? (
-                                        <div className="card-body text-muted">No activities yet.</div>
-                                    ) : (
-                                        <ul className="list-group list-group-flush">
-                                            {recentActivities.map((a) => (
-                                                <li key={a.documentId || a.id} className="list-group-item">
-                                                    <div className="d-flex justify-content-between">
-                                                        <span className="text-truncate me-2">{a.subject}</span>
-                                                        <small className="text-muted text-nowrap">
-                                                            {new Date(a.date).toLocaleDateString()}
-                                                        </small>
-                                                    </div>
-                                                    <small className="text-muted">
-                                                        {a.type || "Note"}
-                                                        {a.contact ? ` · ${a.contact.name}` : ""}
-                                                    </small>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    )}
-                                </div>
-                            </div>
-
-                            <div className="col-lg-4">
-                                <div className="card h-100">
-                                    <div className="card-header"><strong>Upcoming Follow-ups</strong></div>
-                                    {followUps.length === 0 ? (
-                                        <div className="card-body text-muted">Nothing scheduled.</div>
-                                    ) : (
-                                        <ul className="list-group list-group-flush">
-                                            {followUps.map((a) => (
-                                                <li key={a.documentId || a.id} className="list-group-item">
-                                                    <div className="d-flex justify-content-between">
-                                                        <span className="text-truncate me-2">{a.subject}</span>
-                                                        <small className="text-muted text-nowrap">
-                                                            {new Date(a.date).toLocaleString()}
-                                                        </small>
-                                                    </div>
-                                                    {a.contact && (
-                                                        <small className="text-muted">
-                                                            <Link href={`/${a.contact.documentId || a.contact.id}/contact`}>
-                                                                {a.contact.name}
-                                                            </Link>
-                                                        </small>
-                                                    )}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    )}
-                                </div>
-                            </div>
+                                )}
+                            </AppHomePanel>
                         </div>
-                    </>
-                )}
+
+                        <div className="col-lg-4">
+                            <AppHomePanel title="Upcoming follow-ups" icon="fa-calendar-day" tone="warning" flush>
+                                {followUps.length === 0 ? (
+                                    <AppHomeEmpty>
+                                        {loading ? "Loading…" : "Nothing scheduled."}
+                                    </AppHomeEmpty>
+                                ) : (
+                                    <ul className="app-list">
+                                        {followUps.map((a) => (
+                                            <li key={a.documentId || a.id}>
+                                                <div className="app-list-row">
+                                                    <span className="text-truncate me-2">{a.subject}</span>
+                                                    <small className="text-muted text-nowrap">
+                                                        {new Date(a.date).toLocaleString()}
+                                                    </small>
+                                                </div>
+                                                {a.contact && (
+                                                    <div className="app-list-meta">
+                                                        <Link href={`/${a.contact.documentId || a.contact.id}/contact`}>
+                                                            {a.contact.name}
+                                                        </Link>
+                                                    </div>
+                                                )}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </AppHomePanel>
+                        </div>
+                    </div>
+                </AppHome>
             </Layout>
         </ProtectedRoute>
     );

@@ -1,66 +1,44 @@
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
+import AppHome, { AppHomeGrid, AppHomeTile, AppHomeSection } from "@rutba/pos-shared/components/AppHome";
 import Link from "next/link";
+
+const SECTIONS = [
+    { href: "/sales", icon: "fa-cart-shopping", tone: "primary", title: "Sales", text: "Create new sales transactions and manage customer checkout workflows." },
+    { href: "/sales-returns", icon: "fa-rotate-left", tone: "info", title: "Returns", text: "Process returned items and complete sale return adjustments." },
+    { href: "/cash-register", icon: "fa-cash-register", tone: "warning", title: "Current Register", text: "Open, monitor and close the active register for daily POS operations." },
+    { href: "/cash-register-history", icon: "fa-money-bill-wave", tone: "success", title: "Cash Registers", text: "Browse all register sessions, see the current one and audit cash movement." },
+    { href: "/reports", icon: "fa-chart-line", tone: "dark", title: "Reports", text: "Track sales performance with operational and financial reporting." },
+];
 
 export default function Home() {
     return (
         <ProtectedRoute>
             <Layout>
-                <h2>Welcome to Rutba Point of Sale 🛒</h2>
-                <p className="text-muted mb-4">
-                    Create sales, process returns, manage cash registers, and view reports.
-                </p>
-
-                <div className="row g-3">
-                    <div className="col-md-4">
-                        <div className="card border-primary h-100">
-                            <div className="card-body">
-                                <h5 className="card-title"><i className="fas fa-shopping-cart me-2 text-primary"></i>Sales</h5>
-                                <p className="card-text text-muted">Create new sales transactions and manage customer checkout workflows.</p>
-                                <Link className="btn btn-outline-primary btn-sm" href="/sales">Open Sales</Link>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="col-md-4">
-                        <div className="card border-info h-100">
-                            <div className="card-body">
-                                <h5 className="card-title"><i className="fas fa-undo-alt me-2 text-info"></i>Returns</h5>
-                                <p className="card-text text-muted">Process returned items and complete sale return adjustments.</p>
-                                <Link className="btn btn-outline-info btn-sm" href="/sales-returns">Manage Returns</Link>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="col-md-4">
-                        <div className="card border-success h-100">
-                            <div className="card-body">
-                                <h5 className="card-title"><i className="fas fa-money-bill-wave me-2 text-success"></i>Cash Registers</h5>
-                                <p className="card-text text-muted">Browse all register sessions, see the current one, and audit cash movement.</p>
-                                <Link className="btn btn-outline-success btn-sm" href="/cash-register-history">All Registers</Link>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="col-md-4">
-                        <div className="card border-warning h-100">
-                            <div className="card-body">
-                                <h5 className="card-title"><i className="fas fa-cash-register me-2 text-warning"></i>Current Register</h5>
-                                <p className="card-text text-muted">Open, monitor, and close the active register for daily POS operations.</p>
-                                <Link className="btn btn-outline-warning btn-sm" href="/cash-register">Open / Current</Link>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="col-md-4">
-                        <div className="card border-dark h-100">
-                            <div className="card-body">
-                                <h5 className="card-title"><i className="fas fa-chart-line me-2 text-dark"></i>Reports</h5>
-                                <p className="card-text text-muted">Track sales performance with operational and financial reporting.</p>
-                                <Link className="btn btn-outline-dark btn-sm" href="/reports">View Reports</Link>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <AppHome
+                    app="sale"
+                    eyebrow="Point of sale"
+                    title="Point of Sale"
+                    subtitle="Ring up sales, process returns, run the cash register and review the day's performance."
+                    actions={
+                        <>
+                            <Link href="/sales" className="btn btn-accent">
+                                <i className="fa-solid fa-plus me-2"></i>New sale
+                            </Link>
+                            <Link href="/cash-register" className="btn btn-outline-secondary">
+                                <i className="fa-solid fa-cash-register me-2"></i>Register
+                            </Link>
+                        </>
+                    }
+                >
+                    <AppHomeSection title="Everything in Point of Sale" />
+                    <AppHomeGrid>
+                        {SECTIONS.map((s) => (
+                            <AppHomeTile key={s.href} {...s} />
+                        ))}
+                    </AppHomeGrid>
+                </AppHome>
             </Layout>
         </ProtectedRoute>
     );
 }
-
-

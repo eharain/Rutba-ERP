@@ -1,5 +1,10 @@
 /* Layout helpers */
 
+/* The shared app-home design system (tokens, hero, tiles, stats, panels
+   and the general card/control polish). Imported here rather than from
+   each app's _app.js so all 21 apps pick it up with no per-app wiring. */
+@import "./app-home.css";
+
 /* Full-width header/footer wrapper */
 .layout-header,
 .layout-footer {
@@ -57,13 +62,21 @@
     --rutba-font-sans: var(--font-geist-sans, "Inter", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif);
     --rutba-font-mono: var(--font-geist-mono, "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace);
     --rutba-text: #1f2937;
-    --rutba-muted: #6b7280;
-    --rutba-border: #e5e7eb;
+    --rutba-muted: #667085;
+    --rutba-border: #e6e9ef;
     --rutba-accent: #f5b400;
-    --rutba-nav-bg: #1f242b;
-    --rutba-nav-bg-hover: #2a3038;
-    --rutba-nav-text: rgba(255, 255, 255, 0.78);
+
+    /* Chrome — a deep, cool slate. Cooler than the old warm grey so the
+       amber accent reads as deliberate rather than muddy. */
+    --rutba-nav-bg: #141b28;
+    --rutba-nav-bg-2: #1b2433;
+    --rutba-nav-bg-hover: rgba(255, 255, 255, 0.09);
+    --rutba-nav-text: rgba(233, 238, 246, 0.76);
     --rutba-nav-text-hover: #ffffff;
+    /* Alias — the topbar rules reference this spelling. It was never
+       defined, so top-bar hovers silently lost their text colour. */
+    --rutba-nav-text-hi: #ffffff;
+    --rutba-nav-line: rgba(255, 255, 255, 0.08);
 }
 
 body {
@@ -353,26 +366,41 @@ a:hover { text-decoration: underline; }
 
 
 /* Layout container softening (header/footer) */
-.layout-header { background: var(--rutba-nav-bg); }
+.layout-header {
+    background: linear-gradient(180deg, var(--rutba-nav-bg-2) 0%, var(--rutba-nav-bg) 100%);
+    border-bottom: 1px solid var(--rutba-nav-line) !important;
+    box-shadow: 0 1px 3px rgba(10, 15, 25, 0.18), 0 6px 18px -10px rgba(10, 15, 25, 0.35);
+    position: relative;
+    z-index: 1030;
+}
 .layout-header .layout-container { padding-top: 0 !important; padding-bottom: 0 !important; }
 
-.layout-footer { font-size: 0.85rem; color: var(--rutba-muted); }
+.layout-footer {
+    font-size: 0.85rem;
+    color: var(--rutba-muted);
+    border-top: 0 !important;
+}
 
 /* Flat footer info bar — location text + horizontal app list */
 .footer-info {
-    background: var(--rutba-nav-bg);
-    color: rgba(255, 255, 255, 0.7);
-    padding: 0.5rem 0.75rem;
+    background: linear-gradient(180deg, var(--rutba-nav-bg) 0%, #0f1520 100%);
+    color: rgba(233, 238, 246, 0.7);
+    padding: 0.55rem 0.75rem;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
     flex-wrap: wrap;
+    border-top: 1px solid var(--rutba-nav-line);
 }
 
 .footer-info-location {
-    font-size: 0.78rem;
-    color: rgba(255, 255, 255, 0.55);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.755rem;
+    letter-spacing: 0.01em;
+    color: rgba(233, 238, 246, 0.5);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -394,21 +422,30 @@ a:hover { text-decoration: underline; }
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
-    padding: 0.25rem 0.55rem;
-    border: 0;
-    border-radius: 0.35rem;
+    padding: 0.3rem 0.6rem;
+    border: 1px solid transparent;
+    border-radius: 0.5rem;
     background: transparent;
-    color: rgba(255, 255, 255, 0.78);
-    font-size: 0.76rem;
+    font-size: 0.755rem;
+    font-weight: 500;
     line-height: 1.1;
     cursor: pointer;
     white-space: nowrap;
-    transition: background-color 120ms ease, color 120ms ease;
+    transition: background-color 140ms ease, border-color 140ms ease, transform 140ms ease;
 }
 
-/* Per-category chip colour is applied inline; hover just brightens it. */
+/* Per-category chip colour is applied inline; hover lifts it onto a
+   faint glass plate rather than just brightening the text. */
 .footer-cat-btn { color: #fff; }
-.footer-cat-btn:hover { filter: brightness(1.18); }
+.footer-cat-btn:hover {
+    background: rgba(255, 255, 255, 0.09);
+    border-color: rgba(255, 255, 255, 0.12);
+    transform: translateY(-1px);
+}
+.footer-cat.open > .footer-cat-btn {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.18);
+}
 
 .footer-cat-btn > i:first-child { font-size: 0.82rem; }
 
@@ -544,13 +581,14 @@ a:hover { text-decoration: underline; }
 
 :root {
     --side-nav-collapsed: 64px;
-    --side-nav-expanded:  240px;
-    --side-nav-bg:        #1f242b;
-    --side-nav-bg-hover:  #2a3038;
-    --side-nav-text:      rgba(255, 255, 255, 0.78);
+    --side-nav-expanded:  244px;
+    --side-nav-bg:        var(--rutba-nav-bg);
+    --side-nav-bg-2:      #101622;
+    --side-nav-bg-hover:  rgba(255, 255, 255, 0.07);
+    --side-nav-text:      rgba(233, 238, 246, 0.74);
     --side-nav-text-hi:   #ffffff;
     --side-nav-accent:    var(--rutba-accent);
-    --topbar-h:           52px;
+    --topbar-h:           54px;
 }
 
 .layout-header-bar {
@@ -581,16 +619,23 @@ a:hover { text-decoration: underline; }
 .topbar-brand {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 0.5rem;
     color: #fff;
     font-weight: 600;
     font-size: 1.05rem;
     text-decoration: none;
-    padding: 0.25rem 0.4rem;
-    border-radius: 0.35rem;
+    padding: 0.35rem 0.45rem;
+    border-radius: 0.55rem;
+    transition: background-color 140ms ease, transform 140ms ease;
 }
 
-.topbar-brand:hover { color: #fff; text-decoration: none; background: var(--rutba-nav-bg-hover); }
+.topbar-brand:hover {
+    color: #fff;
+    text-decoration: none;
+    background: var(--rutba-nav-bg-hover);
+    transform: translateY(-1px);
+}
 
 .topbar-brand img { display: block; }
 
@@ -598,14 +643,14 @@ a:hover { text-decoration: underline; }
 .topbar-appname {
     display: inline-flex;
     align-items: center;
-    padding: 0 0.6rem 0 0.3rem;
-    margin-right: 0.5rem;
-    color: rgba(255, 255, 255, 0.92);
+    padding: 0 0.75rem 0 0.4rem;
+    margin-right: 0.55rem;
+    color: #f4f7fb;
     font-weight: 600;
-    font-size: 0.95rem;
-    letter-spacing: -0.01em;
+    font-size: 0.94rem;
+    letter-spacing: -0.015em;
     white-space: nowrap;
-    border-right: 1px solid rgba(255, 255, 255, 0.12);
+    border-right: 1px solid var(--rutba-nav-line);
     line-height: 1;
 }
 
@@ -634,32 +679,58 @@ a:hover { text-decoration: underline; }
 .topbar-secondary::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 2px; }
 
 .topbar-secondary-label {
-    font-size: 0.7rem;
+    font-size: 0.66rem;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
-    font-weight: 600;
-    color: rgba(255, 255, 255, 0.55);
-    padding-right: 0.4rem;
-    border-right: 1px solid rgba(255, 255, 255, 0.12);
-    margin-right: 0.25rem;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+    color: rgba(233, 238, 246, 0.45);
+    padding-right: 0.55rem;
+    border-right: 1px solid var(--rutba-nav-line);
+    margin-right: 0.3rem;
     white-space: nowrap;
 }
 
+/* Quick actions read as soft glass chips rather than outlined buttons —
+   outlines on a dark bar fought the sidebar rail for attention. */
 .topbar-secondary-item .btn {
-    --bs-btn-padding-y: 0.2rem;
-    --bs-btn-padding-x: 0.6rem;
-    --bs-btn-font-size: 0.78rem;
-    --bs-btn-border-radius: 0.4rem;
+    --bs-btn-padding-y: 0.26rem;
+    --bs-btn-padding-x: 0.7rem;
+    --bs-btn-font-size: 0.775rem;
+    --bs-btn-border-radius: 0.5rem;
+    --bs-btn-color: rgba(233, 238, 246, 0.86);
+    --bs-btn-border-color: rgba(255, 255, 255, 0.14);
+    --bs-btn-bg: rgba(255, 255, 255, 0.06);
+    --bs-btn-hover-color: #ffffff;
+    --bs-btn-hover-bg: rgba(255, 255, 255, 0.14);
+    --bs-btn-hover-border-color: rgba(255, 255, 255, 0.24);
+    --bs-btn-active-color: #ffffff;
+    --bs-btn-active-bg: rgba(255, 255, 255, 0.18);
+    --bs-btn-active-border-color: rgba(255, 255, 255, 0.28);
     white-space: nowrap;
+    font-weight: 500;
+    transition: background-color 140ms ease, border-color 140ms ease, transform 140ms ease;
+}
+
+.topbar-secondary-item .btn:hover { transform: translateY(-1px); }
+
+/* A quick action can still opt into a solid accent by passing
+   variant="warning" — that one keeps its brand colour. */
+.topbar-secondary-item .btn-outline-warning {
+    --bs-btn-color: #ffd76a;
+    --bs-btn-border-color: rgba(245, 180, 0, 0.4);
+    --bs-btn-bg: rgba(245, 180, 0, 0.14);
+    --bs-btn-hover-color: #12161f;
+    --bs-btn-hover-bg: var(--rutba-accent);
+    --bs-btn-hover-border-color: var(--rutba-accent);
 }
 
 .topbar-actions .nav-link {
     color: var(--rutba-nav-text);
-    padding: 0.35rem 0.7rem;
-    border-radius: 0.4rem;
-    font-size: 0.88rem;
+    padding: 0.4rem 0.7rem;
+    border-radius: 0.5rem;
+    font-size: 0.86rem;
     font-weight: 500;
-    transition: background-color 120ms ease, color 120ms ease;
+    transition: background-color 140ms ease, color 140ms ease;
 }
 
 .topbar-actions .nav-link:hover,
@@ -691,7 +762,11 @@ a:hover { text-decoration: underline; }
     flex: 1 1 auto;
     min-width: 0;
     padding: 1.25rem 1.5rem;
-    background: #f6f7f9;
+    background: var(--rb-canvas, #f4f6f9);
+    background-image:
+        radial-gradient(circle at 0% 0%, rgba(59, 130, 246, 0.035) 0%, transparent 42%),
+        radial-gradient(circle at 100% 0%, rgba(245, 180, 0, 0.035) 0%, transparent 38%);
+    background-repeat: no-repeat;
 }
 
 /* Sidebar surface */
@@ -701,20 +776,33 @@ a:hover { text-decoration: underline; }
     left: 0;
     bottom: 0;
     width: var(--side-nav-collapsed);
-    background: var(--side-nav-bg);
+    background: linear-gradient(180deg, var(--side-nav-bg) 0%, var(--side-nav-bg-2) 100%);
     color: var(--side-nav-text);
     overflow-x: hidden;
     overflow-y: auto;
-    transition: width 180ms ease;
+    overscroll-behavior: contain;
+    transition: width 200ms cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 1020;
     display: flex;
     flex-direction: column;
-    box-shadow: 1px 0 0 rgba(255, 255, 255, 0.04);
+    border-right: 1px solid var(--rutba-nav-line);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
 }
+
+/* Keep the rail's scrollbar from punching a bright stripe into the
+   dark surface when a long menu overflows. */
+.side-nav::-webkit-scrollbar { width: 6px; }
+.side-nav::-webkit-scrollbar-track { background: transparent; }
+.side-nav::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.14);
+    border-radius: 3px;
+}
+.side-nav::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.24); }
 
 .side-nav.is-expanded {
     width: var(--side-nav-expanded);
-    box-shadow: 8px 0 24px rgba(15, 23, 42, 0.18);
+    box-shadow: 10px 0 30px -12px rgba(8, 12, 20, 0.55);
 }
 
 /* Reserve room in main when sidebar is pinned (no content shift on hover) */
@@ -726,7 +814,7 @@ a:hover { text-decoration: underline; }
 
 .side-nav-header {
     padding: 0.5rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid var(--rutba-nav-line);
 }
 
 .side-nav-pin {
@@ -736,12 +824,13 @@ a:hover { text-decoration: underline; }
     width: 100%;
     background: transparent;
     border: 0;
-    color: var(--side-nav-text);
+    color: rgba(233, 238, 246, 0.55);
     padding: 0.5rem 0.6rem;
-    border-radius: 0.4rem;
-    font-size: 0.82rem;
+    border-radius: 0.5rem;
+    font-size: 0.79rem;
     cursor: pointer;
     white-space: nowrap;
+    transition: background-color 140ms ease, color 140ms ease;
 }
 
 .side-nav-pin:hover {
@@ -761,21 +850,23 @@ a:hover { text-decoration: underline; }
 }
 
 .side-nav-link {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 0.75rem;
     padding: 0.55rem 0.6rem;
-    border-radius: 0.45rem;
+    border-radius: 0.55rem;
     color: var(--side-nav-text);
     background: transparent;
     border: 0;
     text-align: left;
     width: 100%;
-    font-size: 0.88rem;
+    font-size: 0.865rem;
+    font-weight: 500;
     text-decoration: none;
     white-space: nowrap;
     cursor: pointer;
-    transition: background-color 120ms ease, color 120ms ease;
+    transition: background-color 140ms ease, color 140ms ease;
 }
 
 .side-nav-link:hover,
@@ -785,11 +876,33 @@ a:hover { text-decoration: underline; }
     text-decoration: none;
 }
 
-.side-nav-link.is-current {
-    background: rgba(245, 180, 0, 0.14);
-    color: var(--side-nav-text-hi);
-    box-shadow: inset 3px 0 0 var(--side-nav-accent);
+.side-nav-link:focus-visible {
+    outline: 2px solid rgba(245, 180, 0, 0.6);
+    outline-offset: -2px;
 }
+
+/* Active item: amber wash plus a rounded marker pegged to the icon, so
+   it still reads as "you are here" when the rail is collapsed to icons. */
+.side-nav-link.is-current {
+    background: linear-gradient(90deg, rgba(245, 180, 0, 0.18) 0%, rgba(245, 180, 0, 0.06) 100%);
+    color: var(--side-nav-text-hi);
+    font-weight: 600;
+}
+
+.side-nav-link.is-current::before {
+    content: "";
+    position: absolute;
+    left: -0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 20px;
+    border-radius: 0 3px 3px 0;
+    background: var(--side-nav-accent);
+    box-shadow: 0 0 10px rgba(245, 180, 0, 0.5);
+}
+
+.side-nav-link.is-current .side-nav-icon { color: var(--side-nav-accent); }
 
 .side-nav-icon {
     width: 24px;
@@ -849,16 +962,16 @@ a:hover { text-decoration: underline; }
 /* Heading + divider variants */
 .side-nav-divider {
     height: 1px;
-    margin: 0.5rem 0.6rem;
-    background: rgba(255, 255, 255, 0.08);
+    margin: 0.55rem 0.6rem;
+    background: linear-gradient(90deg, var(--rutba-nav-line) 0%, transparent 100%);
 }
 .side-nav-heading {
-    padding: 0.6rem 0.6rem 0.2rem;
-    color: rgba(255, 255, 255, 0.45);
-    font-size: 0.7rem;
+    padding: 0.7rem 0.6rem 0.25rem;
+    color: rgba(233, 238, 246, 0.38);
+    font-size: 0.655rem;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
-    font-weight: 600;
+    letter-spacing: 0.09em;
+    font-weight: 700;
     min-height: 1.5rem;
 }
 .side-nav:not(.is-expanded) .side-nav-heading { padding: 0.35rem 0; }

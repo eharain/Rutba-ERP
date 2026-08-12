@@ -5,6 +5,12 @@ import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { HelpdeskTicketsEndpoints, HelpdeskDesksEndpoints } from "@rutba/api-provider/endpoints";
+import AppHome, {
+    AppHomeStats,
+    AppHomeStat,
+    AppHomePanel,
+    AppHomeSection,
+} from "@rutba/pos-shared/components/AppHome";
 import { agentLabel, buildTicketFilters } from "../components/TicketFilters";
 import SlaChip, { formatRelativeTime } from "../components/SlaChip";
 import StatusBadge, { PriorityBadge } from "../components/StatusBadge";
@@ -87,32 +93,15 @@ function tileDefinitions({ userId, weekStart }) {
 
 function StatTile({ tile, count, loading, failed }) {
     return (
-        <div className="col">
-            <Link href={tile.href} className="text-decoration-none">
-                <div className={`card h-100 border-${tile.tone} border-2`}>
-                    <div className="card-body py-3">
-                        <div className="d-flex align-items-center gap-2 mb-1">
-                            <i className={`fa-solid ${tile.icon} text-${tile.tone}`} aria-hidden="true"></i>
-                            <span className="text-body fw-semibold small">{tile.title}</span>
-                        </div>
-                        {loading ? (
-                            <span className="placeholder-glow d-block">
-                                <span className="placeholder col-5" style={{ height: "2rem" }}></span>
-                            </span>
-                        ) : failed ? (
-                            <div className="fs-3 fw-bold text-muted" title="This count could not be loaded">
-                                —
-                            </div>
-                        ) : (
-                            <div className={`fs-3 fw-bold text-${tile.tone}`}>{count.toLocaleString()}</div>
-                        )}
-                        <div className="text-muted small">
-                            {failed ? "Count unavailable" : tile.hint}
-                        </div>
-                    </div>
-                </div>
-            </Link>
-        </div>
+        <AppHomeStat
+            href={tile.href}
+            icon={tile.icon}
+            tone={tile.tone}
+            label={tile.title}
+            value={failed ? "—" : count.toLocaleString()}
+            hint={failed ? "Count unavailable" : tile.hint}
+            loading={loading}
+        />
     );
 }
 
@@ -208,139 +197,147 @@ export default function Dashboard() {
     return (
         <ProtectedRoute>
             <Layout>
-                <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-1">
-                    <h2 className="mb-0">Helpdesk</h2>
-                    <div className="d-flex align-items-center gap-2">
-                        <span className="text-muted small">
-                            {fetchedAt ? `Updated ${formatRelativeTime(fetchedAt, now)}` : ""}
-                        </span>
-                        <button
-                            type="button"
-                            className="btn btn-sm btn-outline-secondary"
-                            onClick={() => load({ silent: true })}
-                            disabled={!jwt}
-                        >
-                            <i className="fa-solid fa-rotate me-1"></i>Refresh
-                        </button>
-                    </div>
-                </div>
-                <p className="text-muted mb-4">
-                    What needs attention now. Every tile opens the queue already filtered.
-                </p>
-
-                {noDeskAccess ? (
-                    <div className="card">
-                        <div className="card-body text-center text-muted py-5">
-                            <i className="fa-solid fa-user-lock fa-2x mb-3 d-block opacity-50" aria-hidden="true"></i>
-                            <h6 className="text-body">You are not a member of any desk yet</h6>
-                            <div className="small">
-                                Helpdesk tickets are scoped to desks. Ask a helpdesk admin to add you to
-                                one and this dashboard will start reporting.
-                            </div>
-                        </div>
-                    </div>
-                ) : (
-                    <>
-                        <div className="row row-cols-1 row-cols-sm-2 row-cols-lg-5 g-3 mb-4">
-                            {tiles.map((t) => (
-                                <StatTile
-                                    key={t.key}
-                                    tile={t}
-                                    count={counts[t.key]?.value ?? 0}
-                                    failed={counts[t.key]?.failed}
-                                    loading={countsLoading}
-                                />
-                            ))}
-                        </div>
-
-                        <div className="card">
-                            <div className="card-header d-flex justify-content-between align-items-center">
-                                <strong>Recently updated</strong>
-                                <Link className="small" href="/tickets?sort=activity%3Adesc">
-                                    Open the queue
-                                </Link>
-                            </div>
-
-                            {isStale && (
-                                <div className="alert alert-warning m-3 py-2 small mb-0">
-                                    <i className="fa-solid fa-triangle-exclamation me-1"></i>
-                                    Showing tickets from {formatRelativeTime(fetchedAt, now)} — the last refresh failed.
-                                </div>
+                <AppHome
+                    app="helpdesk"
+                    eyebrow="Support"
+                    title="Helpdesk"
+                    subtitle="What needs attention now. Every tile opens the queue already filtered."
+                    actions={
+                        <>
+                            {fetchedAt && (
+                                <span className="text-muted small me-1">
+                                    Updated {formatRelativeTime(fetchedAt, now)}
+                                </span>
                             )}
+                            <Link href="/tickets?sort=activity%3Adesc" className="btn btn-accent">
+                                <i className="fa-solid fa-list-check me-2"></i>Open the queue
+                            </Link>
+                            <button
+                                type="button"
+                                className="btn btn-outline-secondary"
+                                onClick={() => load({ silent: true })}
+                                disabled={!jwt}
+                            >
+                                    <i className="fa-solid fa-rotate me-2"></i>Refresh
+                                </button>
+                            </>
+                        }
+                    >
+                    {noDeskAccess ? (
+                        <div className="app-panel">
+                            <div className="app-panel-empty py-5">
+                                <i className="fa-solid fa-user-lock fa-2x mb-3 d-block opacity-50" aria-hidden="true"></i>
+                                <h6 className="text-body">You are not a member of any desk yet</h6>
+                                <div className="small">
+                                    Helpdesk tickets are scoped to desks. Ask a helpdesk admin to add you to
+                                    one and this dashboard will start reporting.
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <>
+                            <AppHomeSection title="What needs attention" />
+                            <AppHomeStats>
+                                {tiles.map((t) => (
+                                    <StatTile
+                                        key={t.key}
+                                        tile={t}
+                                        count={counts[t.key]?.value ?? 0}
+                                        failed={counts[t.key]?.failed}
+                                        loading={countsLoading}
+                                    />
+                                ))}
+                            </AppHomeStats>
 
-                            <div className="table-responsive">
-                                <table className="table table-hover align-middle mb-0">
-                                    <thead className="table-light">
-                                        <tr>
-                                            <th scope="col" className="text-nowrap">Ticket</th>
-                                            <th scope="col">Subject</th>
-                                            <th scope="col" className="d-none d-lg-table-cell">Desk</th>
-                                            <th scope="col">Status</th>
-                                            <th scope="col" className="d-none d-md-table-cell">Priority</th>
-                                            <th scope="col">SLA</th>
-                                            <th scope="col" className="d-none d-lg-table-cell">Assignee</th>
-                                            <th scope="col" className="text-nowrap d-none d-md-table-cell">Updated</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {recentLoading && Array.from({ length: 5 }).map((_, i) => (
-                                            <tr key={i} className="placeholder-glow">
-                                                {["60%", "90%", "70%", "60%", "60%", "80%", "70%", "50%"].map((w, c) => (
-                                                    <td key={c}><span className="placeholder" style={{ width: w }}></span></td>
-                                                ))}
-                                            </tr>
-                                        ))}
+                            <AppHomePanel
+                                title="Recently updated"
+                                icon="fa-clock-rotate-left"
+                                tone="info"
+                                href="/tickets?sort=activity%3Adesc"
+                                linkLabel="Open the queue"
+                                flush
+                            >
+                                {isStale && (
+                                    <div className="alert alert-warning m-3 py-2 small mb-0">
+                                        <i className="fa-solid fa-triangle-exclamation me-1"></i>
+                                        Showing tickets from {formatRelativeTime(fetchedAt, now)} — the last refresh failed.
+                                    </div>
+                                )}
 
-                                        {!recentLoading && recent.length === 0 && (
+                                <div className="table-responsive">
+                                    <table className="table table-hover align-middle mb-0">
+                                        <thead className="table-light">
                                             <tr>
-                                                <td colSpan={8} className="text-center text-muted py-5">
-                                                    <i className="fa-solid fa-ticket fa-2x mb-3 d-block opacity-50" aria-hidden="true"></i>
-                                                    <div className="text-body">No tickets yet</div>
-                                                    <div className="small">
-                                                        Tickets arrive from the portal, email and the storefront, or an
-                                                        agent logs one on a requester&apos;s behalf.
-                                                    </div>
-                                                </td>
+                                                <th scope="col" className="text-nowrap">Ticket</th>
+                                                <th scope="col">Subject</th>
+                                                <th scope="col" className="d-none d-lg-table-cell">Desk</th>
+                                                <th scope="col">Status</th>
+                                                <th scope="col" className="d-none d-md-table-cell">Priority</th>
+                                                <th scope="col">SLA</th>
+                                                <th scope="col" className="d-none d-lg-table-cell">Assignee</th>
+                                                <th scope="col" className="text-nowrap d-none d-md-table-cell">Updated</th>
                                             </tr>
-                                        )}
+                                        </thead>
+                                        <tbody>
+                                            {recentLoading && Array.from({ length: 5 }).map((_, i) => (
+                                                <tr key={i} className="placeholder-glow">
+                                                    {["60%", "90%", "70%", "60%", "60%", "80%", "70%", "50%"].map((w, c) => (
+                                                        <td key={c}><span className="placeholder" style={{ width: w }}></span></td>
+                                                    ))}
+                                                </tr>
+                                            ))}
 
-                                        {!recentLoading && recent.map((t) => {
-                                            const desk = deskById.get(String(t.desk_id));
-                                            return (
-                                                <tr
-                                                    key={t.documentId}
-                                                    style={{ cursor: "pointer" }}
-                                                    onClick={() => router.push(`/tickets/${t.documentId}`)}
-                                                >
-                                                    <td className="text-nowrap"><code>{t.ticket_no || "—"}</code></td>
-                                                    <td className="text-truncate" style={{ maxWidth: 320 }} title={t.subject}>
-                                                        {t.subject}
-                                                    </td>
-                                                    <td className="d-none d-lg-table-cell">{desk?.name || desk?.key || "—"}</td>
-                                                    <td><StatusBadge status={t.status} /></td>
-                                                    <td className="d-none d-md-table-cell"><PriorityBadge priority={t.priority} /></td>
-                                                    <td>
-                                                        <SlaChip
-                                                            state={t.sla_state}
-                                                            dueAt={t.resolution_due_at || t.sla_due_at}
-                                                            now={now}
-                                                        />
-                                                    </td>
-                                                    <td className="d-none d-lg-table-cell text-truncate" style={{ maxWidth: 140 }}>
-                                                        {t.assigned_to ? agentLabel(t.assigned_to) : <span className="text-muted">Unassigned</span>}
-                                                    </td>
-                                                    <td className="text-nowrap small text-muted d-none d-md-table-cell">
-                                                        {formatRelativeTime(t.last_reply_at || t.updatedAt, now)}
+                                            {!recentLoading && recent.length === 0 && (
+                                                <tr>
+                                                    <td colSpan={8} className="text-center text-muted py-5">
+                                                        <i className="fa-solid fa-ticket fa-2x mb-3 d-block opacity-50" aria-hidden="true"></i>
+                                                        <div className="text-body">No tickets yet</div>
+                                                        <div className="small">
+                                                            Tickets arrive from the portal, email and the storefront, or an
+                                                            agent logs one on a requester&apos;s behalf.
+                                                        </div>
                                                     </td>
                                                 </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </>
-                )}
+                                            )}
+
+                                            {!recentLoading && recent.map((t) => {
+                                                const desk = deskById.get(String(t.desk_id));
+                                                return (
+                                                    <tr
+                                                        key={t.documentId}
+                                                        style={{ cursor: "pointer" }}
+                                                        onClick={() => router.push(`/tickets/${t.documentId}`)}
+                                                    >
+                                                        <td className="text-nowrap"><code>{t.ticket_no || "—"}</code></td>
+                                                        <td className="text-truncate" style={{ maxWidth: 320 }} title={t.subject}>
+                                                            {t.subject}
+                                                        </td>
+                                                        <td className="d-none d-lg-table-cell">{desk?.name || desk?.key || "—"}</td>
+                                                        <td><StatusBadge status={t.status} /></td>
+                                                        <td className="d-none d-md-table-cell"><PriorityBadge priority={t.priority} /></td>
+                                                        <td>
+                                                            <SlaChip
+                                                                state={t.sla_state}
+                                                                dueAt={t.resolution_due_at || t.sla_due_at}
+                                                                now={now}
+                                                            />
+                                                        </td>
+                                                        <td className="d-none d-lg-table-cell text-truncate" style={{ maxWidth: 140 }}>
+                                                            {t.assigned_to ? agentLabel(t.assigned_to) : <span className="text-muted">Unassigned</span>}
+                                                        </td>
+                                                        <td className="text-nowrap small text-muted d-none d-md-table-cell">
+                                                            {formatRelativeTime(t.last_reply_at || t.updatedAt, now)}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </AppHomePanel>
+                        </>
+                    )}
+                </AppHome>
             </Layout>
         </ProtectedRoute>
     );

@@ -1,11 +1,15 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { HrEmployeesEndpoints } from "@rutba/api-provider/endpoints";
+import { AppHomeStats, AppHomeStat, AppHomeSection, AppHomePanel } from "./AppHome";
 
 /**
  * Role-scoped HR dashboard. One endpoint serves every tier — the server decides
  * the scope (HR → org-wide, line manager → their reports, employee → self) and
  * echoes it back as `scope`, so this component only decides presentation.
+ *
+ * Rendered inside <AppHome> on both the HR and ESS landing pages, which is
+ * where the tone variables it reads come from.
  */
 
 const SCOPE_LABEL = {
@@ -13,23 +17,6 @@ const SCOPE_LABEL = {
     manager: "Your team",
     employee: "You",
 };
-
-function Stat({ label, value, icon, variant = "secondary", hint }) {
-    return (
-        <div className="col-6 col-md-4 col-xl-3">
-            <div className="card h-100">
-                <div className="card-body py-3">
-                    <div className="d-flex align-items-center gap-2 mb-1">
-                        <i className={`fa-solid ${icon} text-${variant}`}></i>
-                        <span className="small text-muted">{label}</span>
-                    </div>
-                    <div className="fs-4 fw-semibold">{value ?? "—"}</div>
-                    {hint && <div className="small text-muted">{hint}</div>}
-                </div>
-            </div>
-        </div>
-    );
-}
 
 export default function HrDashboard() {
     const { jwt } = useAuth();
@@ -54,67 +41,101 @@ export default function HrDashboard() {
         return () => { alive = false; };
     }, [jwt]);
 
-    if (loading) return <p>Loading dashboard…</p>;
+    // Shimmer placeholders keep the page from jumping when the counts land.
+    if (loading) {
+        return (
+            <>
+                <AppHomeSection title="At a glance" />
+                <AppHomeStats>
+                    {["Headcount", "Present today", "On leave today", "Pending approvals"].map((label) => (
+                        <AppHomeStat key={label} label={label} loading tone="secondary" />
+                    ))}
+                </AppHomeStats>
+            </>
+        );
+    }
+
     if (failed || !data) return null; // a dashboard is a nicety — never block the page
 
     const pending = data.pending_approvals || {};
     const isEmployee = data.scope === "employee";
+    const expiring = data.compliance?.expiring_60d;
 
     return (
-        <div className="mb-4">
-            <div className="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
-                <h5 className="mb-0">At a glance</h5>
-                <span className="badge bg-light text-dark border">{SCOPE_LABEL[data.scope] || data.scope}</span>
+        <>
+            <div className="app-section-head">
+                <h2 className="app-section-title">At a glance</h2>
+                <span className="app-pill is-accent">{SCOPE_LABEL[data.scope] || data.scope}</span>
             </div>
 
-            <div className="row g-3">
+            <AppHomeStats>
                 {!isEmployee && (
-                    <Stat label="Headcount" value={data.headcount} icon="fa-users" variant="primary" />
+                    <AppHomeStat label="Headcount" value={data.headcount ?? "—"} icon="fa-users" tone="primary" />
                 )}
-                <Stat label="Present today" value={data.attendance?.present_today} icon="fa-user-check" variant="success" />
-                <Stat label="On leave today" value={data.attendance?.on_leave_today} icon="fa-plane-departure" variant="info" />
-                <Stat
+                <AppHomeStat
+                    label="Present today"
+                    value={data.attendance?.present_today ?? "—"}
+                    icon="fa-user-check"
+                    tone="success"
+                />
+                <AppHomeStat
+                    label="On leave today"
+                    value={data.attendance?.on_leave_today ?? "—"}
+                    icon="fa-plane-departure"
+                    tone="info"
+                />
+                <AppHomeStat
                     label={isEmployee ? "My pending requests" : "Pending approvals"}
-                    value={pending.total}
+                    value={pending.total ?? "—"}
                     icon="fa-clipboard-check"
-                    variant={pending.total > 0 ? "warning" : "secondary"}
+                    tone={pending.total > 0 ? "warning" : "secondary"}
                     hint={pending.total > 0
                         ? `${pending.leave || 0} leave · ${pending.expense_claims || 0} claims · ${(pending.loans || 0) + (pending.advances || 0)} finance`
                         : null}
                 />
-                <Stat
+                <AppHomeStat
                     label="Compliance expiring"
-                    value={data.compliance?.expiring_60d}
+                    value={expiring ?? "—"}
                     icon="fa-shield-halved"
-                    variant={data.compliance?.expiring_60d > 0 ? "danger" : "secondary"}
+                    tone={expiring > 0 ? "danger" : "secondary"}
                     hint="next 60 days"
                 />
-                <Stat label="Training in progress" value={data.learning?.in_progress} icon="fa-graduation-cap" variant="info" />
-                <Stat label="Appraisals open" value={data.performance?.appraisals_open} icon="fa-bullseye" variant="primary" />
-            </div>
+                <AppHomeStat
+                    label="Training in progress"
+                    value={data.learning?.in_progress ?? "—"}
+                    icon="fa-graduation-cap"
+                    tone="teal"
+                />
+                <AppHomeStat
+                    label="Appraisals open"
+                    value={data.performance?.appraisals_open ?? "—"}
+                    icon="fa-bullseye"
+                    tone="purple"
+                />
+            </AppHomeStats>
 
             {Array.isArray(data.by_department) && data.by_department.length > 0 && (
-                <div className="card mt-3">
-                    <div className="card-body">
-                        <h6 className="mb-3">Headcount by department</h6>
-                        {data.by_department.map((d) => {
-                            const max = data.by_department[0].count || 1;
-                            const pct = Math.round((d.count / max) * 100);
-                            return (
-                                <div key={d.department} className="mb-2">
-                                    <div className="d-flex justify-content-between small">
-                                        <span>{d.department}</span>
-                                        <span className="text-muted">{d.count}</span>
-                                    </div>
-                                    <div className="progress" style={{ height: 6 }}>
-                                        <div className="progress-bar" style={{ width: `${pct}%` }} />
-                                    </div>
+                <AppHomePanel title="Headcount by department" icon="fa-sitemap" tone="primary">
+                    {data.by_department.map((d) => {
+                        const max = data.by_department[0].count || 1;
+                        const pct = Math.round((d.count / max) * 100);
+                        return (
+                            <div key={d.department} className="mb-2">
+                                <div className="d-flex justify-content-between small">
+                                    <span>{d.department}</span>
+                                    <span className="text-muted">{d.count}</span>
                                 </div>
-                            );
-                        })}
-                    </div>
-                </div>
+                                <div className="progress" style={{ height: 6, borderRadius: 999 }}>
+                                    <div
+                                        className="progress-bar"
+                                        style={{ width: `${pct}%`, background: "var(--app-accent)", borderRadius: 999 }}
+                                    />
+                                </div>
+                            </div>
+                        );
+                    })}
+                </AppHomePanel>
             )}
-        </div>
+        </>
     );
 }

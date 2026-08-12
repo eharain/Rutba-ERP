@@ -1,36 +1,37 @@
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
+import AppHome, { AppHomeGrid, AppHomeTile, AppHomeSection } from "@rutba/pos-shared/components/AppHome";
 import Link from "next/link";
+
+const SECTIONS = [
+    { href: "/work-orders", icon: "fa-clipboard-list", tone: "primary", title: "Work Orders", text: "Create and drive production job cards from cut to finish." },
+    { href: "/material-lots", icon: "fa-layer-group", tone: "info", title: "Materials", text: "Receive fabric and trims, then issue them to work orders." },
+    { href: "/workers", icon: "fa-people-group", tone: "success", title: "Workers", text: "Per-worker output, defects and piece-rate earnings." },
+    { href: "/setup", icon: "fa-gear", tone: "secondary", title: "Setup", text: "Operations, piece-rates, lines, BOMs and defect codes." },
+];
 
 export default function Home() {
     return (
         <ProtectedRoute>
             <Layout>
-                <h2 className="mb-3">Rutba Manufacturing 🏭</h2>
-                <p className="text-muted">
-                    Run production: receive materials, raise work orders, assign worker tasks,
-                    record QC, and meter piece-rate output for payroll.
-                </p>
-                <div className="row g-3 mt-2">
-                    {[
-                        { href: "/work-orders", icon: "fa-clipboard-list", title: "Work Orders", text: "Create and drive production job cards." },
-                        { href: "/material-lots", icon: "fa-layer-group", title: "Materials", text: "Receive fabric/trims and issue to work orders." },
-                        { href: "/workers", icon: "fa-people-group", title: "Workers", text: "Per-worker output, defects and piece-rate earnings." },
-                        { href: "/setup", icon: "fa-gear", title: "Setup", text: "Operations, piece-rates, lines, BOMs, defects." },
-                    ].map((c) => (
-                        <div className="col-12 col-md-6 col-lg-3" key={c.href}>
-                            <Link href={c.href} className="text-decoration-none">
-                                <div className="card h-100 shadow-sm">
-                                    <div className="card-body">
-                                        <i className={`fa-solid ${c.icon} fa-2x text-primary mb-2`}></i>
-                                        <h5 className="card-title">{c.title}</h5>
-                                        <p className="card-text text-muted small">{c.text}</p>
-                                    </div>
-                                </div>
-                            </Link>
-                        </div>
-                    ))}
-                </div>
+                <AppHome
+                    app="manufacturing"
+                    eyebrow="Production"
+                    title="Manufacturing"
+                    subtitle="Receive materials, raise work orders, assign worker tasks, record QC and meter piece-rate output for payroll."
+                    actions={
+                        <Link href="/work-orders" className="btn btn-accent">
+                            <i className="fa-solid fa-plus me-2"></i>New work order
+                        </Link>
+                    }
+                >
+                    <AppHomeSection title="Everything in Manufacturing" />
+                    <AppHomeGrid>
+                        {SECTIONS.map((s) => (
+                            <AppHomeTile key={s.href} {...s} />
+                        ))}
+                    </AppHomeGrid>
+                </AppHome>
             </Layout>
         </ProtectedRoute>
     );

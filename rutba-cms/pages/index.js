@@ -1,74 +1,45 @@
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
+import AppHome, { AppHomeGrid, AppHomeTile, AppHomeSection } from "@rutba/pos-shared/components/AppHome";
 import Link from "next/link";
+
+const SECTIONS = [
+    { href: "/products", icon: "fa-box", tone: "primary", title: "Products", text: "Manage products shown on the website — names, prices, images and descriptions." },
+    { href: "/categories", icon: "fa-tags", tone: "info", title: "Categories", text: "Organise products into categories for easy navigation." },
+    { href: "/brands", icon: "fa-copyright", tone: "secondary", title: "Brands", text: "Manage brand listings with logos and descriptions." },
+    { href: "/product-groups", icon: "fa-layer-group", tone: "success", title: "Product Groups", text: "Curate featured product groups, banners and homepage highlights." },
+    { href: "/pages", icon: "fa-file-lines", tone: "warning", title: "Pages", text: "Create and edit static pages, blog posts and announcements." },
+    { href: "/notification-templates", icon: "fa-bell", tone: "purple", title: "Notification Templates", text: "Create and manage order lifecycle notification templates." },
+];
 
 export default function Home() {
     return (
         <ProtectedRoute>
             <Layout>
-                <h2>Welcome to Rutba CMS ✏️</h2>
-                <p className="text-muted mb-4">
-                    Manage your website content — products, categories, brands, banners, and static pages.
-                </p>
-
-                <div className="row g-3">
-                    <div className="col-md-4">
-                        <div className="card border-primary h-100">
-                            <div className="card-body">
-                                <h5 className="card-title"><i className="fas fa-box me-2 text-primary"></i>Products</h5>
-                                <p className="card-text text-muted">Manage products displayed on the website — names, prices, images, and descriptions.</p>
-                                <Link className="btn btn-outline-primary btn-sm" href="/products">Manage Products</Link>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="col-md-4">
-                        <div className="card border-info h-100">
-                            <div className="card-body">
-                                <h5 className="card-title"><i className="fas fa-tags me-2 text-info"></i>Categories</h5>
-                                <p className="card-text text-muted">Organise products into categories for easy navigation.</p>
-                                <Link className="btn btn-outline-info btn-sm" href="/categories">Manage Categories</Link>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="col-md-4">
-                        <div className="card border-secondary h-100">
-                            <div className="card-body">
-                                <h5 className="card-title"><i className="fas fa-copyright me-2 text-secondary"></i>Brands</h5>
-                                <p className="card-text text-muted">Manage brand listings with logos and descriptions.</p>
-                                <Link className="btn btn-outline-secondary btn-sm" href="/brands">Manage Brands</Link>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="col-md-4">
-                        <div className="card border-success h-100">
-                            <div className="card-body">
-                                <h5 className="card-title"><i className="fas fa-layer-group me-2 text-success"></i>Product Groups</h5>
-                                <p className="card-text text-muted">Curate featured product groups, banners, and homepage highlights.</p>
-                                <Link className="btn btn-outline-success btn-sm" href="/product-groups">Manage Groups</Link>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="col-md-4">
-                        <div className="card border-warning h-100">
-                            <div className="card-body">
-                                <h5 className="card-title"><i className="fas fa-file-alt me-2 text-warning"></i>Pages</h5>
-                                <p className="card-text text-muted">Create and edit static pages, blog posts, and announcements.</p>
-                                <Link className="btn btn-outline-warning btn-sm" href="/pages">Manage Pages</Link>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="col-md-4">
-                        <div className="card border-dark h-100">
-                            <div className="card-body">
-                                <h5 className="card-title"><i className="fas fa-bell me-2 text-dark"></i>Notification Templates</h5>
-                                <p className="card-text text-muted">Create and manage order lifecycle notification templates.</p>
-                                <Link className="btn btn-outline-dark btn-sm" href="/notification-templates">Manage Templates</Link>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <AppHome
+                    app="cms"
+                    eyebrow="Content"
+                    title="Content Management"
+                    subtitle="Everything the storefront shows — catalogue copy, categories, brands, curated groups, pages and the templates customers receive."
+                    actions={
+                        <>
+                            <Link href="/products" className="btn btn-accent">
+                                <i className="fa-solid fa-box me-2"></i>Products
+                            </Link>
+                            <Link href="/pages" className="btn btn-outline-secondary">
+                                <i className="fa-solid fa-file-lines me-2"></i>Pages
+                            </Link>
+                        </>
+                    }
+                >
+                    <AppHomeSection title="Everything in Content Management" />
+                    <AppHomeGrid>
+                        {SECTIONS.map((s) => (
+                            <AppHomeTile key={s.href} {...s} />
+                        ))}
+                    </AppHomeGrid>
+                </AppHome>
             </Layout>
         </ProtectedRoute>
     );
 }
-

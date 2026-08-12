@@ -1,65 +1,39 @@
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
+import AppHome, { AppHomeGrid, AppHomeTile, AppHomeSection } from "@rutba/pos-shared/components/AppHome";
 import Link from "next/link";
+
+const SECTIONS = [
+    { href: "/sale-orders", icon: "fa-bag-shopping", tone: "primary", title: "Orders", text: "View and track web orders from customers through fulfilment." },
+    { href: "/riders", icon: "fa-motorcycle", tone: "info", title: "Riders", text: "Manage the rider fleet, their status and zone assignments." },
+    { href: "/delivery-methods", icon: "fa-truck", tone: "teal", title: "Delivery Methods", text: "Review delivery costing and product-group mappings." },
+    { href: "/delivery-zones", icon: "fa-map-location-dot", tone: "warning", title: "Delivery Zones", text: "Manage domestic and international delivery coverage zones." },
+    { href: "/notification-templates", icon: "fa-bell", tone: "secondary", title: "Notifications", text: "Manage order lifecycle notification templates and channels." },
+];
 
 export default function Home() {
     return (
         <ProtectedRoute>
             <Layout>
-                <h2>Welcome to Order Management 📦</h2>
-                <p className="text-muted mb-4">
-                    Manage web orders, rider operations, delivery methods/zones, and notification templates.
-                </p>
-
-                <div className="row g-3">
-                    <div className="col-md-4">
-                        <div className="card border-dark h-100">
-                            <div className="card-body">
-                                <h5 className="card-title"><i className="fas fa-shopping-bag me-2 text-dark"></i>Orders</h5>
-                                <p className="card-text text-muted">View and track web orders from customers.</p>
-                                <Link className="btn btn-outline-dark btn-sm" href="/sale-orders">View Orders</Link>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="col-md-4">
-                        <div className="card border-primary h-100">
-                            <div className="card-body">
-                                <h5 className="card-title"><i className="fas fa-motorcycle me-2 text-primary"></i>Riders</h5>
-                                <p className="card-text text-muted">Manage rider fleet status and zone assignments.</p>
-                                <Link className="btn btn-outline-primary btn-sm" href="/riders">Manage Riders</Link>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="col-md-4">
-                        <div className="card border-info h-100">
-                            <div className="card-body">
-                                <h5 className="card-title"><i className="fas fa-truck me-2 text-info"></i>Delivery Methods</h5>
-                                <p className="card-text text-muted">Review delivery costing and product group mappings.</p>
-                                <Link className="btn btn-outline-info btn-sm" href="/delivery-methods">Manage Methods</Link>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="col-md-4">
-                        <div className="card border-warning h-100">
-                            <div className="card-body">
-                                <h5 className="card-title"><i className="fas fa-map-marked-alt me-2 text-warning"></i>Delivery Zones</h5>
-                                <p className="card-text text-muted">Manage domestic and international delivery coverage zones.</p>
-                                <Link className="btn btn-outline-warning btn-sm" href="/delivery-zones">Manage Zones</Link>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="col-md-4">
-                        <div className="card border-secondary h-100">
-                            <div className="card-body">
-                                <h5 className="card-title"><i className="fas fa-bell me-2 text-secondary"></i>Notifications</h5>
-                                <p className="card-text text-muted">Manage order lifecycle notification templates and channels.</p>
-                                <Link className="btn btn-outline-secondary btn-sm" href="/notification-templates">Manage Templates</Link>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <AppHome
+                    app="order-management"
+                    eyebrow="Fulfilment"
+                    title="Order Management"
+                    subtitle="Web orders from placement to doorstep — riders, delivery methods, coverage zones and the notifications that go out along the way."
+                    actions={
+                        <Link href="/sale-orders" className="btn btn-accent">
+                            <i className="fa-solid fa-bag-shopping me-2"></i>View orders
+                        </Link>
+                    }
+                >
+                    <AppHomeSection title="Everything in Order Management" />
+                    <AppHomeGrid>
+                        {SECTIONS.map((s) => (
+                            <AppHomeTile key={s.href} {...s} />
+                        ))}
+                    </AppHomeGrid>
+                </AppHome>
             </Layout>
         </ProtectedRoute>
     );
 }
-

@@ -1,0 +1,655 @@
+/* ═══════════════════════════════════════════════════════════════
+   Rutba app-home design system
+   ───────────────────────────────────────────────────────────────
+   Shared surface for every app's landing page plus the general
+   card/surface polish that carries across all inner pages.
+
+   Imported by layout.css, which every app's _app.js already loads —
+   so nothing here needs per-app wiring.
+
+   The one knob a page sets is `--app-accent` (see AppHome.js): the
+   hero wash, tile hovers and focus rings all derive from it, which
+   is what gives each app its own identity without a bespoke stylesheet.
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+    /* Neutral ramp — cool grey, one family, used everywhere */
+    --rb-ink:        #0f1522;
+    --rb-ink-soft:   #1c2532;
+    --rb-text:       #1f2937;
+    --rb-text-dim:   #667085;
+    --rb-line:       #e6e9ef;
+    --rb-line-soft:  #eef1f5;
+    --rb-surface:    #ffffff;
+    --rb-canvas:     #f4f6f9;
+    --rb-canvas-alt: #eef1f6;
+
+    /* Elevation — small, layered, never heavy */
+    --rb-shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.05);
+    --rb-shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05), 0 1px 3px rgba(16, 24, 40, 0.06);
+    --rb-shadow-md: 0 4px 8px -2px rgba(16, 24, 40, 0.08), 0 2px 4px -2px rgba(16, 24, 40, 0.05);
+    --rb-shadow-lg: 0 12px 24px -6px rgba(16, 24, 40, 0.12), 0 4px 8px -4px rgba(16, 24, 40, 0.06);
+
+    /* Radii */
+    --rb-r-sm: 8px;
+    --rb-r-md: 12px;
+    --rb-r-lg: 16px;
+    --rb-r-xl: 20px;
+
+    /* Default accent — overridden per app by AppHome */
+    --app-accent:      #f5b400;
+    --app-accent-ink:  #7c4a00;
+
+    --rb-ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Tone palette — the named tones a tile or stat can carry. Keeps the
+   existing per-card colour variety, but drawn from one designed set
+   instead of raw Bootstrap contextual colours. */
+.app-home,
+.app-surface {
+    --tone-primary:   #3b82f6;
+    --tone-success:   #10b981;
+    --tone-info:      #06b6d4;
+    --tone-warning:   #f59e0b;
+    --tone-danger:    #ef4444;
+    --tone-secondary: #8b95a5;
+    --tone-dark:      #334155;
+    --tone-purple:    #8b5cf6;
+    --tone-pink:      #ec4899;
+    --tone-teal:      #14b8a6;
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   Page wrapper
+   ───────────────────────────────────────────────────────────── */
+
+.app-home {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    max-width: 1500px;
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   Hero band
+   ───────────────────────────────────────────────────────────── */
+
+/* Each color-mix below is preceded by a flat fallback, so an engine
+   without color-mix support degrades to a plain white/tinted surface
+   rather than rendering the element transparent. */
+.app-hero {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--rb-r-xl);
+    background: var(--rb-surface);
+    background:
+        linear-gradient(135deg,
+            color-mix(in srgb, var(--app-accent) 12%, #ffffff) 0%,
+            #ffffff 46%,
+            #ffffff 100%);
+    border: 1px solid var(--rb-line);
+    box-shadow: var(--rb-shadow-sm);
+    padding: 1.5rem 1.65rem;
+}
+
+/* Soft accent bloom in the top-left, and a hairline of pure accent
+   along the very top edge — enough identity without shouting. */
+.app-hero::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    background: linear-gradient(90deg,
+        var(--app-accent) 0%,
+        color-mix(in srgb, var(--app-accent) 40%, transparent) 55%,
+        transparent 100%);
+}
+
+.app-hero::after {
+    content: "";
+    position: absolute;
+    top: -110px;
+    right: -60px;
+    width: 340px;
+    height: 340px;
+    border-radius: 50%;
+    background: radial-gradient(circle,
+        color-mix(in srgb, var(--app-accent) 16%, transparent) 0%,
+        transparent 68%);
+    pointer-events: none;
+}
+
+.app-hero-inner {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: flex-start;
+    gap: 1.1rem;
+    flex-wrap: wrap;
+}
+
+.app-hero-icon {
+    flex: 0 0 auto;
+    width: 54px;
+    height: 54px;
+    border-radius: 15px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    color: #fff;
+    background: var(--app-accent);
+    background: linear-gradient(140deg,
+        var(--app-accent) 0%,
+        color-mix(in srgb, var(--app-accent) 72%, #000000) 100%);
+    box-shadow:
+        0 6px 16px -4px color-mix(in srgb, var(--app-accent) 55%, transparent),
+        inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
+.app-hero-text {
+    flex: 1 1 320px;
+    min-width: 0;
+}
+
+.app-hero-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--app-accent) 62%, #4a5361);
+    margin-bottom: 0.3rem;
+}
+
+.app-hero-title {
+    font-size: 1.6rem;
+    line-height: 1.15;
+    font-weight: 650;
+    letter-spacing: -0.022em;
+    color: var(--rb-ink);
+    margin: 0 0 0.3rem;
+}
+
+.app-hero-sub {
+    margin: 0;
+    color: var(--rb-text-dim);
+    font-size: 0.925rem;
+    line-height: 1.5;
+    max-width: 68ch;
+}
+
+.app-hero-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-left: auto;
+    padding-top: 0.15rem;
+}
+
+.app-hero-actions .btn {
+    --bs-btn-border-radius: 10px;
+    --bs-btn-font-size: 0.855rem;
+    --bs-btn-padding-y: 0.45rem;
+    --bs-btn-padding-x: 0.9rem;
+    font-weight: 500;
+}
+
+/* Primary hero action picks up the app accent automatically */
+.app-hero-actions .btn-accent {
+    background: var(--app-accent);
+    border-color: var(--app-accent);
+    color: #fff;
+    box-shadow: 0 2px 8px -2px color-mix(in srgb, var(--app-accent) 60%, transparent);
+}
+.app-hero-actions .btn-accent:hover,
+.app-hero-actions .btn-accent:focus {
+    background: color-mix(in srgb, var(--app-accent) 86%, #000000);
+    border-color: color-mix(in srgb, var(--app-accent) 86%, #000000);
+    color: #fff;
+}
+
+@media (max-width: 575.98px) {
+    .app-hero { padding: 1.15rem 1.15rem; border-radius: var(--rb-r-lg); }
+    .app-hero-title { font-size: 1.35rem; }
+    .app-hero-icon { width: 46px; height: 46px; font-size: 1.2rem; }
+    .app-hero-actions { margin-left: 0; width: 100%; }
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   Section heading (between hero and a grid)
+   ───────────────────────────────────────────────────────────── */
+
+.app-section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: -0.25rem;
+}
+
+.app-section-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--rb-text-dim);
+    margin: 0;
+}
+
+.app-section-link {
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: color-mix(in srgb, var(--app-accent) 70%, #1f2937);
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   Stat strip
+   ───────────────────────────────────────────────────────────── */
+
+.app-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 0.85rem;
+}
+
+.app-stat {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.95rem 1.05rem;
+    background: var(--rb-surface);
+    border: 1px solid var(--rb-line);
+    border-radius: var(--rb-r-md);
+    box-shadow: var(--rb-shadow-xs);
+    text-decoration: none;
+    color: inherit;
+    transition: box-shadow 160ms var(--rb-ease), transform 160ms var(--rb-ease), border-color 160ms var(--rb-ease);
+}
+
+a.app-stat:hover {
+    text-decoration: none;
+    color: inherit;
+    transform: translateY(-2px);
+    box-shadow: var(--rb-shadow-md);
+    border-color: color-mix(in srgb, var(--rb-tone, var(--app-accent)) 40%, var(--rb-line));
+}
+
+.app-stat-icon {
+    flex: 0 0 auto;
+    width: 40px;
+    height: 40px;
+    border-radius: 11px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.98rem;
+    color: var(--rb-tone, var(--app-accent));
+    background: var(--rb-canvas-alt);
+    background: color-mix(in srgb, var(--rb-tone, var(--app-accent)) 12%, #ffffff);
+}
+
+.app-stat-body { min-width: 0; }
+
+.app-stat-value {
+    font-size: 1.5rem;
+    line-height: 1.1;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    color: var(--rb-ink);
+    font-variant-numeric: tabular-nums;
+}
+
+.app-stat-label {
+    font-size: 0.775rem;
+    color: var(--rb-text-dim);
+    line-height: 1.3;
+    margin-top: 0.15rem;
+}
+
+.app-stat-hint {
+    font-size: 0.72rem;
+    color: var(--rb-text-dim);
+    opacity: 0.85;
+}
+
+/* Loading shimmer for stats whose value hasn't arrived yet */
+.app-stat-value.is-loading {
+    display: inline-block;
+    width: 2.6ch;
+    height: 1.5rem;
+    border-radius: 6px;
+    background: linear-gradient(90deg, var(--rb-line-soft) 25%, #f7f9fb 50%, var(--rb-line-soft) 75%);
+    background-size: 200% 100%;
+    animation: app-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes app-shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-stat-value.is-loading { animation: none; }
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   Tile grid — the launcher cards on every app home
+   ───────────────────────────────────────────────────────────── */
+
+.app-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(268px, 1fr));
+    gap: 0.9rem;
+}
+
+/* Denser variant for apps with a long section list */
+.app-tiles.is-compact {
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+}
+
+.app-tile {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    padding: 1.05rem 1.1rem 1.15rem;
+    background: var(--rb-surface);
+    border: 1px solid var(--rb-line);
+    border-radius: var(--rb-r-lg);
+    box-shadow: var(--rb-shadow-xs);
+    text-decoration: none;
+    color: inherit;
+    overflow: hidden;
+    isolation: isolate;
+    transition:
+        transform 180ms var(--rb-ease),
+        box-shadow 180ms var(--rb-ease),
+        border-color 180ms var(--rb-ease);
+}
+
+/* The tone wash that fades in on hover, behind the content */
+.app-tile::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: linear-gradient(150deg,
+        color-mix(in srgb, var(--rb-tone, var(--app-accent)) 8%, transparent) 0%,
+        transparent 60%);
+    opacity: 0;
+    transition: opacity 180ms var(--rb-ease);
+}
+
+/* Accent edge that grows down the left on hover */
+.app-tile::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--rb-tone, var(--app-accent));
+    transform: scaleY(0);
+    transform-origin: top;
+    transition: transform 200ms var(--rb-ease);
+}
+
+a.app-tile:hover,
+a.app-tile:focus-visible {
+    text-decoration: none;
+    color: inherit;
+    transform: translateY(-3px);
+    box-shadow: var(--rb-shadow-lg);
+    border-color: color-mix(in srgb, var(--rb-tone, var(--app-accent)) 34%, var(--rb-line));
+}
+
+a.app-tile:hover::before,
+a.app-tile:focus-visible::before { opacity: 1; }
+
+a.app-tile:hover::after,
+a.app-tile:focus-visible::after { transform: scaleY(1); }
+
+a.app-tile:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--rb-tone, var(--app-accent)) 60%, transparent);
+    outline-offset: 2px;
+}
+
+.app-tile-head {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+}
+
+.app-tile-icon {
+    flex: 0 0 auto;
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    color: var(--rb-tone, var(--app-accent));
+    background: var(--rb-canvas-alt);
+    background: color-mix(in srgb, var(--rb-tone, var(--app-accent)) 12%, #ffffff);
+    transition: background-color 180ms var(--rb-ease), color 180ms var(--rb-ease);
+}
+
+a.app-tile:hover .app-tile-icon {
+    background: var(--rb-tone, var(--app-accent));
+    color: #fff;
+}
+
+.app-tile-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 0.955rem;
+    font-weight: 600;
+    letter-spacing: -0.012em;
+    color: var(--rb-ink);
+    margin: 0;
+}
+
+.app-tile-go {
+    flex: 0 0 auto;
+    font-size: 0.72rem;
+    color: var(--rb-text-dim);
+    opacity: 0;
+    transform: translateX(-4px);
+    transition: opacity 180ms var(--rb-ease), transform 180ms var(--rb-ease);
+}
+
+a.app-tile:hover .app-tile-go,
+a.app-tile:focus-visible .app-tile-go {
+    opacity: 1;
+    transform: translateX(0);
+    color: var(--rb-tone, var(--app-accent));
+}
+
+.app-tile-text {
+    margin: 0;
+    font-size: 0.825rem;
+    line-height: 1.5;
+    color: var(--rb-text-dim);
+}
+
+.app-tile-foot {
+    margin-top: auto;
+    padding-top: 0.35rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+
+/* Tiles for things that aren't built yet — visible but clearly inert */
+.app-tile.is-disabled {
+    opacity: 0.62;
+    cursor: default;
+    box-shadow: none;
+    background: var(--rb-canvas-alt);
+}
+.app-tile.is-disabled:hover { transform: none; box-shadow: none; }
+
+/* Small status pill used in tile feet */
+.app-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.14rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.685rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    line-height: 1.5;
+    background: var(--rb-canvas-alt);
+    color: var(--rb-text-dim);
+    border: 1px solid transparent;
+}
+
+.app-pill.is-live {
+    background: color-mix(in srgb, var(--tone-success, #10b981) 12%, #ffffff);
+    color: #047857;
+}
+
+.app-pill.is-soon {
+    background: var(--rb-canvas-alt);
+    color: var(--rb-text-dim);
+    border-color: var(--rb-line);
+}
+
+.app-pill.is-accent {
+    background: color-mix(in srgb, var(--rb-tone, var(--app-accent)) 14%, #ffffff);
+    color: color-mix(in srgb, var(--rb-tone, var(--app-accent)) 70%, #000000);
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   Panel — bordered list/content block used on dashboards
+   ───────────────────────────────────────────────────────────── */
+
+.app-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--rb-surface);
+    border: 1px solid var(--rb-line);
+    border-radius: var(--rb-r-lg);
+    box-shadow: var(--rb-shadow-xs);
+    overflow: hidden;
+}
+
+.app-panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.8rem 1.05rem;
+    border-bottom: 1px solid var(--rb-line-soft);
+    background: linear-gradient(180deg, #fcfdfe 0%, #ffffff 100%);
+}
+
+.app-panel-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    font-size: 0.86rem;
+    font-weight: 650;
+    letter-spacing: -0.005em;
+    color: var(--rb-ink);
+}
+
+.app-panel-title i { color: var(--rb-tone, var(--app-accent)); font-size: 0.82rem; }
+
+.app-panel-link {
+    font-size: 0.79rem;
+    font-weight: 500;
+    color: color-mix(in srgb, var(--app-accent) 70%, #1f2937);
+    white-space: nowrap;
+}
+
+.app-panel-body { padding: 1.05rem; }
+
+.app-panel-empty {
+    padding: 1.6rem 1.05rem;
+    text-align: center;
+    color: var(--rb-text-dim);
+    font-size: 0.85rem;
+}
+
+/* Flush list inside a panel */
+.app-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.app-list > li {
+    padding: 0.65rem 1.05rem;
+    border-bottom: 1px solid var(--rb-line-soft);
+    font-size: 0.855rem;
+}
+
+.app-list > li:last-child { border-bottom: 0; }
+
+.app-list-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.app-list-meta {
+    font-size: 0.745rem;
+    color: var(--rb-text-dim);
+    margin-top: 0.12rem;
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   General surface polish — applies to inner pages too, so the
+   whole app reads as one system rather than just the home page.
+   ───────────────────────────────────────────────────────────── */
+
+.card {
+    border-color: var(--rb-line);
+    border-radius: var(--rb-r-md);
+}
+
+.card.shadow-sm { box-shadow: var(--rb-shadow-sm) !important; }
+
+.card-header {
+    background: linear-gradient(180deg, #fcfdfe 0%, #ffffff 100%);
+    border-bottom-color: var(--rb-line-soft);
+    font-weight: 600;
+}
+
+.btn { border-radius: 9px; font-weight: 500; }
+.btn-sm { border-radius: 8px; }
+.btn-lg { border-radius: 11px; }
+
+.form-control,
+.form-select { border-radius: 9px; border-color: var(--rb-line); }
+
+.form-control:focus,
+.form-select:focus {
+    border-color: color-mix(in srgb, var(--app-accent) 55%, var(--rb-line));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-accent) 18%, transparent);
+}
+
+.badge { font-weight: 600; letter-spacing: 0.01em; }
+
+.modal-content { border-radius: var(--rb-r-lg); border-color: var(--rb-line); }
+.dropdown-menu { border-radius: var(--rb-r-md); }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
+import AppHome from "@rutba/pos-shared/components/AppHome";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { SeedEndpoints } from "@rutba/api-provider/endpoints";
 
@@ -98,26 +99,19 @@ function SeedControl() {
     const selectedList = [...selected];
 
     return (
-        <>
-            <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-                <div>
-                    <h2 className="mb-0">Seeding <i className="fa-solid fa-seedling text-success" /></h2>
-                    <p className="text-muted mb-0">
-                        Run system, reference and backfill seeds on demand. Every seeder is
-                        idempotent. <strong>Partial</strong> adds anything missing and
-                        re-applies seed-managed records — this reverts manual edits to any
-                        record not marked editable (e.g. CMS/content defaults), so avoid it
-                        after tenant customisation. <strong>Full</strong> additionally forces
-                        re-application for seeders that support it (see the “full ✓” badge).
-                    </p>
-                </div>
-                <button className="btn btn-outline-secondary btn-sm" onClick={loadStatus} disabled={loading || running}>
-                    <i className="fa-solid fa-rotate me-1" /> Refresh
+        <AppHome
+            app="seed"
+            eyebrow="Administration"
+            title="Seeding"
+            subtitle="Run system, reference and backfill seeds on demand. Every seeder is idempotent. Partial adds anything missing and re-applies seed-managed records — this reverts manual edits to any record not marked editable (e.g. CMS/content defaults), so avoid it after tenant customisation. Full additionally forces re-application for seeders that support it (see the “full ✓” badge)."
+            actions={
+                <button className="btn btn-outline-secondary" onClick={loadStatus} disabled={loading || running}>
+                    <i className={`fa-solid fa-rotate me-2${loading ? " fa-spin" : ""}`} /> Refresh
                 </button>
-            </div>
-
+            }
+        >
             {loadError && (
-                <div className="alert alert-warning d-flex align-items-center">
+                <div className="alert alert-warning d-flex align-items-center mb-0">
                     <i className="fa-solid fa-triangle-exclamation me-2" /> {loadError}
                 </div>
             )}
@@ -256,7 +250,7 @@ function SeedControl() {
                     </div>
                 </div>
             )}
-        </>
+        </AppHome>
     );
 }
 
