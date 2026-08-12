@@ -601,6 +601,17 @@ export function applyLayerPatches(plan, patches) {
             // Fractional geometry on a patched layer (e.g. a dragged logo or
             // footer) re-resolves against this frame's size.
             if (existing.type === 'image') {
+                // A DIFFERENT picture on a compiled image layer — the brand
+                // mark swapped for a campaign logo. Object.assign copied the
+                // url across but not the bitmap, so re-resolve it here or the
+                // layer keeps drawing what it had. An empty url means "back to
+                // the compiled source"; an unresolved one hides the layer
+                // rather than showing the wrong picture.
+                if (patch.url !== undefined) {
+                    existing.src = patch.url ? (plan.assets[patch.url] || null) : plan.logo;
+                    existing.visible = !!existing.visible && !!existing.src?.img;
+                    existing.h = existing.w * ((existing.src?.height || 1) / (existing.src?.width || 1));
+                }
                 if (patch.fw !== undefined) {
                     existing.w = W * patch.fw;
                     const srcH = existing.src?.height || 1;

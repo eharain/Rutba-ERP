@@ -125,7 +125,9 @@ export default function VideoStudioPage() {
     // buildPlan `assets` map. Declared early for the same reason videoLib is.
     const [imageAssets, setImageAssets] = useState({});
     const imageAssetsRef = useRef({});
-    const [showImagePicker, setShowImagePicker] = useState(false);
+    // The image picker serves two errands: 'new' adds a layer, a layer id
+    // repoints that layer's picture. null = closed.
+    const [imagePickerFor, setImagePickerFor] = useState(null);
 
     // The Sound buttons open this: the audio library as a picker, so the track
     // is chosen BEFORE the layer exists — not defaulted and fixed up after.
@@ -1082,7 +1084,23 @@ export default function VideoStudioPage() {
             fx: 0.38, fy: 0.3, fw: 0.24,
         });
         setSelectedLayerId(id);
-        setShowImagePicker(false);
+        setImagePickerFor(null);
+    };
+
+    /**
+     * Point an EXISTING image layer at a different picture — including the
+     * compiled logo, whose bitmap otherwise comes from site settings. The
+     * patch carries `type: 'image'` so both hosts' asset collectors fetch the
+     * bytes (the renderer's merge branch drops the key); a null url puts the
+     * brand mark back.
+     */
+    const setLayerImage = (layerId, files) => {
+        const file = Array.isArray(files) ? files[0] : files;
+        if (!file) return;
+        const url = MediaUtilsEndpoints.strapiImageUrl(file);
+        if (!url) { toast("That file has no usable url.", "warning"); return; }
+        upsertPatch({ id: layerId, type: "image", url });
+        setImagePickerFor(null);
     };
 
     const selectedVideoPatch = (layerPatches || []).find((p) => p.id === selectedLayerId && p.type === "video") || null;
@@ -1568,11 +1586,13 @@ export default function VideoStudioPage() {
                             onSelect={addVideoLayers}
                         />
                         <StrapiMediaLibrary
-                            show={showImagePicker}
+                            show={!!imagePickerFor}
                             accept="image"
                             multiple={false}
-                            onClose={() => setShowImagePicker(false)}
-                            onSelect={addImageLayer}
+                            onClose={() => setImagePickerFor(null)}
+                            onSelect={(files) => (imagePickerFor === "new"
+                                ? addImageLayer(files)
+                                : setLayerImage(imagePickerFor, files))}
                         />
                         {showSoundPicker && (
                             <div className="modal d-block" tabIndex={-1} style={{ background: "rgba(0,0,0,0.5)", zIndex: 9999 }}
@@ -1687,7 +1707,7 @@ export default function VideoStudioPage() {
                                                             </button>
                                                             <button className="btn btn-sm btn-outline-primary py-0" disabled={busy}
                                                                 title="An image from the media library (or an upload — it lands in the library first) as its own layer — a sticker, a badge, a second mark. Drag, resize and retime it like anything else."
-                                                                onClick={() => setShowImagePicker(true)}>
+                                                                onClick={() => setImagePickerFor("new")}>
                                                                 <i className="fas fa-image me-1" />Image
                                                             </button>
                                                             <button className="btn btn-sm btn-outline-primary py-0" disabled={busy || !logo}
@@ -1986,23 +2006,42 @@ export default function VideoStudioPage() {
                                             </div>
                                         )}
 
-                                        {/* ── the brand mark (compiled logo) ── */}
-                                        {selectedLayer.type === "image" && selectedLayer.id === "logo" && (
+                                        {/* ── the brand mark: an image layer whose picture DEFAULTS to
+                                               site settings and can be swapped for any library image ── */}
+                                        {selectedLayer.type === "image" && selectedLayer.id === "logo" && (() => {
+                                            const logoPatch = (layerPatches || []).find((x) => x.id === "logo") || {};
+                                            const custom = logoPatch.url || null;
+                                            const thumb = custom || logo?.objectUrl || null;
+                                            return (
                                             <>
-                                                {logoError && <div className="alert alert-warning py-2 small">{logoError}</div>}
+                                                {logoError && !custom && <div className="alert alert-warning py-2 small">{logoError}</div>}
                                                 <div className="d-flex align-items-center gap-3 mb-2">
-                                                    {logo && (
-                                                        <img src={logo.objectUrl} alt="Site logo"
+                                                    {thumb && (
+                                                        <img src={thumb} alt=""
                                                             style={{ width: 64, height: 40, objectFit: "contain", background: "#222", borderRadius: 4, padding: 4 }} />
                                                     )}
                                                     <div className="form-check form-switch mb-0">
-                                                        <input className="form-check-input" type="checkbox" id="opt-logo" disabled={busy || !logo}
-                                                            checked={options.showLogo && !!logo}
+                                                        <input className="form-check-input" type="checkbox" id="opt-logo" disabled={busy || !thumb}
+                                                            checked={options.showLogo && !!thumb}
                                                             onChange={(e) => setOpt({ showLogo: e.target.checked })} />
                                                         <label className="form-check-label small" htmlFor="opt-logo">Show on the video</label>
                                                     </div>
                                                 </div>
-                                                {options.showLogo && logo && (
+                                                <div className="d-flex align-items-center gap-2 mb-2">
+                                                    <button className="btn btn-sm btn-outline-secondary" disabled={busy}
+                                                        title="Any image from the media library — the site logo is only the default"
+                                                        onClick={() => setImagePickerFor("logo")}>
+                                                        <i className="fas fa-image me-1" />Change image…
+                                                    </button>
+                                                    {custom && (
+                                                        <button className="btn btn-sm btn-link p-0" disabled={busy}
+                                                            title="Use the brand mark from site settings again"
+                                                            onClick={() => upsertPatch({ id: "logo", type: "image", url: null })}>
+                                                            Back to the site logo
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                {options.showLogo && thumb && (
                                                     <>
                                                         <label className="form-label small mb-1">Corner</label>
                                                         <select className="form-select form-select-sm mb-2" value={options.logoPosition} disabled={busy}
@@ -2020,7 +2059,8 @@ export default function VideoStudioPage() {
                                                     </>
                                                 )}
                                             </>
-                                        )}
+                                            );
+                                        })()}
                                         {/* ── an appended image (second logo / watermark) ── */}
                                         {selectedLayer.type === "image" && selectedLayer.id !== "logo" && (() => {
                                             const p = (layerPatches || []).find((x) => x.id === selectedLayer.id) || {};
@@ -2398,35 +2438,9 @@ export default function VideoStudioPage() {
                                     </div>
                                 </div>
 
-                                {/* ── brand mark — video-level, because with showLogo off there
-                                       is no logo lane to click ── */}
-                                <div className="card mb-3">
-                                    <div className="card-header py-2 d-flex align-items-center">
-                                        <i className="fas fa-copyright me-2" />Logo
-                                        {logo && <span className="badge bg-success ms-2">from site settings</span>}
-                                        {!logo && logoError && <span className="badge bg-warning text-dark ms-2">unavailable</span>}
-                                    </div>
-                                    <div className="card-body py-2">
-                                        {logoError && <div className="alert alert-warning py-2 small">{logoError}</div>}
-                                        <div className="d-flex align-items-center gap-3">
-                                            {logo && (
-                                                <img src={logo.objectUrl} alt="Site logo"
-                                                    style={{ width: 64, height: 40, objectFit: "contain", background: "#222", borderRadius: 4, padding: 4 }} />
-                                            )}
-                                            <div className="form-check form-switch mb-0">
-                                                <input className="form-check-input" type="checkbox" id="opt-logo-vid" disabled={busy || !logo}
-                                                    checked={options.showLogo && !!logo}
-                                                    onChange={(e) => setOpt({ showLogo: e.target.checked })} />
-                                                <label className="form-check-label small" htmlFor="opt-logo-vid">Show on the video</label>
-                                            </div>
-                                        </div>
-                                        {options.showLogo && logo && (
-                                            <p className="text-muted mb-0 mt-1" style={{ fontSize: 11 }}>
-                                                Corner, size and opacity live on the logo's own lane — click it (or the logo on the preview).
-                                            </p>
-                                        )}
-                                    </div>
-                                </div>
+                                {/* The logo has no card here any more: it is an image layer like
+                                   any other, and the timeline's Logo button brings it back when
+                                   it is switched off. */}
 
                                 {/* ── excluded photos, so a hidden one has a way back ── */}
                                 {arrangement?.some((a) => a.excluded) && (
