@@ -62,6 +62,15 @@ module.exports = ({ env }) => {
         // so inbound webhook HMAC signatures (e.g. Meta's X-Hub-Signature-256)
         // can be verified against the exact bytes sent, not a re-serialization.
         includeUnparsed: true,
+        // The upload plugin's `sizeLimit` is NOT the ceiling an upload actually
+        // hits. This middleware parses the multipart body first, and formidable
+        // defaults to 200 MB — anything larger is rejected here with 413
+        // "FileTooBig" before the upload plugin ever sees the file. Left unset,
+        // raising UPLOAD_MAX_FILE_SIZE silently does nothing. Keep this on the
+        // same env var as plugins.js so one knob moves the real limit.
+        formidable: {
+          maxFileSize: env.int('UPLOAD_MAX_FILE_SIZE', 250 * 1024 * 1024),
+        },
       },
     },
     'strapi::session',

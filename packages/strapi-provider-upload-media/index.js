@@ -196,8 +196,13 @@ module.exports = {
           // best-effort; deleting the master purges its cached variants on the service
         }
       },
-      // optional hooks Strapi may call
-      checkFileSize() { /* no extra limit here; Strapi's sizeLimit still applies */ },
+      // optional hooks Strapi may call.
+      //
+      // checkFileSize is deliberately NOT defined: the upload plugin builds the
+      // provider as Object.assign(Object.create(baseProvider), provider), so any
+      // definition here — including an empty one — REPLACES the base check and
+      // silently disables the configured `sizeLimit` entirely. Omitting it keeps
+      // baseProvider.checkFileSize, which enforces sizeLimit as configured.
       isPrivate() { return false; },
     };
   },
