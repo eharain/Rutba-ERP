@@ -121,6 +121,12 @@ export default function VideoStudioPage() {
     const videoLibRef = useRef({});
     const [showVideoPicker, setShowVideoPicker] = useState(false);
 
+    // Loaded bitmaps for appended image layers, url → loadImage entry — the
+    // buildPlan `assets` map. Declared early for the same reason videoLib is.
+    const [imageAssets, setImageAssets] = useState({});
+    const imageAssetsRef = useRef({});
+    const [showImagePicker, setShowImagePicker] = useState(false);
+
     // Layer patches are the single write path for everything the editor does —
     // they persist to video_settings and templates as-is.
     const upsertPatch = useCallback((patch) => {
@@ -730,6 +736,7 @@ export default function VideoStudioPage() {
             layerPatches,
             context: productContext || {},
             videos: videoLib,
+            assets: imageAssets,
         });
         setPlan(p);
         paintFrame(canvas.getContext("2d"), p, Math.min(previewTime, p.duration));
@@ -737,7 +744,7 @@ export default function VideoStudioPage() {
         // scrub tick would rebuild the whole plan (and re-wrap the text) 60
         // times a second. The scrub effect below repaints on its own.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selected, arranged, captionText, effectiveOptions, logo, layerPatches, productContext, videoLib]);
+    }, [selected, arranged, captionText, effectiveOptions, logo, layerPatches, productContext, videoLib, imageAssets]);
 
     useEffect(() => {
         if (!plan || playing || rendering) return;
@@ -1004,6 +1011,34 @@ export default function VideoStudioPage() {
     }, [layerPatches]);
     useEffect(() => () => releaseVideos(videoLibRef.current), []);
 
+    // Appended image layers (a sticker, a badge, a second mark) resolve their
+    // bitmaps the same way: collected off the patches, loaded through the
+    // proxy, kept url-keyed for buildPlan's `assets`. This also makes image
+    // layers arriving FROM a template or saved recipe actually draw here —
+    // before this map existed the studio never resolved their urls.
+    useEffect(() => {
+        const urls = [...new Set((layerPatches || []).filter((p) => p.type === "image" && p.url).map((p) => p.url))];
+        const missing = urls.filter((u) => !imageAssetsRef.current[u]);
+        if (!missing.length) return;
+        let dead = false;
+        (async () => {
+            for (const url of missing) {
+                try {
+                    const entry = await loadImage(url);
+                    if (dead) { releaseImages([entry]); return; }
+                    imageAssetsRef.current = { ...imageAssetsRef.current, [url]: entry };
+                    setImageAssets(imageAssetsRef.current);
+                } catch (err) {
+                    console.error("Failed to load an image layer", err);
+                    toast(`Could not load an image — its layer will not draw. (${String(err?.message || err)})`, "warning");
+                }
+            }
+        })();
+        return () => { dead = true; };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [layerPatches]);
+    useEffect(() => () => releaseImages(Object.values(imageAssetsRef.current)), []);
+
     // From the library picker (which also takes uploads — a new file lands in
     // the media library first, then here): one video lane + one audio lane.
     const addVideoLayers = (files) => {
@@ -1025,6 +1060,24 @@ export default function VideoStudioPage() {
         setSelectedLayerId(`video-${stamp}`);
         setShowVideoPicker(false);
         toast("Two lanes added — the clip's picture and its audio, trimmed separately.", "success");
+    };
+
+    // From the same picker, one image layer — a sticker, a badge, a second
+    // mark. Lands small and off-centre so it shows over the photos without
+    // sitting on the caption; drag, resize and retime it like anything else.
+    const addImageLayer = (files) => {
+        const file = Array.isArray(files) ? files[0] : files;
+        if (!file) return;
+        const url = MediaUtilsEndpoints.strapiImageUrl(file);
+        if (!url) { toast("That file has no usable url.", "warning"); return; }
+        const id = "img-" + Date.now().toString(36);
+        upsertPatch({
+            id, type: "image", url,
+            name: String(file.name || "Image").replace(/\.[a-z0-9]+$/i, ""),
+            fx: 0.38, fy: 0.3, fw: 0.24,
+        });
+        setSelectedLayerId(id);
+        setShowImagePicker(false);
     };
 
     const selectedVideoPatch = (layerPatches || []).find((p) => p.id === selectedLayerId && p.type === "video") || null;
@@ -1509,6 +1562,13 @@ export default function VideoStudioPage() {
                             onClose={() => setShowVideoPicker(false)}
                             onSelect={addVideoLayers}
                         />
+                        <StrapiMediaLibrary
+                            show={showImagePicker}
+                            accept="image"
+                            multiple={false}
+                            onClose={() => setShowImagePicker(false)}
+                            onSelect={addImageLayer}
+                        />
                         <div className="flex-grow-1" style={{ minWidth: 0 }}>
                                 <div className="card">
                                     <div className="card-header py-2 d-flex align-items-center gap-2">
@@ -1587,6 +1647,11 @@ export default function VideoStudioPage() {
                                                                 title="A clip from the media library (or an upload — it lands in the library first). Adds TWO lanes: the picture and its audio, trimmed separately."
                                                                 onClick={() => setShowVideoPicker(true)}>
                                                                 <i className="fas fa-film me-1" />Video
+                                                            </button>
+                                                            <button className="btn btn-sm btn-outline-primary py-0" disabled={busy}
+                                                                title="An image from the media library (or an upload — it lands in the library first) as its own layer — a sticker, a badge, a second mark. Drag, resize and retime it like anything else."
+                                                                onClick={() => setShowImagePicker(true)}>
+                                                                <i className="fas fa-image me-1" />Image
                                                             </button>
                                                             <button className="btn btn-sm btn-outline-primary py-0" disabled={busy || !logo}
                                                                 title={logo ? "The brand mark from site settings — shown on the video, configured on its lane" : "No site logo available"}

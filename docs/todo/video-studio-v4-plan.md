@@ -301,6 +301,13 @@ photos nobody customized.
 - **Honest offsets.** The sound offset slider is bounded by the real source
   length (track `duration_seconds`, or the loaded clip for a video's audio
   lane) minus the lane window; label names the source length.
+- **Add→Image.** Any library image (or an upload — it lands in the library
+  first) as its own layer: timeline Image button → StrapiMediaLibrary
+  accept=image → `{type:'image', url}` patch; an `imageAssets` url-map
+  mirrors `videoLib` into `buildPlan({assets})`. This also makes image
+  layers arriving from templates/recipes draw in the studio — their urls
+  were never resolved there before. Poster side needed nothing (t4's
+  logo-2 gate already covers image-patch bytes).
 
 Gates re-run green: A/B 60/60 + 6/6 (Electron host), t2 full suite,
 t4 21/21 incl. the new duck proof.
