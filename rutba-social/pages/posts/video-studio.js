@@ -2239,10 +2239,6 @@ export default function VideoStudioPage() {
                                                     suffix="s" disabled={busy} onChange={(v) => upsertPatch({ id: selectedSoundPatch.id, offset: v })} />
                                                 <RangeRow label="Volume" value={selectedSoundPatch.volume ?? options.audioVolume} min={0} max={1} step={0.05}
                                                     suffix="" disabled={busy} onChange={(v) => upsertPatch({ id: selectedSoundPatch.id, volume: v })} />
-                                                <RangeRow label="Fade in" value={selectedSoundPatch.enter?.seconds ?? 0} min={0} max={4} step={0.1}
-                                                    suffix="s" disabled={busy} onChange={(v) => upsertPatch({ id: selectedSoundPatch.id, enter: { kind: "fade", seconds: v } })} />
-                                                <RangeRow label="Fade out" value={selectedSoundPatch.exit?.seconds ?? 0} min={0} max={4} step={0.1}
-                                                    suffix="s" disabled={busy} onChange={(v) => upsertPatch({ id: selectedSoundPatch.id, exit: { kind: "fade", seconds: v } })} />
                                                 <label className="form-label small mb-1 mt-1">When it overlaps other sound</label>
                                                 <select className="form-select form-select-sm mb-1" value={selectedSoundPatch.mix || "mix"} disabled={busy}
                                                     onChange={(e) => upsertPatch({ id: selectedSoundPatch.id, mix: e.target.value })}>
@@ -2251,9 +2247,9 @@ export default function VideoStudioPage() {
                                                     <option value="solo">Only this one — everything else goes silent</option>
                                                 </select>
                                                 <p className="text-muted mb-0" style={{ fontSize: 11 }}>
-                                                    Plays in the preview and the finished file. Place and trim it on its lane;
-                                                    the fades above are its edges, the overlap rule is how it treats the music
-                                                    bed and other clips under it.
+                                                    Plays in the preview and the finished file. Its window and fades are in
+                                                    Pace below; the overlap rule is how it treats the music bed and the
+                                                    other clips under it.
                                                 </p>
                                             </>
                                             );
@@ -2335,6 +2331,12 @@ export default function VideoStudioPage() {
                                                 onPatch={(p) => upsertPatch({ id: selectedLayer.id, ...p })} />
                                         )}
 
+                                        {/* ── pace: this layer's own clock. Same card, same name as the
+                                               video's Pace — the video sets the defaults, a layer sets
+                                               itself. ── */}
+                                        <TimingRows layer={selectedLayer} duration={plan.duration} busy={busy}
+                                            onPatch={(p) => upsertPatch({ id: selectedLayer.id, ...p })} />
+
                                         {/* ── motion: keys on the layer's local clock ── */}
                                         {(["text", "qr", "image"].includes(selectedLayer.type)
                                             || ((selectedLayer.type === "photo" || selectedLayer.type === "video") && !!selectedLayer.fw)) && (
@@ -2413,32 +2415,12 @@ export default function VideoStudioPage() {
                                                     suffix="× width" disabled={busy} onChange={(v) => upsertPatch({ id: selectedTextPatch.id, sizeFrac: v })} />
                                                 <RangeRow label="Rotation" value={selectedTextPatch.rot || 0} min={-180} max={180} step={1}
                                                     suffix="°" disabled={busy} onChange={(v) => upsertPatch({ id: selectedTextPatch.id, rot: v })} />
-                                                <div className="d-flex flex-wrap align-items-center gap-3">
-                                                    <div className="form-check form-switch mb-0">
-                                                        <input className="form-check-input" type="checkbox" id="tl-bg" checked={selectedTextPatch.bg !== false && !!selectedTextPatch.bg} disabled={busy}
-                                                            onChange={(e) => upsertPatch({ id: selectedTextPatch.id, bg: e.target.checked })} />
-                                                        <label className="form-check-label small" htmlFor="tl-bg">Pill background</label>
-                                                    </div>
-                                                    <div className="d-flex align-items-center gap-1">
-                                                        <span className="small text-muted">Show</span>
-                                                        <input type="number" className="form-control form-control-sm" style={{ width: 64 }} min={0} step={0.5} disabled={busy}
-                                                            placeholder="start" value={selectedTextPatch.timing?.start ?? ""}
-                                                            onChange={(e) => {
-                                                                const start = e.target.value === "" ? null : Number(e.target.value);
-                                                                const end = selectedTextPatch.timing?.end;
-                                                                upsertPatch({ id: selectedTextPatch.id, timing: start === null || end === undefined ? (start === null ? null : { start, end: start + 3 }) : { start, end } });
-                                                            }} />
-                                                        <span className="small text-muted">to</span>
-                                                        <input type="number" className="form-control form-control-sm" style={{ width: 64 }} min={0} step={0.5} disabled={busy}
-                                                            placeholder="end" value={selectedTextPatch.timing?.end ?? ""}
-                                                            onChange={(e) => {
-                                                                const end = e.target.value === "" ? null : Number(e.target.value);
-                                                                const start = selectedTextPatch.timing?.start ?? 0;
-                                                                upsertPatch({ id: selectedTextPatch.id, timing: end === null ? null : { start, end } });
-                                                            }} />
-                                                        <span className="small text-muted">s (blank = whole video)</span>
-                                                    </div>
+                                                <div className="form-check form-switch mb-0">
+                                                    <input className="form-check-input" type="checkbox" id="tl-bg" checked={selectedTextPatch.bg !== false && !!selectedTextPatch.bg} disabled={busy}
+                                                        onChange={(e) => upsertPatch({ id: selectedTextPatch.id, bg: e.target.checked })} />
+                                                    <label className="form-check-label small" htmlFor="tl-bg">Pill background</label>
                                                 </div>
+                                                {/* When it shows is in Pace above — one place for every layer. */}
                                             </div>
                                         )}
                                         {/* ── selected QR layer editor ── */}
@@ -2607,7 +2589,7 @@ export default function VideoStudioPage() {
                                        on the caption, open/close fade on its lane, per-image
                                        seconds on each photo (these two are just the defaults). ── */}
                                 <div className="card mb-3">
-                                    <div className="card-header py-2"><i className="fas fa-stopwatch me-2" />Pace &amp; render</div>
+                                    <div className="card-header py-2"><i className="fas fa-stopwatch me-2" />Pace</div>
                                     <div className="card-body">
                                         <RangeRow label="Seconds per image (default)" value={options.secondsPerImage} min={1.5} max={8} step={0.5}
                                             suffix="s" disabled={busy} onChange={(v) => setOpt({ secondsPerImage: v })} />
@@ -2619,7 +2601,8 @@ export default function VideoStudioPage() {
                                             suffix=" fps" disabled={busy} onChange={(v) => setOpt({ fps: v })} />
                                         <p className="text-muted small mb-0">
                                             The video runs for whichever is longer — the images, or the time the caption
-                                            needs. Per-photo seconds live on each photo's lane; these are the defaults.
+                                            needs. These are the DEFAULTS: select any layer and its own Pace card sets
+                                            that layer's window and fades, which win over these.
                                         </p>
                                     </div>
                                 </div>
@@ -2735,6 +2718,75 @@ function TrackBrowser({ tracks, busy, pickedId, onPick, pickLabel = "Use", onAdd
                 })}
             </div>
         </>
+    );
+}
+
+/**
+ * Per-layer pace: the window this layer occupies and how it opens and closes.
+ * The same numbers the lane's bar and its wedges show — typed, for when a
+ * drag is not precise enough.
+ *
+ * `timing: null` means "the whole video", which is a real state (the caption
+ * and the logo start there), not an unset one — so it takes a button to leave
+ * it rather than a number appearing from nowhere. The enter/exit KIND is
+ * preserved when its seconds change: a photo entering on a slide keeps
+ * sliding, it just slides for longer.
+ */
+function TimingRows({ layer, duration, busy, onPatch }) {
+    const win = layer.timing || null;
+    const start = win ? win.start : 0;
+    const end = win ? win.end : duration;
+    const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+    const setWin = (s, e) => onPatch({
+        timing: {
+            start: +Math.max(0, Math.min(duration - 0.2, s)).toFixed(3),
+            end: +Math.max(s + 0.2, Math.min(duration, e)).toFixed(3),
+        },
+    });
+    const ramp = (which, seconds) => {
+        const cur = which === "enter" ? layer.enter : layer.exit;
+        const kind = cur?.kind && cur.kind !== "none" ? cur.kind : "fade";
+        onPatch({ [which]: { kind, seconds } });
+    };
+    return (
+        <div className="border rounded p-2 mt-2">
+            <div className="d-flex align-items-center">
+                <strong className="small">Pace</strong>
+                <span className="badge bg-secondary ms-2">
+                    {win ? `${start.toFixed(1)}–${end.toFixed(1)}s` : "whole video"}
+                </span>
+                {win && (
+                    <button className="btn btn-sm btn-link p-0 ms-auto" disabled={busy}
+                        title="Back to running for the whole video"
+                        onClick={() => onPatch({ timing: null })}>Whole video</button>
+                )}
+                {!win && (
+                    <button className="btn btn-sm btn-link p-0 ms-auto" disabled={busy}
+                        title="Give this layer a window on the timeline"
+                        onClick={() => setWin(0, Math.min(duration, Math.max(1, duration / 2)))}>Give it a window</button>
+                )}
+            </div>
+            {win && (
+                <div className="d-flex align-items-center gap-2 mt-2">
+                    <label className="small text-muted mb-0">Start</label>
+                    <input type="number" className="form-control form-control-sm" style={{ width: 74 }}
+                        min={0} max={duration} step={0.1} value={start} disabled={busy}
+                        onChange={(e) => setWin(num(e.target.value), end)} />
+                    <label className="small text-muted mb-0">End</label>
+                    <input type="number" className="form-control form-control-sm" style={{ width: 74 }}
+                        min={0} max={duration} step={0.1} value={end} disabled={busy}
+                        onChange={(e) => setWin(start, num(e.target.value))} />
+                    <small className="text-muted ms-auto">{(end - start).toFixed(1)}s</small>
+                </div>
+            )}
+            <RangeRow label="Fade in" value={layer.enter?.seconds || 0} min={0} max={4} step={0.1}
+                suffix="s" disabled={busy} onChange={(v) => ramp("enter", v)} />
+            <RangeRow label="Fade out" value={layer.exit?.seconds || 0} min={0} max={4} step={0.1}
+                suffix="s" disabled={busy} onChange={(v) => ramp("exit", v)} />
+            <p className="text-muted mb-0" style={{ fontSize: 11 }}>
+                The same window the lane shows — drag the bar to move it, its ends to trim.
+            </p>
+        </div>
     );
 }
 
