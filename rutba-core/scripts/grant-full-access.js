@@ -8,12 +8,24 @@
  * deployment serves Strapi, core, or both (RUTBA_BACKEND is irrelevant —
  * both servers read these rows).
  *
- * "Full access" is defined by the database, not a hardcoded list: every
- * active api_pro_app_roles row is granted, which covers domains with
- * non-standard level sets (ess ships employee/manager, web ships
- * public/user) as well as the usual admin/manager/staff triple. The account
- * is put on the `rutba_app_user` users-permissions role — AuthCallback logs
- * out any other roleType — and confirmed so login works immediately.
+ * "Full access" is defined by @rutba/api-provider, not a hardcoded list: the
+ * script first reconciles api_pro_app_domains / api_pro_app_roles with the
+ * domains.json + roles.json declarations, then grants every active role. That
+ * covers domains with non-standard level sets (ess ships employee/manager, web
+ * ships public/user) as well as the usual admin/manager/staff triple — and,
+ * critically, an app added since the last seed: without the reconcile the
+ * grant would silently skip a domain whose roles are not in the DB yet, which
+ * is the usual "the new app has no permissions and I cannot grant them"
+ * lockout. The account is put on the `rutba_app_user` users-permissions role
+ * — AuthCallback logs out any other roleType — and confirmed so login works
+ * immediately.
+ *
+ * The reconcile only creates role/domain rows and reactivates declared ones it
+ * finds disabled; it never deletes or renames. It is not a substitute for the
+ * full seed (`npm run seed -- --only=api-provider,up-permissions`), which also
+ * seeds interfaces, methods and per-method policies — the rows that decide
+ * what each role may call. This script gets you back in; the seed makes the
+ * endpoints answer.
  *
  * Additive and idempotent: existing app_roles are kept, re-running changes
  * nothing. User writes go through src/auth/up.js userService so password
@@ -33,12 +45,14 @@
  *   --display-name <name>  displayName when creating (default: the username)
  *   --keep-role            do not move an existing account onto rutba_app_user
  *   --unblock              clear the blocked flag on an existing account
+ *   --no-sync              skip the config→DB reconcile; grant only what exists
  *   --dry-run              report what would change without writing
  */
 
 const crypto = require('crypto');
 const { getDb, closeDb } = require('../src/db/connection');
 const { userService } = require('../src/auth/up');
+const { generateDocumentId } = require('../src/documents/write');
 
 const APP_ROLE_TYPE = 'rutba_app_user';
 
@@ -57,6 +71,7 @@ function parseArgs(argv) {
     else if (a === '--display-name') args.displayName = take();
     else if (a === '--keep-role') args.flags.keepRole = true;
     else if (a === '--unblock') args.flags.unblock = true;
+    else if (a === '--no-sync') args.flags.noSync = true;
     else if (a === '--dry-run') args.flags.dryRun = true;
     else if (a === '--help' || a === '-h') args.flags.help = true;
     else throw new Error(`Unknown argument: ${a}`);
@@ -68,8 +83,142 @@ function usage() {
   console.log(
     'Usage: npm run grant:full-access -- --email <addr> ' +
     '[--password <pw>] [--username <name>] [--display-name <name>] ' +
-    '[--keep-role] [--unblock] [--dry-run]'
+    '[--keep-role] [--unblock] [--no-sync] [--dry-run]'
   );
+}
+
+function titleCase(key) {
+  return key.split('_').map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+}
+
+function readDeclared() {
+  try {
+    return {
+      domains: require('@rutba/api-provider/config/domains.json'),
+      roles: require('@rutba/api-provider/config/roles.json'),
+    };
+  } catch (_) {
+    return null;
+  }
+}
+
+/**
+ * Bring api_pro_app_domains / api_pro_app_roles up to what @rutba/api-provider
+ * declares, so a domain added since the last seed can actually be granted.
+ *
+ * Mirrors the api-pro seeder's row shape (name, `Auto-seeded role ...`
+ * description, admin_role_code = key) so the next real seed upserts over these
+ * rows instead of duplicating them. Additive only — nothing is deleted, and an
+ * already-correct database comes back with every counter at zero.
+ */
+async function syncDeclaredRoles(db, { dryRun }) {
+  const declared = readDeclared();
+  if (!declared) {
+    return { skipped: '@rutba/api-provider config not resolvable — granted existing rows only' };
+  }
+
+  const report = { domainsCreated: [], rolesCreated: [], rolesLinked: [], reactivated: [] };
+  const now = new Date();
+
+  const domainByKey = new Map(
+    (await db('api_pro_app_domains').select('id', 'key', 'is_active')).map((d) => [d.key, d])
+  );
+  for (const [key, def] of Object.entries(declared.domains || {})) {
+    const existing = domainByKey.get(key);
+    if (!existing) {
+      report.domainsCreated.push(key);
+      if (dryRun) {
+        domainByKey.set(key, { id: null, key, is_active: 1 });
+        continue;
+      }
+      const [id] = await db('api_pro_app_domains').insert({
+        document_id: generateDocumentId(),
+        key,
+        name: def.name || titleCase(key),
+        description: def.description || null,
+        is_active: 1,
+        created_at: now,
+        updated_at: now,
+        published_at: now,
+      });
+      domainByKey.set(key, { id, key, is_active: 1 });
+    } else if (!existing.is_active) {
+      // A deactivated domain's roles are still granted, but the guards treat
+      // the app as switched off — reactivate so the grant means something.
+      report.reactivated.push(`domain:${key}`);
+      if (!dryRun) {
+        await db('api_pro_app_domains').where('id', existing.id).update({ is_active: 1, updated_at: now });
+      }
+    }
+  }
+
+  const roleByKey = new Map(
+    (await db('api_pro_app_roles').select('id', 'key', 'is_active')).map((r) => [r.key, r])
+  );
+  const links = await db('api_pro_app_roles_app_domains_lnk').select('app_role_id', 'app_domain_id', 'app_role_ord');
+  const linkedRoleIds = new Set(links.map((l) => Number(l.app_role_id)));
+  const lastOrd = new Map();
+  for (const l of links) {
+    const d = Number(l.app_domain_id);
+    lastOrd.set(d, Math.max(lastOrd.get(d) || 0, Number(l.app_role_ord) || 0));
+  }
+
+  const declaredRoles = Array.isArray(declared.roles)
+    ? declared.roles
+    : Object.entries(declared.roles || {}).map(([key, v]) => ({ key, ...v }));
+
+  for (const def of declaredRoles) {
+    if (!def?.key) continue;
+    let row = roleByKey.get(def.key);
+    if (!row) {
+      // Dry-run stops here: the row has no id, so the link it would get is
+      // implied by the create rather than reported separately.
+      report.rolesCreated.push(def.key);
+      if (dryRun) continue;
+      const [id] = await db('api_pro_app_roles').insert({
+        document_id: generateDocumentId(),
+        key: def.key,
+        name: titleCase(def.key),
+        description: `Auto-seeded role '${def.key}' (level=${def.level}, domain=${def.domain})`,
+        is_active: 1,
+        admin_role_code: def.key,
+        created_at: now,
+        updated_at: now,
+        published_at: now,
+      });
+      row = { id, key: def.key, is_active: 1 };
+      roleByKey.set(def.key, row);
+    } else if (!row.is_active) {
+      // An inactive role is skipped by the grant query below — the quietest
+      // way to stay locked out of an app that looks fully configured.
+      report.reactivated.push(`role:${def.key}`);
+      if (!dryRun) {
+        await db('api_pro_app_roles').where('id', row.id).update({ is_active: 1, updated_at: now });
+      }
+      row.is_active = 1;
+    }
+
+    const domain = domainByKey.get(def.domain);
+    if (domain?.id && row.id && !linkedRoleIds.has(Number(row.id))) {
+      report.rolesLinked.push(`${def.key}->${def.domain}`);
+      if (!dryRun) {
+        const ord = (lastOrd.get(Number(domain.id)) || 0) + 1;
+        lastOrd.set(Number(domain.id), ord);
+        await db('api_pro_app_roles_app_domains_lnk').insert({
+          app_role_id: row.id,
+          app_domain_id: domain.id,
+          app_domain_ord: 1,
+          app_role_ord: ord,
+        });
+        linkedRoleIds.add(Number(row.id));
+      }
+    }
+  }
+
+  for (const k of Object.keys(report)) {
+    if (Array.isArray(report[k]) && !report[k].length) delete report[k];
+  }
+  return report;
 }
 
 async function domainKeysFor(db, roleIds) {
@@ -107,6 +256,17 @@ async function main() {
   };
 
   try {
+    if (!args.flags.noSync) {
+      const sync = await syncDeclaredRoles(db, { dryRun: args.flags.dryRun });
+      if (Object.keys(sync).length) out.sync = sync;
+      if (sync.rolesCreated?.length && args.flags.dryRun) {
+        out.warnings.push(
+          `${sync.rolesCreated.length} declared role(s) are missing from the database; ` +
+          'a real run creates them, so the counts below understate the grant.'
+        );
+      }
+    }
+
     const allRoles = await db('api_pro_app_roles').where('is_active', 1).select('id', 'key');
     if (!allRoles.length) {
       throw new Error(
@@ -203,8 +363,14 @@ async function main() {
   }
 }
 
-main().catch(async (err) => {
-  console.error(err.message || err);
-  try { await closeDb(); } catch (_) { /* already closed */ }
-  process.exit(1);
-});
+// Exported so the reconcile can be exercised inside a rolled-back transaction
+// (it takes any knex-callable, so a trx works) without touching real rows.
+module.exports = { syncDeclaredRoles };
+
+if (require.main === module) {
+  main().catch(async (err) => {
+    console.error(err.message || err);
+    try { await closeDb(); } catch (_) { /* already closed */ }
+    process.exit(1);
+  });
+}
