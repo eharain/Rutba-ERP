@@ -85,8 +85,11 @@ function RutbaApp({
       <QueryClientProvider client={queryClient}>
         <Toaster />
         {/* Site-wide SEO defaults — pages override with their own <Seo />.
-            Page-level <Head>/<Seo> tags win because next/head merges by
-            attribute key (last write wins for <title>, <meta name=…>). */}
+            Page-level tags win because every tag <Seo /> emits carries a `key`
+            and next/head keeps the later one. The keys are not optional:
+            next/head de-duplicates <meta> by `name` but NOT by `property`, so
+            without them both blocks would survive and a scraper would take the
+            first og:image it found — the site logo, on every share. */}
         <Seo />
         <SiteJsonLd />
         <Component {...pageProps} />

@@ -7,6 +7,7 @@ import { CmsPageDetailInterface } from "@/types/api/cms-page";
 import { getPageUrl } from "@/lib/cms-page-types";
 import CmsArticleSidebar from "./cms-article-sidebar";
 import Seo from "@/components/seo/seo";
+import PageShare from "@/components/share/page-share";
 
 export default function CmsNewsPageContent({
   page,
@@ -51,6 +52,15 @@ export default function CmsNewsPageContent({
               {publishedDate && (
                 <p className="text-sm text-slate-400 mt-3">{publishedDate}</p>
               )}
+              <div className="mt-5">
+                <PageShare
+                  path={getPageUrl(page)}
+                  title={page.title}
+                  summary={page.excerpt}
+                  image={page.seo_meta?.og_image || page.featured_image}
+                  className="h-10"
+                />
+              </div>
             </header>
 
             {page.featured_image?.url && (

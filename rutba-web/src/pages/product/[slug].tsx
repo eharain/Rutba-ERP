@@ -24,6 +24,7 @@ import { useRecentlyViewed } from "@/store/store-recently-viewed";
 import RecentlyViewed from "@/components/product-list/recently-viewed";
 import Seo from "@/components/seo/seo";
 import ProductJsonLd from "@/components/seo/product-json-ld";
+import ProductShare from "@/components/share/product-share";
 // import Reviews from "@/components/product-detail/reviews";
 // import useReviewsService from "@/services/reviews";
 import { createWebProductsService, getProductDetailSSR } from "@/services";
@@ -32,7 +33,6 @@ import { renderMarkdown } from "@/lib/render-markdown";
 import { IMAGE_URL, BASE_URL } from "@/static/const";
 import { CartTermInfo } from "@/types/api/cart";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import Head from "next/head";
 
 export const getServerSideProps: GetServerSideProps<{
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -450,6 +450,21 @@ export default function ProductDetail({
       ? `${product.parent.name} — ${product.name}`
       : product?.name);
 
+  // Every photo the page can show, primary first. Shared with <Seo> so a link
+  // preview offers the same gallery the page does, deduped there by URL.
+  const shareImages = [
+    ...(product?.gallery ?? []),
+    ...(product?.logo ? [product.logo] : []),
+  ].filter((img) => img?.url);
+
+  // The price a share should advertise: what the shopper would actually pay
+  // right now, which for a ranged product is the cheapest variant rather than
+  // nothing.
+  const sharePrice =
+    typeof getPrice === "number"
+      ? getPrice
+      : priceRange?.min ?? product?.selling_price ?? null;
+
   const seoKeywords = [
     product?.name,
     category?.name,
@@ -462,17 +477,20 @@ export default function ProductDetail({
 
   return (
     <LayoutMain>
-      {/* Canonical URL strips any group/offer query params so search engines
-          see one URL per product even though clicks from different groups
-          may surface different prices. */}
-      {(product?.slug || product?.documentId) && (
-        <Head>
-          <link rel="canonical" href={`/product/${encodeURIComponent(product.slug || product.documentId)}`} />
-        </Head>
-      )}
+      {/* Canonical path strips any group/offer query params so search engines
+          see one URL per product even though clicks from different groups may
+          surface different prices. Passed to <Seo> rather than emitted here:
+          it also has to be the og:url, and a second <link rel="canonical">
+          alongside Seo's own left two canonicals on the page — the one here
+          host-relative, which crawlers cannot resolve. */}
       <Seo
         title={seoTitle}
         description={product?.seo_meta?.meta_description || seoDescription}
+        path={
+          product?.slug || product?.documentId
+            ? `/product/${encodeURIComponent(product.slug || product.documentId)}`
+            : undefined
+        }
         keywords={(() => {
           const raw = product?.seo_meta?.keywords;
           if (typeof raw === "string" && raw.trim()) {
@@ -480,13 +498,17 @@ export default function ProductDetail({
           }
           return seoKeywords;
         })()}
-        image={
-          product?.seo_meta?.og_image?.url ||
-          product?.gallery?.[0]?.url ||
-          product?.logo?.url
-        }
+        image={product?.seo_meta?.og_image || product?.gallery?.[0] || product?.logo}
+        images={shareImages}
         noindex={!!product?.seo_meta?.noindex || isOffline}
         type="product"
+        product={{
+          price: typeof getOfferPrice === "number" ? getOfferPrice : sharePrice,
+          currency: "PKR",
+          availability: isOffline ? "oos" : "instock",
+          brand: brand?.name ?? null,
+          sku: product?.sku ?? null,
+        }}
       />
       {product?.name && !isOffline && (
         <ProductJsonLd
@@ -850,6 +872,11 @@ export default function ProductDetail({
                 <ShoppingBasket className="h-5 w-5 mr-2 transition-transform group-hover:scale-110" />
                 {ctaLabel("Add to Cart", "Select Options")}
               </Button>
+
+              {/* Sharing stays available even when the product is offline —
+                  a shopper sending it to a friend is exactly how it gets
+                  bought once it is back. */}
+              <ProductShare product={product} className="w-full mt-3 h-12" />
 
               {/* Trust strip */}
               <ul className="mt-6 grid grid-cols-3 gap-3 text-center">

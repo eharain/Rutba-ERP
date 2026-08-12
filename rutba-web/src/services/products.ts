@@ -13,6 +13,13 @@ export async function getProductDetailSSR(slug: string, groupId?: string) {
   return res ?? null;
 }
 
+/** Caption the brand posted about a product, for the share sheet. */
+export interface ProductShareText {
+  caption: string;
+  title: string | null;
+  posted_at: string | null;
+}
+
 export function createWebProductsService(config = {}) {
   void config;
   const productsProxy = WebProductsEndpoints;
@@ -53,6 +60,14 @@ export function createWebProductsService(config = {}) {
     };
   };
 
+  // The brand's own posted caption for this product, or null when nothing has
+  // been posted about it. Fetched when the share sheet opens rather than with
+  // the product, so the detail page never waits on it.
+  const getProductShare = async (slug: string): Promise<ProductShareText | null> => {
+    const res = await productsProxy.share(slug);
+    return res?.data ?? null;
+  };
+
   const productInArrayId = async (idProducts) => {
     const res = await productsProxy.byIds(idProducts);
     return res?.data ?? [];
@@ -76,6 +91,7 @@ export function createWebProductsService(config = {}) {
     getCollections,
     getProducts,
     getProductDetail,
+    getProductShare,
     productInArrayId,
     searchProduct,
     getHighestProductPrice,

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
 import Seo from "@/components/seo/seo";
+import PageShare from "@/components/share/page-share";
 import Link from "next/link";
 import { renderMarkdown } from "@/lib/render-markdown";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
@@ -202,6 +203,16 @@ export default function ProductGroupPage({
             dangerouslySetInnerHTML={{ __html: renderMarkdown(group.excerpt) }}
           />
         )}
+
+        <div className="mb-6">
+          <PageShare
+            path={`/product-groups/${encodeURIComponent(group.slug)}`}
+            title={group.title || group.name}
+            summary={group.excerpt}
+            image={group.seo_meta?.og_image || group.cover_image}
+            className="h-10"
+          />
+        </div>
 
         {/* Offer Banner */}
         {activeOffer && (
