@@ -354,6 +354,20 @@ const uploadService = {
     return uploadFileAndPersist(values);
   },
 
+  /**
+   * Register bytes that ALREADY live on the media server as a library row —
+   * no provider write, no local copy, nothing streamed. This is how a video
+   * the media server's own drive scanner found becomes attachable to a post:
+   * the file stays exactly where it is and the row simply points at it.
+   *
+   * Strapi's own upload service has `add(values)` with these semantics (entity
+   * creation only); core's `add` is the byte path, so this is the equivalent
+   * under a name that cannot be mistaken for it.
+   */
+  async registerRemote(values) {
+    return persist(values);
+  },
+
   findOne,
 
   async findMany(query = {}) {
