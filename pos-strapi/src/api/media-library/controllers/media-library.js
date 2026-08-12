@@ -166,6 +166,17 @@ module.exports = {
         }
     },
 
+    /** Tags carried by videos on the media server, with counts. */
+    async mediaVideoTags(ctx) {
+        const svc = strapi.service('api::media-library.media-library');
+        try {
+            ctx.body = { data: await svc.mediaVideoTags(ctx.query || {}) };
+        } catch (e) {
+            ctx.status = e.status || 502;
+            ctx.body = { error: { message: e.message } };
+        }
+    },
+
     /** Folders on the media server that contain videos. */
     async mediaVideoFolders(ctx) {
         const svc = strapi.service('api::media-library.media-library');

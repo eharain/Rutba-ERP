@@ -75,6 +75,10 @@ export default function VideosPage() {
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState("");
     const [sort, setSort] = useState("newest");
+    const [tag, setTag] = useState("");
+    const [tags, setTags] = useState([]);          // [{ name, count }] for the folder in view
+    const [dateFrom, setDateFrom] = useState("");
+    const [dateTo, setDateTo] = useState("");
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState("");
 
@@ -106,6 +110,12 @@ export default function VideosPage() {
                 folder: folder || undefined,
                 recursive: recursive ? 1 : 0,
                 q: search.trim() || undefined,
+                tag: tag || undefined,
+                // Whole days, in the server's own DATETIME shape. `until` is the
+                // end of the chosen day, or a video uploaded that afternoon
+                // falls outside a range that names it.
+                since: dateFrom ? `${dateFrom} 00:00:00` : undefined,
+                until: dateTo ? `${dateTo} 23:59:59` : undefined,
                 sort,
                 limit: PAGE_SIZE,
                 offset: (page - 1) * PAGE_SIZE,
@@ -128,9 +138,33 @@ export default function VideosPage() {
             // response ends the loading state while the live one is still out.
             if (mine === reqSeq.current) setLoading(false);
         }
-    }, [jwt, folder, recursive, search, sort, page]);
+    }, [jwt, folder, recursive, search, tag, dateFrom, dateTo, sort, page]);
 
     useEffect(() => { loadVideos(); }, [loadVideos]);
+
+    // Any filter change puts you back on page 1 — page 7 of a narrower result
+    // set is usually empty, and an empty grid reads as "nothing matched".
+    useEffect(() => { setPage(1); }, [folder, recursive, search, tag, dateFrom, dateTo, sort]);
+
+    // Tags are a facet of what is on screen: scoped to the folder in view, so
+    // the filter never offers a tag that would return nothing here.
+    const loadTags = useCallback(async () => {
+        if (!jwt) return;
+        try {
+            const res = await MediaLibraryEndpoints.mediaVideoTags({
+                folder: folder || undefined,
+                recursive: recursive ? 1 : 0,
+            });
+            setTags((res.data || res).tags || []);
+        } catch (err) {
+            // An older media server has no tag route; the rest of the gallery
+            // works, so lose the filter rather than the page.
+            console.error("Failed to load video tags", err);
+            setTags([]);
+        }
+    }, [jwt, folder, recursive]);
+
+    useEffect(() => { loadTags(); }, [loadTags]);
 
     const loadFolders = useCallback(async () => {
         if (!jwt) return;
@@ -436,6 +470,25 @@ export default function VideosPage() {
                                     <input className="form-control" placeholder="Search videos…" value={search}
                                         onChange={(e) => applyFilter(setSearch)(e.target.value)} />
                                 </div>
+                                <select className={`form-select form-select-sm ${tag ? "border-primary" : ""}`}
+                                    style={{ width: "auto" }} value={tag}
+                                    onChange={(e) => setTag(e.target.value)}
+                                    title={tags.length ? "Filter by tag" : "No tags on the videos in view"}>
+                                    <option value="">
+                                        {tags.length ? "All tags" : "No tags yet"}
+                                    </option>
+                                    {tags.map((t) => (
+                                        <option key={t.name} value={t.name}>{t.name} ({t.count})</option>
+                                    ))}
+                                </select>
+                                <div className="input-group input-group-sm" style={{ width: "auto" }} title="Uploaded between">
+                                    <span className="input-group-text"><i className="fas fa-calendar"></i></span>
+                                    <input type="date" className="form-control" value={dateFrom} max={dateTo || undefined}
+                                        onChange={(e) => setDateFrom(e.target.value)} />
+                                    <span className="input-group-text">→</span>
+                                    <input type="date" className="form-control" value={dateTo} min={dateFrom || undefined}
+                                        onChange={(e) => setDateTo(e.target.value)} />
+                                </div>
                                 <select className="form-select form-select-sm" style={{ width: "auto" }} value={sort}
                                     onChange={(e) => setSort(e.target.value)}>
                                     <option value="newest">Newest first</option>
@@ -443,6 +496,12 @@ export default function VideosPage() {
                                     <option value="name">Name A–Z</option>
                                     <option value="size">Largest first</option>
                                 </select>
+                                {(search || tag || dateFrom || dateTo || folder) && (
+                                    <button className="btn btn-sm btn-link p-0"
+                                        onClick={() => { setSearch(""); setTag(""); setDateFrom(""); setDateTo(""); setFolder(""); }}>
+                                        Clear filters
+                                    </button>
+                                )}
                                 {loading && <span className="spinner-border spinner-border-sm ms-auto"></span>}
                             </div>
                         </div>
@@ -476,6 +535,22 @@ export default function VideosPage() {
                                                         {v.folder && <span title={v.folder}><i className="fas fa-folder"></i> {v.folder.split("/").pop()}</span>}
                                                         {used.length === 0 && <span className="badge bg-light text-dark border">unused</span>}
                                                     </div>
+                                                    {(v.tags || []).length > 0 && (
+                                                        <div className="d-flex flex-wrap gap-1 mt-1">
+                                                            {v.tags.slice(0, 5).map((t) => (
+                                                                <button key={t} type="button"
+                                                                    className={`badge border-0 ${t === tag ? "bg-primary" : "bg-light text-dark border"}`}
+                                                                    style={{ fontSize: 10, cursor: "pointer" }}
+                                                                    title={t === tag ? "Clear this tag filter" : `Show only videos tagged “${t}”`}
+                                                                    onClick={() => setTag(t === tag ? "" : t)}>
+                                                                    <i className="fas fa-tag me-1"></i>{t}
+                                                                </button>
+                                                            ))}
+                                                            {v.tags.length > 5 && (
+                                                                <span className="text-muted" style={{ fontSize: 10 }}>+{v.tags.length - 5}</span>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                     {used.slice(0, 2).map(({ post, source }) => (
                                                         <Link key={`${post.documentId}-${source}`} href={`/posts/${post.documentId}`}
                                                             className="text-decoration-none d-block text-truncate mt-1" style={{ fontSize: 12 }}>

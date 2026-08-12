@@ -193,6 +193,7 @@ function registerCatalogModule() {
     // Media-server video surface. Literal paths first — koa-router matches in
     // registration order, so /videos/folders must precede /videos.
     { method: 'get', path: '/api/media-library/videos/folders', uid: MEDIA, action: 'mediaVideoFolders', handler: (c) => mediaLibrary.mediaVideoFolders(c) },
+    { method: 'get', path: '/api/media-library/videos/tags', uid: MEDIA, action: 'mediaVideoTags', handler: (c) => mediaLibrary.mediaVideoTags(c) },
     { method: 'post', path: '/api/media-library/videos/link', uid: MEDIA, action: 'linkMediaVideos', handler: (c) => mediaLibrary.linkMediaVideos(c) },
     { method: 'get', path: '/api/media-library/videos', uid: MEDIA, action: 'mediaVideos', handler: (c) => mediaLibrary.mediaVideos(c) },
     { method: 'get', path: '/api/media-library/video-scan', uid: MEDIA, action: 'videoScanStatus', handler: (c) => mediaLibrary.videoScanStatus(c) },

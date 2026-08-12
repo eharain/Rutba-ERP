@@ -100,6 +100,12 @@ module.exports = {
             config: { policies: [] },
         },
         {
+            method: 'GET',
+            path: '/media-library/videos/tags',
+            handler: 'media-library.mediaVideoTags',
+            config: { policies: [] },
+        },
+        {
             method: 'POST',
             path: '/media-library/videos/link',
             handler: 'media-library.linkMediaVideos',

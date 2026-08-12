@@ -399,6 +399,15 @@ module.exports = ({ strapi }) => ({
         return this._mediaFetch('/_api/videos/folders');
     },
 
+    /**
+     * Tags carried by videos, with counts. `params.folder` narrows them to the
+     * folder in view, so the gallery's tag filter is a facet of what is on
+     * screen rather than of the whole store.
+     */
+    async mediaVideoTags(params = {}) {
+        return this._mediaFetch('/_api/videos/tags', { params });
+    },
+
     /** State of the media server's drive scan. */
     async videoScanStatus() {
         return this._mediaFetch('/_api/videos/scan');

@@ -10,7 +10,7 @@
  * which draws a random active track when it renders a video unattended — so an
  * inactive track is genuinely off everywhere, not just hidden in this list.
  */
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
@@ -42,6 +42,13 @@ export default function AudioLibraryPage() {
     const [playingId, setPlayingId] = useState(null);
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState("");
+    const [trackSearch, setTrackSearch] = useState("");
+    const [trackTag, setTrackTag] = useState("");
+    const [rotationFilter, setRotationFilter] = useState("all"); // all | in | out
+    const [sourceFilter, setSourceFilter] = useState("all");     // all | upload | url
+    const [trackFrom, setTrackFrom] = useState("");
+    const [trackTo, setTrackTo] = useState("");
+    const [trackSort, setTrackSort] = useState("newest");
     const audioRef = useRef(null);
     const fileRef = useRef(null);
 
@@ -371,6 +378,51 @@ export default function AudioLibraryPage() {
 
     const activeCount = tracks.filter((t) => t.is_active).length;
 
+    // ── filters, search and sort ────────────────────────────
+    // All client-side: the whole library is already loaded (it is a handful of
+    // tracks, not a catalogue), and tags live on the track rows themselves.
+    const tagCounts = useMemo(() => {
+        const counts = new Map();
+        for (const t of tracks) {
+            for (const tag of (t.tags || [])) counts.set(tag, (counts.get(tag) || 0) + 1);
+        }
+        return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+    }, [tracks]);
+
+    const visibleTracks = useMemo(() => {
+        const q = trackSearch.trim().toLowerCase();
+        const from = trackFrom ? new Date(trackFrom) : null;
+        const to = trackTo ? new Date(`${trackTo}T23:59:59.999`) : null;
+        const rows = tracks.filter((t) => {
+            if (q) {
+                const hay = `${t.name || ""} ${t.credit || ""} ${(t.tags || []).join(" ")}`.toLowerCase();
+                if (!hay.includes(q)) return false;
+            }
+            if (trackTag && !(t.tags || []).includes(trackTag)) return false;
+            if (rotationFilter === "in" && !t.is_active) return false;
+            if (rotationFilter === "out" && t.is_active) return false;
+            if (sourceFilter === "upload" && !t.audio_file?.id) return false;
+            if (sourceFilter === "url" && t.audio_file?.id) return false;
+            const made = t.createdAt ? new Date(t.createdAt) : null;
+            if (from && (!made || made < from)) return false;
+            if (to && (!made || made > to)) return false;
+            return true;
+        });
+        const s = (v) => (v == null ? "" : String(v));
+        const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+        const cmp = {
+            newest: (a, b) => s(b.createdAt).localeCompare(s(a.createdAt)),
+            oldest: (a, b) => s(a.createdAt).localeCompare(s(b.createdAt)),
+            name: (a, b) => s(a.name).localeCompare(s(b.name)),
+            longest: (a, b) => num(b.duration_seconds) - num(a.duration_seconds),
+            shortest: (a, b) => num(a.duration_seconds) - num(b.duration_seconds),
+        }[trackSort] || ((a, b) => s(b.createdAt).localeCompare(s(a.createdAt)));
+        return rows.sort(cmp);
+    }, [tracks, trackSearch, trackTag, rotationFilter, sourceFilter, trackFrom, trackTo, trackSort]);
+
+    const filtersOn = trackSearch.trim() || trackTag || rotationFilter !== "all"
+        || sourceFilter !== "all" || trackFrom || trackTo;
+
     return (
         <ProtectedRoute>
             <Layout>
@@ -471,7 +523,59 @@ export default function AudioLibraryPage() {
                 />
 
                 <div className="card">
-                    <div className="card-header py-2"><i className="fas fa-list me-2" />Tracks</div>
+                    <div className="card-header py-2 d-flex flex-wrap align-items-center gap-2">
+                        <span><i className="fas fa-list me-2" />Tracks</span>
+                        <span className="badge bg-secondary">
+                            {filtersOn ? `${visibleTracks.length} of ${tracks.length}` : tracks.length}
+                        </span>
+                        <div className="input-group input-group-sm ms-2" style={{ maxWidth: 240 }}>
+                            <span className="input-group-text"><i className="fas fa-search" /></span>
+                            <input className="form-control" placeholder="Search name, credit, tag…"
+                                value={trackSearch} onChange={(e) => setTrackSearch(e.target.value)} />
+                        </div>
+                        <select className={`form-select form-select-sm ${trackTag ? "border-primary" : ""}`}
+                            style={{ width: "auto" }} value={trackTag} onChange={(e) => setTrackTag(e.target.value)}
+                            title={tagCounts.length ? "Filter by tag" : "No tags on any track yet"}>
+                            <option value="">{tagCounts.length ? "All tags" : "No tags yet"}</option>
+                            {tagCounts.map(([name, n]) => (
+                                <option key={name} value={name}>{name} ({n})</option>
+                            ))}
+                        </select>
+                        <select className="form-select form-select-sm" style={{ width: "auto" }} value={rotationFilter}
+                            onChange={(e) => setRotationFilter(e.target.value)} title="Rotation">
+                            <option value="all">In & out of rotation</option>
+                            <option value="in">In rotation</option>
+                            <option value="out">Out of rotation</option>
+                        </select>
+                        <select className="form-select form-select-sm" style={{ width: "auto" }} value={sourceFilter}
+                            onChange={(e) => setSourceFilter(e.target.value)} title="Where the audio lives">
+                            <option value="all">Uploads & links</option>
+                            <option value="upload">Uploaded files</option>
+                            <option value="url">Foreign URLs</option>
+                        </select>
+                        <div className="input-group input-group-sm" style={{ width: "auto" }} title="Added between">
+                            <span className="input-group-text"><i className="fas fa-calendar" /></span>
+                            <input type="date" className="form-control" value={trackFrom} max={trackTo || undefined}
+                                onChange={(e) => setTrackFrom(e.target.value)} />
+                            <span className="input-group-text">→</span>
+                            <input type="date" className="form-control" value={trackTo} min={trackFrom || undefined}
+                                onChange={(e) => setTrackTo(e.target.value)} />
+                        </div>
+                        <select className="form-select form-select-sm" style={{ width: "auto" }} value={trackSort}
+                            onChange={(e) => setTrackSort(e.target.value)} title="Sort">
+                            <option value="newest">Newest first</option>
+                            <option value="oldest">Oldest first</option>
+                            <option value="name">Name A–Z</option>
+                            <option value="longest">Longest first</option>
+                            <option value="shortest">Shortest first</option>
+                        </select>
+                        {filtersOn && (
+                            <button className="btn btn-sm btn-link p-0" onClick={() => {
+                                setTrackSearch(""); setTrackTag(""); setRotationFilter("all");
+                                setSourceFilter("all"); setTrackFrom(""); setTrackTo("");
+                            }}>Clear filters</button>
+                        )}
+                    </div>
                     <div className="table-responsive">
                         <table className="table table-sm table-hover align-middle mb-0">
                             <thead>
@@ -489,12 +593,17 @@ export default function AudioLibraryPage() {
                                 {loading && tracks.length === 0 && (
                                     <tr><td colSpan={7} className="text-center py-4"><span className="spinner-border spinner-border-sm" /></td></tr>
                                 )}
+                                {!loading && tracks.length > 0 && visibleTracks.length === 0 && (
+                                    <tr><td colSpan={7} className="text-center text-muted py-4">
+                                        No tracks match these filters.
+                                    </td></tr>
+                                )}
                                 {!loading && tracks.length === 0 && (
                                     <tr><td colSpan={7} className="text-center text-muted py-4">
                                         No tracks yet. Paste a URL above, or upload a file.
                                     </td></tr>
                                 )}
-                                {tracks.map((t) => (
+                                {visibleTracks.map((t) => (
                                     <React.Fragment key={t.documentId}>
                                     <tr className={t.is_active ? "" : "text-muted"}>
                                         <td>
@@ -519,7 +628,13 @@ export default function AudioLibraryPage() {
                                         </td>
                                         <td className="small">{t.credit || <span className="text-muted">—</span>}</td>
                                         <td className="small">
-                                            {(t.tags || []).map((x) => <span key={x} className="badge bg-light text-dark border me-1">{x}</span>)}
+                                            {(t.tags || []).map((x) => (
+                                                <button key={x} type="button"
+                                                    className={`badge border-0 me-1 ${x === trackTag ? "bg-primary" : "bg-light text-dark border"}`}
+                                                    style={{ cursor: "pointer" }}
+                                                    title={x === trackTag ? "Clear this tag filter" : `Show only tracks tagged “${x}”`}
+                                                    onClick={() => setTrackTag(x === trackTag ? "" : x)}>{x}</button>
+                                            ))}
                                         </td>
                                         <td>
                                             <div className="form-check form-switch mb-0">

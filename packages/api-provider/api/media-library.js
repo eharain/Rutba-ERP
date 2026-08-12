@@ -34,6 +34,9 @@ export const MediaLibraryEndpoints = {
     // FileServer, which owns the video bytes, the drives and the scanner.
     mediaVideos: (params = {}) => ({ path: '/media-library/videos', params }),
     mediaVideoFolders: () => ({ path: '/media-library/videos/folders' }),
+    // Tags actually carried by videos, with counts — `folder` narrows them to
+    // the folder in view so the filter matches what is on screen.
+    mediaVideoTags: (params = {}) => ({ path: '/media-library/videos/tags', params }),
     // Register media-server videos as library rows so a post can attach them.
     // Nothing is copied — the row points at the bytes where they already live.
     linkMediaVideos: (data) => ({ path: '/media-library/videos/link', action: 'linkMediaVideos', method: 'post', data }),

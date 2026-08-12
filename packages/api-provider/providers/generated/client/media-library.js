@@ -72,6 +72,11 @@ async function mediaVideos(params = {}) {
     return authApi.fetch(ep.path, ep.params);
 }
 
+async function mediaVideoTags(params = {}) {
+    const ep = MediaLibraryEndpointsApi.mediaVideoTags(params);
+    return authApi.fetch(ep.path, ep.params);
+}
+
 async function mediaVideoFolders() {
     const ep = MediaLibraryEndpointsApi.mediaVideoFolders();
     return authApi.fetch(ep.path, ep.params);
@@ -110,12 +115,13 @@ const endpoints = strictEndpointGuard(
         delFile,
         mediaVideos,
         mediaVideoFolders,
+        mediaVideoTags,
         linkMediaVideos,
         videoScanStatus,
         videoScan,
         meta: MediaLibraryEndpointsApi.meta,
     },
-    ["foldersTree","folders","folder","files","file","moveFiles","uploadToFolder","createFolder","renameFolder","deleteFolder","updateFileInfo","uploadFile","delFile","mediaVideos","mediaVideoFolders","linkMediaVideos","videoScanStatus","videoScan","meta"],
+    ["foldersTree","folders","folder","files","file","moveFiles","uploadToFolder","createFolder","renameFolder","deleteFolder","updateFileInfo","uploadFile","delFile","mediaVideos","mediaVideoFolders","mediaVideoTags","linkMediaVideos","videoScanStatus","videoScan","meta"],
 );
 
 export default endpoints;
