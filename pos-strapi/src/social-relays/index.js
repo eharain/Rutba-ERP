@@ -81,7 +81,9 @@ function listRelayProviders() {
   return Object.values(ADAPTERS).map((a) => ({
     key: a.key,
     label: a.label,
+    websiteUrl: a.websiteUrl || null,
     docsUrl: a.docsUrl || null,
+    apiBase: a.apiBase || null,
     needsApiUrl: a.needsApiUrl || 'no',
     targetLabel: a.targetLabel || null,
     capabilities: a.capabilities || {},

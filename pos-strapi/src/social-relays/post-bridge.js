@@ -58,14 +58,18 @@ async function listAccounts(relay) {
 module.exports = {
   key: PROVIDER,
   label: 'Post Bridge',
+  websiteUrl: 'https://www.post-bridge.com',
   docsUrl: 'https://api.post-bridge.com/reference',
+  apiBase: API,
   needsApiUrl: 'no',
   targetLabel: null,
   capabilities: { publish: true, delete: true, validate: true, schedule: true },
   platforms: Object.keys(PLATFORM_MAP),
   help: {
-    setup: 'Connect your accounts on the Post Bridge dashboard, enable the API add-on, then paste the pb_live_… key here.',
-    note: 'The API is a paid add-on on top of the base plan.',
+    signup: 'Create an account at post-bridge.com and enable the API add-on (paid, on top of the base plan).',
+    connect: 'On the Post Bridge dashboard, connect each social account you want to post to.',
+    key: 'Copy the pb_live_… API key from the dashboard\'s API page and paste it below.',
+    note: 'Use the Test button after saving — it lists exactly which accounts Post Bridge sees.',
   },
 
   mapPlatform(rutbaKey) {

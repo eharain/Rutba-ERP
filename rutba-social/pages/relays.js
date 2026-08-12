@@ -242,20 +242,61 @@ export default function RelaysPage() {
                                     {currentMeta && (
                                         <div className="col-12">
                                             <div className="alert alert-info py-2 mb-0 small">
-                                                <div className="fw-semibold mb-1">
+                                                <div className="fw-semibold mb-2">
                                                     <i className="fas fa-circle-info me-1"></i>Setting up {currentMeta.label}
                                                 </div>
-                                                {currentMeta.help?.setup && <div>{currentMeta.help.setup}</div>}
-                                                {currentMeta.help?.note && (
-                                                    <div className="mt-1 text-body-secondary">{currentMeta.help.note}</div>
-                                                )}
-                                                {currentMeta.docsUrl && (
-                                                    <div className="mt-1">
-                                                        <a href={currentMeta.docsUrl} target="_blank" rel="noopener noreferrer">
-                                                            <i className="fas fa-book me-1"></i>Provider docs
-                                                        </a>
+                                                {currentMeta.help?.signup && (
+                                                    <div className="mb-1 d-flex align-items-start">
+                                                        <span className="badge bg-primary me-2 flex-shrink-0">1 · Account</span>
+                                                        <span>
+                                                            {currentMeta.help.signup}
+                                                            {currentMeta.websiteUrl && (
+                                                                <>
+                                                                    {" "}
+                                                                    <a href={currentMeta.websiteUrl} target="_blank" rel="noopener noreferrer">
+                                                                        {currentMeta.websiteUrl.replace(/^https?:\/\//, "")}
+                                                                        <i className="fas fa-arrow-up-right-from-square ms-1"></i>
+                                                                    </a>
+                                                                </>
+                                                            )}
+                                                        </span>
                                                     </div>
                                                 )}
+                                                {currentMeta.help?.connect && (
+                                                    <div className="mb-1 d-flex align-items-start">
+                                                        <span className="badge bg-primary me-2 flex-shrink-0">2 · Connect</span>
+                                                        <span>{currentMeta.help.connect}</span>
+                                                    </div>
+                                                )}
+                                                {currentMeta.help?.key && (
+                                                    <div className="mb-1 d-flex align-items-start">
+                                                        <span className="badge bg-primary me-2 flex-shrink-0">3 · API key</span>
+                                                        <span>{currentMeta.help.key}</span>
+                                                    </div>
+                                                )}
+                                                {currentMeta.help?.note && (
+                                                    <div className="mt-1 text-body-secondary">
+                                                        <i className="fas fa-circle-info me-1"></i>{currentMeta.help.note}
+                                                    </div>
+                                                )}
+                                                {(currentMeta.apiBase || form.api_url) && (
+                                                    <div className="mt-1">
+                                                        <i className="fas fa-plug me-1"></i>Posts will be sent to{" "}
+                                                        <code>{form.api_url.trim() || currentMeta.apiBase}</code>
+                                                    </div>
+                                                )}
+                                                <div className="mt-1 d-flex gap-3">
+                                                    {currentMeta.websiteUrl && (
+                                                        <a href={currentMeta.websiteUrl} target="_blank" rel="noopener noreferrer">
+                                                            <i className="fas fa-globe me-1"></i>Provider dashboard
+                                                        </a>
+                                                    )}
+                                                    {currentMeta.docsUrl && (
+                                                        <a href={currentMeta.docsUrl} target="_blank" rel="noopener noreferrer">
+                                                            <i className="fas fa-book me-1"></i>API docs
+                                                        </a>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     )}
@@ -361,8 +402,20 @@ export default function RelaysPage() {
                                                 )}
                                             </td>
                                             <td>
-                                                <span className="badge bg-dark">{meta?.label || relay.provider}</span>
-                                                {relay.api_url && <div className="small text-muted text-truncate" style={{ maxWidth: 200 }}>{relay.api_url}</div>}
+                                                {meta?.websiteUrl ? (
+                                                    <a href={meta.websiteUrl} target="_blank" rel="noopener noreferrer"
+                                                        className="text-decoration-none" title={`Open the ${meta.label} dashboard`}>
+                                                        <span className="badge bg-dark">
+                                                            {meta.label}<i className="fas fa-arrow-up-right-from-square ms-1"></i>
+                                                        </span>
+                                                    </a>
+                                                ) : (
+                                                    <span className="badge bg-dark">{meta?.label || relay.provider}</span>
+                                                )}
+                                                <div className="small text-muted text-truncate" style={{ maxWidth: 200 }}
+                                                    title="Where posts are sent">
+                                                    {relay.api_url || meta?.apiBase || ""}
+                                                </div>
                                             </td>
                                             <td>
                                                 <div className="d-flex flex-wrap gap-1">

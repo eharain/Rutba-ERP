@@ -56,14 +56,18 @@ async function listIntegrations(relay) {
 module.exports = {
   key: PROVIDER,
   label: 'Postiz',
+  websiteUrl: 'https://platform.postiz.com',
   docsUrl: 'https://docs.postiz.com/public-api',
+  apiBase: CLOUD_API,
   needsApiUrl: 'optional',
   targetLabel: null,
   capabilities: { publish: true, delete: true, validate: true, schedule: true },
   platforms: Object.keys(PLATFORM_MAP),
   help: {
-    setup: 'Connect your channels in Postiz (cloud or your own self-hosted instance), then create an API key under Settings → Public API.',
-    note: 'Self-hosted: set the API URL to your Postiz backend origin. Note that self-hosting still requires your own platform developer apps inside Postiz.',
+    signup: 'Create an account at platform.postiz.com — or run your own self-hosted Postiz and set its backend origin as the API URL below.',
+    connect: 'In Postiz, add each platform as a channel (Postiz cloud handles the platform sign-ins).',
+    key: 'Create an API key under Settings → Public API and paste it below.',
+    note: 'Self-hosted note: your own instance still needs its own platform developer apps configured inside Postiz — the cloud plan does not.',
   },
 
   mapPlatform(rutbaKey) {

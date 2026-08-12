@@ -43,13 +43,17 @@ function endpoint(relay) {
 module.exports = {
   key: PROVIDER,
   label: 'Custom webhook',
+  websiteUrl: null,
   docsUrl: null,
+  apiBase: null,
   needsApiUrl: 'required',
   targetLabel: null,
   capabilities: { publish: true, delete: false, validate: true, schedule: false },
   platforms: ALL_PLATFORMS,
   help: {
-    setup: 'Point the API URL at any endpoint that accepts the normalized publish payload (an n8n/Make flow, your own bridge, another aggregator). The API key is sent as a Bearer token.',
+    signup: 'No provider account — bring any endpoint that can receive a JSON POST (an n8n/Make flow, your own bridge, another aggregator).',
+    connect: 'Set the API URL below to that endpoint. Each push POSTs { source, event, post: { title, body, tags }, platforms, media: { imageUrls, videoUrls } }.',
+    key: 'Optional: set an API key and the receiver gets it as a Bearer token to authenticate the calls.',
     note: 'The receiver can reply with per-platform results ({ perPlatform: { facebook: { status, postId, url } } }) to light up the result badges.',
   },
 

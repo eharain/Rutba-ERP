@@ -49,13 +49,17 @@ function teamId(relay) {
 module.exports = {
   key: PROVIDER,
   label: 'bundle.social',
+  websiteUrl: 'https://bundle.social',
   docsUrl: 'https://info.bundle.social/api-reference/introduction',
+  apiBase: API,
   needsApiUrl: 'no',
   targetLabel: 'Team ID (required)',
   capabilities: { publish: true, delete: true, validate: true, schedule: true },
   platforms: Object.keys(PLATFORM_MAP),
   help: {
-    setup: 'Create an organization + team on bundle.social, connect the team\'s social accounts, then paste the pk_live_… API key and the Team ID here.',
+    signup: 'Create an account at bundle.social — it gives you an organization containing one or more teams.',
+    connect: 'Connect the team\'s social accounts on the bundle.social dashboard, and copy that team\'s Team ID into the field below (the Test button lists your team ids).',
+    key: 'Create a pk_live_… API key in the organization settings and paste it below.',
     note: 'Every paid plan has unlimited connected accounts — cost scales with post volume, which fits multi-tenant use.',
   },
 

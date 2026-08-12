@@ -36,14 +36,18 @@ function headers(relay) {
 module.exports = {
   key: PROVIDER,
   label: 'Ayrshare',
+  websiteUrl: 'https://app.ayrshare.com',
   docsUrl: 'https://www.ayrshare.com/docs',
+  apiBase: API,
   needsApiUrl: 'no',
   targetLabel: 'Profile Key (Business plan, optional)',
   capabilities: { publish: true, delete: true, validate: true, schedule: true },
   platforms: Object.keys(PLATFORM_MAP),
   help: {
-    setup: 'Create an Ayrshare account, link your social accounts on the Ayrshare dashboard, then paste the API key from Settings → API Key.',
-    note: 'No Meta/TikTok developer apps needed — Ayrshare owns the platform approvals. On the multi-profile Business plan, set the tenant\'s Profile Key too.',
+    signup: 'Create an account at app.ayrshare.com (free tier available).',
+    connect: 'On the Ayrshare dashboard, open Social Accounts and link each platform you want to post to — you sign in to the platforms there, no developer apps needed.',
+    key: 'Copy the API key from the dashboard\'s API Key page and paste it below.',
+    note: 'No Meta/TikTok developer apps or app review — Ayrshare owns the platform approvals. On the multi-profile Business plan, also set the tenant\'s Profile Key.',
   },
 
   mapPlatform(rutbaKey) {

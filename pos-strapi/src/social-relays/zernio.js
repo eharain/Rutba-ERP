@@ -46,13 +46,17 @@ async function listAccounts(relay) {
 module.exports = {
   key: PROVIDER,
   label: 'Zernio (formerly Late)',
+  websiteUrl: 'https://zernio.com',
   docsUrl: 'https://docs.zernio.com',
+  apiBase: API,
   needsApiUrl: 'no',
   targetLabel: null,
   capabilities: { publish: true, delete: true, validate: true, schedule: true },
   platforms: Object.keys(PLATFORM_MAP),
   help: {
-    setup: 'Connect your social accounts on the Zernio dashboard, then create an API key (sk_…) under Settings → API.',
+    signup: 'Create an account at zernio.com.',
+    connect: 'On the Zernio dashboard, connect each social account you want to post to.',
+    key: 'Create an API key (sk_…) under Settings → API and paste it below.',
     note: 'getlate.dev rebranded to Zernio — existing Late keys and accounts carry over.',
   },
 
