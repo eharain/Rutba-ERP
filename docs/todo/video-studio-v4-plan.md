@@ -308,6 +308,11 @@ photos nobody customized.
   layers arriving from templates/recipes draw in the studio — their urls
   were never resolved there before. Poster side needed nothing (t4's
   logo-2 gate already covers image-patch bytes).
+- **Sound layers add FROM the library.** Both Sound buttons open a
+  TrackBrowser picker modal (search/tags/audition) whose per-row + places
+  that track on the timeline; the Music card's list grows the same +. The
+  track is chosen before the layer exists — `addSoundLayer(track)`;
+  `tracks[0]` survives only as a guarded fallback. (9fea70b)
 
 Gates re-run green: A/B 60/60 + 6/6 (Electron host), t2 full suite,
 t4 21/21 incl. the new duck proof.
