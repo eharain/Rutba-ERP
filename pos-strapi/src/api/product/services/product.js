@@ -3,7 +3,17 @@
 const { createCoreService } = require('@strapi/strapi').factories;
 const { ACTIVE_PRODUCT_FILTER } = require('../../../utils/active-product');
 const { NOT_A_VARIANT, imagedProductIdSet, hasAnyImage } = require('../../../utils/public-product');
-const { decodeShortCode } = require('@rutba/api-provider/lib/short-code.cjs');
+const { decodeShortCode, SHORT_LINK_PREFIX } = require('@rutba/api-provider/lib/short-code.cjs');
+
+// First path segment of a storefront product link, in every form we publish:
+// the canonical `/product/<slug>`, the printed `/qr/<code>` on labels and
+// packaging, and the short `/s/<code>` — taken from the codec so a prefix
+// change there can't silently stop captions being de-duplicated.
+const STOREFRONT_SEGMENTS = new Set([
+  'product',
+  'qr',
+  SHORT_LINK_PREFIX.replace(/^\/+/, ''),
+]);
 
 // Drafts of nested relations can slip through Strapi 5 populate trees even
 // when the parent is fetched as published.
@@ -117,7 +127,7 @@ function stripStorefrontLinks(body) {
         return raw;
       }
       const segments = url.pathname.split('/').filter(Boolean);
-      if (segments.length !== 2 || (segments[0] !== 'product' && segments[0] !== 's')) return raw;
+      if (segments.length !== 2 || !STOREFRONT_SEGMENTS.has(segments[0])) return raw;
       removed = true;
       return '';
     });
@@ -164,7 +174,7 @@ module.exports = createCoreService('api::product.product', ({ strapi }) => ({
       status: 'published',
       fields: ['id'],
       populate: { products: { fields: ['id'] } },
-      pagination: { pageSize: 1000 },
+      limit: 1000,
     });
     const ids = new Set();
     for (const g of groups ?? []) {
@@ -305,7 +315,10 @@ module.exports = createCoreService('api::product.product', ({ strapi }) => ({
       },
       fields: ['title', 'body', 'published_at_social'],
       sort: ['published_at_social:desc'],
-      pagination: { pageSize: 1 },
+      // Flat `limit`, never `pagination:{...}` — the document service strips the
+      // nested form ("accepted then stripped"), so a nested cap silently reads
+      // EVERY matching row. Public route: that must stay bounded.
+      limit: 1,
     });
 
     const post = posts?.[0];
@@ -328,7 +341,7 @@ module.exports = createCoreService('api::product.product', ({ strapi }) => ({
       filters: { $and: [{ id: { $in: cleanIds } }, ACTIVE] },
       fields: DETAIL_FIELDS,
       populate: PUBLIC_POPULATE,
-      pagination: { pageSize: Math.max(cleanIds.length, 1) },
+      limit: Math.max(cleanIds.length, 1),
     });
   },
 
@@ -361,7 +374,7 @@ module.exports = createCoreService('api::product.product', ({ strapi }) => ({
       filters: { $and: [filters, ...gate] },
       fields: DETAIL_FIELDS,
       populate: PUBLIC_POPULATE,
-      pagination: { pageSize },
+      limit: pageSize,
     });
 
     const token = identifierToken(q);
@@ -416,7 +429,7 @@ module.exports = createCoreService('api::product.product', ({ strapi }) => ({
       sort: ['selling_price:DESC', 'id:ASC'],
       fields: DETAIL_FIELDS,
       populate: PUBLIC_POPULATE,
-      pagination: { pageSize: 1 },
+      limit: 1,
     });
     return results?.[0] ?? null;
   },
@@ -438,7 +451,11 @@ module.exports = createCoreService('api::product.product', ({ strapi }) => ({
         filters,
         sort,
         populate: PUBLIC_POPULATE,
-        pagination: { page, pageSize },
+        // Flat page/pageSize: the nested `pagination:{...}` form is stripped by
+        // the document service, which is why this list used to return every
+        // product on every page.
+        page,
+        pageSize,
       }),
       strapi.documents('api::product.product').count({
         status: 'published',
