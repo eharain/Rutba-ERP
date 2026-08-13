@@ -1,7 +1,7 @@
 'use strict';
 
 const { createCoreController } = require('@strapi/strapi').factories;
-const { requireAppAdmin } = require('../../../utils/require-admin');
+const { requireAppRole } = require('../../../utils/require-admin');
 const { ensureUser } = require('../../../utils/ensure-user');
 const relays = require('../../../social-relays');
 
@@ -10,7 +10,17 @@ const UID = 'api::social-relay-provider.social-relay-provider';
 // Relay providers hold aggregator API keys — managing them is admin-only, same
 // as social-accounts. Reads stay open so staff can pick a relay when pushing a
 // post (api_key/extra_config are `private` and never serialized).
-const requireAdmin = (ctx, strapi) => requireAppAdmin(ctx, strapi, 'social');
+//
+// `admin` rides alongside `social` because registering a relay moved to the
+// rutba-admin console. Which APP may reach the write methods is a separate
+// decision, made by `apps: ['admin']` on the descriptor; this list only says
+// which ROLE-key prefixes count as an administrator, so an instance admin
+// holding admin_admin qualifies without also holding social_admin.
+const requireAdmin = (ctx, strapi) => requireAppRole(ctx, strapi, {
+  domains: ['admin', 'social'],
+  levels: ['admin'],
+  message: 'An admin or social admin app role is required',
+});
 
 module.exports = createCoreController(UID, ({ strapi }) => ({
   async create(ctx) {

@@ -12,8 +12,9 @@ const SECTIONS = [
     { href: "/audio",    label: "Audio",    icon: "fa-music" },
     { href: "/products", label: "Products", icon: "fa-box" },
     { href: "/replies",  label: "Replies",  icon: "fa-reply" },
+    // Read-only here — connecting and editing moved to the Rutba Admin console.
+    // Relay providers moved there outright; this app only reads them (posts/index).
     { href: "/accounts", label: "Accounts", icon: "fa-share-nodes", adminOnly: true },
-    { href: "/relays",   label: "Relays",   icon: "fa-tower-broadcast", adminOnly: true },
     { href: "/media",    label: "Media",    icon: "fa-photo-film" },
 ];
 

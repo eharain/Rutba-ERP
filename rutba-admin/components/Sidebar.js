@@ -9,6 +9,11 @@ const SECTIONS = [
     { href: "/app-domains", label: "App Domains", icon: "fa-key" },
     { href: "/mailboxes", label: "Mailboxes", icon: "fa-envelope" },
     { href: "/email-servers", label: "Email Servers", icon: "fa-server" },
+    // Integrations. rutba-social keeps read-only views of both; connecting,
+    // editing and deleting live here — enforced by apps: ['admin'] on the
+    // write methods of the social-accounts / social-relay-providers descriptors.
+    { href: "/social-accounts", label: "Social Accounts", icon: "fa-share-nodes" },
+    { href: "/social-relays", label: "Relay Providers", icon: "fa-tower-broadcast" },
 ];
 
 export default function Sidebar() {

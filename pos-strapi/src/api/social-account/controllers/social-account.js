@@ -1,14 +1,24 @@
 'use strict';
 
 const { createCoreController } = require('@strapi/strapi').factories;
-const { requireAppAdmin } = require('../../../utils/require-admin');
+const { requireAppRole } = require('../../../utils/require-admin');
 
 const POST_UID = 'api::social-post.social-post';
 
 // Social accounts hold the platform API keys/secrets/tokens — managing them is
 // an admin-only job. Reads (find/findOne) stay open so non-admins can still pick
 // accounts when composing a post (secrets are `private` and never serialized).
-const requireAdmin = (ctx, strapi) => requireAppAdmin(ctx, strapi, 'social');
+//
+// `admin` rides alongside `social` because connecting/editing an account moved
+// to the rutba-admin console. Which APP may reach the write methods is a
+// separate decision, made by `apps: ['admin']` on the descriptor; this list
+// only says which ROLE-key prefixes count as an administrator, so an instance
+// admin holding admin_admin qualifies without also holding social_admin.
+const requireAdmin = (ctx, strapi) => requireAppRole(ctx, strapi, {
+  domains: ['admin', 'social'],
+  levels: ['admin'],
+  message: 'An admin or social admin app role is required',
+});
 
 // The OAuth/connection orchestration lives on the social-post service (it owns
 // the provider adapters + token persistence). The account controller is a thin

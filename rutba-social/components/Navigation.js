@@ -13,7 +13,6 @@ const SECONDARY = [
     { href: "/products", label: "Products", variant: "success" },
     { href: "/replies",  label: "Replies",  variant: "info" },
     { href: "/accounts", label: "Accounts", variant: "secondary", adminOnly: true },
-    { href: "/relays",   label: "Relays",   variant: "secondary", adminOnly: true },
     { href: "/media",    label: "Media",    variant: "dark" },
 ];
 

@@ -42,6 +42,7 @@ const backfillEssOwners = require('./ess-owners-backfill');
 const provisionEssEmployees = require('./ess-employee-provisioning');
 const repairOrphanedLeaveRequests = require('./ess-orphaned-leave-repair');
 const { applyAdminDomainGrants } = require('./seeders/admin-domain-grants');
+const { pruneSocialWritePolicies } = require('./seeders/prune-social-write-policies');
 const { applyReturnPolicy } = require('./seeders/return-policy');
 const { applyCostChangeApprovalTemplate } = require('./seeders/cost-change-approval-template');
 const { applyOrderPlacedTeamAlert } = require('./seeders/order-placed-team-alert');
@@ -166,6 +167,22 @@ const REGISTRY = [
         supportsFull: true,
         hasMigration: true,
         run: (strapi) => applyAdminDomainGrants(strapi.db.connection),
+    },
+    // Must stay AFTER api-provider: that seed is upsert-only, so narrowing a
+    // descriptor's `apps` array adds the new roles' policy rows but leaves the
+    // old roles' rows behind. Without this prune, moving social-account and
+    // relay-provider management to the admin console would be a UI change only
+    // — social_admin would keep its write policies and could still call
+    // create/update/delete.
+    {
+        key: 'prune-social-write-policies',
+        title: 'Prune stale social_* write policies (management moved to rutba-admin)',
+        category: 'system',
+        essential: true,
+        supportsPartial: true,
+        supportsFull: true,
+        hasMigration: true,
+        run: (strapi) => pruneSocialWritePolicies(strapi.db.connection),
     },
     {
         key: 'accounting',
