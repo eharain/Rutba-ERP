@@ -41,7 +41,7 @@ echo   Inventory        : http://localhost:4017
 echo   Seed Control     : http://localhost:4018
 echo   Campaigns        : http://localhost:4019
 echo   Mail             : http://localhost:4021
-echo   User Management  : http://localhost:4022
+echo   Rutba Admin      : http://localhost:4022
 
 
 echo.
@@ -145,7 +145,7 @@ echo   Inventory    : http://localhost:4017
 echo   Seed Control : http://localhost:4018
 echo   Campaigns    : http://localhost:4019
 echo   Mail         : http://localhost:4021
-echo   User Mgmt    : http://localhost:4022
+echo   Rutba Admin  : http://localhost:4022
 echo   Helpdesk     : http://localhost:4023
 echo   Marketplace Wkr: background worker (no port)
 echo.
