@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/router";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import SignInRequired from "@rutba/pos-shared/components/SignInRequired";
 import { storage } from "@rutba/api-provider/lib/storage";
 
 /**
@@ -47,6 +48,10 @@ export default function Authorize() {
         }
     }, [router.isReady, jwt, user, loading]);
 
-    return <p className="text-center mt-5">Authorizing...</p>;
+    // Same screen the calling app just showed, so the hand-off looks like one
+    // continuous step rather than a white flash of "Authorizing...". The
+    // 'checking' phase holds its paint back, so a sub-second bounce — the
+    // normal case — shows nothing at all.
+    return <SignInRequired phase="checking" />;
 }
 

@@ -47,7 +47,8 @@
    existing per-card colour variety, but drawn from one designed set
    instead of raw Bootstrap contextual colours. */
 .app-home,
-.app-surface {
+.app-surface,
+.auth-gate {
     --tone-primary:   #3b82f6;
     --tone-success:   #10b981;
     --tone-info:      #06b6d4;
@@ -653,3 +654,169 @@ a.app-tile:focus-visible .app-tile-go {
 
 .modal-content { border-radius: var(--rb-r-lg); border-color: var(--rb-line); }
 .dropdown-menu { border-radius: var(--rb-r-md); }
+
+
+/* ─────────────────────────────────────────────────────────────
+   Sign-in gate — the full-page screen ProtectedRoute shows while
+   the session is being checked, and while the browser is being
+   handed off to the auth app. It is the first thing a signed-out
+   visitor sees, so it carries the app's own accent and icon.
+   ───────────────────────────────────────────────────────────── */
+
+/* Fixed, not just full-height: pages nest ProtectedRoute on both sides of
+   <Layout> (compare rutba-crm/pages/index.js with rutba-admin/pages/
+   mailboxes.js), so an in-flow gate would render *below* the app chrome on
+   half of them — showing a signed-out visitor a sidebar they can't use.
+   Covering the viewport makes the nesting order irrelevant. z-index clears
+   the top bar (1030) and side nav (1050). */
+.auth-gate {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    padding: 1.5rem;
+    overflow: auto;
+    background:
+        radial-gradient(1100px 520px at 50% -8%,
+            color-mix(in srgb, var(--app-accent) 13%, transparent) 0%,
+            transparent 70%),
+        var(--rb-canvas);
+}
+
+.auth-gate-card {
+    /* margin:auto rather than align-items:center — it still centres on both
+       axes but lets the card scroll into reach on a short viewport instead
+       of having its top clipped. */
+    margin: auto;
+    width: 100%;
+    max-width: 460px;
+    text-align: center;
+    padding: 2.25rem 2rem 2rem;
+    background: var(--rb-surface);
+    border: 1px solid var(--rb-line);
+    border-radius: var(--rb-r-xl);
+    box-shadow: var(--rb-shadow-lg);
+
+    /* The checking phase resolves in a few hundred ms for a healthy
+       session — hold the paint back so it never flashes. */
+    animation: auth-gate-in 0.4s var(--rb-ease) 0.45s both;
+}
+
+/* Every phase but the quiet 'checking' one has something to say right
+   away, so it paints without the hold-back delay. */
+.auth-gate.is-instant .auth-gate-card {
+    animation-delay: 0s;
+}
+
+/* Sign-in failed — swap the app accent for the danger tone so the whole
+   card (icon, wash, focus ring) turns without further rules. The error
+   phase deliberately renders no inline --app-accent, or it would win. */
+.auth-gate.is-error {
+    --app-accent: var(--tone-danger);
+}
+
+@keyframes auth-gate-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: none; }
+}
+
+.auth-gate-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 58px;
+    height: 58px;
+    margin-bottom: 1.1rem;
+    border-radius: var(--rb-r-lg);
+    font-size: 1.35rem;
+    color: #ffffff;
+    background: var(--app-accent);
+    background: linear-gradient(150deg,
+        var(--app-accent) 0%,
+        color-mix(in srgb, var(--app-accent) 78%, #000000) 100%);
+    box-shadow: 0 8px 18px -8px color-mix(in srgb, var(--app-accent) 70%, transparent);
+}
+
+.auth-gate-eyebrow {
+    margin: 0 0 0.3rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--rb-text-dim);
+}
+
+.auth-gate-title {
+    margin: 0 0 0.55rem;
+    font-size: 1.3rem;
+    line-height: 1.25;
+    color: var(--rb-ink);
+}
+
+.auth-gate-text {
+    margin: 0;
+    font-size: 0.895rem;
+    line-height: 1.55;
+    color: var(--rb-text-dim);
+}
+
+/* Indeterminate progress — a sliver of accent sweeping the track.
+   Purely decorative; it signals "working", not a real percentage. */
+.auth-gate-bar {
+    position: relative;
+    overflow: hidden;
+    height: 3px;
+    margin: 1.5rem auto 0;
+    max-width: 220px;
+    border-radius: 999px;
+    background: var(--rb-line-soft);
+}
+
+.auth-gate-bar > span {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 42%;
+    border-radius: inherit;
+    background: var(--app-accent);
+    animation: auth-gate-sweep 1.25s var(--rb-ease) infinite;
+}
+
+@keyframes auth-gate-sweep {
+    from { left: -45%; }
+    to   { left: 100%; }
+}
+
+.auth-gate-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+    padding: 0.55rem 1.15rem;
+    font-size: 0.885rem;
+    font-weight: 600;
+    color: #ffffff;
+    background: var(--app-accent);
+    border: 1px solid transparent;
+    border-radius: 10px;
+    transition: filter 0.15s var(--rb-ease), box-shadow 0.15s var(--rb-ease);
+}
+
+.auth-gate-btn:hover { filter: brightness(0.94); }
+
+.auth-gate-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-accent) 30%, transparent);
+}
+
+.auth-gate-foot {
+    margin: 0.85rem 0 0;
+    font-size: 0.775rem;
+    line-height: 1.5;
+    color: var(--rb-text-dim);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .auth-gate-card { animation: none; }
+    .auth-gate-bar > span { animation: none; left: 0; width: 100%; opacity: 0.5; }
+}

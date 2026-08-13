@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { useAuth } from "../context/AuthContext";
 import { APP_URLS } from "../lib/roles";
+import SignInRequired from "./SignInRequired";
 
 /**
  * Shared OAuth callback handler.
@@ -58,8 +59,8 @@ export default function AuthCallback() {
     }, [router.isReady]);
 
     if (error) {
-        return <p className="text-center mt-5 text-danger">{error}</p>;
+        return <SignInRequired phase="error" error={error} />;
     }
 
-    return <p className="text-center mt-5">Authenticating...</p>;
+    return <SignInRequired phase="returning" />;
 }
