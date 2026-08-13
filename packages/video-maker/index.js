@@ -1022,6 +1022,10 @@ function envelopeFromAnim(anim, H) {
  * shoves this one out. Distances default to the full frame (a photo crossing
  * it); text compiled from the legacy `anim` carries its own small dist.
  */
+// How soft a blur-through starts. In canvas pixels at the render size, like
+// every other blur here, so it means the same softness at any aspect.
+const BLUR_THROUGH_PX = 26;
+
 function envelopeAt(plan, layer, time) {
     const en = layer.enter;
     const ex = layer.exit;
@@ -1032,6 +1036,11 @@ function envelopeAt(plan, layer, time) {
     let tx = 0;
     let ty = 0;
     let scale = 1;
+    // A wipe is a growing CLIP over the layer's own bounds (null = no clip);
+    // blur-through is a softness that resolves. Both are applied by the paint
+    // wrapper, like every other envelope effect, so no painter learns them.
+    let wipe = null;
+    let blur = 0;
 
     if (en && en.seconds > 0 && en.kind !== 'none' && en.kind !== 'type-on' && time < start + en.seconds) {
         const p = Math.max(0, (time - start) / en.seconds); // 0 → 1 across the ramp
@@ -1042,6 +1051,10 @@ function envelopeAt(plan, layer, time) {
         else if (en.kind === 'slide-right') tx -= out * (en.dist ?? plan.W); // in from the left
         else if (en.kind === 'slide-up') ty += out * (en.dist ?? plan.H); // in from below
         else if (en.kind === 'slide-down') ty -= out * (en.dist ?? plan.H); // in from above
+        else if (en.kind === 'wipe') wipe = p; // uncovers left → right
+        // Alpha resolves faster than the blur so the layer is fully present
+        // while it is still soft — a focus pull, not a second fade.
+        else if (en.kind === 'blur-through') { alpha *= Math.min(1, p * 1.6); blur = out * BLUR_THROUGH_PX; }
     }
 
     if (ex && ex.seconds > 0 && ex.kind !== 'none' && ex.kind !== 'type-on') {
@@ -1054,11 +1067,13 @@ function envelopeAt(plan, layer, time) {
             else if (ex.kind === 'slide-right') tx += p * (ex.dist ?? plan.W); // out to the right
             else if (ex.kind === 'slide-up') ty -= p * (ex.dist ?? plan.H); // out through the top
             else if (ex.kind === 'slide-down') ty += p * (ex.dist ?? plan.H); // out through the bottom
+            else if (ex.kind === 'wipe') wipe = 1 - p; // covers left → right
+            else if (ex.kind === 'blur-through') { alpha *= 1 - p; blur = p * BLUR_THROUGH_PX; }
         }
     }
 
-    if (alpha >= 1 && tx === 0 && ty === 0 && scale === 1) return null;
-    return { alpha, tx, ty, scale };
+    if (alpha >= 1 && tx === 0 && ty === 0 && scale === 1 && wipe === null && blur === 0) return null;
+    return { alpha, tx, ty, scale, wipe, blur };
 }
 
 // ── painting ─────────────────────────────────────────────────────────────────
@@ -1416,15 +1431,23 @@ function paintCaption(ctx, plan, layer, time) {
         const line = lines.find((l) => n > l.start && n < l.end);
         if (line) n = Math.min(totalChars, line.end);
     }
-    const typing = reveal !== 'all' && n < totalChars && local > lead;
-    if (n <= 0 && !typing) return;
+    // Karaoke shows the WHOLE line from the start and lights it as it goes —
+    // the reader can see what is coming, which is what makes it readable at
+    // speed. Everything else about the clock is unchanged, so it retimes and
+    // splits exactly like the other reveals.
+    const karaoke = reveal === 'karaoke';
+    if (karaoke) n = Math.min(totalChars, Math.max(0, revealed));
+    const typing = reveal !== 'all' && !karaoke && n < totalChars && local > lead;
+    if (n <= 0 && !typing && !karaoke) return;
 
     ctx.font = `500 ${size}px ${FONT_STACK}`;
     ctx.textBaseline = 'top';
     ctx.textAlign = rtl ? 'right' : 'left';
     if (rtl) ctx.direction = 'rtl';
 
-    const posF = revealPosition(lines, n);
+    // Karaoke sizes its box for the whole text, not for what has been sung —
+    // a box that grew line by line would defeat the point of showing ahead.
+    const posF = revealPosition(lines, karaoke ? totalChars : n);
     const shownLines = Math.max(1, Math.min(maxLines, posF + 1));
     const boxH = Math.round(shownLines * lh + pad * 2);
     const boxW = W - margin * 2;
@@ -1463,9 +1486,30 @@ function paintCaption(ctx, plan, layer, time) {
     let caret = null;
     for (let i = 0; i < lines.length; i++) {
         const l = lines[i];
-        if (n < l.start) break; // `<` not `<=`: at n === start the caret has just landed on this line
+        if (!karaoke && n < l.start) break; // `<` not `<=`: at n === start the caret has just landed on this line
         const y = textTop + i * lh;
         if (y > boxY + boxH || y + lh < boxY - lh) continue;
+        if (karaoke) {
+            // The line ahead, dim; then the sung part over it in full colour.
+            // Drawn twice rather than measured and split, so the two halves
+            // cannot drift apart on a proportional font.
+            const whole = text.slice(l.start, l.end).replace(/\s+$/, '');
+            if (!whole) continue;
+            ctx.globalAlpha *= 0.45;
+            ctx.fillText(whole, textX, y);
+            ctx.globalAlpha /= 0.45;
+            const sung = text.slice(l.start, Math.max(l.start, Math.min(l.end, n))).replace(/\s+$/, '');
+            if (sung) {
+                ctx.save();
+                ctx.beginPath();
+                const wSung = ctx.measureText(sung).width;
+                ctx.rect(rtl ? textX - wSung : textX, y - lh * 0.2, wSung, lh * 1.2);
+                ctx.clip();
+                ctx.fillText(whole, textX, y);
+                ctx.restore();
+            }
+            continue;
+        }
         const slice = text.slice(l.start, Math.min(l.end, n)).replace(/\s+$/, '');
         if (slice) ctx.fillText(slice, textX, y);
         if (n <= l.end) {
@@ -2295,6 +2339,15 @@ export function paintFrame(ctx, plan, t) {
                 ctx.translate(-plan.W / 2, -plan.H / 2);
             }
             if (env.alpha < 1) ctx.globalAlpha = env.alpha;
+            // A wipe clips the layer's OWN box, so it uncovers a sticker
+            // across the sticker and a photo across the frame. A layer with no
+            // bounds (a caption, the chrome) wipes across the frame.
+            if (env.wipe !== null && env.wipe !== undefined) {
+                const wb = layerBounds(ctx, plan, layer) || { x: 0, y: 0, w: plan.W, h: plan.H };
+                ctx.beginPath();
+                ctx.rect(wb.x, wb.y, Math.max(0, wb.w * env.wipe), wb.h);
+                ctx.clip();
+            }
         }
         // The envelope owns the window's edges; keyed opacity owns the
         // interior. They multiply — one mechanism per job, never fighting.
@@ -2323,8 +2376,13 @@ export function paintFrame(ctx, plan, t) {
         }
         // Picture filters (brightness/contrast/…) wrap the painter the same
         // way — canvas filter state is scoped by the save/restore around it.
+        // The layer's own filters and the envelope's blur-through are the same
+        // canvas state, so they concatenate rather than overwrite — a tinted
+        // photo that blurs in stays tinted while it resolves.
         const flt = filterCss(layer.filter);
-        if (flt) ctx.filter = flt;
+        const envBlur = env && env.blur > 0 ? `blur(${env.blur.toFixed(1)}px)` : '';
+        const combined = flt && envBlur ? `${flt} ${envBlur}` : (flt || envBlur);
+        if (combined) ctx.filter = combined;
         painter(ctx, plan, layer, time);
         if (undoKeys) undoKeys();
         ctx.restore();
