@@ -113,6 +113,128 @@
       ]
     },
     {
+      "table": "helpdesk_kb_article_desks",
+      "columns": [
+        "id",
+        "article_id",
+        "desk_id",
+        "created_at"
+      ]
+    },
+    {
+      "table": "helpdesk_kb_article_feedback",
+      "columns": [
+        "id",
+        "document_id",
+        "tenant_id",
+        "article_id",
+        "kind",
+        "session_key",
+        "user_id",
+        "surface",
+        "comment",
+        "ticket_id",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    {
+      "table": "helpdesk_kb_article_related",
+      "columns": [
+        "id",
+        "article_id",
+        "related_article_id",
+        "created_at"
+      ]
+    },
+    {
+      "table": "helpdesk_kb_article_versions",
+      "columns": [
+        "id",
+        "document_id",
+        "tenant_id",
+        "article_id",
+        "version",
+        "title",
+        "summary",
+        "body",
+        "body_format",
+        "published_by",
+        "published_at",
+        "change_note",
+        "rolled_back_from",
+        "created_at"
+      ]
+    },
+    {
+      "table": "helpdesk_kb_articles",
+      "columns": [
+        "id",
+        "document_id",
+        "tenant_id",
+        "title",
+        "slug",
+        "category_id",
+        "visibility",
+        "status",
+        "summary",
+        "body",
+        "body_format",
+        "locale",
+        "translation_of_id",
+        "tags",
+        "attachment_ids",
+        "author_id",
+        "reviewer_id",
+        "published_at",
+        "review_due_at",
+        "archived_at",
+        "view_count",
+        "helpful_count",
+        "unhelpful_count",
+        "deflection_count",
+        "failed_deflection_count",
+        "source_ticket_id",
+        "source_kind",
+        "source_ref",
+        "version",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    {
+      "table": "helpdesk_kb_categories",
+      "columns": [
+        "id",
+        "document_id",
+        "tenant_id",
+        "key",
+        "name",
+        "description",
+        "icon",
+        "parent_id",
+        "depth",
+        "sequence",
+        "visibility",
+        "is_active",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    {
+      "table": "helpdesk_kb_search_misses",
+      "columns": [
+        "id",
+        "tenant_id",
+        "query",
+        "normalized",
+        "surface",
+        "occurrences",
+        "first_seen_at",
+        "last_seen_at"
+      ]
+    },
+    {
       "table": "helpdesk_queues",
       "columns": [
         "id",
