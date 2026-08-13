@@ -11,7 +11,16 @@ D2 are gaps this session opened or left.
 
 ---
 
-## D1 · Captions carry their own look
+## D1 · Captions carry their own look — **DONE (aefb177, poster 10810b7)**
+
+Landed as designed: optional `color`, `sizeScale`, `position`, `style` on a
+caption layer, each falling back to the video option it used to be. The size
+re-derives its own wrap and line count but NOT the caption band — the band is
+what the photos were fitted around, so one line's size must not move the stage
+under every photo. Gated by A/B 60/60 plus a 6-check t2 probe that holds both
+directions: the fields reach the pixels, and a caption stating nothing paints
+the same frame as one stating the video's own values. Typing speed stays
+shared — split lines take turns on one clock.
 
 **The gap.** "The caption layer is the same as a text layer" was answered for
 the *panel* — words, reveal, speed, size and split all live on the caption
