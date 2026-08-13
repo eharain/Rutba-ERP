@@ -282,7 +282,19 @@ export default function AccountsPage() {
                                             which app/account type to register, the APIs that must be
                                             granted, the exact callback URL. Open by default when adding
                                             an account (that is when it is needed), folded away on edit. */}
-                                        <ConnectionGuide spec={connSpecs[form.platform]} defaultOpen={!editing} />
+                                        <ConnectionGuide
+                                            spec={connSpecs[form.platform]}
+                                            defaultOpen={!editing}
+                                            platform={form.platform}
+                                            jwt={jwt}
+                                            post={appPost}
+                                            toast={toast}
+                                            // Seed the application-document fields from what has already
+                                            // been typed above, so the operator is not asked twice.
+                                            seed={{
+                                                sellerAccount: [form.account_name, form.seller_id].filter(Boolean).join(" · "),
+                                            }}
+                                        />
                                     </div>
                                     <div className="col-12">
                                         <hr className="my-1" />

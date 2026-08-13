@@ -234,6 +234,70 @@ async function test(name, fn) {
     }
   });
 
+  console.log('— daraz: downloadable application document —');
+  await test('applicationForm declares fields; required ones are marked', () => {
+    const f = daraz.connectionSpec.applicationForm;
+    assert.ok(f && Array.isArray(f.fields) && f.fields.length >= 5);
+    for (const x of f.fields) assert.ok(x.key && x.label, 'each field needs key + label');
+    assert.ok(f.fields.some((x) => x.required), 'at least one field should be required');
+  });
+  await test('render: fills values in, and the endpoint table comes from the adapter apiScopes', () => {
+    const { html, filename } = daraz.renderApplicationDoc({ values: { businessName: 'Acme Traders' } });
+    assert.ok(filename.endsWith('.html'));
+    assert.ok(html.startsWith('<!doctype html>'));
+    assert.ok(html.includes('Acme Traders'));
+    // every path the adapter calls must appear in the generated document
+    for (const p of Object.values(T.API)) {
+      assert.ok(html.includes(p), `document is missing endpoint ${p}`);
+    }
+  });
+  await test('render: blank fields become visible prompts and are reported as missing', () => {
+    const { html, missing } = daraz.renderApplicationDoc({ values: {} });
+    assert.ok(missing.includes('businessName'));
+    assert.ok(html.includes('class="todo"'), 'unfilled fields must be visibly marked');
+    assert.ok(html.includes('Before uploading:'), 'a reminder box should appear while fields are blank');
+    // the production callback is known to us, so it is filled in rather than left blank
+    assert.ok(!missing.includes('productionCallback'));
+    assert.ok(html.includes('/api/oauth/callback'));
+  });
+  await test('render: no missing-fields box once everything is answered', () => {
+    const values = {};
+    for (const f of daraz.connectionSpec.applicationForm.fields) values[f.key] = `v-${f.key}`;
+    const { html, missing } = daraz.renderApplicationDoc({ values });
+    assert.deepStrictEqual(missing, []);
+    assert.ok(!html.includes('Before uploading:'));
+    assert.ok(!html.includes('class="todo"'));
+  });
+  await test('render: operator input is HTML-escaped (the doc is opened in a browser)', () => {
+    const { html } = daraz.renderApplicationDoc({
+      values: { businessName: '<script>alert(1)</script>', contactEmail: 'a"b&c<d' },
+    });
+    assert.ok(!html.includes('<script>alert(1)</script>'), 'script tag must not survive');
+    assert.ok(html.includes('&lt;script&gt;'));
+    assert.ok(html.includes('a&quot;b&amp;c&lt;d'));
+  });
+  await test('reason answer: long + short, and every called endpoint is named', () => {
+    const { reason } = daraz.renderApplicationDoc({ values: {} });
+    assert.ok(reason.long.length > reason.short.length);
+    for (const p of Object.values(T.API)) {
+      assert.ok(reason.long.includes(p), `reason text is missing endpoint ${p}`);
+    }
+    // the scope limits must survive into the pasted answer
+    assert.ok(/no other seller|any other seller/i.test(reason.long));
+    assert.ok(/chat/i.test(reason.short));
+  });
+  await test('connection spec carries the reason so the page needs no extra round trip', () => {
+    const spec = engine.getConnectionSpec('daraz');
+    assert.ok(spec.applicationForm.reason.long.includes('/orders/get'));
+    assert.ok(spec.applicationForm.reason.short.length > 100);
+    // ...and the same call for a provider without one does not invent it
+    assert.strictEqual(engine.getConnectionSpec('rutba').applicationForm, undefined);
+  });
+  await test('renderApplicationDoc: unsupported platform fails loudly', () => {
+    assert.throws(() => engine.renderApplicationDoc('rutba', {}), /no application document/);
+    assert.throws(() => engine.renderApplicationDoc('nope', {}));
+  });
+
   console.log('— engine: price adjustment —');
   await test('applyAdjustment: pct + fixed, floor at 0, base 0', () => {
     assert.strictEqual(engine.applyAdjustment(100, { pct: 10, fixed: 50 }), 160);

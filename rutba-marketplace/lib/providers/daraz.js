@@ -7,6 +7,7 @@
 // via console). Methods take `{ account, ... }`.
 
 const base = require('./base');
+const APPLICATION_DOC = require('./daraz-application-doc');
 
 const PLATFORM = 'daraz';
 
@@ -328,24 +329,28 @@ module.exports = {
     // this cannot silently drift). Compare against the grant list Daraz shows.
     apiScopes: [
       {
+        key: 'auth',
         family: 'Auth',
         paths: [API.tokenCreate, API.tokenRefresh],
         usedFor: 'Exchanging the OAuth code for an access token, and refreshing it before expiry.',
         required: true,
       },
       {
+        key: 'orders',
         family: 'Order',
         paths: [API.ordersGet, API.orderItemsGet],
         usedFor: 'Pulling orders changed since the last watermark, then their line items (Daraz returns orders without lines).',
         required: true,
       },
       {
+        key: 'price_stock',
         family: 'Product — price & stock',
         paths: [API.priceQuantityUpdate],
         usedFor: 'Pushing the adjusted price and stock for your publish set, and zeroing stock when a product is deactivated.',
         required: true,
       },
       {
+        key: 'taxonomy',
         family: 'Product — categories & brands',
         paths: [API.categoryTree, API.categoryAttributes, API.brandsQuery],
         usedFor: 'The category/brand mapping screen. Confirm these are in the grant — without them mapping cannot be set up.',
@@ -354,11 +359,25 @@ module.exports = {
     ],
 
     // Named so nobody applies for entitlements this integration cannot use.
+    // Also reproduced verbatim in the "Out of scope" table of the generated
+    // application document, so keep the wording fit for a Daraz reviewer too.
     notUsed: [
-      'Order status push-back to Daraz — not built; Daraz orders are processed in Rutba and their marketplace status is not updated from here.',
-      'Buyer/seller chat or message sync — not built.',
-      'Creating or editing Daraz listings — not built; price and stock are pushed for products that already exist on Daraz.',
+      'No order status or shipment updates are sent to Daraz — orders are processed in our ERP and their marketplace status is not updated from here.',
+      'No buyer/seller chat or message access.',
+      'No creation or editing of Daraz listings — price and stock are pushed only for products that already exist on Daraz.',
     ],
+
+    // The "design documentation / data flow diagram" Daraz asks for on the Apply
+    // screen. These fields are collected in the UI and rendered into the document
+    // server-side; see daraz-application-doc.js.
+    applicationForm: {
+      title: 'Daraz application — both answers',
+      intro:
+        'The Apply screen asks two things: a written description of the app, and a design / '
+        + 'data-flow document to upload. Both are prepared below from this integration itself, so '
+        + 'the API list in them always matches what the code actually calls.',
+      fields: APPLICATION_DOC.FIELDS,
+    },
 
     setupSteps: [
       'Register an app on the Daraz Open Platform under the category above and wait for it to move from Inactive to approved.',
@@ -419,6 +438,35 @@ module.exports = {
         help: 'Daraz attributes are defined per leaf category. Map your term-types to Daraz attribute names; values resolve from your terms at listing time.',
       },
     ],
+  },
+
+  /**
+   * Build the Daraz application attachment from the operator's answers.
+   *
+   * The endpoint table is generated from this adapter's own apiScopes — which
+   * come from the API path constant the call sites use — so the document we hand
+   * to Daraz cannot describe an API surface the code does not actually call.
+   * Operator values are escaped by the renderer; nothing is stored.
+   */
+  /**
+   * Answer for the Apply screen's first question ("briefly describe your
+   * business needs / the function of your APP"). Derived from the same declared
+   * scopes as the attachment, so the two answers always agree.
+   */
+  renderApplicationReason() {
+    return APPLICATION_DOC.renderReason({
+      apiScopes: this.connectionSpec.apiScopes,
+      notUsed: this.connectionSpec.notUsed,
+    });
+  },
+
+  renderApplicationDoc({ account, values } = {}) {
+    return APPLICATION_DOC.render({
+      values,
+      redirectUri: base.redirectUri(),
+      apiScopes: this.connectionSpec.apiScopes,
+      notUsed: this.connectionSpec.notUsed,
+    });
   },
 
   getAuthUrl({ account, state }) {

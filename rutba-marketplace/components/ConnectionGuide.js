@@ -24,7 +24,149 @@ function CopyField({ value }) {
     );
 }
 
-export default function ConnectionGuide({ spec, defaultOpen = true }) {
+// The written answer to the portal's "describe your app" question. Shown ready
+// to copy, with a shorter variant for a length-limited field. Generated from the
+// adapter's declared API scopes, so it always matches the attachment.
+function ReasonBox({ reason }) {
+    const [variant, setVariant] = useState("long");
+    const [copied, setCopied] = useState(false);
+    const text = reason[variant] || "";
+    const copy = async () => {
+        try {
+            await navigator.clipboard.writeText(text);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1500);
+        } catch { /* clipboard blocked — the textarea is selectable */ }
+    };
+    return (
+        <>
+            <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                <div className="btn-group btn-group-sm" role="group">
+                    <button type="button" className={`btn btn-outline-secondary ${variant === "long" ? "active" : ""}`} onClick={() => setVariant("long")}>Full</button>
+                    <button type="button" className={`btn btn-outline-secondary ${variant === "short" ? "active" : ""}`} onClick={() => setVariant("short")}>Short</button>
+                </div>
+                <button type="button" className="btn btn-sm btn-outline-primary" onClick={copy}>
+                    <i className={`fas ${copied ? "fa-check" : "fa-copy"} me-1`}></i>{copied ? "Copied" : "Copy"}
+                </button>
+                <span className="small text-muted">{text.length} characters — use Short if the field is limited.</span>
+            </div>
+            <textarea
+                className="form-control form-control-sm font-monospace"
+                rows={10}
+                value={text}
+                readOnly
+                onFocus={(e) => e.target.select()}
+            />
+        </>
+    );
+}
+
+// Fill-in form for the provider's API-access application attachment, plus the
+// download. The document is rendered server-side (the values are POSTed, never
+// put in a URL — they are business contact details) and handed back as HTML,
+// which the browser saves as a file. Following the repo convention for printable
+// documents: HTML + the browser's own "Save as PDF", no server-side PDF stack.
+function ApplicationDocForm({ spec, platform, seed, jwt, post, toast }) {
+    const form = spec.applicationForm;
+    const fields = (form && form.fields) || [];
+    const [values, setValues] = useState(() => ({ ...(seed || {}) }));
+    const [busy, setBusy] = useState(false);
+
+    // `post` is injected by the page; without it (or without fields) there is
+    // nothing to submit, so render nothing rather than a dead button.
+    if (!form || !fields.length || typeof post !== "function") return null;
+
+    const set = (k, v) => setValues((prev) => ({ ...prev, [k]: v }));
+
+    const build = async () => {
+        setBusy(true);
+        try {
+            const res = await post(`/api/providers/${platform}/application-doc`, jwt, { values });
+            const blob = new Blob([res.html], { type: "text/html;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = res.filename || "application.html";
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            // Revoke on the next tick — revoking synchronously can cancel the
+            // download in some browsers before it has read the blob.
+            setTimeout(() => URL.revokeObjectURL(url), 10000);
+            const missing = res.missing || [];
+            toast(
+                missing.length
+                    ? `Downloaded — ${missing.length} field(s) left blank and marked in the document.`
+                    : "Downloaded. Open it and use Print → Save as PDF to attach it.",
+                missing.length ? "warning" : "success",
+            );
+        } catch (e) {
+            toast(`Could not build the document: ${e.message}`, "danger");
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const required = fields.filter((f) => f.required).map((f) => f.key);
+    const blanks = required.filter((k) => !String(values[k] || "").trim());
+
+    return (
+        <div className="border rounded p-3 mb-3 bg-light">
+            <div className="fw-semibold small mb-1">
+                <i className="fas fa-file-arrow-down me-1"></i>{form.title || "Application attachment"}
+            </div>
+            {form.intro && <p className="small text-muted mb-2">{form.intro}</p>}
+
+            {form.reason && (
+                <div className="mb-3">
+                    <div className="small fw-semibold mb-1">
+                        Question 1 — &ldquo;Briefly describe your business needs, or the function or features of your APP.&rdquo;
+                    </div>
+                    <ReasonBox reason={form.reason} />
+                </div>
+            )}
+
+            <div className="small fw-semibold mb-2">
+                Question 2 — &ldquo;Upload the design documentation or data flow diagram of your APP.&rdquo;
+                <span className="text-muted fw-normal"> Fill these in, then download.</span>
+            </div>
+            <div className="row g-2">
+                {fields.map((f) => (
+                    <div className="col-md-6" key={f.key}>
+                        <label className="form-label mb-1 small" htmlFor={`adoc-${f.key}`}>
+                            {f.label}
+                            {f.required && <span className="text-danger ms-1">*</span>}
+                        </label>
+                        <input
+                            id={`adoc-${f.key}`}
+                            className="form-control form-control-sm"
+                            type={f.type || "text"}
+                            value={values[f.key] || ""}
+                            placeholder={f.placeholder || ""}
+                            autoComplete="off"
+                            onChange={(e) => set(f.key, e.target.value)}
+                        />
+                        {f.help && <div className="form-text small">{f.help}</div>}
+                    </div>
+                ))}
+            </div>
+            <div className="d-flex align-items-center gap-2 mt-3 flex-wrap">
+                <button type="button" className="btn btn-sm btn-primary" disabled={busy} onClick={build}>
+                    {busy
+                        ? <span className="spinner-border spinner-border-sm"></span>
+                        : <><i className="fas fa-download me-1"></i>Download document</>}
+                </button>
+                <span className="small text-muted">
+                    {blanks.length
+                        ? `${blanks.length} required field(s) still blank — they will download as visible “[…]” prompts.`
+                        : "Open the downloaded file and use Print → Save as PDF to attach it."}
+                </span>
+            </div>
+        </div>
+    );
+}
+
+export default function ConnectionGuide({ spec, defaultOpen = true, platform, seed, jwt, post, toast }) {
     const [open, setOpen] = useState(defaultOpen);
     if (!spec) return null;
 
@@ -81,6 +223,16 @@ export default function ConnectionGuide({ spec, defaultOpen = true }) {
                             </p>
                         </>
                     )}
+
+                    <ApplicationDocForm
+                        spec={spec}
+                        platform={platform || spec.platform}
+                        seed={seed}
+                        jwt={jwt}
+                        post={post}
+                        toast={toast}
+                    />
+
 
                     {scopes.length > 0 && (
                         <>

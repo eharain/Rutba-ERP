@@ -150,13 +150,36 @@ function getConnectionSpec(platform) {
   const adapter = providers.getAdapter(platform);
   const spec = adapter.connectionSpec;
   if (!spec) return null;
+  // The provider's application form (if it has one) travels with the spec, so
+  // the setup page can show BOTH answers the portal asks for — the written
+  // description and the uploadable document — without a second round trip.
+  const applicationForm = spec.applicationForm
+    ? {
+      ...spec.applicationForm,
+      reason: typeof adapter.renderApplicationReason === 'function'
+        ? adapter.renderApplicationReason()
+        : null,
+    }
+    : undefined;
   return {
     ...spec,
+    ...(applicationForm ? { applicationForm } : {}),
     platform,
     label: spec.label || adapter.label || platform,
     capabilities: adapter.capabilities || {},
     redirectUri: adapter.capabilities?.oauth ? base.redirectUri() : null,
   };
+}
+
+// Render a provider's application/onboarding document from the operator's
+// answers (the attachment Daraz asks for when applying for API access). Pure
+// string building — no credentials are read and nothing is persisted.
+function renderApplicationDoc(platform, values) {
+  const adapter = providers.getAdapter(platform);
+  if (typeof adapter.renderApplicationDoc !== 'function') {
+    throw new Error(`${adapter.label || platform} has no application document`);
+  }
+  return adapter.renderApplicationDoc({ values: values || {} });
 }
 
 // Pull a marketplace's taxonomy so the operator can map our categories/brands/
@@ -896,6 +919,7 @@ module.exports = {
   setAccountEnabled,
   getCatalogSpec,
   getConnectionSpec,
+  renderApplicationDoc,
   pullTaxonomy,
   syncOrdersForAccount,
   syncInventoryForAccount,
