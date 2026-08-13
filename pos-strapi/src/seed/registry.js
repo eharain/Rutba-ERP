@@ -41,6 +41,7 @@ const backfillProductSlugs = require('./product-slug-backfill');
 const backfillEssOwners = require('./ess-owners-backfill');
 const provisionEssEmployees = require('./ess-employee-provisioning');
 const repairOrphanedLeaveRequests = require('./ess-orphaned-leave-repair');
+const { applyAdminDomainGrants } = require('./seeders/admin-domain-grants');
 const { applyReturnPolicy } = require('./seeders/return-policy');
 const { applyCostChangeApprovalTemplate } = require('./seeders/cost-change-approval-template');
 const { applyOrderPlacedTeamAlert } = require('./seeders/order-placed-team-alert');
@@ -150,6 +151,21 @@ const REGISTRY = [
         supportsFull: true,
         hasMigration: false,
         run: (strapi) => seedUpPermissions(strapi),
+    },
+    // Must stay immediately after api-provider: that seed is what materialises
+    // the admin_* roles this copies grants onto (the body upserts them itself
+    // if it runs first, so the order is a nicety, not a dependency). Essential
+    // because rutba-users is gone — a deployment that skipped this would leave
+    // every administrator locked out of the admin console with no UI to fix it.
+    {
+        key: 'admin-domain-grants',
+        title: 'Admin console grants (users_* holders additively get admin_*)',
+        category: 'system',
+        essential: true,
+        supportsPartial: true,
+        supportsFull: true,
+        hasMigration: true,
+        run: (strapi) => applyAdminDomainGrants(strapi.db.connection),
     },
     {
         key: 'accounting',

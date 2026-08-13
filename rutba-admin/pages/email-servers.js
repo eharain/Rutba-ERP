@@ -152,7 +152,7 @@ export default function EmailServersPage() {
         <Layout>
             <ProtectedRoute>
                 <AppAccessGate>
-                <PermissionCheck adminOnly appKey="users" required="users">
+                <PermissionCheck adminOnly appKey="admin" required="admin">
                 <div className="d-flex justify-content-between align-items-center mb-3">
                     <h2><i className="fas fa-server me-2"></i>Email Servers</h2>
                     <button className="btn btn-primary" onClick={openNew}>

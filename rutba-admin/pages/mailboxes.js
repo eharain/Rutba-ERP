@@ -148,7 +148,7 @@ export default function MailboxesPage() {
         <Layout fullWidth>
             <ProtectedRoute>
                 <AppAccessGate>
-                <PermissionCheck adminOnly appKey="users" required="users">
+                <PermissionCheck adminOnly appKey="admin" required="admin">
                 <div className="d-flex justify-content-between align-items-center mb-3">
                     <h2 className="mb-0"><i className="fas fa-envelope me-2"></i>Mailboxes</h2>
                     <div className="d-flex gap-2">

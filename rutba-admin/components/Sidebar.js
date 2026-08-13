@@ -1,7 +1,8 @@
 import SharedSidebar from "@rutba/pos-shared/components/Sidebar";
 
-// Central user administration carved out of pos-auth. Mailbox mappings
-// (Phase 3) and notification preferences (Phase 4) land as further sections.
+// The tenant's admin console, grown out of the rutba-users carve-out. Sections
+// land per the admin-console program (docs/todo/admin-console-program/): app
+// catalogue, integrations and notifications join the four below.
 const SECTIONS = [
     { href: "/users", label: "Users", icon: "fa-users" },
     { href: "/users/access-assignment", label: "Access Assignment", icon: "fa-user-shield" },
@@ -11,5 +12,5 @@ const SECTIONS = [
 ];
 
 export default function Sidebar() {
-    return <SharedSidebar sections={SECTIONS} storageKey="rutba-users-sidebar-pinned" />;
+    return <SharedSidebar sections={SECTIONS} storageKey="rutba-admin-sidebar-pinned" />;
 }

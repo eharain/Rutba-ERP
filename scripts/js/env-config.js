@@ -41,7 +41,7 @@ const GLOBAL_VARS = [
   { key: 'NEXT_PUBLIC_CAMPAIGNS_URL',        severity: 'warn',  description: 'Campaigns app URL' },
   { key: 'NEXT_PUBLIC_HELPDESK_URL',         severity: 'warn',  description: 'Helpdesk app URL' },
   { key: 'NEXT_PUBLIC_MAIL_URL',             severity: 'warn',  description: 'Mail app URL' },
-  { key: 'NEXT_PUBLIC_USERS_URL',            severity: 'warn',  description: 'User Management app URL' },
+  { key: 'NEXT_PUBLIC_ADMIN_URL',            severity: 'warn',  description: 'Rutba Admin console URL' },
   { key: 'NEXT_PUBLIC_IMAGE_HOST_PROTOCOL',  severity: 'error', description: 'Image host protocol (http/https)' },
   { key: 'NEXT_PUBLIC_IMAGE_HOST_NAME',      severity: 'error', description: 'Image host name' },
   { key: 'NEXT_PUBLIC_IMAGE_HOST_PORT',      severity: 'error', description: 'Image host port' },

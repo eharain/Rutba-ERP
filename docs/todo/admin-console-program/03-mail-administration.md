@@ -27,7 +27,7 @@ distinguishes `byo` from `mailcow`.
 `name`, `kind` (enum: `mailcow`), `base_url`, `api_key_enc`, `mail_domains`
 (json), `imap_host`, `smtp_host`, `is_active`, `last_checked_at`, `last_error`.
 
-Admin UI: [`/email-servers`](../../../rutba-users/pages/email-servers.js),
+Admin UI: [`/email-servers`](../../../rutba-admin/pages/email-servers.js),
 `PermissionCheck`-wrapped. The API key is AES-256-GCM encrypted and never
 returned — see [02 §1](02-integrations-and-credentials.md).
 
@@ -45,7 +45,7 @@ Access is decided by `canAccess(userId, account)` at
 `owners` follows the repo-wide ownership convention (plural m2m, always named
 `owners`); `access_roles` is the shared-inbox role gate.
 
-Admin UI: [`/mailboxes`](../../../rutba-users/pages/mailboxes.js) — assign a new
+Admin UI: [`/mailboxes`](../../../rutba-admin/pages/mailboxes.js) — assign a new
 address, ownership, shared-inbox access.
 
 ### `provisionAccount` — one-click mailbox creation

@@ -1,14 +1,14 @@
 /**
  * AppDomainsEndpoints
  * api-pro app-domain administration (list with role keys + user counts,
- * create, soft-delete) for the rutba-users app. Server side is
+ * create, soft-delete) for the rutba-admin app. Server side is
  * api::user-admin.user-admin — see users.js for the gate/alias story.
  */
 
 export const AppDomainsEndpoints = {
 
     meta: {
-        domains: ['users'],
+        domains: ['admin', 'users'],
         roles: ['admin'],
     },
 
@@ -17,7 +17,7 @@ export const AppDomainsEndpoints = {
         path: '/user-admin/domains',
         action: 'listDomains',
         method: 'get',
-        apps: ['users'],
+        apps: ['admin', 'users'],
         approle: ['admin'],
     }),
 
@@ -26,7 +26,7 @@ export const AppDomainsEndpoints = {
         path: '/user-admin/domains',
         action: 'createDomain',
         method: 'post',
-        apps: ['users'],
+        apps: ['admin', 'users'],
         approle: ['admin'],
         data,
     }),
@@ -36,7 +36,7 @@ export const AppDomainsEndpoints = {
         path: `/user-admin/domains/${id}`,
         action: 'deleteDomain',
         method: 'delete',
-        apps: ['users'],
+        apps: ['admin', 'users'],
         approle: ['admin'],
     }),
 

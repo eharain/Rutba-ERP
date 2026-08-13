@@ -34,8 +34,8 @@ to a working Next.js app that 403s on every request. That is the bug.
 
 So the enforcement half is done and correct. Three further defects sit on top:
 
-- **No UI reads or writes it.** `grep isActive rutba-users/pages rutba-users/components`
-  returns nothing. [`app-domains.js`](../../../rutba-users/pages/app-domains.js)
+- **No UI reads or writes it.** `grep isActive rutba-admin/pages rutba-admin/components`
+  returns nothing. [`app-domains.js`](../../../rutba-admin/pages/app-domains.js)
   edits Key, Name and Description only.
 - **No descriptor method can set it.**
   [`api/app-domains.js`](../../../packages/api-provider/api/app-domains.js)

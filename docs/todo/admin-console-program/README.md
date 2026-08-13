@@ -1,11 +1,17 @@
 # Admin Console Program
 
-> **Status (2026-08-13): specification only.** Nothing in this program is built.
-> Three of the six sections exist today as working code inside `rutba-users`
-> (:4022) and are extended here; three are new. The decision to **grow
-> `rutba-users` in place** — renaming it *Rutba Admin* — rather than stand up a
-> second admin app was taken with the user before this spec was written and is
-> not reopened below.
+> **Status (2026-08-13): phase A0's app move is done; the six sections are
+> still specification.** Three of them exist today as working code inside
+> **`rutba-admin`** (:4022) and are extended here; three are new.
+>
+> **Superseded:** this spec was written assuming `rutba-users` would be renamed
+> in place, keeping the app key `users` (ground rule 1 below). That was reversed
+> before implementation: `rutba-admin` was created as a **copy**, `rutba-users`
+> was deleted, and a **new `admin` app-domain** with `admin_admin` /
+> `admin_manager` / `admin_staff` was added. The `users` domain and its roles
+> survive as a deprecated alias — every `users_*` holder was additively granted
+> the matching `admin_*` role — so nothing below that depends on the *domain*
+> `users` is invalidated, only the claims about the app key.
 
 `rutba-users` was carved out of `pos-auth` as a User Management app. It has since
 accumulated mailbox provisioning, mail-server registration and app-domain
@@ -31,11 +37,11 @@ headline deliverable — [01](01-app-catalogue-entitlements.md).
 
 | Surface | Measurement |
 |---|---|
-| `rutba-users` pages | 8 (`app-domains`, `email-servers`, `mailboxes`, `users/{index,new,[id],access-assignment}`, `index`) |
-| Home tiles in [`pages/index.js`](../../../rutba-users/pages/index.js) | 6 — five `ready: true`, one (`/notifications`) `ready: false` |
+| `rutba-admin` pages | 8 (`app-domains`, `email-servers`, `mailboxes`, `users/{index,new,[id],access-assignment}`, `index`) |
+| Home tiles in [`pages/index.js`](../../../rutba-admin/pages/index.js) | 6 — five `ready: true`, one (`/notifications`) `ready: false` |
 | Pages wrapped in `PermissionCheck` | 4 of 7 (missing on `users/index`, `users/[id]`, `users/new`) |
 | App registries that must agree | **4** (`domains.json`, `roles.js` ×3 maps, `rutba_apps.sh` ×2 maps, plus `config/roles.json`) |
-| App keys per registry | `APP_META` 22 · `APP_URLS` 22 · `VALID_APP_KEYS` 21 · `domains.json` 26 · `rutba_apps.sh` 25 |
+| App keys per registry | `APP_META` 22 · `APP_URLS` 22 · `VALID_APP_KEYS` 21 · `domains.json` 27 · `rutba_apps.sh` 25 |
 | Registries that cross-validate each other | **0** |
 | Documented steps to register a new app | 7 points spanning **12 files** ([email-program/03 §41](../email-program/03-mail-client-app.md)) |
 | Integration entities converging on one shape | 5 (`social-account`, `social-relay-provider`, `marketplace-account`, `cmp-sending-identity`, `mail-server`) |
@@ -61,12 +67,17 @@ section 6 is specced in full below.
 
 ## Ground rules
 
-1. **Grow `rutba-users`, never fork it.** The app is renamed to *Rutba Admin*
-   (`label` in the catalogue, `<title>`, home heading). The app **key stays
-   `users`** — the key is load-bearing in `domains.json`, role prefixes
-   (`users_admin`), `APP_URLS.users`, `NEXT_PUBLIC_USERS_URL`,
-   `RUTBA_USERS__PORT`, systemd unit `rutba_users`, and every `apps: ['users']`
-   descriptor. Renaming the key is a 12-file migration for a cosmetic gain.
+1. ~~**Grow `rutba-users`, never fork it.** The app **key stays `users`** —
+   renaming it is a 12-file migration for a cosmetic gain.~~ **REVERSED — done
+   as a rekey.** `rutba-admin` is a copy of `rutba-users` on the same port
+   (4022) claiming `X-Rutba-App: admin`; `rutba-users` is deleted. The 12-file
+   migration was paid: `domains.json`, `roles.json`, `APP_URLS.admin`,
+   `NEXT_PUBLIC_ADMIN_URL`, `RUTBA_ADMIN__PORT`, unit `rutba_admin`, and
+   `apps: ['admin', 'users']` on every descriptor this app calls. The `users`
+   entries stay everywhere server-side as a **deprecated alias**; only
+   `pos-shared/lib/roles.js` dropped its `users` entry, because a launcher tile
+   pointing at an app that no longer exists is worse than no tile. Migrating
+   grants off `users_*` and retiring the domain is a separate, later task.
 2. **Data over constants.** Every list this console administers must be a table
    the console can edit. A hardcoded map that the admin cannot reach is a defect,
    not a design. This is the whole thesis of [01](01-app-catalogue-entitlements.md).
@@ -132,7 +143,7 @@ migration on every live tenant later.
 
 | Phase | Contents | Size | Depends on |
 |---|---|---|---|
-| **A0** | Rename to *Rutba Admin*; six-section IA; `PermissionCheck` on the three unwrapped pages; tighten `ADMIN_DOMAINS` to `['users']` | S | — |
+| **A0** | ~~Rename to~~ **rekey as** *Rutba Admin* (**done**); six-section IA; `PermissionCheck` on the three unwrapped pages; tighten `ADMIN_DOMAINS` to `['admin']` | S | — |
 | **A1** | **App catalogue**: extend `app-domain`, serve the catalogue, `roles.js` reads it at runtime, admin UI | M+M | A0 |
 | **A2** | **Credential vault**: lift `mail/crypto.js` to shared; migrate the 3 plaintext entities behind it | M | — (parallel) |
 | **A3** | **Integration registry** + one admin UI over it; surface relay providers (§5) | M | A2 |
@@ -151,22 +162,24 @@ Working today: user CRUD, per-app access assignment matrix, app-domain list,
 role assignment. Three defects and one gap:
 
 - [ ] **Wrap the three unprotected pages in `PermissionCheck`.**
-      [`users/index.js`](../../../rutba-users/pages/users/index.js),
-      [`users/[id].js`](../../../rutba-users/pages/users/[id].js) and
-      [`users/new.js`](../../../rutba-users/pages/users/new.js) have no wrapper;
+      [`users/index.js`](../../../rutba-admin/pages/users/index.js),
+      [`users/[id].js`](../../../rutba-admin/pages/users/[id].js) and
+      [`users/new.js`](../../../rutba-admin/pages/users/new.js) have no wrapper;
       the other four admin pages each use it. Server-side gating still holds
       (ground rule 4), so this is a UX defect — the pages render, then fail every
       request — not a breach.
       *Note: the brief for this program named two pages; `users/new.js` is a
       third, found during verification.*
-- [ ] **Tighten `ADMIN_DOMAINS` to `['users']`.**
-      [`user-admin.js:23`](../../../pos-strapi/src/api/user-admin/controllers/user-admin.js)
-      is `['users', 'auth']`. The file's own header calls this transitional:
-      *"accepted alongside 'users' transitionally so existing auth_admin holders
-      aren't locked out before the users_* backfill has run everywhere; tighten
-      to ['users'] in the cleanup commit."* Preconditions: confirm every
-      `auth_admin` holder has a `users_*` role, then flip. `line 256` deliberately
-      widens to `[...ADMIN_DOMAINS, 'hr']` and keeps its own semantics.
+- [ ] **Tighten `ADMIN_DOMAINS` to `['admin']`.**
+      [`user-admin.js`](../../../pos-strapi/src/api/user-admin/controllers/user-admin.js)
+      is now `['admin', 'users', 'auth']` — two deprecated aliases, each kept so
+      an earlier generation of holders isn't locked out: `users` until the
+      `admin_*` backfill has run everywhere, `auth` until the older `users_*`
+      one has. Preconditions: confirm every `auth_admin` and every `users_*`
+      holder also holds an `admin_*` role, then flip. The `listDirectory` call
+      deliberately widens to `[...ADMIN_DOMAINS, 'hr']` and keeps its own
+      semantics. The same widening applies to the mail-server, mail-account
+      access and notification-preference gates.
 - [ ] **Give `app-role-template` a UI.** The content type exists
       ([`api_pro_app_role_templates`](../../../packages/strapi-api-pro/server/src/content-types/app-role-template/schema.json)
       — `key`, `name`, `description`, `appRoles` m2m) and is *hidden from the
@@ -182,8 +195,8 @@ role assignment. Three defects and one gap:
 ## 6. Notifications (promote)
 
 `UserNotificationPrefs` is a component rendered inside a tab on
-[`users/[id].js:494`](../../../rutba-users/pages/users/[id].js). The
-`/notifications` tile in [`pages/index.js:14`](../../../rutba-users/pages/index.js)
+[`users/[id].js:494`](../../../rutba-admin/pages/users/[id].js). The
+`/notifications` tile in [`pages/index.js:14`](../../../rutba-admin/pages/index.js)
 is `ready: false` and links nowhere.
 
 Per-user preference editing buried one level inside a user record is the wrong

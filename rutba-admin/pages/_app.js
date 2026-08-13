@@ -4,7 +4,7 @@ import { AuthProvider } from "@rutba/pos-shared/context/AuthContext";
 import { UtilProvider } from "@rutba/pos-shared/context/UtilContext";
 import { AppContextEndpoints } from "@rutba/api-provider/endpoints";
 
-AppContextEndpoints.setAppName('users');
+AppContextEndpoints.setAppName('admin');
 
 import 'bootstrap/dist/css/bootstrap.min.css';
 import '@fortawesome/fontawesome-free/css/all.min.css';

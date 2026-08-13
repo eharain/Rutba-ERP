@@ -3,8 +3,10 @@ import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import AppHome, { AppHomeGrid, AppHomeTile, AppHomePill, AppHomeSection } from "@rutba/pos-shared/components/AppHome";
 
-// Central user administration, carved out of pos-auth (which stays the pure
-// SSO portal). Tiles light up as the carve-out phases land.
+// The tenant's admin console. Grown out of the rutba-users carve-out (which was
+// itself carved out of pos-auth, still the pure SSO portal); the remaining
+// sections — app catalogue, integrations, mail administration — land per
+// docs/todo/admin-console-program/. Tiles light up as each phase lands.
 const SECTIONS = [
     { href: "/users", title: "Users", icon: "fa-users", tone: "primary", text: "Accounts, roles and app access.", ready: true },
     { href: "/users/access-assignment", title: "Access Assignment", icon: "fa-user-shield", tone: "info", text: "The bulk per-app access matrix.", ready: true },
@@ -14,22 +16,22 @@ const SECTIONS = [
     { href: "/notifications", title: "Notifications", icon: "fa-bell", tone: "purple", text: "Per-user notification preferences.", ready: false },
 ];
 
-export default function UsersHomePage() {
+export default function AdminHomePage() {
     return (
         <ProtectedRoute>
             <Layout>
                 <AppHome
-                    app="users"
+                    app="admin"
                     eyebrow="Administration"
-                    title="User Management"
-                    subtitle="Central administration of user accounts, access levels, mailbox mappings and notification preferences."
+                    title="Rutba Admin"
+                    subtitle="Administration of this instance: user accounts, access levels, app domains, mailbox mappings and notification preferences."
                     actions={
                         <Link href="/users" className="btn btn-accent">
                             <i className="fa-solid fa-users me-2"></i>All users
                         </Link>
                     }
                 >
-                    <AppHomeSection title="Everything in User Management" />
+                    <AppHomeSection title="Everything in Rutba Admin" />
                     <AppHomeGrid>
                         {SECTIONS.map((s) => (
                             <AppHomeTile

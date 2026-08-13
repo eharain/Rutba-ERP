@@ -119,7 +119,7 @@ function registerAuthModule() {
 
   // auth-admin is repo code → zero-copy, same as every earlier tranche.
   const authAdmin = posRequire(path.join('api', 'auth-admin', 'controllers', 'auth-admin.js'));
-  // user-admin is the carved-out user-management console behind rutba-users;
+  // user-admin is the carved-out user-management console behind rutba-admin;
   // auth-admin above is now a re-export of the same controller (alias paths).
   const userAdmin = posRequire(path.join('api', 'user-admin', 'controllers', 'user-admin.js'));
 
@@ -404,7 +404,7 @@ function registerAuthModule() {
     { method: 'post', path: '/api/auth-admin/domains', handler: (c) => authAdmin.createDomain(c) },
     { method: 'delete', path: '/api/auth-admin/domains/:id', handler: (c) => authAdmin.deleteDomain(c) },
 
-    // user-admin console (rutba-users; auth:false in Strapi, requireAppRole
+    // user-admin console (rutba-admin; auth:false in Strapi, requireAppRole
     // inside). Literal paths before parameterised ones, like the Strapi routes.
     { method: 'get', path: '/api/user-admin/users', handler: (c) => userAdmin.listUsers(c) },
     { method: 'post', path: '/api/user-admin/users', handler: (c) => userAdmin.createUser(c) },

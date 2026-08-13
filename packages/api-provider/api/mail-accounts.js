@@ -15,7 +15,7 @@ export const MailAccountsEndpoints = {
 
     meta: {
         uid: 'api::mail-account.mail-account',
-        domains: ['mail', 'users'],
+        domains: ['mail', 'admin', 'users'],
         roles: ['admin', 'manager', 'staff'],
     },
 
@@ -290,7 +290,7 @@ export const MailAccountsEndpoints = {
         path: `/mail-accounts/${documentId}/mailbox-password`,
         action: 'setMailboxPassword',
         method: 'post',
-        apps: ['mail', 'users'],
+        apps: ['mail', 'admin', 'users'],
         approle: ['admin', 'manager', 'staff'],
         data: {},
     }),
@@ -316,7 +316,7 @@ export const MailAccountsEndpoints = {
         path: '/mail-accounts/access-map',
         action: 'listAccess',
         method: 'get',
-        apps: ['mail', 'users'],
+        apps: ['mail', 'admin', 'users'],
         approle: ['admin', 'manager'],
     }),
 
@@ -328,7 +328,7 @@ export const MailAccountsEndpoints = {
         path: `/mail-accounts/${documentId}/access`,
         action: 'setAccess',
         method: 'post',
-        apps: ['mail', 'users'],
+        apps: ['mail', 'admin', 'users'],
         approle: ['admin'],
         data: {
             ...(owners !== undefined ? { owners } : {}),

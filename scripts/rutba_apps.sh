@@ -65,7 +65,7 @@ RUTBA_SERVICES=(
     rutba_seed
     rutba_campaigns
     rutba_mail
-    rutba_users
+    rutba_admin
     rutba_helpdesk
 )
 
@@ -99,7 +99,7 @@ declare -A RUTBA_SVC_CMD=(
     [rutba_seed]="run start --workspace=rutba-seed"
     [rutba_campaigns]="run start --workspace=rutba-campaigns"
     [rutba_mail]="run start --workspace=rutba-mail"
-    [rutba_users]="run start --workspace=rutba-users"
+    [rutba_admin]="run start --workspace=rutba-admin"
     [rutba_helpdesk]="run start --workspace=rutba-helpdesk"
 )
 
@@ -131,7 +131,7 @@ declare -A RUTBA_SVC_DESC=(
     [rutba_seed]="Rutba ERP - Seeding Control (rutba-seed)"
     [rutba_campaigns]="Rutba ERP - Campaigns (rutba-campaigns)"
     [rutba_mail]="Rutba ERP - Mail (rutba-mail)"
-    [rutba_users]="Rutba ERP - User Management (rutba-users)"
+    [rutba_admin]="Rutba ERP - Admin Console (rutba-admin)"
     [rutba_helpdesk]="Rutba ERP - Helpdesk (rutba-helpdesk)"
 )
 
@@ -167,7 +167,12 @@ declare -A RUTBA_SVC_PORT=(
     [rutba_seed]="4018"
     [rutba_campaigns]="4019"
     [rutba_mail]="4021"
-    [rutba_users]="4022"
+    # 4022 was rutba_users (User Management); rutba-admin replaced that app and
+    # inherits the port. Dropping rutba_users from RUTBA_SERVICES is enough to
+    # free it: write_all_units' retirement pass stops, disables and deletes any
+    # rutba_*.service no longer in the registry, and it runs before
+    # start_services.
+    [rutba_admin]="4022"
     # 4019 was in the helpdesk spec but rutba_campaigns already owns it; moved to
     # 4023 here, in roles.js APP_URLS, and in .env.* (RUTBA_HELPDESK__PORT +
     # NEXT_PUBLIC_HELPDESK_URL).

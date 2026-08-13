@@ -122,7 +122,7 @@ ARG NEXT_PUBLIC_INVENTORY_URL
 ARG NEXT_PUBLIC_SEED_URL
 ARG NEXT_PUBLIC_CAMPAIGNS_URL
 ARG NEXT_PUBLIC_MAIL_URL
-ARG NEXT_PUBLIC_USERS_URL
+ARG NEXT_PUBLIC_ADMIN_URL
 ARG NEXT_PUBLIC_RIDER_URL
 ARG NEXT_PUBLIC_SOCIAL_URL
 ARG NEXT_PUBLIC_CRM_URL
@@ -153,7 +153,7 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_PUBLIC_SEED_URL=$NEXT_PUBLIC_SEED_URL \
     NEXT_PUBLIC_CAMPAIGNS_URL=$NEXT_PUBLIC_CAMPAIGNS_URL \
     NEXT_PUBLIC_MAIL_URL=$NEXT_PUBLIC_MAIL_URL \
-    NEXT_PUBLIC_USERS_URL=$NEXT_PUBLIC_USERS_URL \
+    NEXT_PUBLIC_ADMIN_URL=$NEXT_PUBLIC_ADMIN_URL \
     NEXT_PUBLIC_RIDER_URL=$NEXT_PUBLIC_RIDER_URL \
     NEXT_PUBLIC_SOCIAL_URL=$NEXT_PUBLIC_SOCIAL_URL \
     NEXT_PUBLIC_CRM_URL=$NEXT_PUBLIC_CRM_URL \
@@ -505,15 +505,15 @@ COPY --from=helpdesk-build /app/rutba-helpdesk/public            ./rutba-helpdes
 CMD ["node", "rutba-helpdesk/server.js"]
 
 # ----------------------------------------------------------
-#  rutba-users (Central user management: users, roles, access)
+#  rutba-admin (Admin console: users, roles, access, app domains, mail)
 # ----------------------------------------------------------
-FROM build-env AS users-build
-RUN mkdir -p rutba-users/public && npm run build --workspace=rutba-users
+FROM build-env AS admin-build
+RUN mkdir -p rutba-admin/public && npm run build --workspace=rutba-admin
 
-FROM base AS users
+FROM base AS admin
 WORKDIR /app
 ENV NODE_ENV=production HOSTNAME=0.0.0.0
-COPY --from=users-build /app/rutba-users/.next/standalone ./
-COPY --from=users-build /app/rutba-users/.next/static     ./rutba-users/.next/static
-COPY --from=users-build /app/rutba-users/public            ./rutba-users/public
-CMD ["node", "rutba-users/server.js"]
+COPY --from=admin-build /app/rutba-admin/.next/standalone ./
+COPY --from=admin-build /app/rutba-admin/.next/static     ./rutba-admin/.next/static
+COPY --from=admin-build /app/rutba-admin/public            ./rutba-admin/public
+CMD ["node", "rutba-admin/server.js"]

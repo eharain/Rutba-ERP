@@ -9,10 +9,10 @@ const SECONDARY = [
 export default function Navigation() {
     return (
         <Topbar
-            currentApp="users"
-            appName="User Management"
+            currentApp="admin"
+            appName="Rutba Admin"
             secondary={SECONDARY}
-            brand={<i className="fa-solid fa-users-gear text-primary"></i>}
+            brand={<i className="fa-solid fa-sliders text-primary"></i>}
         />
     );
 }

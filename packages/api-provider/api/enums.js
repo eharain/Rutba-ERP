@@ -21,7 +21,7 @@ export const EnumsEndpoints = {
     // but the domains above must be right before that route is ever locked down.
     meta: {
         uid: 'api::enum.enum',
-        domains: ['cms', 'ess', 'hr', 'mail', 'stock', 'users'],
+        domains: ['cms', 'ess', 'hr', 'mail', 'stock', 'admin', 'users'],
         roles: ['admin', 'manager', 'staff']
     },
 
@@ -36,7 +36,7 @@ export const EnumsEndpoints = {
         path: `/enums/${name}/${field}`,
         action: 'find',
         method: 'get',
-        apps: ['cms', 'ess', 'hr', 'mail', 'stock', 'users', 'helpdesk'],
+        apps: ['cms', 'ess', 'hr', 'mail', 'stock', 'admin', 'users', 'helpdesk'],
         approle: ['admin', 'manager', 'staff']
     }),
 

@@ -656,11 +656,11 @@ module.exports = createCoreController(UID, ({ strapi }) => {
 
     /**
      * GET /mail-accounts/access-map — the whole estate's access picture
-     * (owners + access_roles per account) for the central rutba-users app.
+     * (owners + access_roles per account) for the central rutba-admin app.
      * Passwords/hosts stay out; this is a mapping view, not account admin.
      */
     async listAccess(ctx) {
-      const user = await requireAppRole(ctx, strapi, { domains: ['mail', 'users', 'auth'], levels: MANAGE_LEVELS });
+      const user = await requireAppRole(ctx, strapi, { domains: ['mail', 'admin', 'users', 'auth'], levels: MANAGE_LEVELS });
       if (!user) return;
       const accounts = await strapi.db.query(UID).findMany({
         where: {},
@@ -691,12 +691,12 @@ module.exports = createCoreController(UID, ({ strapi }) => {
 
     /**
      * POST /mail-accounts/:documentId/access — replace an account's owners
-     * and/or shared access_roles from the central rutba-users app. Personal
+     * and/or shared access_roles from the central rutba-admin app. Personal
      * accounts keep exactly one owner; every access_roles key must exist as
      * an active app-role (closing the raw-json validation gap).
      */
     async setAccess(ctx) {
-      const user = await requireAppRole(ctx, strapi, { domains: ['mail', 'users', 'auth'], levels: ['admin'] });
+      const user = await requireAppRole(ctx, strapi, { domains: ['mail', 'admin', 'users', 'auth'], levels: ['admin'] });
       if (!user) return;
       const documentId = docIdParam(ctx);
       const account = await strapi.service(UID).loadWithOwners(documentId);

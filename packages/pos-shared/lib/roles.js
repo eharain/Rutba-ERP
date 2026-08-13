@@ -32,13 +32,18 @@ export const APP_URLS = {
     seed:          process.env.NEXT_PUBLIC_SEED_URL          || 'http://localhost:4018',
     campaigns:     process.env.NEXT_PUBLIC_CAMPAIGNS_URL     || 'http://localhost:4019',
     mail:          process.env.NEXT_PUBLIC_MAIL_URL          || 'http://localhost:4021',
-    users:         process.env.NEXT_PUBLIC_USERS_URL         || 'http://localhost:4022',
+    admin:         process.env.NEXT_PUBLIC_ADMIN_URL         || 'http://localhost:4022',
     helpdesk:      process.env.NEXT_PUBLIC_HELPDESK_URL      || 'http://localhost:4023',
     web:       process.env.NEXT_PUBLIC_WEB_URL       || 'http://localhost:4010',
 };
 
 /** All recognised app keys */
-const VALID_APP_KEYS = ['stock', 'sale', 'auth', 'web-user', 'order-management', 'rider', 'crm', 'hr', 'ess', 'accounts', 'payroll', 'cms', 'social', 'manufacturing', 'marketplace', 'inventory', 'seed', 'campaigns', 'mail', 'users', 'helpdesk'];
+// NOTE: the 'users' app key is deliberately absent. rutba-users was replaced by
+// rutba-admin ('admin'); the backend 'users' DOMAIN stays alive as a deprecated
+// alias for existing users_* grants, but there is no longer a frontend to launch,
+// and a dead launcher tile is worse than none. These are different registries —
+// see packages/api-provider/config/domains.json.
+const VALID_APP_KEYS = ['stock', 'sale', 'auth', 'web-user', 'order-management', 'rider', 'crm', 'hr', 'ess', 'accounts', 'payroll', 'cms', 'social', 'manufacturing', 'marketplace', 'inventory', 'seed', 'campaigns', 'mail', 'admin', 'helpdesk'];
 
 /**
  * App categories — the ordered taxonomy used to arrange the growing
@@ -64,7 +69,7 @@ export const APP_CATEGORIES = [
  */
 export const APP_META = {
     auth:       { group: 'admin',     icon: 'fa-solid fa-right-to-bracket',   label: 'Sign-In & SSO',      description: 'Single sign-on, login and session portal',    border: 'border-dark',      color: 'text-dark' },
-    users:      { group: 'admin',     icon: 'fa-solid fa-users-gear',         label: 'User Management',    description: 'Users, roles, app access, mailbox and notification administration', border: 'border-dark', color: 'text-dark' },
+    admin:      { group: 'admin',     icon: 'fa-solid fa-sliders',            label: 'Rutba Admin',        description: 'Users, roles, app access, app domains, mailbox and notification administration', border: 'border-dark', color: 'text-dark' },
     stock:      { group: 'inventory', icon: 'fa-solid fa-boxes-stacked',      label: 'Stock Management',   description: 'Products, purchases, inventory',              border: 'border-primary',   color: 'text-primary' },
     sale:       { group: 'sales',     icon: 'fa-solid fa-cash-register',      label: 'Point of Sale',      description: 'Sales, cart, returns, reports',               border: 'border-success',   color: 'text-success' },
     'web-user': { group: 'sales',     icon: 'fa-solid fa-bag-shopping',       label: 'Web Orders',         description: 'Track customer orders, delivery status, and returns', border: 'border-info',      color: 'text-info' },

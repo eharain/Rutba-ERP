@@ -35,6 +35,15 @@
       "accounts_viewer_staff"
     ]
   },
+  "admin": {
+    "name": "Rutba Admin",
+    "description": "This instance's admin console: user accounts, app access, app domains, mailbox and notification administration.",
+    "roles": [
+      "admin_admin",
+      "admin_manager",
+      "admin_staff"
+    ]
+  },
   "auth": {
     "name": "Authentication & Access",
     "description": "User accounts, roles, and access assignment across all apps.",
@@ -206,8 +215,8 @@
     ]
   },
   "users": {
-    "name": "User Management",
-    "description": "Central user accounts, app access, mailbox and notification administration.",
+    "name": "User Management (deprecated)",
+    "description": "DEPRECATED alias of the 'admin' domain, kept alive so existing users_* grants keep working. The rutba-users app it belonged to is gone; grant admin_* to new users. Migrating the remaining grants off users_* and retiring this domain is a separate task.",
     "roles": [
       "users_admin",
       "users_manager",

@@ -25,7 +25,7 @@
     "rutba-seed",
     "rutba-campaigns",
     "rutba-mail",
-    "rutba-users",
+    "rutba-admin",
     "rutba-helpdesk"
   ],
   "scripts": {
@@ -55,7 +55,7 @@
     "dev:seed": "node scripts/js/load-env.js -- npm run dev --workspace=rutba-seed",
     "dev:campaigns": "node scripts/js/load-env.js -- npm run dev --workspace=rutba-campaigns",
     "dev:mail": "node scripts/js/load-env.js -- npm run dev --workspace=rutba-mail",
-    "dev:users": "node scripts/js/load-env.js -- npm run dev --workspace=rutba-users",
+    "dev:admin": "node scripts/js/load-env.js -- npm run dev --workspace=rutba-admin",
     "dev:helpdesk": "node scripts/js/load-env.js -- npm run dev --workspace=rutba-helpdesk",
     "worker:marketplace": "node scripts/js/load-env.js -- npm run worker --workspace=rutba-marketplace",
     "dev:all": "node scripts/js/run-all.js dev",
@@ -81,7 +81,7 @@
     "start:seed": "node scripts/js/load-env.js -- npm run start --workspace=rutba-seed",
     "start:campaigns": "node scripts/js/load-env.js -- npm run start --workspace=rutba-campaigns",
     "start:mail": "node scripts/js/load-env.js -- npm run start --workspace=rutba-mail",
-    "start:users": "node scripts/js/load-env.js -- npm run start --workspace=rutba-users",
+    "start:admin": "node scripts/js/load-env.js -- npm run start --workspace=rutba-admin",
     "start:helpdesk": "node scripts/js/load-env.js -- npm run start --workspace=rutba-helpdesk",
 
     "build:api": "node scripts/js/load-env.js -- npm run build --workspace=@rutba/api-provider",
@@ -106,7 +106,7 @@
     "build:seed": "node scripts/js/load-env.js -- npm run build --workspace=rutba-seed",
     "build:campaigns": "node scripts/js/load-env.js -- npm run build --workspace=rutba-campaigns",
     "build:mail": "node scripts/js/load-env.js -- npm run build --workspace=rutba-mail",
-    "build:users": "node scripts/js/load-env.js -- npm run build --workspace=rutba-users",
+    "build:admin": "node scripts/js/load-env.js -- npm run build --workspace=rutba-admin",
     "build:helpdesk": "node scripts/js/load-env.js -- npm run build --workspace=rutba-helpdesk",
     "build:strapi": "node scripts/js/load-env.js -- npm --prefix pos-strapi run build",
 

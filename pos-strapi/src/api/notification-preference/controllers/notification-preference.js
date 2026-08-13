@@ -39,7 +39,7 @@ function categoryValues(strapi) {
 module.exports = factories.createCoreController(UID, ({ strapi }) => {
 
   const isUsersAdmin = (userId) =>
-    hasAppRole(strapi, userId, { domains: ['users', 'auth'], levels: ['admin'] });
+    hasAppRole(strapi, userId, { domains: ['admin', 'users', 'auth'], levels: ['admin'] });
 
   /** Resolve the target user id: self, or any user for users/auth admins. */
   async function resolveTarget(ctx, requested) {

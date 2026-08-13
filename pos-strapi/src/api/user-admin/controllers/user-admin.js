@@ -2,7 +2,7 @@
 'use strict';
 
 /**
- * user-admin — the central user-management API behind rutba-users (:4022).
+ * user-admin — the central user-management API behind rutba-admin (:4022).
  *
  * Carved out of api::auth-admin (which now re-exports this controller so the
  * legacy /auth-admin/* paths keep working on both servers during transition).
@@ -11,16 +11,23 @@
  * requireAppRole (never the client-supplied X-Rutba-App header, which the old
  * requireAuthAdmin gate trusted for app scoping).
  *
- * The 'auth' domain is accepted alongside 'users' transitionally so existing
- * auth_admin holders aren't locked out before the users_* backfill has run
- * everywhere; tighten to ['users'] in the cleanup commit.
+ * ADMIN_DOMAINS is a role-key PREFIX list, not an app list, and both legacy
+ * entries are transitional:
+ *   'admin' — the live one. rutba-admin replaced rutba-users and claims
+ *             X-Rutba-App: admin, so admin_* is what new grants use.
+ *   'users' — the rutba-users carve-out's domain, kept so existing users_*
+ *             holders keep working. The admin-domain-grants seeder backfills
+ *             users_* holders with the matching admin_* role.
+ *   'auth'  — the pre-carve-out domain, kept so auth_admin holders aren't
+ *             locked out before the users_* backfill ran everywhere.
+ * Tighten to ['admin'] once both backfills have run on every deployment.
  */
 
 const crypto = require('crypto');
 const { requireAppRole } = require('../../../utils/require-admin');
 const { resolveGuardRoles, isAdminRoleKey } = require('../../../utils/guard-roles');
 
-const ADMIN_DOMAINS = ['users', 'auth'];
+const ADMIN_DOMAINS = ['admin', 'users', 'auth'];
 const USER_UID = 'plugin::users-permissions.user';
 
 // The generated api-provider clients wrap bodies as { data: {...} } (wrapData);

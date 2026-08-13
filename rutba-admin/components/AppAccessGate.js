@@ -5,7 +5,7 @@ import { canAccessApp } from "@rutba/pos-shared/lib/roles";
  * Renders children only if the current user has access to the given app key.
  * Shows an access-denied message otherwise.
  */
-export default function AppAccessGate({ appKey = "users", children }) {
+export default function AppAccessGate({ appKey = "admin", children }) {
     const { appAccess, adminAppAccess, loading } = useAuth();
     const effectiveAccess = [...new Set([...(appAccess || []), ...(adminAppAccess || [])])];
 

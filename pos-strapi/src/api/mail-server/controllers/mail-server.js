@@ -16,7 +16,7 @@ const mailcow = require('../../../utils/mailcow-client');
 const UID = 'api::mail-server.mail-server';
 
 const gate = (ctx, strapi) =>
-  requireAppRole(ctx, strapi, { domains: ['users', 'auth', 'mail'], levels: ['admin'] });
+  requireAppRole(ctx, strapi, { domains: ['admin', 'users', 'auth', 'mail'], levels: ['admin'] });
 
 function fail(ctx, e) {
   const status = e?.status || 502;

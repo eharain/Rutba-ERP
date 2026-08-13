@@ -1,8 +1,13 @@
 /**
  * UsersEndpoints
- * Central user administration behind the rutba-users app (:4022) — user CRUD,
+ * Central user administration behind the rutba-admin app (:4022) — user CRUD,
  * the per-domain access matrix, bulk access assignment, the precise per-role
  * editor, and sanitized directory/employee feeds for pickers in other apps.
+ *
+ * 'users' rides alongside 'admin' in every apps/domains array here as a
+ * DEPRECATED alias: rutba-admin replaced rutba-users and claims
+ * X-Rutba-App: admin, but existing users_* grants must keep working until
+ * they are migrated off. Retiring the users domain is a separate task.
  *
  * Server side is api::user-admin.user-admin (routes-only api, auth:false with
  * a DB-backed requireAppRole gate — no uid here on purpose: there is no
@@ -16,7 +21,7 @@
 export const UsersEndpoints = {
 
     meta: {
-        domains: ['users', 'hr'],
+        domains: ['admin', 'users', 'hr'],
         roles: ['admin', 'manager'],
     },
 
@@ -25,7 +30,7 @@ export const UsersEndpoints = {
         path: '/user-admin/users',
         action: 'listUsers',
         method: 'get',
-        apps: ['users'],
+        apps: ['admin', 'users'],
         approle: ['admin'],
     }),
 
@@ -33,7 +38,7 @@ export const UsersEndpoints = {
         path: `/user-admin/users/${id}`,
         action: 'getUser',
         method: 'get',
-        apps: ['users'],
+        apps: ['admin', 'users'],
         approle: ['admin'],
     }),
 
@@ -46,7 +51,7 @@ export const UsersEndpoints = {
         path: '/user-admin/users',
         action: 'createUser',
         method: 'post',
-        apps: ['users'],
+        apps: ['admin', 'users'],
         approle: ['admin'],
         data,
     }),
@@ -56,7 +61,7 @@ export const UsersEndpoints = {
         path: `/user-admin/users/${id}`,
         action: 'updateUser',
         method: 'put',
-        apps: ['users'],
+        apps: ['admin', 'users'],
         approle: ['admin'],
         data,
     }),
@@ -65,7 +70,7 @@ export const UsersEndpoints = {
         path: `/user-admin/users/${id}`,
         action: 'deleteUser',
         method: 'delete',
-        apps: ['users'],
+        apps: ['admin', 'users'],
         approle: ['admin'],
     }),
 
@@ -79,7 +84,7 @@ export const UsersEndpoints = {
         path: '/user-admin/users/bulk-access',
         action: 'setBulkAccess',
         method: 'post',
-        apps: ['users'],
+        apps: ['admin', 'users'],
         approle: ['admin'],
         data: { changes },
     }),
@@ -93,7 +98,7 @@ export const UsersEndpoints = {
         path: `/user-admin/users/${id}/app-roles`,
         action: 'setAppRoles',
         method: 'put',
-        apps: ['users'],
+        apps: ['admin', 'users'],
         approle: ['admin'],
         data: { role_keys: roleKeys },
     }),
@@ -109,7 +114,7 @@ export const UsersEndpoints = {
         path: '/user-admin/invites',
         action: 'createInvite',
         method: 'post',
-        apps: ['users'],
+        apps: ['admin', 'users'],
         approle: ['admin'],
         data,
     }),
@@ -119,7 +124,7 @@ export const UsersEndpoints = {
         path: `/user-admin/users/${id}/invite`,
         action: 'sendInvite',
         method: 'post',
-        apps: ['users'],
+        apps: ['admin', 'users'],
         approle: ['admin'],
         data: {},
     }),
@@ -134,7 +139,7 @@ export const UsersEndpoints = {
         path: `/user-admin/users/${id}/mailbox`,
         action: 'createMailbox',
         method: 'post',
-        apps: ['users'],
+        apps: ['admin', 'users'],
         approle: ['admin'],
         data: {
             ...(serverId ? { serverId } : {}),
@@ -156,7 +161,7 @@ export const UsersEndpoints = {
         path: '/user-admin/directory',
         action: 'listDirectory',
         method: 'get',
-        apps: ['users', 'hr'],
+        apps: ['admin', 'users', 'hr'],
         approle: ['admin', 'manager'],
     }),
 
@@ -165,7 +170,7 @@ export const UsersEndpoints = {
         path: '/user-admin/employees',
         action: 'listEmployees',
         method: 'get',
-        apps: ['users'],
+        apps: ['admin', 'users'],
         approle: ['admin', 'manager'],
     }),
 
@@ -174,7 +179,7 @@ export const UsersEndpoints = {
         path: '/user-admin/roles',
         action: 'listRoles',
         method: 'get',
-        apps: ['users'],
+        apps: ['admin', 'users'],
         approle: ['admin'],
     }),
 

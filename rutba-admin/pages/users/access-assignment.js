@@ -253,7 +253,7 @@ export default function AccessAssignmentPage() {
     <Layout fullWidth>
       <ProtectedRoute>
         <AppAccessGate>
-          <PermissionCheck adminOnly appKey="users" required="users">
+          <PermissionCheck adminOnly appKey="admin" required="admin">
           <div className="d-flex align-items-center justify-content-between mb-3">
             <h2 className="mb-0"><i className="fas fa-user-shield me-2"></i>User Access Assignment</h2>
             <div className="d-flex gap-2">

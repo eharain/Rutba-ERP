@@ -8,7 +8,7 @@ export default function Layout({ children, fullWidth }) {
             navigation={<Navigation />}
             sidebar={<Sidebar />}
             fullWidth={fullWidth}
-            currentApp="users"
+            currentApp="admin"
         >
             {children}
         </BaseLayout>

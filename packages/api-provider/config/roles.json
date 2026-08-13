@@ -11,6 +11,18 @@
     "level": "staff",
     "domain": "accounts"
   },
+  "admin_admin": {
+    "level": "admin",
+    "domain": "admin"
+  },
+  "admin_manager": {
+    "level": "manager",
+    "domain": "admin"
+  },
+  "admin_staff": {
+    "level": "staff",
+    "domain": "admin"
+  },
   "ap_admin": {
     "level": "admin",
     "domain": "accounts-ap"
