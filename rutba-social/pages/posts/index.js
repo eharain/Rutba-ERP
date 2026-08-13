@@ -16,6 +16,7 @@ import { imageItems, hasVideo } from "../../lib/video-maker";
 const FETCH_PAGE = 50;
 const MAX_PAGES = 20;
 const CARDS_PER_PAGE = 24;
+const VIEW_KEY = "rutba-social-posts-view";
 
 // Bulk-edit columns. documentId/id/contentType/publish are auto-emitted by
 // ExcelIO. Keep the documentId on a row to update it; clear it (or add a new
@@ -82,7 +83,7 @@ const RESULT_STATE = {
 // One chip per social account this post is meant to reach, flagged with whether
 // it actually went out there. The link is platform_results' per-account key, so
 // two accounts on the same platform are tracked separately.
-function AccountFlags({ post, accounts }) {
+function AccountFlags({ post, accounts, collapsed = false, onToggle }) {
     const results = post.platform_results || {};
     const targeted = Array.isArray(post.platforms) && post.platforms.length ? post.platforms : null;
     const rows = accounts.filter((a) => !targeted || targeted.includes(a.platform));
@@ -96,11 +97,39 @@ function AccountFlags({ post, accounts }) {
     // their own chips so a relayed post doesn't look unposted.
     const relayRows = Object.entries(results)
         .filter(([, v]) => v && String(v.account_id || "").startsWith("relay:"));
+
+    // Collapsed: the one number that matters plus the platforms it involves.
+    // A card carrying six account chips buries the caption and the actions,
+    // and most of the time "3/5, on these platforms" is the whole question.
+    if (collapsed) {
+        const platforms = [...new Set(rows.map((a) => a.platform))];
+        return (
+            <button type="button" onClick={onToggle}
+                className="btn btn-sm p-0 border-0 bg-transparent d-inline-flex align-items-center gap-1"
+                title={`${done} of ${rows.length} account(s) posted — click for the breakdown`}>
+                <span className={`badge ${done === rows.length ? "bg-success" : done ? "bg-warning text-dark" : "bg-light text-dark border"}`}>
+                    {done}/{rows.length}
+                </span>
+                {platforms.slice(0, 4).map((p) => (
+                    <i key={p} className={PLATFORMS[p]?.icon || "fas fa-share-nodes"}
+                        style={{ color: PLATFORMS[p]?.color, fontSize: 11 }} />
+                ))}
+                {platforms.length > 4 && <span className="text-muted" style={{ fontSize: 10 }}>+{platforms.length - 4}</span>}
+                {relayRows.length > 0 && <i className="fas fa-tower-broadcast text-muted" style={{ fontSize: 10 }} title="relayed" />}
+                <i className="fas fa-chevron-down text-muted" style={{ fontSize: 9 }} />
+            </button>
+        );
+    }
+
     return (
         <div className="d-flex flex-wrap gap-1 align-items-center">
-            <span className="badge bg-light text-dark border" title="Accounts posted / accounts targeted">
-                {done}/{rows.length}
-            </span>
+            <button type="button" onClick={onToggle}
+                className="btn btn-sm p-0 border-0 bg-transparent"
+                title="Accounts posted / accounts targeted — click to collapse">
+                <span className="badge bg-light text-dark border">
+                    {done}/{rows.length} <i className="fas fa-chevron-up" style={{ fontSize: 9 }} />
+                </span>
+            </button>
             {rows.map((a) => {
                 const r = results[`${a.platform}#${a.documentId}`];
                 const st = r && RESULT_STATE[r.status];
@@ -265,6 +294,43 @@ export default function PostsPage() {
     const [publishedOnFilter, setPublishedOnFilter] = useState("");
     const [notPublishedOnFilter, setNotPublishedOnFilter] = useState("");
     const [sortKey, setSortKey] = useState("newest");
+
+    // ── card layout ─────────────────────────────────────────
+    // Two switches set what every card shows; a card's own toggle then flips
+    // that card away from the default. Storing the FLIPS (not each card's
+    // absolute state) is what makes "hide all captions" still mean something
+    // after you have opened one — and flipping a switch clears them, so the
+    // switch is always telling the truth about what you are looking at.
+    const [showCaptions, setShowCaptions] = useState(false);
+    const [showAccounts, setShowAccounts] = useState(true);
+    const [captionFlips, setCaptionFlips] = useState(() => new Set());
+    const [accountFlips, setAccountFlips] = useState(() => new Set());
+
+    const captionOpen = (id) => showCaptions !== captionFlips.has(id);
+    const accountsOpen = (id) => showAccounts !== accountFlips.has(id);
+    const flip = (setter) => (id) => setter((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id); else next.add(id);
+        return next;
+    });
+    const flipCaption = flip(setCaptionFlips);
+    const flipAccounts = flip(setAccountFlips);
+
+    // A view preference is worth keeping — it is about how you read this page,
+    // not about what you were looking for.
+    useEffect(() => {
+        try {
+            const raw = localStorage.getItem(VIEW_KEY);
+            if (!raw) return;
+            const v = JSON.parse(raw);
+            if (typeof v.captions === "boolean") setShowCaptions(v.captions);
+            if (typeof v.accounts === "boolean") setShowAccounts(v.accounts);
+        } catch { /* defaults are fine */ }
+    }, []);
+    useEffect(() => {
+        try { localStorage.setItem(VIEW_KEY, JSON.stringify({ captions: showCaptions, accounts: showAccounts })); }
+        catch { /* private mode */ }
+    }, [showCaptions, showAccounts]);
 
     // Deep links (e.g. the studio's "posts without a video") preset filters:
     // ?video=with|without, ?published_on=tiktok|any, ?not_published_on=youtube|any
@@ -745,6 +811,22 @@ export default function PostsPage() {
                                 checked={allSelected} onChange={toggleSelectAll} disabled={!filtered.length} />
                             <label className="form-check-label small" htmlFor="select-all">Select all</label>
                         </div>
+                        {/* What the cards show. Flipping either clears the per-card
+                            toggles, so the switch always describes the whole grid. */}
+                        <div className="btn-group btn-group-sm" role="group" aria-label="Card layout">
+                            <button type="button"
+                                className={`btn ${showCaptions ? "btn-secondary" : "btn-outline-secondary"}`}
+                                title={showCaptions ? "Hide captions on every card" : "Show captions on every card"}
+                                onClick={() => { setShowCaptions((v) => !v); setCaptionFlips(new Set()); }}>
+                                <i className="fas fa-align-left me-1"></i>Captions
+                            </button>
+                            <button type="button"
+                                className={`btn ${showAccounts ? "btn-secondary" : "btn-outline-secondary"}`}
+                                title={showAccounts ? "Collapse the accounts on every card" : "Expand the accounts on every card"}
+                                onClick={() => { setShowAccounts((v) => !v); setAccountFlips(new Set()); }}>
+                                <i className="fas fa-share-nodes me-1"></i>Accounts
+                            </button>
+                        </div>
                         {filtersActive && (
                             <button className="btn btn-sm btn-link p-0" onClick={clearFilters}>Clear filters</button>
                         )}
@@ -807,9 +889,33 @@ export default function PostsPage() {
                                                     {(post.products || []).length > 0 && (
                                                         <span title="Linked products"><i className="fas fa-box"></i> {post.products.length}</span>
                                                     )}
+                                                    {post.body && (
+                                                        <button type="button"
+                                                            className={`btn btn-sm p-0 border-0 bg-transparent ms-auto ${captionOpen(post.documentId) ? "text-primary" : "text-muted"}`}
+                                                            style={{ fontSize: 11 }}
+                                                            title={captionOpen(post.documentId) ? "Hide the caption" : "Show the caption"}
+                                                            onClick={() => flipCaption(post.documentId)}>
+                                                            <i className="fas fa-align-left"></i>
+                                                        </button>
+                                                    )}
                                                 </div>
+
+                                                {/* The caption is what actually goes out; on a card it reads as
+                                                    three lines with the rest a click away on the post itself. */}
+                                                {captionOpen(post.documentId) && post.body && (
+                                                    <p className="text-muted mb-0 mt-1" title={post.body}
+                                                        style={{
+                                                            fontSize: 11, whiteSpace: "pre-wrap", overflow: "hidden",
+                                                            display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical",
+                                                        }}>
+                                                        {post.body}
+                                                    </p>
+                                                )}
+
                                                 <div className="mt-1">
-                                                    <AccountFlags post={post} accounts={accounts} />
+                                                    <AccountFlags post={post} accounts={accounts}
+                                                        collapsed={!accountsOpen(post.documentId)}
+                                                        onToggle={() => flipAccounts(post.documentId)} />
                                                 </div>
                                             </div>
                                             <div className="card-footer p-1 d-flex gap-1 justify-content-center flex-wrap">
