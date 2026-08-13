@@ -75,14 +75,23 @@ rather than on the stage, and three things were left behind it.
 **Gate.** t2 crop probe extended: a stage-drag writes the same `crop` the
 thumbnail does, and the backdrop's pixels change with the crop.
 
-## D3 · Polish pack (v4 M3)
+## D3 · Polish pack (v4 M3) — **DONE (92a832b + 6255edb)**
 
-Wipe and blur-through enter/exit kinds, karaoke caption style, safe-zone
-guides, beat-synced slot suggestions (WebAudio energy peaks snapping slot
-edges). Per-photo filters — the other half of M3 — already landed as the Look
-card. Cheap individually; no engine change.
+All four landed. Wipe (a growing clip over the layer's own bounds) and
+blur-through (a softness that resolves, alpha ×1.6 ahead of it so it reads as
+a focus pull) join the envelope in the paint wrapper, so no painter learned
+them and they work on every layer type. Karaoke shows the whole line and
+lights it as it goes, sizing its box for the whole text and drawing each line
+twice — dim, then clipped to the sung width — so the halves cannot drift on a
+proportional font. Safe-zone guides are an HTML overlay, never on the canvas,
+because the canvas is what a render records. "Cut on the beat" finds onsets in
+the bed and moves each interior slot edge to the nearest one, leaving alone
+any edge with no beat near it, and writes the result back as ordinary
+per-photo seconds; the helpers are pure functions in `lib/beats.js` so the
+fixture can drive them against a click track.
 
-**Gate.** A/B identity + fixture spot-checks per item.
+Gated by A/B 60/60 plus a 12-check t2 polish probe. Per-photo filters — the
+other half of M3 — had already landed as the Look card.
 
 ## D4 · One recipe, every aspect
 
