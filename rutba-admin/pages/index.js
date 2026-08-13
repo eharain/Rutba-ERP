@@ -14,7 +14,7 @@ const SECTIONS = [
     { href: "/mailboxes", title: "Mailboxes", icon: "fa-envelope", tone: "teal", text: "Mailbox ownership, shared-inbox access and provisioning.", ready: true },
     { href: "/email-servers", title: "Email Servers", icon: "fa-server", tone: "secondary", text: "Registered mail-server admin endpoints (mailcow).", ready: true },
     { href: "/social-accounts", title: "Social Accounts", icon: "fa-share-nodes", tone: "info", text: "Connect and configure API credentials for each social platform.", ready: true },
-    { href: "/social-relays", title: "Relay Providers", icon: "fa-tower-broadcast", tone: "warning", text: "Aggregator API keys (Ayrshare, Postiz) that posts publish through.", ready: true },
+    { href: "/social-relays", title: "Social Relay Providers", icon: "fa-tower-broadcast", tone: "warning", text: "Aggregator API keys (Ayrshare, Postiz) that social posts publish through. Email relaying is Rutba-MTA; SMS is not built yet.", ready: true },
     { href: "/notifications", title: "Notifications", icon: "fa-bell", tone: "purple", text: "Per-user notification preferences.", ready: false },
 ];
 
