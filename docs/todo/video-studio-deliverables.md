@@ -93,12 +93,35 @@ fixture can drive them against a click track.
 Gated by A/B 60/60 plus a 12-check t2 polish probe. Per-photo filters — the
 other half of M3 — had already landed as the Look card.
 
-## D4 · One recipe, every aspect — **PARKED, needs a decision first**
+## D4 · One recipe, every aspect — **DONE up to the open question (556e4cc)**
 
-Not blocked on engineering: fractional geometry already makes three aspects
-nearly free, and the poster's batch path is a contained change. It is blocked
-on what a post with three videos MEANS, and nothing downstream currently has
-an answer:
+Built around the unanswered question rather than through it: the studio can
+CHECK and RENDER all three shapes, and attach still puts one video on the
+post. So nothing here presumes an answer.
+
+The check turned out to matter more than the render. Fractional geometry
+already guarantees the recipe compiles at any shape — that was the point of
+storing fractions — so the real question is whether the layout still reads
+when the frame changes around them. "Check the layout" compiles at 9:16, 1:1
+and 16:9 and reports every layer outside title-safe, under the bottom bar or
+in the right rail, ignoring the layers that ARE the frame (a checker that
+flags every full-bleed photo is no checker). "Render all three" then renders
+the same recipe once per shape and offers the files; the music bed resolves
+ONCE, or `audioMode: random` would give three files three different songs.
+Gated by a 5-check t2 aspect probe.
+
+**Still open, and still not answered here:** what a post with three videos
+means. Until it is settled, the three renders are files you download.
+
+- `social-post.video_settings` holds ONE recipe and the post holds ONE
+  rendered video. Three renders need somewhere to live — three files on one
+  post, or three posts, or a video per platform target.
+- The poster attaches a video to a post and then posts it per platform. If a
+  post carries three, the attach step needs to know which one each platform
+  gets, which is a per-platform mapping that does not exist yet.
+- Safe zones differ per aspect, which is what the layout check now surfaces.
+
+The original statement of the blocker:
 
 - `social-post.video_settings` holds ONE recipe and the post holds ONE
   rendered video. Three renders need somewhere to live — three files on one
