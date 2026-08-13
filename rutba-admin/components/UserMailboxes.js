@@ -3,9 +3,29 @@ import Link from "next/link";
 import { MailAccountsEndpoints, MailServersEndpoints, UsersEndpoints } from "@rutba/api-provider/endpoints";
 
 /**
- * Per-user mailbox panel for the user edit page: what this user can open
- * (owned + role-reachable shared inboxes), attach/detach against existing
- * accounts, and provision a brand-new address on a registered mail server.
+ * Email access for one user, as two checkbox questions rather than a form:
+ *
+ *   1. "Has a personal mailbox" — ticking derives the address from the user's
+ *      own email local part and the registered mail domain, provisions it on
+ *      the mail server, and links it to this user id. No fields to fill in.
+ *   2. "Shared inboxes" — one checkbox per shared inbox; ticking adds this user
+ *      to that inbox's owners. The same relation the /mailboxes page edits from
+ *      the other side, so both directions stay in step.
+ *
+ * ── Ticking is attach-or-provision, not always provision ──────────────────
+ * If an account already exists at the derived address (previously provisioned,
+ * or created by hand and left unowned) ticking ATTACHES it. Provisioning
+ * unconditionally would just fail on a duplicate address and leave the admin
+ * with an error they cannot act on.
+ *
+ * ── Unticking never deletes ───────────────────────────────────────────────
+ * It removes this user from the mailbox's owners. The mailbox and its mail are
+ * untouched; re-ticking re-attaches the same account. Deleting a mailbox is a
+ * deliberate act on the /mailboxes list, not a side effect of a checkbox here.
+ *
+ * Access that comes from an app-role (shared inboxes list role keys in
+ * access_roles) is shown ticked and disabled: it is real access, but it is not
+ * this user's to grant or revoke — it follows the role.
  */
 export default function UserMailboxes({ userId, userEmail, userRoleKeys = [] }) {
     const [accounts, setAccounts] = useState([]);
@@ -13,10 +33,8 @@ export default function UserMailboxes({ userId, userEmail, userRoleKeys = [] }) 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
-    const [busy, setBusy] = useState(false);
-    const [attachId, setAttachId] = useState("");
-    const [provision, setProvision] = useState(null);
-    const [provisioning, setProvisioning] = useState(false);
+    const [busyKey, setBusyKey] = useState("");
+    const [domain, setDomain] = useState("");
 
     const uid = Number(userId);
 
@@ -39,213 +57,203 @@ export default function UserMailboxes({ userId, userEmail, userRoleKeys = [] }) 
         }
     }
 
-    const owned = useMemo(() => accounts.filter((a) => (a.owners || []).some((o) => o.id === uid)), [accounts, uid]);
-    const viaRoles = useMemo(() => {
-        const keys = userRoleKeys.map((k) => String(k).toLowerCase());
-        return accounts.filter((a) =>
-            a.kind === "shared"
-            && !(a.owners || []).some((o) => o.id === uid)
-            && (a.access_roles || []).some((k) => keys.includes(String(k).toLowerCase())));
-    }, [accounts, uid, userRoleKeys]);
-    const attachable = useMemo(() => accounts.filter((a) =>
-        !(a.owners || []).some((o) => o.id === uid)
-        && (a.kind === "shared" || (a.owners || []).length === 0)), [accounts, uid]);
-
-    async function handleAttach() {
-        if (!attachId) return;
-        const account = accounts.find((a) => a.documentId === attachId);
-        if (!account) return;
-        setBusy(true);
-        setError("");
-        try {
-            const nextOwners = [...(account.owners || []).map((o) => o.id), uid];
-            await MailAccountsEndpoints.setAccess(account.documentId, { owners: nextOwners });
-            setSuccess(`Attached ${account.email}.`);
-            setAttachId("");
-            await loadAll();
-        } catch (err) {
-            setError(err?.response?.data?.message || err.message || "Failed to attach");
-        } finally {
-            setBusy(false);
+    // Every domain any active mail server can provision into, with the server
+    // that owns it — createMailbox can resolve the server from the domain, but
+    // passing it explicitly avoids a second lookup and an ambiguous match.
+    const domainOptions = useMemo(() => {
+        const out = [];
+        for (const s of servers) {
+            for (const d of (s.mail_domains || [])) {
+                const key = String(d || "").trim().toLowerCase();
+                if (key && !out.some((o) => o.domain === key)) out.push({ domain: key, serverId: s.documentId });
+            }
         }
-    }
+        return out;
+    }, [servers]);
 
-    async function handleDetach(account) {
-        if (!confirm(`Remove this user from ${account.email}?`)) return;
-        setBusy(true);
-        setError("");
-        try {
-            const nextOwners = (account.owners || []).map((o) => o.id).filter((id) => id !== uid);
-            await MailAccountsEndpoints.setAccess(account.documentId, { owners: nextOwners });
-            setSuccess(`Detached ${account.email}.`);
-            await loadAll();
-        } catch (err) {
-            setError(err?.response?.data?.message || err.message || "Failed to detach");
-        } finally {
-            setBusy(false);
-        }
-    }
+    useEffect(() => {
+        if (!domain && domainOptions.length) setDomain(domainOptions[0].domain);
+    }, [domainOptions, domain]);
 
-    function openProvision() {
-        const suggested = String(userEmail || "").split("@")[0] || "";
-        setProvision({
-            serverId: servers[0]?.documentId || "",
-            localPart: suggested,
-            domain: servers[0]?.mail_domains?.[0] || "",
-            name: "",
-        });
-    }
-
-    const provisionDomains = useMemo(() => {
-        if (!provision) return [];
-        const server = servers.find((s) => s.documentId === provision.serverId);
-        return server?.mail_domains || [];
-    }, [provision, servers]);
-
-    async function handleProvision(e) {
-        e.preventDefault();
-        if (!provision.localPart || !provision.domain) {
-            setError("Local part and domain are required.");
-            return;
-        }
-        setProvisioning(true);
-        setError("");
-        try {
-            const res = await UsersEndpoints.createMailbox(uid, {
-                ...(provision.serverId ? { serverId: provision.serverId } : {}),
-                localPart: provision.localPart.trim().toLowerCase(),
-                domain: provision.domain.trim().toLowerCase(),
-                ...(provision.name ? { name: provision.name } : {}),
-                kind: "personal",
-            });
-            setSuccess(`Provisioned ${res?.account?.email} for this user.`);
-            setProvision(null);
-            await loadAll();
-        } catch (err) {
-            setError(err?.response?.data?.message || err.message || "Provisioning failed");
-        } finally {
-            setProvisioning(false);
-        }
-    }
-
-    const row = (a, via) => (
-        <tr key={`${via}-${a.documentId}`}>
-            <td>
-                <div className="fw-semibold">{a.name}</div>
-                <div className="small text-muted">{a.email}</div>
-            </td>
-            <td>
-                <span className={`badge ${a.kind === "shared" ? "bg-info text-dark" : "bg-secondary"}`}>{a.kind}</span>
-            </td>
-            <td className="small text-muted">
-                {via === "owner" ? "Owner" : <>Via role{(a.access_roles || []).length ? <>: <code>{(a.access_roles || []).join(", ")}</code></> : ""}</>}
-            </td>
-            <td className="text-end">
-                {via === "owner" && (
-                    <button type="button" className="btn btn-sm btn-outline-danger" disabled={busy} onClick={() => handleDetach(a)}>
-                        Detach
-                    </button>
-                )}
-            </td>
-        </tr>
+    const localPart = useMemo(
+        () => String(userEmail || "").split("@")[0].trim().toLowerCase(),
+        [userEmail],
     );
+    const derivedEmail = localPart && domain ? `${localPart}@${domain}` : "";
+
+    const personal = useMemo(
+        () => accounts.find((a) => a.kind === "personal" && (a.owners || []).some((o) => o.id === uid)) || null,
+        [accounts, uid],
+    );
+    const shared = useMemo(() => accounts.filter((a) => a.kind === "shared"), [accounts]);
+    const roleKeysLower = useMemo(
+        () => userRoleKeys.map((k) => String(k).toLowerCase()),
+        [userRoleKeys],
+    );
+
+    const canProvision = domainOptions.length > 0 && !!localPart;
+
+    async function run(key, fn, okMessage) {
+        setBusyKey(key);
+        setError("");
+        setSuccess("");
+        try {
+            await fn();
+            if (okMessage) setSuccess(okMessage);
+            await loadAll();
+        } catch (err) {
+            setError(err?.response?.data?.message || err.message || "Request failed");
+        } finally {
+            setBusyKey("");
+        }
+    }
+
+    function setOwners(account, nextOwnerIds) {
+        return MailAccountsEndpoints.setAccess(account.documentId, { owners: nextOwnerIds });
+    }
+
+    async function togglePersonal(next) {
+        if (!next) {
+            if (!personal) return;
+            if (!confirm(
+                `Remove ${personal.email} from this user?\n\n` +
+                `The mailbox and its mail are kept — this only unlinks it. ` +
+                `Delete it from the Mailboxes list if you want it gone.`
+            )) return;
+            return run("personal", () =>
+                setOwners(personal, (personal.owners || []).map((o) => o.id).filter((id) => id !== uid)),
+                "Unlinked the personal mailbox.");
+        }
+
+        if (!canProvision) return;
+        // Attach-or-provision: an account may already exist at this address.
+        const existing = accounts.find(
+            (a) => String(a.email || "").toLowerCase() === derivedEmail,
+        );
+        if (existing) {
+            const owners = (existing.owners || []).map((o) => o.id);
+            // A personal account keeps exactly one owner server-side
+            // (setAccess slices owners to the first entry), so appending to a
+            // mailbox someone else already owns would be sliced straight back
+            // out — the checkbox would appear to do nothing. Say so instead.
+            if (existing.kind === "personal" && owners.length && !owners.includes(uid)) {
+                const holder = (existing.owners || [])[0];
+                setError(
+                    `${existing.email} already belongs to ${holder?.displayName || holder?.email || holder?.username || "another user"}. ` +
+                    `Unassign it there first, or delete it from the Mailboxes list.`
+                );
+                return;
+            }
+            return run("personal", () => setOwners(existing, [...owners, uid]),
+                `Linked the existing mailbox ${existing.email}.`);
+        }
+        const chosen = domainOptions.find((o) => o.domain === domain);
+        return run("personal", () =>
+            UsersEndpoints.createMailbox(uid, {
+                ...(chosen?.serverId ? { serverId: chosen.serverId } : {}),
+                localPart,
+                domain,
+                kind: "personal",
+            }),
+            `Created ${derivedEmail} and linked it to this user.`);
+    }
+
+    async function toggleShared(account, next) {
+        const owners = (account.owners || []).map((o) => o.id);
+        return run(`shared-${account.documentId}`, () =>
+            setOwners(account, next ? [...owners, uid] : owners.filter((id) => id !== uid)),
+            next ? `Gave access to ${account.email}.` : `Removed access to ${account.email}.`);
+    }
 
     return (
         <div className="card mb-4">
             <div className="card-header bg-light d-flex justify-content-between align-items-center">
-                <h5 className="mb-0"><i className="fas fa-envelope me-2"></i>Mailboxes</h5>
-                <div className="d-flex gap-2">
-                    <Link href="/mailboxes" className="btn btn-sm btn-outline-secondary">All Mailboxes</Link>
-                    <button type="button" className="btn btn-sm btn-primary" onClick={openProvision}>
-                        <i className="fas fa-plus me-1"></i>Assign New Email
-                    </button>
-                </div>
+                <h5 className="mb-0"><i className="fas fa-envelope me-2"></i>Email access</h5>
+                <Link href="/mailboxes" className="btn btn-sm btn-outline-secondary">All Mailboxes</Link>
             </div>
             <div className="card-body">
                 {error && <div className="alert alert-danger py-2">{error}</div>}
                 {success && <div className="alert alert-success py-2">{success}</div>}
 
-                {provision && (
-                    <form onSubmit={handleProvision} className="border rounded p-3 mb-3 bg-light">
-                        <div className="row g-2">
-                            <div className="col-md-3">
-                                <label className="form-label small">Mail server</label>
-                                <select className="form-select form-select-sm" value={provision.serverId} onChange={e => setProvision(p => ({ ...p, serverId: e.target.value, domain: "" }))}>
-                                    <option value="">Built-in (env)</option>
-                                    {servers.map((s) => <option key={s.documentId} value={s.documentId}>{s.name}</option>)}
-                                </select>
-                            </div>
-                            <div className="col-md-3">
-                                <label className="form-label small">Local part</label>
-                                <input className="form-control form-control-sm" value={provision.localPart} onChange={e => setProvision(p => ({ ...p, localPart: e.target.value }))} required />
-                            </div>
-                            <div className="col-md-3">
-                                <label className="form-label small">Domain</label>
-                                {provisionDomains.length ? (
-                                    <select className="form-select form-select-sm" value={provision.domain} onChange={e => setProvision(p => ({ ...p, domain: e.target.value }))} required>
-                                        <option value="">— Select —</option>
-                                        {provisionDomains.map((d) => <option key={d} value={d}>{d}</option>)}
-                                    </select>
-                                ) : (
-                                    <input className="form-control form-control-sm" placeholder="rutba.pk" value={provision.domain} onChange={e => setProvision(p => ({ ...p, domain: e.target.value }))} required />
-                                )}
-                            </div>
-                            <div className="col-md-3">
-                                <label className="form-label small">Display name</label>
-                                <input className="form-control form-control-sm" value={provision.name} onChange={e => setProvision(p => ({ ...p, name: e.target.value }))} />
-                            </div>
-                        </div>
-                        <div className="d-flex gap-2 mt-2">
-                            <button type="submit" className="btn btn-sm btn-success" disabled={provisioning}>
-                                {provisioning ? "Provisioning..." : "Provision & Assign"}
-                            </button>
-                            <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setProvision(null)}>Cancel</button>
-                        </div>
-                    </form>
-                )}
-
                 {loading ? (
                     <p className="text-muted mb-0">Loading...</p>
                 ) : (
                     <>
-                        {owned.length === 0 && viaRoles.length === 0 ? (
-                            <p className="text-muted">No mailboxes assigned.</p>
-                        ) : (
-                            <div className="table-responsive">
-                                <table className="table table-sm align-middle mb-2">
-                                    <thead className="table-light">
-                                        <tr>
-                                            <th>Mailbox</th>
-                                            <th>Kind</th>
-                                            <th>Access</th>
-                                            <th style={{ width: 90 }}></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {owned.map((a) => row(a, "owner"))}
-                                        {viaRoles.map((a) => row(a, "role"))}
-                                    </tbody>
-                                </table>
+                        {/* ── 1. personal mailbox ─────────────────────────── */}
+                        <div className="form-check mb-1">
+                            <input
+                                className="form-check-input"
+                                type="checkbox"
+                                id="has-email-access"
+                                checked={!!personal}
+                                disabled={busyKey === "personal" || (!personal && !canProvision)}
+                                onChange={(e) => togglePersonal(e.target.checked)}
+                            />
+                            <label className="form-check-label" htmlFor="has-email-access">
+                                <strong>Has email access</strong>
+                                {personal
+                                    ? <> — <code>{personal.email}</code></>
+                                    : derivedEmail
+                                        ? <> — will create <code>{derivedEmail}</code></>
+                                        : null}
+                            </label>
+                        </div>
+
+                        {!personal && domainOptions.length > 1 && (
+                            <div className="ms-4 mb-2" style={{ maxWidth: 260 }}>
+                                <select
+                                    className="form-select form-select-sm"
+                                    value={domain}
+                                    onChange={(e) => setDomain(e.target.value)}
+                                    disabled={busyKey === "personal"}
+                                >
+                                    {domainOptions.map((o) => <option key={o.domain} value={o.domain}>@{o.domain}</option>)}
+                                </select>
                             </div>
                         )}
 
-                        {attachable.length > 0 && (
-                            <div className="d-flex align-items-end gap-2 mt-2">
-                                <div style={{ minWidth: 280 }}>
-                                    <label className="form-label small mb-1">Attach existing account</label>
-                                    <select className="form-select form-select-sm" value={attachId} onChange={(e) => setAttachId(e.target.value)}>
-                                        <option value="">— Select account —</option>
-                                        {attachable.map((a) => (
-                                            <option key={a.documentId} value={a.documentId}>
-                                                {a.email} ({a.kind}{a.kind === "personal" && (a.owners || []).length === 0 ? ", unowned" : ""})
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <button type="button" className="btn btn-sm btn-outline-primary" disabled={!attachId || busy} onClick={handleAttach}>
-                                    Attach
-                                </button>
-                            </div>
+                        {!personal && !canProvision && (
+                            <p className="small text-muted ms-4 mb-2">
+                                {domainOptions.length === 0
+                                    ? <>No mail server is registered yet — add one under <Link href="/email-servers">Email Servers</Link> before assigning email.</>
+                                    : "This user has no email address to derive a mailbox name from."}
+                            </p>
+                        )}
+
+                        {busyKey === "personal" && <p className="small text-muted ms-4">Working…</p>}
+
+                        {/* ── 2. shared inboxes ───────────────────────────── */}
+                        <hr className="my-3" />
+                        <div className="fw-semibold mb-2">Shared inboxes</div>
+                        {shared.length === 0 ? (
+                            <p className="text-muted small mb-0">No shared inboxes exist yet.</p>
+                        ) : (
+                            shared.map((a) => {
+                                const isOwner = (a.owners || []).some((o) => o.id === uid);
+                                const viaRole = (a.access_roles || [])
+                                    .filter((k) => roleKeysLower.includes(String(k).toLowerCase()));
+                                const byRoleOnly = !isOwner && viaRole.length > 0;
+                                return (
+                                    <div className="form-check" key={a.documentId}>
+                                        <input
+                                            className="form-check-input"
+                                            type="checkbox"
+                                            id={`shared-${a.documentId}`}
+                                            checked={isOwner || byRoleOnly}
+                                            disabled={byRoleOnly || busyKey === `shared-${a.documentId}`}
+                                            onChange={(e) => toggleShared(a, e.target.checked)}
+                                        />
+                                        <label className="form-check-label" htmlFor={`shared-${a.documentId}`}>
+                                            {a.name} <span className="text-muted small">&lt;{a.email}&gt;</span>
+                                            {byRoleOnly && (
+                                                <span className="badge bg-light text-dark border ms-2">
+                                                    via role <code>{viaRole.join(", ")}</code>
+                                                </span>
+                                            )}
+                                        </label>
+                                    </div>
+                                );
+                            })
                         )}
                     </>
                 )}
