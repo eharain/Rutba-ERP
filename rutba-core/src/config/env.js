@@ -103,8 +103,52 @@ function get(name, fallback) {
   return fallback;
 }
 
+// SQLite is addressed by file, not by host:port, so it does not fit the shape
+// the server/client branch below builds. Accepted spellings all land on the
+// same driver — `sqlite` is what Strapi's DATABASE_CLIENT uses, `sqlite3` is
+// knex's own client name, and `better-sqlite3` is the package doing the work.
+const SQLITE_CLIENTS = new Set(['sqlite', 'sqlite3', 'better-sqlite3']);
+
+function sqliteConfig() {
+  const filename = get(
+    'DATABASE_FILENAME',
+    path.join(REPO_ROOT, '.data', 'rutba-core.sqlite'),
+  );
+
+  // better-sqlite3 opens the file but will not create the directory holding
+  // it, and fails with a bare SQLITE_CANTOPEN if it is missing. `:memory:`
+  // (and the file: URI form) name no directory at all.
+  if (filename !== ':memory:' && !filename.startsWith('file:')) {
+    fs.mkdirSync(path.dirname(filename), { recursive: true });
+  }
+
+  return {
+    client: 'better-sqlite3',
+    connection: { filename },
+    // knex insists on this for SQLite: without it, every insert that leaves a
+    // column undefined logs a deprecation warning instead of writing NULL.
+    useNullAsDefault: true,
+    pool: {
+      // One connection, deliberately. SQLite takes a database-wide write lock,
+      // so a pool wide enough for two concurrent writers only converts a
+      // queue into SQLITE_BUSY errors. Serializing here means withTransaction()
+      // in src/db/connection.js behaves the way its callers already assume.
+      min: 1,
+      max: 1,
+      // With a pool of one, code that escapes the AsyncLocalStorage context
+      // inside a transaction (a stray setTimeout, an unawaited promise) asks
+      // for a second connection that cannot arrive until the first is
+      // released — a deadlock. Fail loudly instead of hanging: the caller's
+      // bug is then visible in a stack trace rather than as a wedged process.
+      acquireTimeoutMillis: 30000,
+    },
+  };
+}
+
 function dbConfig() {
   const client = get('DATABASE_CLIENT', 'mysql');
+  if (SQLITE_CLIENTS.has(client)) return sqliteConfig();
+
   const clientMap = { mysql: 'mysql2', postgres: 'pg' };
   return {
     client: clientMap[client] || client,
