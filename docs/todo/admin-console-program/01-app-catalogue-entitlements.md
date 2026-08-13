@@ -190,6 +190,12 @@ render-blocking round trip.
 `APP_META` has four direct consumers and four selector functions; the selectors
 are the real choke point.
 
+**The entire surface is inside `pos-shared`.** A repo-wide search across
+`packages/`, every `rutba-*` app and every `pos-*` app finds no other importer —
+not one of the 18 frontends touches `APP_META` directly. So this migration is
+contained in one package and needs no coordinated change across the app fleet,
+which is what makes A1 an M rather than an L.
+
 | Consumer | Reads |
 |---|---|
 | [`NavAppSwitcher.js`](../../../packages/pos-shared/components/NavAppSwitcher.js) | `APP_META` directly (line 32) + `getCrossAppLinks`, `getAppCatalogGroups` |
