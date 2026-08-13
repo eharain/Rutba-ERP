@@ -1,8 +1,24 @@
 'use strict';
 
 /**
- * The rutba-users → rutba-admin cutover: every holder of a `users_*` app-role
- * additively gets the matching `admin_*` role.
+ * The rutba-users → rutba-admin cutover: every holder of a `users_*` OR
+ * `auth_*` app-role additively gets the matching `admin_*` role.
+ *
+ * ── Why `auth_*` too, and not just `users_*` ──────────────────────────────
+ * Measured on the dev database before this was written: `users_admin`,
+ * `users_manager` and `users_staff` existed as rows with ZERO holders, while
+ * the accounts that actually administer the instance held `auth_admin`. The
+ * earlier auth_* → users_* backfill (scripts/backfill-users-roles.js) had
+ * never been run there. A cutover keyed only on users_* would therefore have
+ * granted nobody anything, leaving every administrator on AppAccessGate's
+ * "Access Denied" for an app whose API would in fact have served them.
+ *
+ * So the source set is exactly ADMIN_DOMAINS minus the target — users AND
+ * auth, the two earlier generations user-admin's gate already honours. This
+ * confers no capability that was not already conferred: requireAppRole admits
+ * auth_<level> on those same endpoints today. It only makes the CLIENT-side
+ * domain check (canAccessApp / PermissionCheck, which compare against
+ * app-domain keys) agree with the server-side one.
  *
  * ── Why this has to exist ─────────────────────────────────────────────────
  * A user's access is stored as `up_users_app_roles_lnk` rows pointing at role
@@ -30,8 +46,8 @@
  * rutba-core/scripts/grant-full-access.js `syncDeclaredRoles`.
  *
  * Which levels map to which is read from @rutba/api-provider rather than
- * hardcoded: the pairing rule is "same level, users domain → admin domain", so
- * adding a level to either domain later needs no edit here.
+ * hardcoded: the pairing rule is "same level, source domain → admin domain",
+ * so adding a level to any of them later needs no edit here.
  *
  * Shared idempotent body used by BOTH:
  *   - database/migrations/2026.08.13T00.00.00.admin-domain-grants.js
@@ -45,7 +61,9 @@
 
 const crypto = require('crypto');
 
-const SOURCE_DOMAIN = 'users';
+// Keep in step with ADMIN_DOMAINS in the user-admin controller — that list is
+// the definition of "may administer this instance"; this is its data half.
+const SOURCE_DOMAINS = ['users', 'auth'];
 const TARGET_DOMAIN = 'admin';
 
 const DOMAINS_TABLE = 'api_pro_app_domains';
@@ -120,14 +138,21 @@ async function applyAdminDomainGrants(knex) {
         return out;
     }
 
-    const sourceByLevel = rolesByLevel(declared.roles, SOURCE_DOMAIN);
     const targetByLevel = rolesByLevel(declared.roles, TARGET_DOMAIN);
-    const pairs = [...sourceByLevel.entries()]
-        .filter(([level]) => targetByLevel.has(level))
-        .map(([level, from]) => ({ level, from, to: targetByLevel.get(level) }));
+    // One pair per (source domain × level) that the target domain also declares.
+    // A source domain the target has no matching level for contributes nothing
+    // rather than guessing — e.g. an `ess`-style employee/manager pair.
+    const pairs = [];
+    for (const sourceDomain of SOURCE_DOMAINS) {
+        for (const [level, from] of rolesByLevel(declared.roles, sourceDomain)) {
+            if (!targetByLevel.has(level)) continue;
+            pairs.push({ level, from, to: targetByLevel.get(level) });
+        }
+    }
 
     if (!pairs.length) {
-        out.skipped = `no ${SOURCE_DOMAIN}_* → ${TARGET_DOMAIN}_* level pairs declared`;
+        out.skipped =
+            `no ${SOURCE_DOMAINS.join('_*/')}_* → ${TARGET_DOMAIN}_* level pairs declared`;
         return out;
     }
 
@@ -214,6 +239,11 @@ async function applyAdminDomainGrants(knex) {
     }
 
     // ── 3. the grants themselves ───────────────────────────────────────────
+    // Two source domains map onto the SAME target role (users_admin and
+    // auth_admin both → admin_admin), so `already` is re-read from the table
+    // inside the loop rather than cached up front: the second pair has to see
+    // what the first one just inserted, or a user holding both would get a
+    // duplicate link row.
     const touched = new Set();
     for (const pair of pairs) {
         const source = roleIdByKey.get(pair.from);
