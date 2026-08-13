@@ -1,5 +1,8 @@
 # Rutba ERP — upgrade to latest stack (parity with TrustList as of 2026-07-01)
 
+<!-- verify-docs: planned rutba-web/src/app/globals.css packages/ui/tailwind-preset.js -->
+<!-- Targets of the Tailwind 4 migration this playbook describes. -->
+
 Concrete playbook for bringing every workspace to the same versions TrustList
 was just brought to, plus what to watch for based on what actually broke there.
 

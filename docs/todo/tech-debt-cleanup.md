@@ -1,5 +1,9 @@
 # Tech-debt & cleanup backlog
 
+<!-- verify-docs: removed packages/api-provider/providers/createStrapiProxy.js packages/api-provider/server/index.js server/access-guard/index.js -->
+<!-- verify-docs: planned docs/done/ docs/archive/ -->
+<!-- The removed/ paths are named as a record of what section 2 deleted. -->
+
 Cross-cutting cleanup items surfaced during the 2026-06 documentation audit. These are dead code / stale config / config-drift items that have **no home in a module spec** (module-specific open work lives in the respective `docs/todo/` specs). None are blocking; they're tracked here so they aren't lost.
 
 ---

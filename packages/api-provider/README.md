@@ -12,7 +12,7 @@ Three responsibilities:
 
 - Package name: `@rutba/api-provider`
 - Type: workspace package (`packages/api-provider/`), private, ESM
-- Strapi-bridge: `server/access-guard/` (an ESM facade + the CJS resource walker)
+- Strapi-bridge: consumed by the `strapi-api-pro` plugin seeder, which walks `api/*.js` directly
 
 ## Layout
 
@@ -42,10 +42,6 @@ packages/api-provider/
 â”œâ”€â”€ lib/                              # api + auth helpers used by generated proxies
 â”‚   â””â”€â”€ api.js                        # authApi (HTTP client with auth + app/role headers)
 â”œâ”€â”€ pos/                              # POS-specific orchestrations
-â”œâ”€â”€ server/
-â”‚   â””â”€â”€ access-guard/
-â”‚       â”œâ”€â”€ index.js                  # ESM facade â€” exports buildAccessGuardProPayload(strapi)
-â”‚       â””â”€â”€ build-resources.cjs       # CJS resource walker (uses dynamic import for ESM api files)
 â””â”€â”€ scripts/
     â”œâ”€â”€ scaffold-endpoint-providers.mjs   # main generator
     â”œâ”€â”€ scaffold__core__.js               # generator template
@@ -85,7 +81,6 @@ The scaffold script is incremental and idempotent. Run it whenever an `api/*.js`
 "./client"           â†’ client/index.js
 "./pos"              â†’ pos/index.js
 "./lib/*"            â†’ lib/*
-"./server/access-guard" â†’ server/access-guard/index.js
 ```
 
 The package.json **does NOT export `./package.json`**. Don't rely on `require.resolve('@rutba/api-provider/package.json')` â€” it will throw `ERR_PACKAGE_PATH_NOT_EXPORTED`. Resolve via a known sub-path instead (e.g. `require.resolve('@rutba/api-provider/config/domains')` then `path.dirname(path.dirname(...))` to recover the package root). The api-pro seeder does exactly this.
@@ -121,7 +116,7 @@ The package.json **does NOT export `./package.json`**. Don't rely on `require.re
 }
 ```
 
-`level` values: `admin` | `manager` | `staff` | `user` | `public`. Used by `build-resources.cjs::expandGrants` to filter the domain's roles down to those matching the endpoint's declared `meta.roles`.
+`level` values: `admin` | `manager` | `staff` | `user` | `public`. Used by the seeder's `expandGrants` step to filter the domain's roles down to those matching the endpoint's declared `meta.roles`.
 
 ## Integration with api-pro
 
@@ -130,27 +125,12 @@ The `api-pro` plugin's seeder (`services/seeder.js`) **reads this package direct
 1. `require.resolve('@rutba/api-provider/config/domains', { paths: [strapi.dirs.app.root] })` â†’ derives the package root via `path.dirname(path.dirname(...))`.
 2. Loads `config/domains.json` and `config/roles.json` directly via `fs.readFileSync` (CJS).
 3. Walks `api/*.js` using `import(pathToFileURL(...))` (the api files are ESM, the seeder is CJS).
-4. For each exported endpoint set, processes each method via `inferAction` / `expandGrants` (porting the logic from `server/access-guard/build-resources.cjs`).
+4. For each exported endpoint set, processes each method via `inferAction` / `expandGrants` (ported from the retired access-guard walker).
 5. Upserts everything into `api_pro_app_domains`, `api_pro_app_roles`, `api_pro_interfaces`, `api_pro_interface_methods`, `api_pro_method_policies`.
 
 On a fresh DB the seed produces **18 domains Â· 50 roles Â· 25 interfaces Â· 162 methods Â· 1013 policies**.
 
 The seeder is idempotent â€” re-running upserts by stable keys (`domain.key`, `role.key`, `interface.key`, `${interfaceKey}:${methodName}`, `${interfaceKey}:${methodName}:${roleKey}`).
-
-## buildAccessGuardProPayload
-
-`server/access-guard/index.js` exports a Strapi-aware helper:
-
-```js
-const { buildAccessGuardProPayload } = require('@rutba/api-provider/server/access-guard');
-
-const payload = await buildAccessGuardProPayload(strapi);
-// payload.domains    â€” domains config map
-// payload.roles      â€” roles config map
-// payload.resources  â€” { [contentTypeUid]: { [`${modelName}.${action}`]: { policies: [{ key, grants: [roleKey] }] } } }
-```
-
-Originally consumed by the legacy AGP data-transfer service. **The current api-pro seeder doesn't use this function** â€” it does its own walk so it can capture HTTP method + path per descriptor (not just role grants). The function is retained for backward compatibility.
 
 ## Generated client wrappers
 

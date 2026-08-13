@@ -71,14 +71,14 @@ Sister doc: [contact-unification-launch-test-plan.md](./contact-unification-laun
 - Shipped — see [rutba-web-readable-slug-urls.md](./rutba-web-readable-slug-urls.md).
 
 ### POS sale invoice — extra barcode above QR
-- [SaleInvoice.js:339](pos-sale/components/print/SaleInvoice.js#L339)
+- [SaleInvoice.js:339](../../pos-sale/components/print/SaleInvoice.js#L339)
 - `<BarcodeDisplay>` defaults to rendering both a 1D Code128 strip AND a QR.
   The invoice only wanted the QR. Fixed by passing
   `showBarcode={false}` at the invoice usage; other call sites (none today,
   but the prop stays available) can still get both.
 
 ### Cart icon stale state between pages
-- [components/cart/index.tsx](rutba-web/src/components/cart/index.tsx)
+- [components/cart/index.tsx](../../rutba-web/src/components/cart/index.tsx)
 - Root cause: the cart sheet showed "Your cart is empty" while the
   `getCart()` query was still loading. `cart` was `undefined` on first
   paint, so the empty-state branch fired even though the Zustand
@@ -93,7 +93,7 @@ Sister doc: [contact-unification-launch-test-plan.md](./contact-unification-laun
   doesn't fire a pointless request when the cart is empty.
 
 ### Checkout — sign-in nudge for anonymous shoppers
-- [pages/checkout.tsx](rutba-web/src/pages/checkout.tsx) (the new block
+- [pages/checkout.tsx](../../rutba-web/src/pages/checkout.tsx) (the new block
   conditional on `!jwt`).
 - Anonymous visitors landing on /checkout now see a compact "Have an
   account? Sign in to skip the form" card with a button that routes to
@@ -107,7 +107,7 @@ Sister doc: [contact-unification-launch-test-plan.md](./contact-unification-laun
 ## ⬜ Still TODO
 
 ### Web product card — inline add-to-cart with variants + image
-- File: [components/product-list/product-card.tsx](rutba-web/src/components/product-list/product-card.tsx)
+- File: [components/product-list/product-card.tsx](../../rutba-web/src/components/product-list/product-card.tsx)
 - Today the whole card is wrapped in a `<Link>` to the product detail
   page. There is no add-to-cart action on the card itself; the user must
   click through to the detail page, pick variants, then add.

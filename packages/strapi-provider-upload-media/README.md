@@ -1,5 +1,8 @@
 # strapi-provider-upload-media
 
+<!-- verify-docs: planned provider/ -->
+<!-- The layout this package would take if extracted to its own repo. -->
+
 A general Strapi (v4/v5) file-upload provider that **flips backend based on configuration**:
 
 | configuration | backend |

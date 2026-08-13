@@ -1,5 +1,7 @@
 # strapi-api-pro — Complete Plugin Specification (v1)
 
+<!-- verify-docs: planned server/src/middlewares/context-validator.js -->
+
 > **Purpose of this document**
 > This is the authoritative rebuild specification. Nothing should be coded until the developer has read and understood every section. All prior Codex-built code under `packages/strapi-api-pro` has been deleted. Start from an empty directory.
 

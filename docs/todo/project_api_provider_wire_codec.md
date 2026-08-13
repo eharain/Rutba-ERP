@@ -6,6 +6,9 @@ metadata:
   type: project
 ---
 
+<!-- verify-docs: planned packages/strapi-api-pro/server/generated/descriptors.js packages/strapi-api-pro/server/src/middlewares/wire-codec.js lib/client-resolver.js -->
+<!-- The codec and its generated descriptor table are what this design proposes. -->
+
 ## Problem
 
 URLs from rutba-web / pos-shared / rutba-cms to Strapi (via `packages/api-provider`) are multi-KB after `qs.stringify` serializes deep populate trees, filter operators, field arrays, and pagination/sort. The shape is mostly **fixed per endpoint** — only a handful of variables (slug, page, filters from caller input) actually change call-to-call. Sending the full shape over the wire is pure waste.
@@ -107,15 +110,15 @@ The codec is a **pure transport-layer concern**. It doesn't know about auth, pol
 
 ## Pieces to build
 
-1. **Schema-aware scaffolder pass** — extend [scripts/scaffold-endpoint-providers.mjs](packages/api-provider/scripts/scaffold-endpoint-providers.mjs) to read the new `args` field and emit:
+1. **Schema-aware scaffolder pass** — extend [scripts/scaffold-endpoint-providers.mjs](../../packages/api-provider/scripts/scaffold-endpoint-providers.mjs) to read the new `args` field and emit:
    - `.d.ts` types per method (replaces the current parsed-signature approach where the surface is the full Strapi shape).
    - A single registry artifact (`policies.json` / `endpoints-registry.json`) listing `(interface, method, argSchema, …)`. This aligns with [[project-api-provider-named-policy-architecture]] §"Codegen artifact".
 
 2. **Server descriptor bundle** — at scaffold time, emit a CommonJS bundle of all descriptors into `packages/strapi-api-pro/server/generated/descriptors.js`. Boot loads it into an in-memory `(interface, method) → { argSchema, build }` map.
 
-3. **Codec middleware** — new file under `packages/strapi-api-pro/server/src/middlewares/wire-codec.js`. Registered in [bootstrap.js](packages/strapi-api-pro/server/src/bootstrap.js) **before** the existing request-interceptor. Owns the path-rewrite + qs-rebuild logic above.
+3. **Codec middleware** — new file under `packages/strapi-api-pro/server/src/middlewares/wire-codec.js`. Registered in [bootstrap.js](../../packages/strapi-api-pro/server/src/bootstrap.js) **before** the existing request-interceptor. Owns the path-rewrite + qs-rebuild logic above.
 
-4. **Client emit — scaffolder decides per app, single tree, no runtime variant logic.** The variant decision rides the existing workspace context-resolution chain (see §"Context resolution chain" below). When the scaffolder runs for a given app launch, `process.env.API_WIRE_MODE` and `targetPrefix` are already resolved by [load-env.js](scripts/js/load-env.js). The scaffolder reads them and emits **one variant** to a **per-app output directory**.
+4. **Client emit — scaffolder decides per app, single tree, no runtime variant logic.** The variant decision rides the existing workspace context-resolution chain (see §"Context resolution chain" below). When the scaffolder runs for a given app launch, `process.env.API_WIRE_MODE` and `targetPrefix` are already resolved by [load-env.js](../../scripts/js/load-env.js). The scaffolder reads them and emits **one variant** to a **per-app output directory**.
 
    ```
    packages/api-provider/.generated/
@@ -133,7 +136,7 @@ The codec is a **pure transport-layer concern**. It doesn't know about auth, pol
 
    **Concurrent dev safety.** Per-app output directories mean `rutba-web` and `pos-auth` running side-by-side don't collide on `providers/generated/client/`. Each owns its own subtree.
 
-   **`RUTBA_API_SCAFFOLDED=1` short-circuit is dropped.** The existing cross-app skip in [load-env.js:149](scripts/js/load-env.js#L149) assumed app-agnostic output. With per-app trees the skip is incorrect: each launch must scaffold for *its* app. The scaffolder is idempotent and cheap (content-aware, mtime-gated), so the per-launch cost stays in the low seconds. Replace the boolean with `RUTBA_API_SCAFFOLDED_FOR=<APP_PREFIX>` if a same-app re-run optimization is wanted later.
+   **`RUTBA_API_SCAFFOLDED=1` short-circuit is dropped.** The existing cross-app skip in [load-env.js:149](../../scripts/js/load-env.js#L149) assumed app-agnostic output. With per-app trees the skip is incorrect: each launch must scaffold for *its* app. The scaffolder is idempotent and cheap (content-aware, mtime-gated), so the per-launch cost stays in the low seconds. Replace the boolean with `RUTBA_API_SCAFFOLDED_FOR=<APP_PREFIX>` if a same-app re-run optimization is wanted later.
 
 5. **Closed-shape sweep** — every descriptor method whose signature accepts `{ populate, fields, filters, sort } = {}` (currently most `list*` and `byId*` methods per [[project-api-provider-named-policy-architecture]] line 101) gets converted: the destructured surface is replaced with the declared `args` schema; any internal `param ?? [defaults]` fallbacks become the fixed values inside `build`. **This is the larger half of the work.**
 
@@ -156,7 +159,7 @@ Per [[feedback-strict-rollout-no-warn-phase]] — strict no-mercy in the steady 
 
 ### Per-app env-var switch
 
-Uses the existing workspace convention from [scripts/js/load-env.js](scripts/js/load-env.js): vars in the root `.env` are either **global** (bare name, available to all apps) or **app-specific** (`APPPREFIX__NAME`, where `APPPREFIX` is the workspace-dir name uppercased with dashes→underscores). The loader strips the prefix before spawning each app; child processes always see the bare name `API_WIRE_MODE`.
+Uses the existing workspace convention from [scripts/js/load-env.js](../../scripts/js/load-env.js): vars in the root `.env` are either **global** (bare name, available to all apps) or **app-specific** (`APPPREFIX__NAME`, where `APPPREFIX` is the workspace-dir name uppercased with dashes→underscores). The loader strips the prefix before spawning each app; child processes always see the bare name `API_WIRE_MODE`.
 
 ```
 # Global default for all apps that don't override
@@ -235,9 +238,9 @@ Every decision is made **once**, at the boundary where the context is already kn
 ## Pointers
 
 - Existing architecture this amends: [[project-api-provider-named-policy-architecture]]
-- Context-resolution chain (load-env, prefix split, scaffolder one-shot): [scripts/js/load-env.js](scripts/js/load-env.js), [scripts/js/env-utils.js](scripts/js/env-utils.js)
-- Existing client serialization to replace: [packages/api-provider/lib/api.js](packages/api-provider/lib/api.js) `querify()`, [providers/generated/client/___core__.js](packages/api-provider/providers/generated/client/___core__.js) `withQuery()`
-- Existing server interception (downstream of new codec): [packages/strapi-api-pro/server/src/services/request-interceptor.js](packages/strapi-api-pro/server/src/services/request-interceptor.js)
-- Scaffolder to extend: [packages/api-provider/scripts/scaffold-endpoint-providers.mjs](packages/api-provider/scripts/scaffold-endpoint-providers.mjs)
-- Bootstrap registration point for the new middleware: [packages/strapi-api-pro/server/src/bootstrap.js](packages/strapi-api-pro/server/src/bootstrap.js)
+- Context-resolution chain (load-env, prefix split, scaffolder one-shot): [scripts/js/load-env.js](../../scripts/js/load-env.js), [scripts/js/env-utils.js](../../scripts/js/env-utils.js)
+- Existing client serialization to replace: [packages/api-provider/lib/api.js](../../packages/api-provider/lib/api.js) `querify()`, [providers/generated/client/___core__.js](../../packages/api-provider/providers/generated/client/___core__.js) `withQuery()`
+- Existing server interception (downstream of new codec): [packages/strapi-api-pro/server/src/services/request-interceptor.js](../../packages/strapi-api-pro/server/src/services/request-interceptor.js)
+- Scaffolder to extend: [packages/api-provider/scripts/scaffold-endpoint-providers.mjs](../../packages/api-provider/scripts/scaffold-endpoint-providers.mjs)
+- Bootstrap registration point for the new middleware: [packages/strapi-api-pro/server/src/bootstrap.js](../../packages/strapi-api-pro/server/src/bootstrap.js)
 - Public-client surface scope (which descriptors emit unauth `api`): [[project_api_provider_web_public_client]]

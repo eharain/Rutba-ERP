@@ -1,5 +1,7 @@
 # Google Shopping — Marketplace Integration Spec
 
+<!-- verify-docs: planned rutba-marketplace/lib/providers/google.js -->
+
 > **Status (2026-08-10): 📋 Planned, nothing built.** Written against the
 > marketplace seam as it exists on `dev` (rutba-marketplace :4016, adapter
 > registry, marketplace-* CTs). Deadline-relevant fact: the legacy **Content

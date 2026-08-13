@@ -80,6 +80,18 @@ const devStart = read('dev-start.bat') || '';
 const sampleEnv = read('sample.env.enviromentname.txt') || '';
 const envDev = read('.env.development');          // gitignored — may be absent
 const envProd = read('.env.production');          // gitignored — may be absent
+const rolesJs = read('packages/pos-shared/lib/roles.js') || '';
+
+// packages/pos-shared/lib/roles.js APP_URLS carries a hard-coded localhost
+// fallback per app. It only bites when the NEXT_PUBLIC_*_URL is absent, which
+// is exactly when nobody is watching — `web` sat on 4010 (pos-strapi's port)
+// instead of 4000, so a cross-app link out of any admin app landed on Strapi.
+const rolesUrlPorts = new Map();
+for (const m of rolesJs.matchAll(
+  /^\s*'?([\w-]+)'?\s*:\s*process\.env\.(NEXT_PUBLIC_\w+)\s*\|\|\s*'http:\/\/localhost:(\d+)'/gm
+)) {
+  rolesUrlPorts.set(m[1], { envKey: m[2], port: m[3] });
+}
 
 const dockerStages = new Set(
   [...dockerfile.matchAll(/^FROM\s+\S+\s+AS\s+([\w-]+)/gm)].map((m) => m[1])
@@ -182,6 +194,20 @@ for (const svc of SERVICES) {
     for (const [label, body] of [['.env.development', envDev], ['.env.production', envProd]]) {
       if (body === null) continue;
       if (!new RegExp(`^\\s*${urlKey}\\s*=`, 'm').test(body)) fail(svc, `${urlKey} missing from ${label}`);
+    }
+
+    // -- roles.js APP_URLS fallback port ----------------------
+    const entry = [...rolesUrlPorts].find(([, v]) => v.envKey === urlKey);
+    const isBackend = dir === 'pos-strapi' || dir === 'rutba-core';
+    if (entry) {
+      const [appKey, { port: fallbackPort }] = entry;
+      if (!check(port === '-' || fallbackPort === port, 'roles.js:port')) {
+        fail(svc, `roles.js APP_URLS.${appKey} falls back to localhost:${fallbackPort}, but the ` +
+          `registry says ${port}. Cross-app links land on the wrong app whenever ${urlKey} is unset.`);
+      }
+    } else if (!isBackend && !check(false, 'roles.js:entry')) {
+      warn(svc, `no APP_URLS entry in packages/pos-shared/lib/roles.js keyed on ${urlKey} — ` +
+        `the app launcher cannot link to it`);
     }
   }
 

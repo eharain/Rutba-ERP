@@ -76,7 +76,7 @@ Backend already models (Strapi content-types): products/brand/category, purchase
 
 Ordered by value-to-effort. Ports assume the next free slot (4018+). Follow the **Rutba-MTA porting pattern** where a capability is infra (standalone Apache-2.0 Node service, own DB/config/port, docs-first, pure-logic core, HTTP/webhook integration) and the **new-ERP-app checklist** (`roles.js` + `/auth/callback` + `domains.json`) where it's a monorepo Next.js app on pos-strapi.
 
-### Priority 1 — Email Marketing / Campaigns (`rutba-campaigns`, ~:4018)
+### Priority 1 — Email Marketing / Campaigns (`rutba-campaigns`, :4019 — since built)
 The biggest coherent gap and the natural front-end for the MTA already being ported. Rebuilds **RMAILX + RTMPLT** as one app on pos-strapi + Rutba-MTA:
 - Content-types: `mail-template` (subject/body/tracking/append-links/folder), `mail-template-block`, `mail-audience` (saved contact segment — reuse CRM segmentation §5), `mail-campaign` (template + audience + schedule + UTM), `mail-send-log` (mirror of MTA delivery events via webhook).
 - Screens: template studio (Mustache/`{{var}}`), audience builder, campaign composer + test-send + schedule, delivery/opens/clicks dashboard (fed by Rutba-MTA webhooks).

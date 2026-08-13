@@ -128,13 +128,17 @@ manager/admin claims where approval steps require them.
 
 ## Tier 4 — Operational
 
-35. **Fresh DB boot** — bootstrap seeds run, site-setting singleton created,
-    api-pro seeder writes ~1794 policies, no failed lifecycle hooks in logs.
-36. **Re-boot (warm DB)** — seeder fingerprint short-circuit fires; boot
-    completes within target time; no duplicate row writes.
-37. **Background seed pipeline** — set in
-    [pos-strapi/src/index.js:109](../pos-strapi/src/index.js#L109) —
-    does not interfere with live traffic during initial boot.
+35. **Fresh DB seed** — `npm run seed` (or the guarded seed control app on
+    :4018) runs the registry in `pos-strapi/src/seed/registry.js`: system and
+    reference data, the site-setting singleton, UP roles, and the api-pro
+    seeder's ~1794 policies. No failed lifecycle hooks in logs.
+36. **Re-seed (warm DB)** — the seeder fingerprint short-circuit fires; a
+    second run writes no duplicate rows.
+37. **Seeding stays out of boot** —
+    [pos-strapi/src/index.js](../pos-strapi/src/index.js) registers lifecycles
+    and runtime wiring only. The server must serve live traffic immediately on
+    boot without seeding; the old in-bootstrap background pipeline raced the
+    dev-mode reload watcher and destroyed the DB pool.
 38. **CORS** — every frontend app's origin reaches Strapi; preflight passes;
     the `X-Rutba-App` / `X-Rutba-App-Role` / `X-Rutba-App-Admin` headers are
     not stripped.

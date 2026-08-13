@@ -1,5 +1,7 @@
 # Epic 2 — Inventory Management App (`rutba-inventory`, port 4017)
 
+<!-- verify-docs: planned packages/api-provider/api/warehouses.js sale/checkout.js -->
+
 > ✅ **Status: BUILT (core; deferrals)** — branch `inventory-mfg-foundation`. Foundation
 > (warehouse, storage-location bin tree, `stock-level` cache, `track_mode`) + two-sided
 > `stock-transfer` (Draft→InTransit→Received) + `stock-adjustment` (posts loss GL

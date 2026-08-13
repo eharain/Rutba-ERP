@@ -1,5 +1,9 @@
 # Pre-Deployment Audit Findings — 2026-05-15
 
+<!-- verify-docs: historical -->
+<!-- A dated findings record. Its paths and line numbers describe the tree as it
+     stood on 2026-05-15 and are not maintained against the current one. -->
+
 > **Historical snapshot — 2026-05-15. Superseded; do NOT update.** The critical findings here are resolved: api-pro now enforces (hybrid + denyByDefault, no policy = 403); /me/permissions populate is correct; the return-requests descriptor is fully implemented. Kept as the pre-deploy audit trail.
 
 Snapshot of issues found during a live endpoint sweep against the running

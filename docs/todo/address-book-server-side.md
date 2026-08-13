@@ -1,5 +1,7 @@
 # Server-side address book — multi-address per customer
 
+<!-- verify-docs: planned api/me/ -->
+
 ## ✅ Shipped
 
 The server-side, multi-address book is **built and live** — it rides the
@@ -75,10 +77,10 @@ top-level `api/` so it defaults to `authApi`; `domains: ['web','web-user']`,
 
 ## Current state (v1, shipped)
 
-- [src/store/store-customer.ts](rutba-web/src/store/store-customer.ts) — Zustand-persisted, single saved customer record (contact + last shipping address) in `localStorage`.
+- [src/store/store-customer.ts](../../rutba-web/src/store/store-customer.ts) — Zustand-persisted, single saved customer record (contact + last shipping address) in `localStorage`.
 - Used by:
-  - [src/pages/checkout.tsx](rutba-web/src/pages/checkout.tsx) — pre-fills `<FormQuickOrder>` and seeds `formShippingInformation` when the full-address path is opened. Surfaces a "Shipping to: …" hint above the express form when an address is on file.
-  - [src/pages/profile/address.tsx](rutba-web/src/pages/profile/address.tsx) — view / edit / clear UI ("Saved address" tab in the profile sidebar).
+  - [src/pages/checkout.tsx](../../rutba-web/src/pages/checkout.tsx) — pre-fills `<FormQuickOrder>` and seeds `formShippingInformation` when the full-address path is opened. Surfaces a "Shipping to: …" hint above the express form when an address is on file.
+  - [src/pages/profile/address.tsx](../../rutba-web/src/pages/profile/address.tsx) — view / edit / clear UI ("Saved address" tab in the profile sidebar).
 - Persists on every successful order — both express and full-address paths.
 
 This buys 80% of the win: returning shoppers skip the form on their next express order; logged-in users see a friendlier checkout greeting; the profile has an actual shipping section instead of dead UI.

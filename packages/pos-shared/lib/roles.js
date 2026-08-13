@@ -34,7 +34,7 @@ export const APP_URLS = {
     mail:          process.env.NEXT_PUBLIC_MAIL_URL          || 'http://localhost:4021',
     users:         process.env.NEXT_PUBLIC_USERS_URL         || 'http://localhost:4022',
     helpdesk:      process.env.NEXT_PUBLIC_HELPDESK_URL      || 'http://localhost:4023',
-    web:       process.env.NEXT_PUBLIC_WEB_URL       || 'http://localhost:4010',
+    web:       process.env.NEXT_PUBLIC_WEB_URL       || 'http://localhost:4000',
 };
 
 /** All recognised app keys */

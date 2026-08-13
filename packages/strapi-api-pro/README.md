@@ -208,13 +208,14 @@ Reachable from the **▶ Play** button on every role column in the Method Editor
 
 ## Branch & commit history
 
-Recent commits relevant to this plugin (most recent first):
+The plugin was developed in its own repository before being vendored into this
+monorepo, so the original short SHAs no longer resolve here. Broadly, in order:
 
-- `f98057e` — Interfaces drill-into-policies + Play as role
-- `5403781` — grouped interfaces + comparative method editor + recording filters
-- `77ba573` — visual builders for policy templates
-- `a2d3a01` — seeder + explicit role-claim + paginated admin UI
-- `4723401` — pos-strapi wire-up + HR roleProvider + resolve-path fix
-- `f310e27` — initial AGP runtime parity + file-based authoring + admin UI
+- initial AGP runtime parity + file-based authoring + admin UI
+- pos-strapi wire-up + HR roleProvider + resolve-path fix
+- seeder + explicit role-claim + paginated admin UI
+- visual builders for policy templates
+- grouped interfaces + comparative method editor + recording filters
+- interfaces drill-into-policies + Play as role
 
-See `git log -- packages/strapi-api-pro/` for the full history.
+For the history as it exists here, run `git log -- packages/strapi-api-pro/`.

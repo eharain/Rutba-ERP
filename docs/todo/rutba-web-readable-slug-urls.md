@@ -1,6 +1,6 @@
 # rutba-web: replace documentId-based URLs with readable slugs
 
-> **Status (2026-05-19): ✅ shipped** in commit `99500f3` —
+> **Status (2026-05-19): ✅ shipped** in commit `4bb1dd7` —
 > `feat(pos-strapi,rutba-cms,rutba-web,rutba-social): product slug as canonical URL key`.
 > Product, product-group, CMS page, brand, category storefront links now
 > use slugs; lifecycle hooks generate unique slugs on create + a backfill

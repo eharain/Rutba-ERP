@@ -1,5 +1,8 @@
 # @rutba/video-maker
 
+<!-- verify-docs: external desktop/lib/video-maker-path.js -->
+<!-- In the Rutba-Social-Poster desktop app repo. -->
+
 Turns a social post's still images into a short video with the post text typed
 over the top, optionally with a brand logo and a music bed. One file, zero
 dependencies, no ffmpeg — it drives the video encoder every browser engine

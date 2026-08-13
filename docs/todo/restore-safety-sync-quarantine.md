@@ -1,5 +1,8 @@
 # Restore safety: stopping a restored database from syncing
 
+<!-- verify-docs: external server/src/services/config.js -->
+<!-- Inside the strapi-content-sync-pro plugin repo. -->
+
 ## The problem
 
 LAN master data is periodically restored onto the live server. A Strapi database

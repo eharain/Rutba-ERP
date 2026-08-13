@@ -1,5 +1,8 @@
 # 22 — AI Features
 
+<!-- verify-docs: planned rutba-core/src/platform/ai.js -->
+<!-- The AI platform seam is specified here, not yet built. -->
+
 [← 21 Reports & Analytics](21-reports-and-analytics.md) · [Index](00-index.md) · Next: [23 Approval Workflows](23-approval-workflows.md)
 
 ---

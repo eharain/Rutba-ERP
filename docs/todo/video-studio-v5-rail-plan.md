@@ -1,5 +1,8 @@
 # Video Studio v5 — the rail follows the selection
 
+<!-- verify-docs: external bd696e6 -->
+<!-- Poster commit, in the Rutba-Social-Poster repo. -->
+
 User brief, 2026-08-12. Ten items, from "the sound library is invisible" to
 "give me room to work". They are really three jobs: a backend bug, a rail
 that reorganises itself around the selection, and a layout that can get out

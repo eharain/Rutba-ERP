@@ -1,5 +1,8 @@
 # Phase 0 — Contracts freeze + golden contract tests
 
+<!-- verify-docs: planned docs/contracts/ scripts/contract-tests/ -->
+<!-- The frozen contract corpus and its test harness are what this tranche creates. -->
+
 Everything downstream (tenant provisioning, backend swap) depends on the wire contract
 and DB contract being written down and mechanically verifiable. Today they live in code
 and in heads.
