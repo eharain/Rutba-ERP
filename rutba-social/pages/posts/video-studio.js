@@ -2277,35 +2277,70 @@ export default function VideoStudioPage() {
                                                         <option value="all">All at once</option>
                                                     </select>
                                                 </div>
-                                                <div className="col-4">
-                                                    <label className="form-label small mb-1">Position</label>
-                                                    <select className="form-select form-select-sm" value={options.textPosition} disabled={busy}
-                                                        onChange={(e) => setOpt({ textPosition: e.target.value })}>
-                                                        <option value="bottom">Bottom</option>
-                                                        <option value="middle">Middle</option>
-                                                    </select>
-                                                </div>
-                                                <div className="col-4">
-                                                    <label className="form-label small mb-1">Style</label>
-                                                    <select className="form-select form-select-sm" value={options.captionStyle || "box"} disabled={busy}
-                                                        onChange={(e) => setOpt({ captionStyle: e.target.value })}>
-                                                        <option value="box">Panel</option>
-                                                        <option value="bare">Bare text</option>
-                                                    </select>
-                                                </div>
+                                                {/* Position, style and colour are this LAYER's when set, and
+                                                    the video's when not — "as the video" is a real choice,
+                                                    so it is the first option rather than a blank. */}
+                                                {(() => {
+                                                    const cp = (layerPatches || []).find((p) => p.id === selectedLayer.id) || {};
+                                                    const put = (k, v) => upsertPatch({ id: selectedLayer.id, [k]: v || null });
+                                                    return (
+                                                        <>
+                                                            <div className="col-4">
+                                                                <label className="form-label small mb-1">Position</label>
+                                                                <select className="form-select form-select-sm" value={cp.position || ""} disabled={busy}
+                                                                    onChange={(e) => put("position", e.target.value)}>
+                                                                    <option value="">As the video ({options.textPosition})</option>
+                                                                    <option value="bottom">Bottom</option>
+                                                                    <option value="middle">Middle</option>
+                                                                </select>
+                                                            </div>
+                                                            <div className="col-4">
+                                                                <label className="form-label small mb-1">Style</label>
+                                                                <select className="form-select form-select-sm" value={cp.style || ""} disabled={busy}
+                                                                    onChange={(e) => put("style", e.target.value)}>
+                                                                    <option value="">As the video ({options.captionStyle === "bare" ? "bare" : "panel"})</option>
+                                                                    <option value="box">Panel</option>
+                                                                    <option value="bare">Bare text</option>
+                                                                </select>
+                                                            </div>
+                                                            <div className="col-6">
+                                                                <label className="form-label small mb-1">Colour</label>
+                                                                <select className="form-select form-select-sm" value={cp.color || ""} disabled={busy}
+                                                                    onChange={(e) => put("color", e.target.value)}>
+                                                                    <option value="">As the video (theme text)</option>
+                                                                    <option value="accent">Accent</option>
+                                                                    <option value="dim">Dim</option>
+                                                                    <option value="#ffffff">White</option>
+                                                                    <option value="#141118">Black</option>
+                                                                </select>
+                                                            </div>
+                                                            <div className="col-6">
+                                                                <label className="form-label small mb-1">
+                                                                    Size {cp.sizeScale ? `${Number(cp.sizeScale).toFixed(2)}×` : "as the video"}
+                                                                </label>
+                                                                <input type="range" className="form-range" min={0.6} max={2} step={0.05} disabled={busy}
+                                                                    value={cp.sizeScale || 1}
+                                                                    onChange={(e) => {
+                                                                        const v = Number(e.target.value);
+                                                                        upsertPatch({ id: selectedLayer.id, sizeScale: v === 1 ? null : v });
+                                                                    }} />
+                                                            </div>
+                                                        </>
+                                                    );
+                                                })()}
                                             </div>
                                         )}
                                         {selectedLayer.type === "caption" && (
                                             <>
                                                 <div className="mt-2">
-                                                    <RangeRow label="Typing speed" value={options.charsPerSecond} min={4} max={45} step={1}
+                                                    <RangeRow label="Typing speed (every caption)" value={options.charsPerSecond} min={4} max={45} step={1}
                                                         suffix=" chars/s" disabled={busy} onChange={(v) => setOpt({ charsPerSecond: v })} />
-                                                    <RangeRow label="Text size" value={options.fontScale} min={0.7} max={1.5} step={0.05}
+                                                    <RangeRow label="Text size (every caption)" value={options.fontScale} min={0.7} max={1.5} step={0.05}
                                                         suffix="×" disabled={busy} onChange={(v) => setOpt({ fontScale: v })} />
                                                 </div>
                                                 <p className="text-muted mb-0" style={{ fontSize: 11 }}>
-                                                    Position, style, speed and size are how EVERY caption is set — the words,
-                                                    the reveal and the lane are this one's own.
+                                                    The two sliders set every caption; this line's own size multiplies on top
+                                                    of them. Typing speed stays shared — split lines take turns on one clock.
                                                 </p>
                                             </>
                                         )}

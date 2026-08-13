@@ -833,6 +833,12 @@ export function applyLayerPatches(plan, patches) {
                 text: String(patch.text ?? plan.text),
                 leadIn: patch.leadIn,
                 reveal: patch.reveal,
+                // Its own look, or the video's when unset — one caption line
+                // can be the accent-coloured shout over a plain block.
+                color: patch.color,
+                sizeScale: patch.sizeScale,
+                position: patch.position,
+                style: patch.style,
                 visible: patch.visible !== false,
                 timing: patch.timing || null,
                 enter: patch.enter || { kind: 'none', seconds: 0 },
@@ -1341,14 +1347,37 @@ function paintGradient(ctx, plan) {
 function paintCaption(ctx, plan, layer, time) {
     const { W, H, theme, opts, lineHeight, bodySize, margin, pad, maxVisibleLines } = plan;
 
+    // A caption may carry its OWN look. Every field is optional and falls back
+    // to the video-wide option it used to be, so a caption that says nothing
+    // resolves to exactly the values this painter always used.
+    const scale = Number(layer.sizeScale) > 0 ? Number(layer.sizeScale) : 1;
+    const size = scale === 1 ? bodySize : Math.max(10, Math.round(bodySize * scale));
+    const lh = scale === 1 ? lineHeight : Math.round(size * 1.34);
+    // How many lines fit in the caption band at THIS size. The band itself is
+    // not re-measured: it is what the photos were fitted around at compile
+    // time, and one line's size must not move the stage under every photo.
+    const maxLines = scale === 1
+        ? maxVisibleLines
+        : Math.max(1, Math.floor((plan.captionBandH - margin - pad * 2) / lh));
+    const position = layer.position || opts.textPosition;
+    const style = layer.style || opts.captionStyle || 'box';
+    const color = layer.color
+        ? (layer.color === 'text' ? theme.text : layer.color === 'dim' ? theme.dim
+            : layer.color === 'accent' ? theme.accent : layer.color)
+        : theme.text;
+
     let { lines, totalChars, text, rtl } = plan;
-    if (layer.text !== undefined && layer.text !== null && layer.text !== plan.text) {
-        text = String(layer.text);
+    const ownText = layer.text !== undefined && layer.text !== null && layer.text !== plan.text;
+    // Its own words OR its own size means its own wrap — the plan's lines were
+    // laid out at the plan's font.
+    if (ownText || size !== bodySize) {
+        text = ownText ? String(layer.text) : plan.text;
         // Wrapping is far too slow to redo per frame; the layout is cached on
-        // the layer, keyed so an edited text or resized frame re-wraps.
-        const key = `${plan.textWidth}|${bodySize}|${text}`;
+        // the layer, keyed so an edited text, a resized frame or a changed
+        // caption size re-wraps.
+        const key = `${plan.textWidth}|${size}|${text}`;
         if (layer._layoutKey !== key) {
-            ctx.font = `500 ${bodySize}px ${FONT_STACK}`;
+            ctx.font = `500 ${size}px ${FONT_STACK}`;
             layer._lines = layoutLines(ctx, text, plan.textWidth);
             layer._layoutKey = key;
         }
@@ -1380,22 +1409,22 @@ function paintCaption(ctx, plan, layer, time) {
     const typing = reveal !== 'all' && n < totalChars && local > lead;
     if (n <= 0 && !typing) return;
 
-    ctx.font = `500 ${bodySize}px ${FONT_STACK}`;
+    ctx.font = `500 ${size}px ${FONT_STACK}`;
     ctx.textBaseline = 'top';
     ctx.textAlign = rtl ? 'right' : 'left';
     if (rtl) ctx.direction = 'rtl';
 
     const posF = revealPosition(lines, n);
-    const shownLines = Math.max(1, Math.min(maxVisibleLines, posF + 1));
-    const boxH = Math.round(shownLines * lineHeight + pad * 2);
+    const shownLines = Math.max(1, Math.min(maxLines, posF + 1));
+    const boxH = Math.round(shownLines * lh + pad * 2);
     const boxW = W - margin * 2;
     const boxX = margin;
-    const boxY = opts.textPosition === 'middle'
+    const boxY = position === 'middle'
         ? Math.round((H - boxH) / 2)
         : Math.round(H - margin - boxH);
 
     ctx.save();
-    if (opts.captionStyle !== 'bare') {
+    if (style !== 'bare') {
         ctx.fillStyle = theme.scrim;
         roundRect(ctx, boxX, boxY, boxW, boxH, Math.round(W * 0.028));
         ctx.fill();
@@ -1409,35 +1438,35 @@ function paintCaption(ctx, plan, layer, time) {
     // band and over the photos.
     roundRect(ctx, boxX, boxY, boxW, boxH, Math.round(W * 0.028));
     ctx.clip();
-    if (opts.captionStyle === 'bare') {
+    if (style === 'bare') {
         // No panel behind the text, so the text itself has to carry the
         // separation from a busy photo.
         ctx.shadowColor = theme.key === 'light' ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.75)';
         ctx.shadowBlur = Math.round(W * 0.008);
     }
 
-    const scroll = Math.max(0, posF - (maxVisibleLines - 1)) * lineHeight;
+    const scroll = Math.max(0, posF - (maxLines - 1)) * lh;
     const textX = rtl ? boxX + boxW - pad : boxX + pad;
     const textTop = boxY + pad - scroll;
 
-    ctx.fillStyle = theme.text;
+    ctx.fillStyle = color;
     let caret = null;
     for (let i = 0; i < lines.length; i++) {
         const l = lines[i];
         if (n < l.start) break; // `<` not `<=`: at n === start the caret has just landed on this line
-        const y = textTop + i * lineHeight;
-        if (y > boxY + boxH || y + lineHeight < boxY - lineHeight) continue;
+        const y = textTop + i * lh;
+        if (y > boxY + boxH || y + lh < boxY - lh) continue;
         const slice = text.slice(l.start, Math.min(l.end, n)).replace(/\s+$/, '');
         if (slice) ctx.fillText(slice, textX, y);
         if (n <= l.end) {
-            const advance = ctx.measureText(slice).width + Math.round(bodySize * 0.14);
-            caret = { x: rtl ? textX - advance - Math.round(bodySize * 0.09) : textX + advance, y };
+            const advance = ctx.measureText(slice).width + Math.round(size * 0.14);
+            caret = { x: rtl ? textX - advance - Math.round(size * 0.09) : textX + advance, y };
         }
     }
 
     if (typing && caret && (local * 2) % 1 < 0.62) {
         ctx.fillStyle = theme.accent;
-        ctx.fillRect(caret.x, caret.y + Math.round(bodySize * 0.12), Math.round(bodySize * 0.09), bodySize);
+        ctx.fillRect(caret.x, caret.y + Math.round(size * 0.12), Math.round(size * 0.09), size);
     }
     ctx.restore();
 }

@@ -402,6 +402,77 @@ export default function TimelineFixturePage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [plan]);
 
+    // ── the caption-look probe (D1) ─────────────────────────
+    // A caption may carry its own colour, size, position and style. Two things
+    // have to hold: the fields must reach the pixels, and a caption that sets
+    // NOTHING must paint exactly what it painted before the fields existed —
+    // which is the whole reason they resolve through the video's options.
+    useEffect(() => {
+        if (!plan || window.__CAPLOOK) return;
+        const c = document.createElement("canvas");
+        const x = () => c.getContext("2d", { willReadFrequently: true });
+        const mk = (patches) => buildPlan({ canvas: c, ...buildArgs(patches) });
+        const results = [];
+        const push = (label, ok) => results.push({ label, ok });
+
+        // Only the caption under test may differ between frames.
+        const quiet = BASE_PATCHES.map((p) => (p.id === "sticker-1" ? { ...p, visible: false } : p))
+            .concat({ id: "logo", visible: false }, { id: "qr-1", visible: false });
+        const cap = (extra) => mk(quiet.map((p) => (p.id === "caption-again-1" ? { ...p, ...extra } : p)));
+        const T = 8; // inside caption-again-1's 6→10s window
+        const snap = (p) => { paintFrame(x(), p, T); return x().getImageData(0, 0, c.width, c.height).data; };
+        const diff = (a, b) => {
+            let n = 0;
+            let sy = 0;
+            for (let i = 0; i < a.length; i += 4) {
+                if (a[i] !== b[i] || a[i + 1] !== b[i + 1] || a[i + 2] !== b[i + 2]) {
+                    n++;
+                    sy += Math.floor(i / 4 / c.width);
+                }
+            }
+            return { n, cy: n ? sy / n : -1 };
+        };
+        const accent = (d) => {
+            let n = 0;
+            for (let i = 0; i < d.length; i += 4) {
+                if (Math.abs(d[i] - 255) <= 6 && Math.abs(d[i + 1] - 193) <= 6 && Math.abs(d[i + 2] - 7) <= 6) n++;
+            }
+            return n;
+        };
+
+        const plain = snap(cap({}));
+
+        // Unset fields, written explicitly as null, must change nothing.
+        push("null look fields paint the same caption",
+            diff(plain, snap(cap({ color: null, sizeScale: null, position: null, style: null }))).n === 0);
+        // And setting them to what the video already says must also change
+        // nothing — the fallback and the explicit path have to agree.
+        push("stating the video's own values changes nothing",
+            diff(plain, snap(cap({ sizeScale: 1, position: "bottom", style: "box" }))).n === 0);
+
+        push("a caption can take the accent colour",
+            accent(snap(cap({ color: "accent" }))) > accent(plain) + 200);
+
+        const bigger = diff(plain, snap(cap({ sizeScale: 1.6 })));
+        push("its own size reaches the pixels", bigger.n > 500);
+
+        // Where the caption's OWN ink sits, isolated by differencing against a
+        // frame with it hidden. Comparing the two positions to each other
+        // instead would centroid the union of both, which sits between them
+        // and says nothing about either.
+        const hidden = snap(cap({ visible: false }));
+        const inkCy = (extra) => diff(snap(cap(extra)), hidden).cy;
+        const atBottom = inkCy({});
+        const atMiddle = inkCy({ position: "middle" });
+        push("its own position moves it up the frame",
+            atMiddle > 0 && atBottom > 0 && atMiddle < atBottom - c.height * 0.15);
+
+        push("its own style drops the panel", diff(plain, snap(cap({ style: "bare" }))).n > 500);
+
+        window.__CAPLOOK = { done: true, pass: results.every((r) => r.ok), results };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [plan]);
+
     // ── the rail's rows, mounted for real ───────────────────
     // The studio page needs a session; these components do not, because they
     // take props and nothing else. What they WRITE is the contract worth
