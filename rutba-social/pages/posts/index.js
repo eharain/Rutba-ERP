@@ -16,7 +16,11 @@ import { imageItems, hasVideo } from "../../lib/video-maker";
 const FETCH_PAGE = 50;
 const MAX_PAGES = 20;
 const CARDS_PER_PAGE = 24;
-const VIEW_KEY = "rutba-social-posts-view";
+// v2: the old key holds values an effect wrote on mount rather than values
+// anyone chose — including captions:false for everyone who opened the page
+// before captions defaulted on. Reading it would quietly override the new
+// default, so the old key is abandoned rather than migrated.
+const VIEW_KEY = "rutba-social-posts-view.v2";
 
 // Bulk-edit columns. documentId/id/contentType/publish are auto-emitted by
 // ExcelIO. Keep the documentId on a row to update it; clear it (or add a new
@@ -301,7 +305,8 @@ export default function PostsPage() {
     // absolute state) is what makes "hide all captions" still mean something
     // after you have opened one — and flipping a switch clears them, so the
     // switch is always telling the truth about what you are looking at.
-    const [showCaptions, setShowCaptions] = useState(false);
+    // The caption is the post. It shows unless someone has said otherwise.
+    const [showCaptions, setShowCaptions] = useState(true);
     const [showAccounts, setShowAccounts] = useState(true);
     const [captionFlips, setCaptionFlips] = useState(() => new Set());
     const [accountFlips, setAccountFlips] = useState(() => new Set());
@@ -317,7 +322,10 @@ export default function PostsPage() {
     const flipAccounts = flip(setAccountFlips);
 
     // A view preference is worth keeping — it is about how you read this page,
-    // not about what you were looking for.
+    // not about what you were looking for. Only an actual click writes it:
+    // persisting from an effect meant every visitor got the defaults written
+    // back as if they had chosen them, and a later change to those defaults
+    // then had no effect on anyone who had ever opened the page.
     useEffect(() => {
         try {
             const raw = localStorage.getItem(VIEW_KEY);
@@ -327,10 +335,15 @@ export default function PostsPage() {
             if (typeof v.accounts === "boolean") setShowAccounts(v.accounts);
         } catch { /* defaults are fine */ }
     }, []);
-    useEffect(() => {
-        try { localStorage.setItem(VIEW_KEY, JSON.stringify({ captions: showCaptions, accounts: showAccounts })); }
-        catch { /* private mode */ }
-    }, [showCaptions, showAccounts]);
+
+    // Flipping a switch also clears the per-card flips, so the switch never
+    // claims something the grid is not doing.
+    const setCardView = (patch) => {
+        const next = { captions: showCaptions, accounts: showAccounts, ...patch };
+        if (patch.captions !== undefined) { setShowCaptions(patch.captions); setCaptionFlips(new Set()); }
+        if (patch.accounts !== undefined) { setShowAccounts(patch.accounts); setAccountFlips(new Set()); }
+        try { localStorage.setItem(VIEW_KEY, JSON.stringify(next)); } catch { /* private mode */ }
+    };
 
     // Deep links (e.g. the studio's "posts without a video") preset filters:
     // ?video=with|without, ?published_on=tiktok|any, ?not_published_on=youtube|any
@@ -817,13 +830,13 @@ export default function PostsPage() {
                             <button type="button"
                                 className={`btn ${showCaptions ? "btn-secondary" : "btn-outline-secondary"}`}
                                 title={showCaptions ? "Hide captions on every card" : "Show captions on every card"}
-                                onClick={() => { setShowCaptions((v) => !v); setCaptionFlips(new Set()); }}>
+                                onClick={() => setCardView({ captions: !showCaptions })}>
                                 <i className="fas fa-align-left me-1"></i>Captions
                             </button>
                             <button type="button"
                                 className={`btn ${showAccounts ? "btn-secondary" : "btn-outline-secondary"}`}
                                 title={showAccounts ? "Collapse the accounts on every card" : "Expand the accounts on every card"}
-                                onClick={() => { setShowAccounts((v) => !v); setAccountFlips(new Set()); }}>
+                                onClick={() => setCardView({ accounts: !showAccounts })}>
                                 <i className="fas fa-share-nodes me-1"></i>Accounts
                             </button>
                         </div>
