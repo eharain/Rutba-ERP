@@ -27,7 +27,7 @@ export default function SaleOrderDetailPage() {
 
     useEffect(() => {
         if (!jwt || !documentId) return;
-        SaleOrdersEndpoints.fetchById(documentId, { populate: '*' }, jwt)
+        SaleOrdersEndpoints.byId(documentId, { populate: '*' })
             .then((res) => setOrder(res.data || res))
             .catch((err) => console.error("Failed to load order", err))
             .finally(() => setLoading(false));
@@ -35,7 +35,7 @@ export default function SaleOrderDetailPage() {
 
     const fetchMessages = () => {
         if (!jwt || !documentId) return;
-        SaleOrdersEndpoints.fetchMessages(documentId, jwt)
+        SaleOrdersEndpoints.messages(documentId)
             .then((res) => setMessages(res.data || []))
             .catch((err) => console.error("Failed to load order messages", err));
     };
@@ -51,7 +51,7 @@ export default function SaleOrderDetailPage() {
         if (!message || !jwt || !documentId) return;
         try {
             setSendingMessage(true);
-            await SaleOrdersEndpoints.postSendMessage(documentId, { message }, jwt);
+            await SaleOrdersEndpoints.sendMessage(documentId, { message });
             setMessageInput("");
             fetchMessages();
         } catch (err) {
