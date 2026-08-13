@@ -1170,9 +1170,18 @@ function kenBurns(index, p, enabled) {
  * a second; baked at half size it is a plain drawImage, and nobody can tell —
  * it's a blur. Keyed on the frame size so switching aspect ratio rebuilds it.
  */
-function backdropFor(entry, W, H, theme) {
-    const key = `${W}x${H}x${theme.key}`;
-    if (entry._backdropKey === key && entry._backdrop) return entry._backdrop;
+function backdropFor(entry, W, H, theme, s) {
+    // The crop belongs in the key, not just in the draw: the backdrop is baked
+    // per ENTRY, and two layers can show two different parts of one photo. A
+    // small map rather than a single slot, so that case bakes twice rather
+    // than re-baking a 46px blur on every frame; four is more crops of one
+    // picture than a recipe has ever had.
+    const cropKey = s && !s.whole
+        ? `x${Math.round(s.sx)},${Math.round(s.sy)},${Math.round(s.sw)},${Math.round(s.sh)}` : '';
+    const key = `${W}x${H}x${theme.key}${cropKey}`;
+    if (!entry._backdrops) entry._backdrops = new Map();
+    const hit = entry._backdrops.get(key);
+    if (hit) return hit;
 
     const bw = Math.max(2, Math.round(W / 2));
     const bh = Math.max(2, Math.round(H / 2));
@@ -1181,17 +1190,18 @@ function backdropFor(entry, W, H, theme) {
     off.height = bh;
     const octx = off.getContext('2d');
     const { img } = entry;
-    const c = coverRect(entry.width, entry.height, bw, bh);
+    const src = s || { sw: entry.width, sh: entry.height, whole: true };
+    const c = coverRect(src.sw, src.sh, bw, bh);
     const w = c.w * 1.3;
     const h = c.h * 1.3;
     octx.filter = 'blur(24px) brightness(0.55) saturate(1.2)';
-    octx.drawImage(img, (bw - w) / 2, (bh - h) / 2, w, h);
+    drawSrc(octx, img, src, (bw - w) / 2, (bh - h) / 2, w, h);
     octx.filter = 'none';
     octx.fillStyle = theme.key === 'light' ? 'rgba(244,244,246,0.35)' : 'rgba(8,6,14,0.25)';
     octx.fillRect(0, 0, bw, bh);
 
-    entry._backdrop = off;
-    entry._backdropKey = key;
+    if (entry._backdrops.size >= 4) entry._backdrops.clear();
+    entry._backdrops.set(key, off);
     return off;
 }
 
@@ -1221,7 +1231,7 @@ function drawImageLayer(ctx, plan, entry, index, p, alpha, stageRect, kbOverride
     } else {
         // Blurred, darkened cover behind so an off-aspect photo never leaves a
         // dead letterbox — then the whole photo, uncropped, on top of it.
-        const backdrop = backdropFor(entry, W, H, theme);
+        const backdrop = backdropFor(entry, W, H, theme, s);
         const bw = W * kb.zoom;
         const bh = H * kb.zoom;
         ctx.drawImage(backdrop, (W - bw) / 2, (H - bh) / 2, bw, bh);

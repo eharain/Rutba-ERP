@@ -270,7 +270,7 @@ export function TimingRows({ layer, duration, busy, onPatch }) {
  * region as a dashed one inside it — the nesting is the whole model, so it
  * is worth being able to see.
  */
-export function FrameRows({ layer, busy, onPatch, thumb }) {
+export function FrameRows({ layer, busy, onPatch, thumb, cropMode, onCropMode }) {
     const boxRef = useRef(null);
     const c = layer.crop || { x: 0, y: 0, w: 1, h: 1 };
     const zoom = Number(layer.zoom) || 1;
@@ -345,6 +345,22 @@ export function FrameRows({ layer, busy, onPatch, thumb }) {
                         onClick={() => onPatch({ crop: null, zoom: null, panX: null, panY: null })}>Reset</button>
                 )}
             </div>
+
+            {onCropMode && (
+                <button type="button" disabled={busy}
+                    className={`btn btn-sm w-100 mt-2 ${cropMode ? "btn-warning" : "btn-outline-secondary"}`}
+                    title="Drag the picture on the preview to reframe it; the wheel zooms the region"
+                    onClick={() => onCropMode(!cropMode)}>
+                    <i className={`fas ${cropMode ? "fa-check" : "fa-crop-simple"} me-1`} />
+                    {cropMode ? "Done reframing" : "Reframe on the preview"}
+                </button>
+            )}
+            {cropMode && (
+                <p className="text-muted mb-0 mt-1" style={{ fontSize: 11 }}>
+                    Drag the picture to move the crop, wheel to zoom it. Selection and handles
+                    are off while this is on.
+                </p>
+            )}
 
             {thumb && (
                 <div ref={boxRef} className="position-relative mt-2 mb-2 bg-dark rounded"

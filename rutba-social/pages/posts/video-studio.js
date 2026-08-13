@@ -119,6 +119,11 @@ export default function VideoStudioPage() {
     // mounted — never a different tree. The canvas holds the 2D context, the
     // preview's rAF loop and the live audio graph, so a remount would blank
     // the frame and cut the sound mid-play.
+    // Reframing on the stage. A mode rather than a handle, because the corner
+    // handles already mean "resize the box" and a fourth meaning for the same
+    // grab would be a guess every time.
+    const [cropMode, setCropMode] = useState(false);
+
     const [focus, setFocus] = useState(null); // null | 'stage' | 'rail'
     const [railHidden, setRailHidden] = useState(false);
     useEffect(() => {
@@ -873,10 +878,53 @@ export default function VideoStudioPage() {
         return { x: (e.clientX - r.left) * (c.width / r.width), y: (e.clientY - r.top) * (c.height / r.height) };
     };
 
+    /**
+     * Reframing on the stage. The crop is a rectangle of the SOURCE, so there
+     * is nothing sensible to draw a handle around on a cover-fitted photo —
+     * you drag the PICTURE instead, the way every photo app reframes, and the
+     * wheel zooms the region. Dragging right shows more of the left, because
+     * the hand is on the picture rather than on the window.
+     */
+    // Resolved from the plan rather than from `selectedLayer`, which is
+    // declared further down — the pointer handlers live above it.
+    const cropTarget = (() => {
+        if (!cropMode || !plan || !selectedLayerId) return null;
+        const l = plan.layers.find((x) => x.id === selectedLayerId);
+        return l && ["photo", "video", "image"].includes(l.type) ? l : null;
+    })();
+    const cropOf = (l) => (l.crop ? { ...l.crop } : { x: 0, y: 0, w: 1, h: 1 });
+    const writeCrop = (id, c) => {
+        const w = Math.max(0.05, Math.min(c.w, 1));
+        const h = Math.max(0.05, Math.min(c.h, 1));
+        const x = Math.max(0, Math.min(1 - w, c.x));
+        const y = Math.max(0, Math.min(1 - h, c.y));
+        const whole = x === 0 && y === 0 && w === 1 && h === 1;
+        upsertPatch({
+            id,
+            crop: whole ? null : { x: +x.toFixed(4), y: +y.toFixed(4), w: +w.toFixed(4), h: +h.toFixed(4) },
+        });
+    };
+    const onCanvasWheel = (e) => {
+        if (!cropTarget || busy) return;
+        e.preventDefault();
+        const c = cropOf(cropTarget);
+        const k = e.deltaY > 0 ? 1.08 : 1 / 1.08; // down = show more
+        const w = Math.max(0.05, Math.min(1, c.w * k));
+        const h = Math.max(0.05, Math.min(1, c.h * k));
+        // About the region's centre, so a zoom does not also pan.
+        writeCrop(cropTarget.id, { x: c.x + (c.w - w) / 2, y: c.y + (c.h - h) / 2, w, h });
+    };
+
     const onCanvasDown = (e) => {
         if (!plan || busy || playing) return;
         const pt = canvasPoint(e);
         const ctx2 = canvasRef.current.getContext("2d");
+
+        if (cropTarget) {
+            e.currentTarget.setPointerCapture?.(e.pointerId);
+            dragRef.current = { id: cropTarget.id, mode: "crop", start: pt, base: cropOf(cropTarget) };
+            return;
+        }
 
         // Handles on the CURRENT selection win over layer bodies — grabbing a
         // corner of the selected layer must never re-select what sits under it.
@@ -916,6 +964,15 @@ export default function VideoStudioPage() {
         if (!d || !plan) return;
         const pt = canvasPoint(e);
 
+        if (d.mode === "crop") {
+            const c = d.base;
+            writeCrop(d.id, {
+                x: c.x - ((pt.x - d.start.x) / plan.W) * c.w,
+                y: c.y - ((pt.y - d.start.y) / plan.H) * c.h,
+                w: c.w, h: c.h,
+            });
+            return;
+        }
         if (d.mode === "resize") {
             const k = scaleFromDrag(d.handle, d.start, pt);
             const patch = resizePatch(canvasRef.current.getContext("2d"), plan, d.snap, d.handle.kind, k);
@@ -1041,6 +1098,7 @@ export default function VideoStudioPage() {
             const p = (layerPatches || []).find((x) => x.id === layer.id);
             return p?.url || (layer.id === "logo" ? logo?.objectUrl : null) || null;
         }
+        if (layer.type === "video") return videoThumbs[layer.url] || null;
         return null;
     };
 
@@ -1349,6 +1407,45 @@ export default function VideoStudioPage() {
     // Selecting a layer is a statement of intent — front its tab. The user
     // can still flip to Video without losing the selection.
     useEffect(() => { if (selectedLayerId) setRailTab("layer"); }, [selectedLayerId]);
+
+    // Reframing follows the selection: leaving the layer leaves the mode, or
+    // the canvas keeps swallowing clicks for a layer nobody is editing.
+    useEffect(() => { setCropMode(false); }, [selectedLayerId]);
+    useEffect(() => {
+        if (!cropMode) return undefined;
+        const onKey = (e) => { if (e.key === "Escape") setCropMode(false); };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, [cropMode]);
+
+    /**
+     * A still for a video layer's crop box. A clip has no thumbnail of its
+     * own — the lane holds a <video> — so grab whatever frame is decoded and
+     * keep it per url. The element came through the media proxy as a blob, so
+     * the canvas is not tainted and toDataURL works.
+     */
+    const [videoThumbs, setVideoThumbs] = useState({});
+    useEffect(() => {
+        const url = selectedLayer?.type === "video" ? selectedLayer.url : null;
+        if (!url || videoThumbs[url]) return;
+        const entry = videoLib[url];
+        const el = entry?.el;
+        if (!el || el.readyState < 2) return;
+        try {
+            const c = document.createElement("canvas");
+            const w = 240;
+            c.width = w;
+            c.height = Math.max(1, Math.round(w * (entry.height / Math.max(1, entry.width))));
+            c.getContext("2d").drawImage(el, 0, 0, c.width, c.height);
+            const data = c.toDataURL("image/jpeg", 0.6);
+            setVideoThumbs((m) => ({ ...m, [url]: data }));
+        } catch (err) {
+            // A tainted or not-yet-painted element just means no thumbnail —
+            // the numbers below it still work.
+            console.warn("Could not grab a clip thumbnail", err);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedLayer, videoLib, previewTime]);
 
     // The app-wide leave prompt: browser close AND in-app navigation both ask
     // while the recipe has edits that Save/Attach haven't written.
@@ -1831,7 +1928,13 @@ export default function VideoStudioPage() {
                                             <canvas ref={canvasRef}
                                                 onPointerDown={onCanvasDown} onPointerMove={onCanvasMove}
                                                 onPointerUp={onCanvasUp} onPointerCancel={onCanvasUp}
-                                                style={{ width: "auto", height: "auto", maxWidth: "100%", maxHeight: focus === "stage" ? "66vh" : "52vh", display: "block", touchAction: "none", cursor: "crosshair" }} />
+                                                onWheel={onCanvasWheel}
+                                                style={{
+                                                    width: "auto", height: "auto", maxWidth: "100%",
+                                                    maxHeight: focus === "stage" ? "66vh" : "52vh", display: "block",
+                                                    touchAction: "none", cursor: cropTarget ? "move" : "crosshair",
+                                                    outline: cropTarget ? "2px solid #ffc107" : "none",
+                                                }} />
                                         </div>
 
                                         {loadingImages && <div className="mt-3"><span className="spinner-border spinner-border-sm me-2" />Loading images…</div>}
@@ -2565,6 +2668,7 @@ export default function VideoStudioPage() {
                                         {["photo", "video", "image"].includes(selectedLayer.type) && (
                                             <FrameRows layer={selectedLayer} busy={busy}
                                                 thumb={thumbForLayer(selectedLayer)}
+                                                cropMode={cropMode} onCropMode={setCropMode}
                                                 onPatch={(p) => upsertPatch({ id: selectedLayer.id, ...p })} />
                                         )}
 
