@@ -17,6 +17,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import VideoTimeline from "../../components/VideoTimeline";
 import { TimingRows, LookRows, TrackBrowser } from "../../components/InspectorRows";
+import { onsetTimes, snapEdges, edgesFromLengths, lengthsFromEdges } from "../../lib/beats";
 import { buildPlan, paintFrame, layerBounds, layerHandles, scaleFromDrag, resizePatch } from "../../lib/video-maker";
 
 function makePhoto(seed, w, h) {
@@ -490,6 +491,85 @@ export default function TimelineFixturePage() {
         push("its own style drops the panel", diff(plain, snap(cap({ style: "bare" }))).n > 500);
 
         window.__CAPLOOK = { done: true, pass: results.every((r) => r.ok), results };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [plan]);
+
+    // ── the polish pack (D3) ────────────────────────────────
+    // Two new envelope kinds, a new caption reveal, and the beat helpers —
+    // the last against a synthesised click track, which is why they are pure
+    // functions in lib/beats.js rather than buried in the page.
+    useEffect(() => {
+        if (!plan || window.__POLISH) return;
+        const c = document.createElement("canvas");
+        const x = () => c.getContext("2d", { willReadFrequently: true });
+        const mk = (patches) => buildPlan({ canvas: c, ...buildArgs(patches) });
+        const results = [];
+        const push = (label, ok) => results.push({ label, ok });
+        const snap = (p, t) => { paintFrame(x(), p, t); return new Uint32Array(x().getImageData(0, 0, c.width, c.height).data.buffer.slice(0)); };
+        const differs = (a, b) => { for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return true; return false; };
+        // How much of the frame a layer is responsible for, by differencing
+        // against the same frame with it hidden. A brightness threshold would
+        // miss karaoke's dim look-ahead text, which is the thing being counted.
+        const inkOf = (patches, id, t) => {
+            const on = snap(mk(patches), t);
+            const off = snap(mk(patches.map((p) => (p.id === id ? { ...p, visible: false } : p))), t);
+            let n = 0;
+            for (let i = 0; i < on.length; i++) if (on[i] !== off[i]) n++;
+            return n;
+        };
+
+        // A wipe uncovers across the layer, so mid-ramp is neither absent nor
+        // whole — and it is NOT a fade, so the pixels it does show are full
+        // strength (a fade at the same instant differs).
+        const withEnter = (kind) => BASE_PATCHES.map((p) => (p.id === "sticker-1"
+            ? { ...p, timing: { start: 2, end: 6 }, enter: { kind, seconds: 1 }, exit: { kind: "none", seconds: 0 } } : p));
+        const cut = mk(withEnter("none"));
+        const wiped = mk(withEnter("wipe"));
+        push("a wipe is partway through mid-ramp", differs(snap(wiped, 2.5), snap(cut, 2.5)));
+        push("a wipe has finished by the end of its ramp", !differs(snap(wiped, 3.05), snap(cut, 3.05)));
+        push("a wipe is not a fade", differs(snap(wiped, 2.5), snap(mk(withEnter("fade")), 2.5)));
+
+        const blurred = mk(withEnter("blur-through"));
+        push("blur-through softens mid-ramp", differs(snap(blurred, 2.4), snap(cut, 2.4)));
+        push("blur-through resolves by the end of its ramp", !differs(snap(blurred, 3.05), snap(cut, 3.05)));
+
+        // Karaoke shows the whole line from the start, so early on it has far
+        // more ink than a typewriter at the same instant.
+        const reveal = (kind) => BASE_PATCHES.map((p) => (p.id === "caption-again-1" ? { ...p, reveal: kind } : p));
+        push("karaoke shows the line ahead of the reading",
+            inkOf(reveal("karaoke"), "caption-again-1", 6.3)
+            > inkOf(reveal("type"), "caption-again-1", 6.3) * 1.5);
+
+        // The beat helpers, against a click track at a REAL sample rate: the
+        // hop is 512 samples, so 8kHz would test a 64ms grid the detector
+        // never sees in practice, and would prove nothing about its accuracy.
+        const sr = 44100;
+        const clicks = new Float32Array(sr * 6);
+        for (let k = 1; k < 12; k++) {
+            const at = Math.round(k * 0.5 * sr);
+            const len = Math.round(sr * 0.0375);
+            for (let i = 0; i < len && at + i < clicks.length; i++) {
+                clicks[at + i] = Math.sin((i / sr) * 2 * Math.PI * 900) * Math.exp(-i / (sr * 0.0275));
+            }
+        }
+        const found = onsetTimes(clicks, sr);
+        push(`onsets found in a click track (${found.length})`, found.length >= 9 && found.length <= 13);
+        // Within 50ms of the grid: closer than a frame at 30fps, which is what
+        // "on the beat" has to mean for a cut.
+        push("onsets land on the clicks",
+            found.every((t) => Math.abs(t - Math.round(t * 2) / 2) < 0.05));
+
+        const edges = edgesFromLengths([3, 3, 3]);
+        const snapped = snapEdges(edges, [2.6, 6.4], { tolerance: 0.8, minSlot: 1 });
+        push("edges move to the nearby beats", snapped.moved === 2
+            && Math.abs(snapped.edges[1] - 2.6) < 0.01 && Math.abs(snapped.edges[2] - 6.4) < 0.01);
+        push("an edge with no beat near it stays put",
+            snapEdges(edges, [7.9], { tolerance: 0.5, minSlot: 1 }).edges[1] === 3);
+        push("the ends never move", snapped.edges[0] === 0 && snapped.edges[3] === 9);
+        push("lengths round-trip through edges",
+            lengthsFromEdges(edgesFromLengths([2, 3.5, 1.25])).join() === "2,3.5,1.25");
+
+        window.__POLISH = { done: true, pass: results.every((r) => r.ok), results };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [plan]);
 

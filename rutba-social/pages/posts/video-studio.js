@@ -29,6 +29,7 @@ import useUnsavedGuard from "@rutba/pos-shared/hooks/useUnsavedGuard";
 import StrapiMediaLibrary from "@rutba/pos-shared/components/StrapiMediaLibrary";
 import RecorderDialog from "@rutba/pos-shared/components/RecorderDialog";
 import { RangeRow, TrackBrowser, TimingRows, LookRows, FrameRows } from "../../components/InspectorRows";
+import { onsetTimes, snapEdges, edgesFromLengths, lengthsFromEdges } from "../../lib/beats";
 import VideoTimeline from "../../components/VideoTimeline";
 import VideoComposer from "../../components/VideoComposer";
 import { resolveStorefrontBaseUrl, productShortUrl } from "../../lib/storefront-url";
@@ -123,6 +124,17 @@ export default function VideoStudioPage() {
     // handles already mean "resize the box" and a fourth meaning for the same
     // grab would be a guess every time.
     const [cropMode, setCropMode] = useState(false);
+    // Safe-zone guides over the preview. Remembered, because whether you want
+    // them is about how you work, not about this video.
+    const [guides, setGuides] = useState(false);
+    useEffect(() => {
+        try { setGuides(localStorage.getItem(`${SETTINGS_KEY}:guides`) === "1"); } catch { /* private mode */ }
+    }, []);
+    const toggleGuides = () => setGuides((v) => {
+        const next = !v;
+        try { localStorage.setItem(`${SETTINGS_KEY}:guides`, next ? "1" : "0"); } catch { /* private mode */ }
+        return next;
+    });
 
     const [focus, setFocus] = useState(null); // null | 'stage' | 'rail'
     const [railHidden, setRailHidden] = useState(false);
@@ -1028,6 +1040,49 @@ export default function VideoStudioPage() {
     // no editable patch of their own unless one exists for visibility/position).
     const selectedTextPatch = (layerPatches || []).find((p) => p.id === selectedLayerId && p.type === "text") || null;
 
+    /**
+     * Cut the photos on the music. The bed is decoded anyway for the preview,
+     * so this costs one analysis pass: find onsets, move each interior slot
+     * edge to the nearest one within reason, and write the result back as
+     * per-photo seconds — ordinary values the user can then edit by hand.
+     * Nothing is snapped that has no beat near it.
+     */
+    const [snapping, setSnapping] = useState(false);
+    const snapToBeat = async () => {
+        if (!plan || snapping) return;
+        const included = (arrangement || []).map((a, i) => ({ a, i })).filter(({ a }) => !a.excluded);
+        if (included.length < 2) { toast("Two photos or more are needed to have a cut to move.", "warning"); return; }
+        setSnapping(true);
+        try {
+            const bed = await audioForRender();
+            if (!bed?.buffer) { toast("No music bed to cut against — pick a track first.", "warning"); return; }
+            const ch = bed.buffer.getChannelData(0);
+            const raw = onsetTimes(ch, bed.buffer.sampleRate);
+            // The video starts at the bed's offset INTO the track, so an onset
+            // at 12s of a track that starts at 10s is 2s into the video.
+            const onsets = raw.map((t) => +(t - (bed.offset || 0)).toFixed(3)).filter((t) => t > 0.2);
+            if (!onsets.length) { toast("No clear beat found in that track — the cuts are unchanged.", "info"); return; }
+
+            const lengths = included.map(({ a }) => Number(a.seconds) || options.secondsPerImage);
+            const edges = edgesFromLengths(lengths);
+            const { edges: snapped, moved } = snapEdges(edges, onsets, { minSlot: 1 });
+            if (!moved) { toast("Every cut was already on a beat, or none was close enough.", "info"); return; }
+            const next = lengthsFromEdges(snapped);
+            setDirty(true);
+            setArrangement((arr) => {
+                const copy = [...(arr || [])];
+                included.forEach(({ i }, k) => { copy[i] = { ...copy[i], seconds: +next[k].toFixed(2) }; });
+                return copy;
+            });
+            toast(`${moved} cut${moved === 1 ? "" : "s"} moved onto the beat — the seconds are on each photo, edit as usual.`, "success");
+        } catch (err) {
+            console.error("Beat snap failed", err);
+            toast("Could not analyse that track.", "danger");
+        } finally {
+            setSnapping(false);
+        }
+    };
+
     const updateArrangement = (idx, patch) => setDirty(true) || setArrangement((arr) => {
         const next = [...(arr || [])];
         next[idx] = { ...next[idx], ...patch };
@@ -1910,6 +1965,11 @@ export default function VideoStudioPage() {
                                             <i className="fas fa-clapperboard me-1" />
                                             {rendering ? "Rendering…" : `Render ${plan ? fmtSeconds(plan.duration) : ""}`}
                                         </button>
+                                        <button className={`btn btn-sm ${guides ? "btn-secondary" : "btn-outline-secondary"}`}
+                                            title="Safe-zone guides — where platform UI covers the video, and where type stays clear"
+                                            onClick={toggleGuides}>
+                                            <i className="fas fa-border-none" />
+                                        </button>
                                         <button className="btn btn-sm btn-outline-secondary"
                                             title={focus === "stage" ? "Leave full screen (Esc)" : "Full screen — the stage and its timeline fill the window"}
                                             onClick={() => setFocus(focus === "stage" ? null : "stage")}>
@@ -1925,6 +1985,7 @@ export default function VideoStudioPage() {
                                     </div>
                                     <div className="card-body d-flex flex-column align-items-center">
                                         <div className="bg-dark rounded w-100 d-flex justify-content-center" style={{ minHeight: 220 }}>
+                                            <div className="position-relative" style={{ lineHeight: 0 }}>
                                             <canvas ref={canvasRef}
                                                 onPointerDown={onCanvasDown} onPointerMove={onCanvasMove}
                                                 onPointerUp={onCanvasUp} onPointerCancel={onCanvasUp}
@@ -1935,6 +1996,23 @@ export default function VideoStudioPage() {
                                                     touchAction: "none", cursor: cropTarget ? "move" : "crosshair",
                                                     outline: cropTarget ? "2px solid #ffc107" : "none",
                                                 }} />
+                                            {/* Safe zones are an HTML overlay, never painted on the
+                                                canvas: the canvas is what a render records, and a
+                                                guide that could end up in the file is not a guide. */}
+                                            {guides && (
+                                                <div className="position-absolute" style={{ inset: 0, pointerEvents: "none" }}>
+                                                    <div className="position-absolute" title="Platform UI covers roughly this much"
+                                                        style={{ left: 0, right: 0, bottom: 0, height: "18%", background: "rgba(220,53,69,0.16)", borderTop: "1px dashed rgba(255,255,255,0.5)" }} />
+                                                    <div className="position-absolute"
+                                                        style={{ top: 0, bottom: "18%", right: 0, width: "12%", background: "rgba(220,53,69,0.16)", borderLeft: "1px dashed rgba(255,255,255,0.5)" }} />
+                                                    <div className="position-absolute" title="Title safe — keep type inside this"
+                                                        style={{ left: "5%", right: "5%", top: "5%", bottom: "5%", border: "1px dashed rgba(255,255,255,0.55)" }} />
+                                                    <div className="position-absolute" style={{ left: 4, top: 4, color: "rgba(255,255,255,0.75)", fontSize: 10, lineHeight: 1.2 }}>
+                                                        title safe · red = platform UI
+                                                    </div>
+                                                </div>
+                                            )}
+                                            </div>
                                         </div>
 
                                         {loadingImages && <div className="mt-3"><span className="spinner-border spinner-border-sm me-2" />Loading images…</div>}
@@ -2326,6 +2404,8 @@ export default function VideoStudioPage() {
                                                             <option value="slide-left">Slide in</option>
                                                             <option value="push">Push in</option>
                                                             <option value="zoom">Zoom in</option>
+                                                            <option value="wipe">Wipe across</option>
+                                                            <option value="blur-through">Blur through</option>
                                                         </select>
                                                     </div>
                                                     <p className="text-muted mb-0" style={{ fontSize: 11 }}>
@@ -2377,6 +2457,7 @@ export default function VideoStudioPage() {
                                                         <option value="type">Typewriter</option>
                                                         <option value="word">Word by word</option>
                                                         <option value="line">Line by line</option>
+                                                        <option value="karaoke">Karaoke — lit as it goes</option>
                                                         <option value="all">All at once</option>
                                                     </select>
                                                 </div>
@@ -2950,6 +3031,14 @@ export default function VideoStudioPage() {
                                             suffix="s" disabled={busy} onChange={(v) => setOpt({ maxSeconds: v })} />
                                         <RangeRow label="Frame rate" value={options.fps} min={15} max={60} step={5}
                                             suffix=" fps" disabled={busy} onChange={(v) => setOpt({ fps: v })} />
+                                        <button className="btn btn-sm btn-outline-primary w-100 mb-2" disabled={busy || snapping || options.audioMode === "none"}
+                                            title={options.audioMode === "none"
+                                                ? "Needs a music bed to cut against"
+                                                : "Move each cut to the nearest beat in the bed — writes ordinary per-photo seconds you can still edit"}
+                                            onClick={snapToBeat}>
+                                            {snapping ? <span className="spinner-border spinner-border-sm me-1" /> : <i className="fas fa-wave-square me-1" />}
+                                            {snapping ? "Listening…" : "Cut on the beat"}
+                                        </button>
                                         <p className="text-muted small mb-0">
                                             The video runs for whichever is longer — the images, or the time the caption
                                             needs. These are the DEFAULTS: select any layer and its own Pace card sets
