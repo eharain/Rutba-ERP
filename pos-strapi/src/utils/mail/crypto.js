@@ -1,59 +1,26 @@
 'use strict';
 
-// AES-256-GCM encryption for mail-account credentials.
+// Mail credential encryption — now a thin re-export of the shared credential
+// vault at `utils/credentials/vault.js`.
 //
-// IMAP/SMTP passwords are full-mailbox keys — strictly higher value than the
-// `private: true`-but-plaintext storage cmp-sending-identity gets away with for
-// its trust tokens. These columns hold ciphertext only, and there is NO
-// plaintext fallback: a missing or malformed MAIL_CRED_KEY throws before
-// anything is stored or read.
+// The crypto is unchanged: AES-256-GCM, random 12-byte IV, auth tag verified on
+// decrypt, `v1:<iv_b64>:<tag_b64>:<ct_b64>`, and no plaintext fallback on write.
+// Ciphertext written by the old module decrypts here and vice versa — the
+// format and the key are identical, so this is not a migration.
 //
-// Ciphertext format: `v1:<iv_b64>:<tag_b64>:<ct_b64>`. The version prefix is
-// the rotation seam — a future v2 key decrypts-old/encrypts-new in a sweep.
+// This file stays because five consumers import it (mail-account and mail-server
+// controller/service pairs, plus utils/mail/pool.js — one of them as `./crypto`
+// from inside this directory), and a security refactor for OTHER modules is no
+// reason to churn the mail cluster.
 //
-// Generate a key: openssl rand -hex 32
+// The only behavioural change: the key may now come from RUTBA_CRED_KEY as well
+// as MAIL_CRED_KEY. MAIL_CRED_KEY still works on its own, so deployments that
+// already set it — the LAN box and rutba.pk both do — need no env edit.
+//
+// New code should require `utils/credentials/vault` directly; it also exposes
+// the idempotent encryptIfNeeded / dual-read decryptIfNeeded helpers that
+// backfills need.
 
-const crypto = require('crypto');
-
-const VERSION = 'v1';
-
-function keyFromEnv() {
-  const raw = String(process.env.MAIL_CRED_KEY || '').trim();
-  if (!raw) {
-    throw new Error(
-      'MAIL_CRED_KEY is not set — refusing to handle mailbox credentials without encryption. ' +
-      'Generate one with `openssl rand -hex 32` and add it to the environment.',
-    );
-  }
-  if (!/^[0-9a-fA-F]{64}$/.test(raw)) {
-    throw new Error('MAIL_CRED_KEY must be exactly 64 hex characters (32 bytes).');
-  }
-  return Buffer.from(raw, 'hex');
-}
-
-function encrypt(plain) {
-  const key = keyFromEnv();
-  const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
-  const ct = Buffer.concat([cipher.update(String(plain), 'utf8'), cipher.final()]);
-  const tag = cipher.getAuthTag();
-  return `${VERSION}:${iv.toString('base64')}:${tag.toString('base64')}:${ct.toString('base64')}`;
-}
-
-function decrypt(blob) {
-  const key = keyFromEnv();
-  const parts = String(blob || '').split(':');
-  if (parts.length !== 4 || parts[0] !== VERSION) {
-    throw new Error('Unrecognized mail credential ciphertext — expected `v1:iv:tag:ct`.');
-  }
-  const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(parts[1], 'base64'));
-  decipher.setAuthTag(Buffer.from(parts[2], 'base64'));
-  return Buffer.concat([
-    decipher.update(Buffer.from(parts[3], 'base64')),
-    decipher.final(),
-  ]).toString('utf8');
-}
-
-const isEncrypted = (v) => typeof v === 'string' && v.startsWith(`${VERSION}:`);
+const { encrypt, decrypt, isEncrypted } = require('../credentials/vault');
 
 module.exports = { encrypt, decrypt, isEncrypted };

@@ -35,6 +35,19 @@ module.exports = {
     },
 
     async bootstrap({ strapi }) {
+        // ─── Credential vault key present? ───────────────────────────
+        // Integration secrets (mail, and from here on social, marketplace,
+        // relays and sending identities) are AES-256-GCM at rest with no
+        // plaintext fallback, so an absent key makes every credential read and
+        // write throw. Surfacing that at boot beats discovering it when someone
+        // opens a credential form.
+        //
+        // Deliberately NOT fatal yet: .env.production currently carries an
+        // EMPTY POS_STRAPI__MAIL_CRED_KEY, so `fatal: true` would stop this
+        // server booting on the next production deploy. Flip it once the key is
+        // set everywhere — see the note on assertKeyConfigured.
+        require('./utils/credentials/vault').assertKeyConfigured({ logger: strapi.log });
+
         // ─── Warehouse → Branch consolidation, Phase 2 ───────────────
         // Copies the (entity, branch) links + branch location fields stashed by
         // database/migrations/2026.07.17…warehouse-to-branch-merge.js into the
