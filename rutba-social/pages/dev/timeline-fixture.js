@@ -18,6 +18,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import VideoTimeline from "../../components/VideoTimeline";
 import { TimingRows, LookRows, TrackBrowser } from "../../components/InspectorRows";
 import { onsetTimes, snapEdges, edgesFromLengths, lengthsFromEdges } from "../../lib/beats";
+import { draftStoryboard, withoutDraft, SAFE, SB_PREFIX } from "../../lib/storyboard";
 import { buildPlan, paintFrame, layerBounds, layerHandles, scaleFromDrag, resizePatch } from "../../lib/video-maker";
 
 function makePhoto(seed, w, h) {
@@ -570,6 +571,57 @@ export default function TimelineFixturePage() {
             lengthsFromEdges(edgesFromLengths([2, 3.5, 1.25])).join() === "2,3.5,1.25");
 
         window.__POLISH = { done: true, pass: results.every((r) => r.ok), results };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [plan]);
+
+    // ── the storyboard draft (D5) ───────────────────────────
+    // Its rules ARE the deliverable: inside the video, out of the platform's
+    // UI bands, nothing invented from data that isn't there, and safe to press
+    // twice. All four are checkable without a post or a product.
+    useEffect(() => {
+        if (!plan || window.__STORY) return;
+        const results = [];
+        const push = (label, ok) => results.push({ label, ok });
+        const D = 12;
+        const full = draftStoryboard({
+            duration: D,
+            context: { price: "Rs 4,500", discount: "25%", url: "https://rutba.pk/s/abc" },
+            captionSegments: ["First line.", "Second line.", "Third line."],
+            hasTitle: true,
+            options: {},
+        });
+
+        push("it drafts something from a full product", full.patches.length >= 5);
+        push("every added layer is inside the video",
+            full.patches.every((p) => !p.timing || (p.timing.start >= 0 && p.timing.end <= D && p.timing.end > p.timing.start)));
+        push("nothing is placed under the platform's UI",
+            full.patches.filter((p) => p.fx != null).every((p) =>
+                p.fx >= SAFE.left && p.fx <= SAFE.right && p.fy >= SAFE.top && p.fy <= SAFE.bottom));
+        push("the hook comes before the price",
+            full.patches.find((p) => p.id === `${SB_PREFIX}discount`).timing.start
+            < full.patches.find((p) => p.id === `${SB_PREFIX}price`).timing.start);
+        push("the QR waits for the last third",
+            full.patches.find((p) => p.id === `${SB_PREFIX}qr`).timing.start >= D * 0.6);
+        push("it fills an empty end card", full.options.outroSeconds > 0);
+
+        // Nothing invented: no product, no commerce layers.
+        const bare = draftStoryboard({ duration: D, context: {}, captionSegments: [], options: {} });
+        push("with no product it adds no commerce layers",
+            bare.patches.every((p) => !String(p.id).startsWith(SB_PREFIX)));
+
+        // Never overwrites a decision the operator already made.
+        const withOutro = draftStoryboard({
+            duration: D, context: { url: "https://rutba.pk/s/abc" }, options: { outroSeconds: 4, showTitle: false }, hasTitle: false,
+        });
+        push("an end card already set is left alone", withOutro.options.outroSeconds === undefined);
+
+        // Safe to press twice: the second draft replaces the first's set.
+        const once = [...withoutDraft([]), ...full.patches];
+        const twice = [...withoutDraft(once).filter((p) => !full.patches.some((n) => n.id === p.id)), ...full.patches];
+        const ids = (l) => l.map((p) => p.id).sort().join();
+        push("drafting twice replaces rather than stacks", ids(once) === ids(twice));
+
+        window.__STORY = { done: true, pass: results.every((r) => r.ok), results };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [plan]);
 

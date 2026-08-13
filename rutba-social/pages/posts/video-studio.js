@@ -30,6 +30,7 @@ import StrapiMediaLibrary from "@rutba/pos-shared/components/StrapiMediaLibrary"
 import RecorderDialog from "@rutba/pos-shared/components/RecorderDialog";
 import { RangeRow, TrackBrowser, TimingRows, LookRows, FrameRows } from "../../components/InspectorRows";
 import { onsetTimes, snapEdges, edgesFromLengths, lengthsFromEdges } from "../../lib/beats";
+import { draftStoryboard, withoutDraft } from "../../lib/storyboard";
 import VideoTimeline from "../../components/VideoTimeline";
 import VideoComposer from "../../components/VideoComposer";
 import { resolveStorefrontBaseUrl, productShortUrl } from "../../lib/storefront-url";
@@ -1401,6 +1402,37 @@ export default function VideoStudioPage() {
         ]);
         setSelectedLayerId(null);
         toast(`Split into ${segs.length} timed lines — each has its own lane.`, "success");
+    };
+
+    /**
+     * One click for the blank page: place the commerce layers, time the
+     * caption, fill the end card. Everything it adds is an ordinary patch the
+     * operator then edits, and drafting again replaces its own set rather than
+     * stacking a second copy — so it is safe to press twice.
+     */
+    const draftFromProduct = () => {
+        if (!plan) return;
+        const { patches, options: fill, notes } = draftStoryboard({
+            duration: plan.duration,
+            context: productContext || {},
+            captionSegments: splitCaptionSegments(captionText),
+            hasTitle: !!selected?.title,
+            options,
+        });
+        if (!patches.length && !Object.keys(fill).length) {
+            toast("Nothing to draft — link a product to the post, or write a caption with more than one line.", "info");
+            return;
+        }
+        setDirty(true);
+        setLayerPatches((list) => {
+            // The caption lines it writes replace any existing split, the same
+            // way splitCaption does; everything else is its own sb- set.
+            const kept = withoutDraft(list).filter((p) => !(patches.some((n) => n.id === p.id)));
+            return [...kept, ...patches];
+        });
+        if (Object.keys(fill).length) setOptions((o) => ({ ...o, ...fill }));
+        setSelectedLayerId(null);
+        toast(`Drafted: ${notes.join(", ")}. Every piece is an ordinary layer — edit away.`, "success");
     };
 
     const restoreSingleCaption = () => {
@@ -2887,6 +2919,11 @@ export default function VideoStudioPage() {
                                         </button>
                                     </div>
                                     <div className="card-body">
+                                        <button className="btn btn-sm btn-outline-primary w-100 mb-3" onClick={draftFromProduct}
+                                            disabled={busy || !plan}
+                                            title="Place the price, discount and QR, time the caption lines and fill the end card — a first draft you then edit. Pressing it again replaces its own layers rather than stacking.">
+                                            <i className="fas fa-wand-magic-sparkles me-1" />Draft from the product
+                                        </button>
                                         <label className="form-label small mb-1">Template</label>
                                         {templates.length === 0 ? (
                                             <div className="d-grid mb-3">
