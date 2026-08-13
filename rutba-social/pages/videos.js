@@ -24,8 +24,10 @@ import {
 } from "@rutba/api-provider/endpoints";
 import { useToast } from "../components/Toast";
 import DropZone from "../components/DropZone";
+import RecorderDialog from "@rutba/pos-shared/components/RecorderDialog";
+import VideoEditorDialog from "@rutba/pos-shared/components/VideoEditorDialog";
 import Link from "next/link";
-import { imageItems, isVideoFile } from "../lib/video-maker";
+import { fetchMediaViaProxy, imageItems, isVideoFile } from "../lib/video-maker";
 
 const FETCH_PAGE = 100;
 const MAX_PAGES = 20;
@@ -81,6 +83,8 @@ export default function VideosPage() {
     const [dateTo, setDateTo] = useState("");
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState("");
+    const [recording, setRecording] = useState(false);
+    const [trimming, setTrimming] = useState(null); // video open in the editor
 
     const [scanInfo, setScanInfo] = useState(null);
     const [scanning, setScanning] = useState(false);
@@ -393,6 +397,10 @@ export default function VideosPage() {
                         <button className="btn btn-sm btn-primary" onClick={() => uploadInputRef.current?.click()} disabled={uploading}>
                             <i className="fas fa-cloud-upload-alt me-1"></i>{uploading ? "Uploading…" : "Upload Videos"}
                         </button>
+                        <button className="btn btn-sm btn-outline-danger" onClick={() => setRecording(true)} disabled={uploading}
+                            title="Record from a webcam (or the screen) straight into the library">
+                            <i className="fas fa-video me-1"></i>Record
+                        </button>
                         <Link className="btn btn-sm btn-outline-warning" href="/posts?video=without">
                             <i className="fas fa-film me-1"></i>Posts without a video
                         </Link>
@@ -566,6 +574,10 @@ export default function VideosPage() {
                                                         title="Attach to a post">
                                                         <i className="fas fa-paperclip"></i>
                                                     </button>
+                                                    <button className="btn btn-sm btn-outline-primary" onClick={() => setTrimming(v)}
+                                                        title="Trim, re-frame or mute — saved as a new video">
+                                                        <i className="fas fa-scissors"></i>
+                                                    </button>
                                                     <button className="btn btn-sm btn-outline-secondary" onClick={() => setDetail(v)} title="Details & metadata">
                                                         <i className="fas fa-circle-info"></i>
                                                     </button>
@@ -620,6 +632,28 @@ export default function VideosPage() {
                         )}
                     </div>
                 </div>
+
+                {/* A recording takes the ordinary upload path, so it lands on the
+                    media server exactly like a dropped file — and shows up in this
+                    gallery once the index catches up. */}
+                <RecorderDialog
+                    show={recording}
+                    mode="video"
+                    namePrefix="clip"
+                    useLabel="Upload to the library"
+                    onClose={() => setRecording(false)}
+                    onRecorded={(file) => handleUpload([file])}
+                />
+
+                {/* An edit is a new file, never a write over the original — the
+                    media server owns those bytes and other posts may point at them. */}
+                <VideoEditorDialog
+                    show={!!trimming}
+                    source={trimming}
+                    fetchMedia={fetchMediaViaProxy}
+                    onClose={() => setTrimming(null)}
+                    onSave={(file) => handleUpload([file])}
+                />
 
                 {/* ── metadata panel ── */}
                 {detail && (

@@ -20,7 +20,9 @@ import {
 } from "@rutba/api-provider/endpoints";
 import { useToast } from "../components/Toast";
 import DropZone from "../components/DropZone";
-import { isAudioFile, loadAudioTrack, setMediaAuth } from "../lib/video-maker";
+import RecorderDialog from "@rutba/pos-shared/components/RecorderDialog";
+import AudioEditorDialog from "@rutba/pos-shared/components/AudioEditorDialog";
+import { fetchMediaViaProxy, isAudioFile, loadAudioTrack, setMediaAuth } from "../lib/video-maker";
 
 const BLANK = { name: "", url: "", credit: "", tags: "", volume: "" };
 
@@ -42,6 +44,10 @@ export default function AudioLibraryPage() {
     const [playingId, setPlayingId] = useState(null);
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState("");
+    const [recording, setRecording] = useState(false);
+    // The waveform editor. Named apart from `editing` above, which is the row
+    // whose FIELDS are being edited in the form — a different job entirely.
+    const [trimTrack, setTrimTrack] = useState(null);
     const [trackSearch, setTrackSearch] = useState("");
     const [trackTag, setTrackTag] = useState("");
     const [rotationFilter, setRotationFilter] = useState("all"); // all | in | out
@@ -333,6 +339,42 @@ export default function AudioLibraryPage() {
         }
     };
 
+    /**
+     * An edited take, back from the waveform editor. It is uploaded first —
+     * everything downstream plays a track by URL — and then either lands as its
+     * own row or takes over the row it came from.
+     *
+     * A replace clears `start_offset`: that offset counts seconds into the OLD
+     * audio, and a trim has just moved everything it pointed at.
+     */
+    const saveEdit = async (track, file, meta) => {
+        const uploaded = await UploadEndpoints.uploadFiles([file], null, null, null, {
+            name: file.name, alt: null, caption: null,
+        });
+        const rec = (Array.isArray(uploaded) ? uploaded : [uploaded])[0];
+        if (!rec?.id || !rec?.url) throw new Error("The upload came back without a file.");
+        const duration = Number(meta?.seconds) > 0 ? Math.round(meta.seconds * 100) / 100 : null;
+        if (meta?.replace) {
+            await SocialAudioTracksEndpoints.update(track.documentId, {
+                url: rec.url, audio_file: rec.id, start_offset: null,
+                ...(duration ? { duration_seconds: duration } : {}),
+            });
+            toast("Track replaced with the edit.", "success");
+        } else {
+            await SocialAudioTracksEndpoints.create({
+                name: file.name.replace(/\.[^.]+$/, ""),
+                url: rec.url,
+                audio_file: rec.id,
+                is_active: true,
+                credit: track.credit || null,
+                tags: Array.isArray(track.tags) ? track.tags : [],
+                ...(duration ? { duration_seconds: duration } : {}),
+            });
+            toast("Edit saved as a new track.", "success");
+        }
+        await load();
+    };
+
     const toggleActive = async (t) => {
         try {
             await SocialAudioTracksEndpoints.update(t.documentId, { is_active: !t.is_active });
@@ -500,6 +542,11 @@ export default function AudioLibraryPage() {
                                     <i className={`fas ${uploading ? "fa-spinner fa-spin" : "fa-cloud-upload-alt"} me-1`} />
                                     Upload audio files
                                 </button>
+                                <button className="btn btn-sm btn-outline-danger" type="button"
+                                    disabled={uploading} onClick={() => setRecording(true)}
+                                    title="Record a voice-over from a microphone, or capture what this machine is playing">
+                                    <i className="fas fa-microphone me-1" />Record audio
+                                </button>
                                 <span className="text-muted small">
                                     Uploads go to the media server and are added to the library automatically.
                                 </span>
@@ -647,7 +694,11 @@ export default function AudioLibraryPage() {
                                                 onClick={() => toggleWave(t)} title="Pick where videos start in this track">
                                                 <i className="fas fa-wave-square" />
                                             </button>
-                                            <button className="btn btn-sm btn-outline-secondary me-1" onClick={() => startEdit(t)} title="Edit">
+                                            <button className="btn btn-sm btn-outline-primary me-1" onClick={() => setTrimTrack(t)}
+                                                title="Trim, fade, level — save as a copy or replace this track">
+                                                <i className="fas fa-scissors" />
+                                            </button>
+                                            <button className="btn btn-sm btn-outline-secondary me-1" onClick={() => startEdit(t)} title="Rename, retag, re-credit">
                                                 <i className="fas fa-pen" />
                                             </button>
                                             <button className="btn btn-sm btn-outline-danger" onClick={() => remove(t)} title="Remove">
@@ -685,6 +736,31 @@ export default function AudioLibraryPage() {
                         </table>
                     </div>
                 </div>
+
+                {/* A recording is just another upload: the same path measures its
+                    length, puts the file on the media server and adds the track,
+                    in rotation straight away. */}
+                <RecorderDialog
+                    show={recording}
+                    mode="audio"
+                    namePrefix="voice"
+                    useLabel="Add to the library"
+                    onClose={() => setRecording(false)}
+                    onRecorded={(file) => uploadFiles([file])}
+                />
+
+                {/* Decoding goes through the proxy, which is what makes a foreign
+                    track editable here at all — it checks the url against this
+                    very library before fetching it. */}
+                <AudioEditorDialog
+                    show={!!trimTrack}
+                    name={trimTrack?.name || ""}
+                    src={trimTrack ? playable(trimTrack) : null}
+                    fetchMedia={fetchMediaViaProxy}
+                    allowReplace
+                    onClose={() => setTrimTrack(null)}
+                    onSave={(file, meta) => saveEdit(trimTrack, file, meta)}
+                />
 
                 <audio ref={audioRef} className="d-none" onEnded={() => setPlayingId(null)} />
             </Layout>
