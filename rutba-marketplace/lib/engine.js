@@ -141,6 +141,24 @@ function getCatalogSpec(platform) {
   return adapter.catalogSpec || { label: adapter.label || platform, dimensions: [] };
 }
 
+// What the operator has to arrange on the provider's side before an account can
+// connect — app category, the APIs to request, setup steps. Static and
+// non-sensitive, so it is safe to hand to the browser; the one computed value is
+// the OAuth callback URL, which must be whitelisted verbatim and is a frequent
+// setup mistake, so we show the resolved value rather than describing it.
+function getConnectionSpec(platform) {
+  const adapter = providers.getAdapter(platform);
+  const spec = adapter.connectionSpec;
+  if (!spec) return null;
+  return {
+    ...spec,
+    platform,
+    label: spec.label || adapter.label || platform,
+    capabilities: adapter.capabilities || {},
+    redirectUri: adapter.capabilities?.oauth ? base.redirectUri() : null,
+  };
+}
+
 // Pull a marketplace's taxonomy so the operator can map our categories/brands/
 // terms onto it. Read-only — persisting the chosen mappings is plain datastore
 // CRUD the UI does via @rutba/api-provider against marketplace-mappings.
@@ -877,6 +895,7 @@ module.exports = {
   refreshAccountToken,
   setAccountEnabled,
   getCatalogSpec,
+  getConnectionSpec,
   pullTaxonomy,
   syncOrdersForAccount,
   syncInventoryForAccount,

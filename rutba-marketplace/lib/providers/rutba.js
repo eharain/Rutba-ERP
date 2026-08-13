@@ -58,6 +58,39 @@ module.exports = {
   // the order conversation both ways.
   capabilities: { oauth: false, orders: true, inventory: true, fulfillment: true, catalog: true, messages: true },
 
+  // Setup guidance for the account page. A peer Rutba instance has no external
+  // portal and no app categories — declaring the spec anyway keeps the setup
+  // panel generic, so the UI never has to special-case Daraz.
+  connectionSpec: {
+    label: 'Rutba (online instance)',
+    authKind: 'api_token',
+    summary:
+      'A second Rutba ERP instance treated as a marketplace. No OAuth and no external '
+      + 'registration: the connection is the target instance\'s API base URL plus a '
+      + 'full-access API token, both stored on this account.',
+    accountTypes: [],
+    apiScopes: [
+      {
+        family: 'Target instance integration API',
+        paths: ['/products/integration/*', '/sale-orders/integration/*'],
+        usedFor: 'Catalog push, price/stock push, order pull, status push-back and order messages — all gated on the target to a service token.',
+        required: true,
+      },
+    ],
+    notUsed: [],
+    setupSteps: [
+      'Enter the online instance API base URL (its /api root).',
+      'Generate a token from the online instance admin login below, or paste an existing full-access API token. The password is used once and never stored.',
+      'Save, then use Validate to confirm the target answers.',
+    ],
+    troubleshooting: [
+      {
+        symptom: 'Validate fails with "not configured" or "token is missing".',
+        fix: 'The base URL or API token is absent on this account. Blank credential fields on an edit keep the stored value — they are never read back.',
+      },
+    ],
+  },
+
   // Rutba↔Rutba taxonomy is matched by slug on the target side (find-or-create),
   // so there is nothing for the operator to hand-map — the mapping UI renders no
   // dimensions for this platform.

@@ -5,6 +5,7 @@ import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { MarketplaceAccountsEndpoints } from "@rutba/api-provider/endpoints";
 import { useToast } from "../components/Toast";
 import { appGet, appPost } from "../components/appClient";
+import ConnectionGuide from "../components/ConnectionGuide";
 
 const REGIONS = ["pk", "bd", "lk", "np", "mm"];
 
@@ -50,6 +51,10 @@ export default function AccountsPage() {
     const [saving, setSaving] = useState(false);
     const [busyId, setBusyId] = useState(null);
     const [generating, setGenerating] = useState(false);
+    // Provider setup guidance (app/account type, APIs to request, callback URL),
+    // declared by the adapter and cached per platform so switching the select
+    // back and forth does not re-fetch.
+    const [connSpecs, setConnSpecs] = useState({});
 
     const loadAccounts = useCallback(async () => {
         if (!jwt) return;
@@ -71,6 +76,17 @@ export default function AccountsPage() {
         if (!jwt) return;
         appGet("/api/internal/product-groups", jwt).then((r) => setProductGroups(r.items || [])).catch(() => {});
     }, [jwt]);
+
+    // Fetch the selected platform's setup guide when the form is open. A provider
+    // without a connectionSpec simply renders no panel (cached as null so it is
+    // not retried on every keystroke).
+    const platform = form.platform;
+    useEffect(() => {
+        if (!jwt || !showForm || !platform || connSpecs[platform] !== undefined) return;
+        appGet(`/api/providers/${platform}/connection-spec`, jwt)
+            .then((spec) => setConnSpecs((prev) => ({ ...prev, [platform]: spec || null })))
+            .catch(() => setConnSpecs((prev) => ({ ...prev, [platform]: null })));
+    }, [jwt, showForm, platform, connSpecs]);
 
     // OAuth popup-closer postMessage (callback served from this app's origin).
     useEffect(() => {
@@ -260,6 +276,13 @@ export default function AccountsPage() {
                                     <div className="col-md-1">
                                         <label className="form-label" title="Raise (+) or lower (−) pushed prices vs your selling price">Price %</label>
                                         <input className="form-control" name="price_adjust_pct" value={form.price_adjust_pct} onChange={handleChange} inputMode="decimal" placeholder="0" />
+                                    </div>
+                                    <div className="col-12">
+                                        {/* Adapter-declared setup guidance for the selected platform —
+                                            which app/account type to register, the APIs that must be
+                                            granted, the exact callback URL. Open by default when adding
+                                            an account (that is when it is needed), folded away on edit. */}
+                                        <ConnectionGuide spec={connSpecs[form.platform]} defaultOpen={!editing} />
                                     </div>
                                     <div className="col-12">
                                         <hr className="my-1" />

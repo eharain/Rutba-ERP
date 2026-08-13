@@ -190,6 +190,50 @@ async function test(name, fn) {
     assert.deepStrictEqual(flat[1], { external_id: '2', name: 'B', parent_id: '1', leaf: true });
   });
 
+  console.log('— daraz: connection spec (operator setup guidance) —');
+  await test('connectionSpec documents EVERY api path the adapter calls', () => {
+    const spec = daraz.connectionSpec;
+    const documented = new Set((spec.apiScopes || []).flatMap((s) => s.paths || []));
+    // The adapter's own path table is the source of truth — if a new call is
+    // added and not documented, the setup page would understate what Daraz has
+    // to grant, and the operator applies for too little.
+    const called = Object.values(T.API);
+    assert.ok(called.length >= 8, 'expected the adapter to declare its api paths');
+    for (const p of called) {
+      assert.ok(documented.has(p), `api path ${p} is called but missing from connectionSpec.apiScopes`);
+    }
+    // ...and nothing invented in the other direction.
+    for (const p of documented) {
+      assert.ok(called.includes(p), `connectionSpec lists ${p}, which the adapter never calls`);
+    }
+  });
+  await test('connectionSpec: exactly one recommended account type, none unavailable-and-recommended', () => {
+    const types = daraz.connectionSpec.accountTypes || [];
+    assert.ok(types.length >= 4, 'all Daraz app categories should be described');
+    const rec = types.filter((t) => t.recommended);
+    assert.strictEqual(rec.length, 1);
+    assert.strictEqual(rec[0].key, 'seller_inhouse');
+    assert.ok(!rec[0].unavailable);
+    for (const t of types) assert.ok(t.label && t.why, `account type ${t.key} needs a label + rationale`);
+  });
+  await test('getConnectionSpec: resolves the OAuth callback, null for non-oauth, throws on unknown', () => {
+    const d = engine.getConnectionSpec('daraz');
+    assert.strictEqual(d.platform, 'daraz');
+    assert.ok(d.redirectUri.endsWith('/api/oauth/callback'));
+    const r = engine.getConnectionSpec('rutba');
+    assert.strictEqual(r.redirectUri, null);      // no OAuth on a peer instance
+    assert.strictEqual(r.authKind, 'api_token');
+    assert.throws(() => engine.getConnectionSpec('nope'));
+  });
+  await test('connectionSpec carries no credentials (safe to send to the browser)', () => {
+    // It is served to the operator UI, so a secret leaking in here would ship to
+    // the browser. Assert on the serialized form to catch nesting.
+    const json = JSON.stringify(engine.getConnectionSpec('daraz'));
+    for (const bad of ['appKey', 'appSecret', 'app_secret', 'access_token', 'refresh_token', 'api_secret']) {
+      assert.ok(!json.includes(bad), `connectionSpec must not carry ${bad}`);
+    }
+  });
+
   console.log('— engine: price adjustment —');
   await test('applyAdjustment: pct + fixed, floor at 0, base 0', () => {
     assert.strictEqual(engine.applyAdjustment(100, { pct: 10, fixed: 50 }), 160);

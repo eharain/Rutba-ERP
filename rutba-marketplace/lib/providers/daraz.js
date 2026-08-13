@@ -26,6 +26,21 @@ const REGION_AUTH_HOSTS = {
   mm: 'https://api.daraz.com.mm/oauth/authorize',
 };
 
+// Every Daraz REST path this adapter calls, named once. Both the call sites and
+// the operator-facing connectionSpec below read from here, so the "APIs this
+// integration needs" panel on the setup page cannot drift from what the code
+// actually calls — a unit test asserts the spec covers all of these.
+const API = {
+  tokenCreate: '/auth/token/create',
+  tokenRefresh: '/auth/token/refresh',
+  ordersGet: '/orders/get',
+  orderItemsGet: '/order/items/get',
+  priceQuantityUpdate: '/product/price_quantity/update',
+  categoryTree: '/category/tree/get',
+  categoryAttributes: '/category/attributes/get',
+  brandsQuery: '/category/brands/query',
+};
+
 function regionOf(account) {
   const cfg = base.getProviderConfig(PLATFORM);
   return String((account && account.region) || cfg.region || 'pk').toLowerCase();
@@ -261,6 +276,114 @@ module.exports = {
   label: 'Daraz',
   capabilities: { oauth: true, orders: true, inventory: true, fulfillment: false, catalog: true },
 
+  // What the operator must set up ON DARAZ before this account can connect —
+  // rendered by the account setup page. Declared here, like catalogSpec, so
+  // provider knowledge never gets hardcoded into the UI: another marketplace
+  // ships its own connectionSpec and the same panel adapts.
+  //
+  // The app-category list is the part that dates fastest: Daraz revises its
+  // categories and their API grants, and the portal is authoritative. The UI
+  // says so rather than presenting this as settled fact — it is a starting
+  // point for the application, not a substitute for reading the Apply screen.
+  connectionSpec: {
+    label: 'Daraz',
+    authKind: 'oauth',
+    portal: 'Daraz Open Platform',
+    summary:
+      'Daraz needs a registered app before an account can be connected. Which app '
+      + 'category you apply for decides which APIs are granted — pick the one that '
+      + 'matches your profile, then check its API list against the calls below.',
+
+    // The app categories the Daraz Open Platform offers on the Apply screen.
+    accountTypes: [
+      {
+        key: 'seller_inhouse',
+        label: 'Seller Inhouse',
+        subtitle: 'seller',
+        recommended: true,
+        why: 'You are a Daraz seller wiring up your own shop, which is exactly what this category covers — and everything this integration does is single-shop Order + Product API.',
+      },
+      {
+        key: 'erp_isv',
+        label: 'ERP',
+        subtitle: 'ISV',
+        why: 'For software vendors supplying an ERP to OTHER sellers. Relevant once Rutba is sold to tenants who sell on Daraz — each would need its own app — but it generally expects an ISV profile declaring you are not a Daraz seller.',
+      },
+      {
+        key: 'im_chat',
+        label: 'ERP IM Chat',
+        subtitle: 'IM chat app',
+        why: 'Grants the buyer/seller chat APIs. This integration makes no chat calls at all; order-conversation sync is not built for Daraz. Apply only if that changes.',
+      },
+      {
+        key: 'marketing',
+        label: 'Marketing',
+        subtitle: 'promotions',
+        unavailable: true,
+        why: 'Daraz restricts this to ISV profiles that are NOT a Daraz seller, so it is not open to a seller account. Nothing here needs it.',
+      },
+    ],
+
+    // Exactly the calls the adapter makes (paths come from the API constant, so
+    // this cannot silently drift). Compare against the grant list Daraz shows.
+    apiScopes: [
+      {
+        family: 'Auth',
+        paths: [API.tokenCreate, API.tokenRefresh],
+        usedFor: 'Exchanging the OAuth code for an access token, and refreshing it before expiry.',
+        required: true,
+      },
+      {
+        family: 'Order',
+        paths: [API.ordersGet, API.orderItemsGet],
+        usedFor: 'Pulling orders changed since the last watermark, then their line items (Daraz returns orders without lines).',
+        required: true,
+      },
+      {
+        family: 'Product — price & stock',
+        paths: [API.priceQuantityUpdate],
+        usedFor: 'Pushing the adjusted price and stock for your publish set, and zeroing stock when a product is deactivated.',
+        required: true,
+      },
+      {
+        family: 'Product — categories & brands',
+        paths: [API.categoryTree, API.categoryAttributes, API.brandsQuery],
+        usedFor: 'The category/brand mapping screen. Confirm these are in the grant — without them mapping cannot be set up.',
+        required: false,
+      },
+    ],
+
+    // Named so nobody applies for entitlements this integration cannot use.
+    notUsed: [
+      'Order status push-back to Daraz — not built; Daraz orders are processed in Rutba and their marketplace status is not updated from here.',
+      'Buyer/seller chat or message sync — not built.',
+      'Creating or editing Daraz listings — not built; price and stock are pushed for products that already exist on Daraz.',
+    ],
+
+    setupSteps: [
+      'Register an app on the Daraz Open Platform under the category above and wait for it to move from Inactive to approved.',
+      'Whitelist the callback URL shown below in the app dashboard — it must match exactly, including scheme and any port.',
+      'Put the App Key and App Secret in the server env (RUTBA_MARKETPLACE__DARAZ_APP_KEY / _APP_SECRET), or enter them on this form for a per-account override.',
+      'Set the account Region to the Daraz country site the seller account belongs to — it selects the regional API host.',
+      'Save the account, then click Connect to authorize. The seller approves in the popup and the tokens are stored on the account.',
+    ],
+
+    troubleshooting: [
+      {
+        symptom: 'Connect fails, or the token exchange 404s / returns a non-zero code that looks like bad credentials.',
+        fix: 'Daraz serves the auth gateway on a host of its own. Set RUTBA_MARKETPLACE__DARAZ_TOKEN_HOST to the host in their current docs; it defaults to the regional business host, so no other call changes.',
+      },
+      {
+        symptom: 'Orders arrive but line items show as "SKU …" with no product linked.',
+        fix: 'The seller SKU on Daraz must equal the product SKU (or barcode) in Rutba. Runs with unmatched lines are flagged as needing attention on the Sync Runs page, with the SKUs listed.',
+      },
+      {
+        symptom: 'No connect URL is returned when clicking Connect.',
+        fix: 'The app key is not configured — set it in env or on this account.',
+      },
+    ],
+  },
+
   // Declarative description of how Daraz categorises products, so the mapping UI
   // renders Daraz-specific dimensions without hardcoding. Other providers
   // declare their own (Amazon = browse-nodes + product-types; Shopify = flat
@@ -312,7 +435,7 @@ module.exports = {
 
   async exchangeCode({ account, code }) {
     if (!code) throw new base.ProviderError('Missing OAuth code for Daraz', { platform: PLATFORM });
-    const data = await callApi({ account, apiPath: '/auth/token/create', business: { code }, method: 'POST', needsToken: false });
+    const data = await callApi({ account, apiPath: API.tokenCreate, business: { code }, method: 'POST', needsToken: false });
     if (!data || !data.access_token) {
       throw new base.ProviderError('Daraz did not return an access token', { platform: PLATFORM, raw: data });
     }
@@ -334,7 +457,7 @@ module.exports = {
     // No expiry guard here: the automatic path (ensureFreshToken) decides
     // WHETHER to refresh; the manual "force refresh" path must always perform it.
     if (!account || !account.refresh_token) return null;
-    const data = await callApi({ account, apiPath: '/auth/token/refresh', business: { refresh_token: account.refresh_token }, method: 'POST', needsToken: false });
+    const data = await callApi({ account, apiPath: API.tokenRefresh, business: { refresh_token: account.refresh_token }, method: 'POST', needsToken: false });
     if (!data || !data.access_token) return null;
     return {
       access_token: data.access_token,
@@ -363,7 +486,7 @@ module.exports = {
         limit: pageLimit,
       };
       if (since) business.update_after = new Date(since).toISOString();
-      const data = await callApi({ account, apiPath: '/orders/get', business });
+      const data = await callApi({ account, apiPath: API.ordersGet, business });
       const rows = (data && Array.isArray(data.orders) && data.orders) || [];
       orders.push(...rows);
       if (rows.length < pageLimit) break;
@@ -376,7 +499,7 @@ module.exports = {
   },
 
   async fetchOrderItems({ account, externalOrderId }) {
-    const data = await callApi({ account, apiPath: '/order/items/get', business: { order_id: externalOrderId } });
+    const data = await callApi({ account, apiPath: API.orderItemsGet, business: { order_id: externalOrderId } });
     const items = (Array.isArray(data) && data) || (data && Array.isArray(data.order_items) && data.order_items) || [];
     return items.map(normalizeItem);
   },
@@ -391,7 +514,7 @@ module.exports = {
 
     let data;
     try {
-      data = await callApi({ account, apiPath: '/product/price_quantity/update', business: { payload }, method: 'POST' });
+      data = await callApi({ account, apiPath: API.priceQuantityUpdate, business: { payload }, method: 'POST' });
     } catch (e) {
       return { results: rows.map((u) => ({ sku: u.sku, ok: false, error: e.message })) };
     }
@@ -415,7 +538,7 @@ module.exports = {
 
   /** Flattened marketplace category tree: [{ external_id, name, parent_id, leaf }]. */
   async fetchCategoryTree({ account }) {
-    const data = await callApi({ account, apiPath: '/category/tree/get' });
+    const data = await callApi({ account, apiPath: API.categoryTree });
     const roots = Array.isArray(data) ? data : (Array.isArray(data?.categories) ? data.categories : []);
     return flattenCategoryTree(roots);
   },
@@ -423,7 +546,7 @@ module.exports = {
   /** Required/optional attributes for a leaf category — drives listing validation later. */
   async fetchCategoryAttributes({ account, categoryId }) {
     if (!categoryId) throw new base.ProviderError('categoryId is required for fetchCategoryAttributes', { platform: PLATFORM });
-    const data = await callApi({ account, apiPath: '/category/attributes/get', business: { primary_category_id: categoryId } });
+    const data = await callApi({ account, apiPath: API.categoryAttributes, business: { primary_category_id: categoryId } });
     const attrs = Array.isArray(data) ? data : (Array.isArray(data?.attributes) ? data.attributes : []);
     return attrs.map((a) => ({
       name: a.name,
@@ -437,7 +560,7 @@ module.exports = {
 
   /** Marketplace brand list (paged): [{ external_id, name }]. */
   async fetchBrands({ account, offset = 0, limit = 100 }) {
-    const data = await callApi({ account, apiPath: '/category/brands/query', business: { offset, limit } });
+    const data = await callApi({ account, apiPath: API.brandsQuery, business: { offset, limit } });
     const rows = (Array.isArray(data?.modules) && data.modules)
       || (Array.isArray(data?.brands) && data.brands)
       || (Array.isArray(data) ? data : []);
@@ -445,5 +568,5 @@ module.exports = {
   },
 
   // Internals exposed for unit tests only (not part of the adapter contract).
-  __test: { sign, xmlEscape, normalizeShipping, pickStatus, normalizeOrder, normalizeItem, flattenCategoryTree, buildPriceQuantityXml, restHost, tokenHost, hostFor },
+  __test: { sign, xmlEscape, normalizeShipping, pickStatus, normalizeOrder, normalizeItem, flattenCategoryTree, buildPriceQuantityXml, restHost, tokenHost, hostFor, API },
 };
