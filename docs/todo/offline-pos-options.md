@@ -2,6 +2,38 @@
 
 _For roadmap [0.3 — Offline-first POS hardening](./ROADMAP.md)._
 
+> ## Amendment — 2026-08-13
+>
+> Two decisions postdate the 2026-08-08 design below. Both change **where the bridge
+> runs** and **who it runs for**. Neither changes what it does.
+>
+> **What survives intact:** §§1–5 in full — the `authApi` seam (§1), provisional ids
+> (§2), descriptor `offline:` policy (§3), the two read layers (§4), and what the
+> server still owes the bridge (§5). §10's build plan survives phase for phase; phases
+> 0–3 are untouched, because the bridge is a Node process under either host and can be
+> built and run headless exactly as sequenced. §6 survives and keeps its job (see
+> below). §§7–9 are untouched.
+>
+> **What changed:**
+>
+> 1. **The Electron main process hosts the bridge** — [§11](#11-amendment-2026-08-13--electron-hosts-the-bridge).
+>    §10.2 phase 4 and §10.3 spec a standalone Windows service (nssm / node-windows).
+>    The desktop app's main process is already a Node process, so it hosts the bridge
+>    in-process: one installer, no second service to package or supervise. This also
+>    **retires §10.2a's mixed-content constraint for the same-machine case**, because
+>    the desktop app serves from a secure-context origin.
+> 2. **The framework serves three apps, not one** — [§12](#12-amendment-2026-08-13--one-engine-three-apps).
+>    POS, Email (`rutba-mail`, :4021) and Video Studio
+>    (`rutba-social/pages/posts/video-studio.js` + `packages/video-maker`). Every
+>    mechanism below is a per-app configuration of one engine, not POS-specific
+>    machinery.
+>
+> **§6 (LAN mode) is not weakened — it is repositioned.** It remains the strongest
+> correctness argument in this document: two tills at one branch sharing one replica
+> and one outbox cannot both sell the same unit, and a desktop host per till does not
+> answer that. It is now framed as *same core, second host* (§6's own words) rather
+> than as the default deployment — [§11.2](#112-6-keeps-its-job-the-multi-till-shape).
+
 ## Decision (2026-08-08)
 
 **Option A in its local-service form.** The user runs a build of the existing POS
@@ -407,6 +439,10 @@ Each phase is independently shippable and each one de-risks the next. Phase 1 in
 particular is deliberately boring: the bridge earns trust as a proxy before it is
 allowed to be clever.
 
+_Amended 2026-08-13 ([§11.1](#111-what-this-replaces-in-10)): phases 0–3 stand as
+written. Phase 4's packaging line — "Windows service via nssm or node-windows" — is
+replaced by the Electron installer._
+
 ### 10.2a Discovery and attachment
 
 How a till finds its bridge. Two candidate mechanisms were considered — a client-side
@@ -442,6 +478,13 @@ ceremony; a *shared* LAN bridge requires either TLS on the bridge (§7.5) or the
 app itself being served from the LAN box — which is exactly how the rutba-nvr LAN
 deployment already serves it. Both shapes exist in production practice.
 
+_Amended 2026-08-13 ([§11](#11-amendment-2026-08-13--electron-hosts-the-bridge)): the
+mixed-content constraint no longer applies to the same-machine case, which is now the
+default — the desktop app serves from a secure-context origin. It still governs the
+shared-LAN bridge. The discovery handshake above is likewise only needed when till and
+bridge are separate machines; step 1 (registration) survives regardless, because
+§10.3a(3) issues the bridge's service credential there._
+
 ### 10.3 Trust and packaging decisions
 
 - **Localhost by default; LAN exposure is opt-in** (and brings §7.5's TLS question
@@ -451,6 +494,10 @@ deployment already serves it. Both shapes exist in production practice.
   an open item under 10.4.
 - SQLite, one file per branch, in a directory the service owns. The outbox is
   append-only; nothing deletes a queued sale except a confirmed replay.
+
+_Amended 2026-08-13 ([§11.1](#111-what-this-replaces-in-10)): "the service" is now the
+Electron main process for the default single-till deployment. The three bullets hold
+under either host; only the packaging beneath them changed._
 
 ### 10.3a Authentication and replay identity
 
@@ -539,6 +586,164 @@ loudly to warn, how long the bridge may hold sales), not the architecture.
 5. **TLS for LAN exposure** (§7.5) — phase 4.
 6. **Offline invoice-number ranges per device** — carried over from §9.4; needed for
    the QR to be printable offline without collision.
+
+---
+
+## 11. Amendment (2026-08-13) — Electron hosts the bridge
+
+**Decision.** The bridge runs **inside the Electron main process** of the Rutba desktop
+app. It is not packaged, installed, supervised or updated separately.
+
+§10.1's content is unchanged: the bridge is still `rutba-core` against local SQLite plus
+the four bridge-specific parts (proxy, replicator, outbox/provisional-ids, replayer),
+still reading its offline policy from the descriptors (§3). What changed is only the
+process that owns it. The Electron main process is a Node process — the same runtime
+§10 already assumed — so the bridge becomes a module it starts, not an executable it
+ships alongside.
+
+**Why.** The standalone service was never justified by anything the bridge *needs*. It
+was justified by the POS being a web page that had to reach a local process somehow.
+Once there is a desktop app, that gap closes and the service is pure cost:
+
+- **One installer.** The user installs one thing. There is no second artifact to sign,
+  ship, version-match against the app, or leave stranded at the wrong version after an
+  update — and a bridge one release behind its POS is a data-shape bug waiting to
+  happen, not a cosmetic one.
+- **No supervision to get right.** nssm and node-windows exist to answer "who restarts
+  it, under which account, with which working directory, and where do its logs go" —
+  every one of which the desktop app already answers for itself. A bridge that dies
+  takes the window with it and the user reopens the app: a failure mode a shopkeeper
+  can see and act on. A silently dead background service is not.
+- **One lifecycle.** Start, stop, upgrade, uninstall and log rotation stop being two
+  lifecycles that can disagree. §10.3's "a directory the service owns" becomes the app's
+  own userData directory.
+- **A smaller permission surface.** No service account, no auto-start registration, no
+  firewall rule — a loopback listener inside a user process needs none of them. The LAN
+  tier still needs the firewall rule, which is rather the point of it being opt-in.
+
+**What it costs, stated plainly:** the bridge only runs while the app is open. A service
+could drain the outbox at 3am with nobody signed in; the in-process bridge drains when
+the till is next opened. For a till opened every trading day that is not a real
+difference — the outbox is durable across restarts either way (§10.3, append-only) and
+§10.4's QR already decouples the receipt from the sync. It becomes a real difference
+only for an unattended, always-warm replica, which is the LAN tier's job (§11.2), where
+a box that is always on is the entire point.
+
+### 11.1 What this replaces in §10
+
+| Where | What it says | What it says now |
+|---|---|---|
+| **§10.2, phase 4** | "Packaging (Windows service via nssm or node-windows; SQLite file layout; config = upstream URL + branch)" | Packaging **is** the Electron installer. The rest of phase 4 stands unchanged — SQLite file layout, config, LAN exposure, register policy, FBR interaction — minus the service-supervision work. |
+| **§10.2a, discovery** | Bridge registers with the origin → POS asks the origin → POS verifies the fingerprint before switching. | Needed only when till and bridge are on **different machines**. In-process there is nothing to discover and nothing to impersonate: the renderer's bridge is its own. **Step 1 (registration) survives regardless** — §10.3a(3) issues the bridge's service credential at registration, and replay authorization is built on it. |
+| **§10.2a, mixed content** | Constrains the same-machine case to loopback. | Retired for the same-machine case (below); still governs a shared LAN bridge. |
+| **§10.3, bullet 1** | "Localhost by default; LAN exposure is opt-in." | Unchanged in effect, and now structural rather than a setting: an in-process bridge has no listener to expose until the LAN tier is deliberately turned on. |
+| **§10.3, bullet 3** | "in a directory the service owns" | The app's userData directory. Append-only outbox, unchanged. |
+
+**Mixed content.** §10.2a records a rule the browser sets and we don't: an HTTPS-served
+POS may call `http://localhost:…` under the secure-context exemption for loopback, but
+is hard-blocked from `http://<LAN-IP>:…`. Under the desktop host that rule stops
+applying to the shape we ship by default. The renderer loads from the app's own
+secure-context origin rather than from a remote HTTPS page, and reaches a bridge inside
+its own process over loopback — itself a potentially-trustworthy origin. There is no
+mixed-content gate to satisfy, and no dependence on the loopback exemption surviving a
+future browser-policy change.
+
+**What §10.2a still governs is the shared LAN bridge**, and nothing here changes it: a
+till reaching *another machine's* bridge over plain HTTP still needs either TLS on the
+bridge (§7.5, §10.5.5) or the POS served from the LAN box, which is exactly how the
+rutba-nvr deployment already serves it. The constraint was not solved. The default
+deployment moved out from under it.
+
+### 11.2 §6 keeps its job: the multi-till shape
+
+The LAN tier is not dropped and not deferred. Its argument in §6 is a **correctness**
+argument, and the desktop host does not answer it: two tills each running their own
+in-process bridge hold two replicas and two outboxes, so during an outage both can sell
+the same unit — precisely the collision §6 exists to prevent. A branch with more than
+one till that cannot tolerate that still wants one bridge, on a box, with both tills
+pointed at it. That remains the strongest correctness claim in this document.
+
+What changed is only which host is the **default**. The desktop host is the default
+because it is what a single-till shop installs and the smallest thing that works. The
+LAN host is **same core, second host** — §6's own opening ("same core, different host
+and storage adapter") now describes a second real deployment rather than an aspiration.
+
+**It also gives §6's tiering guarantee a host it can actually have.** §6 asks for a tier
+underneath the LAN proxy, so an unreachable branch box degrades instead of going dark,
+and names the in-browser tier for the job — which the decision at the top of this
+document had already dropped, leaving that guarantee without a host. The desktop bridge
+fills exactly that slot, and fills it better than the browser tier would have: same Node
+core, same SQLite adapter, rather than a second storage adapter with a second lifecycle
+to get wrong. A till whose LAN bridge is unreachable falls back to its own in-process
+bridge and keeps trading. *One implementation, two hosts, degrading in order* — §6's
+stated design goal, now with both hosts real and neither of them a browser.
+
+The ordering that follows: **desktop first, LAN second.** Phases 0–3 (§10.2) build the
+engine inside the desktop app, where it is easiest to run, watch and debug. The LAN host
+is phase 4's "LAN exposure for multi-till", unchanged in content — and by then hosting
+the same engine twice is a deployment choice rather than a port.
+
+---
+
+## 12. Amendment (2026-08-13) — one engine, three apps
+
+**This document describes a framework, not a POS feature.** The desktop host carries
+three apps, and each wants the same machinery for different reasons:
+
+| App | Where it lives | What offline means for it |
+|---|---|---|
+| **POS** | `pos-sale` | Keep selling through an outage and reconcile afterwards. The case this document was written for. |
+| **Email** | `rutba-mail` (:4021) | Read and compose against mail already pulled; queue sends, flags and moves. `rutba-mail` imports from live IMAP on demand, so an outage today leaves it with almost nothing to show. |
+| **Video Studio** | `rutba-social/pages/posts/video-studio.js` + `packages/video-maker` | Edit a project and render it with no connection. `@rutba/video-maker` is browser-engine only — canvas → `captureStream()` → `MediaRecorder`, no ffmpeg — so the **render already runs locally**. What needs the network is loading assets and saving the project. |
+
+None of this is new machinery. Each mechanism in §§2–5 is a **per-app configuration** of
+one engine:
+
+| Mechanism | POS | Email | Video Studio |
+|---|---|---|---|
+| **Descriptor `offline:` (§3)** | `queue` on sale writes, `replica` on stock search, `reject` on exchanges | `queue` on send/flag/move, `replica` on folder and thread reads, `reject` on search across mail never pulled | `queue` on project saves, `replica` on project and media-library reads |
+| **Replica (§4)** | response cache for settings and enums; a **collection mirror** for stock search — the one search box that justifies the cost | the mailbox already imported *is* the replica; threads are append-mostly, which is far kinder than stock | project documents, plus assets cached by url — assets are large and **immutable**, so cache-by-url beats a delta feed outright |
+| **Outbox (§2)** | sales, payments, stock consumption | sends, flags, moves | project saves, queued publishes |
+| **Provisional ids (§2)** | `loc_` sale → sale-items → stock-items | a draft composed offline, referenced by the flag/move calls queued behind it | a new project referenced by its layers and its renders |
+| **Ordered idempotent replay (§5a)** | oversell → flag, never double-consume (§5) | **the sharpest case for `Idempotency-Key`**: a replayed send whose response was lost must not mail the customer twice, and unlike a duplicate row it cannot be repaired afterwards | the cheapest case — a duplicated render wastes CPU, not money or trust |
+| **`mode: 'reject'` (§3)** | exchanges — a live lookup of the original sale | anything needing a live IMAP round trip | publishing to a social provider: a live third-party call the bridge cannot substitute for |
+
+**What this changes about how the engine gets built:** nothing in §§1–5, and one thing
+in §10. The bridge must not come out POS-shaped. §10.1 already says local reads come
+from `rutba-core` answering the app's real routes rather than from new code, and the
+descriptor files (§3) already describe every app in the monorepo rather than only
+`apps: ['sale']` — so the engine is app-agnostic by construction, as long as nothing
+hardcodes a sale. The one place to hold that line is §3's audit rule: written there as
+"fail when an endpoint reachable from `apps: ['sale']` has no `offline` policy", it
+should be **parameterised by app**, so each app declares its own offline surface and
+each one's coverage is measurable on its own.
+
+**Where the secure-origin dividend shows up twice.** §11.1's mixed-content point is not
+only a POS convenience. In-browser capture — `RecorderDialog` and the editors behind the
+Video Studio timeline — is gated on a secure origin: `getUserMedia` / `getDisplayMedia`
+are simply undefined at `http://192.168.0.46:<port>`, which is why capture works on dev
+and on rutba.pk and cannot work at all on the LAN deploy box. A desktop host serves from
+a secure-context origin. The same decision that lets the POS reach its bridge without
+ceremony gives the Video Studio its recorder back on machines where it currently has no
+recorder to give.
+
+**Cross-references.**
+
+- **POS** — this document; roadmap [0.3](./ROADMAP.md).
+- **Email** — [`email-program/`](./email-program/), from
+  [00-overview-and-roadmap](./email-program/00-overview-and-roadmap.md); the
+  [IMAP gateway](./email-program/02-imap-gateway.md) is what a replica would sit in
+  front of.
+- **Video Studio** — [v3](./video-studio-timeline-plan.md) (BUILT) is the
+  everything-is-a-layer engine model; [v4](./video-studio-v4-plan.md) and
+  [v5](./video-studio-v5-rail-plan.md) are the current work.
+- **The host itself** — the bridge lands inside the
+  [core-server/multitenancy program](./core-server-multitenancy-program/), per §6 and
+  §10.1: `rutba-core` run against local SQLite, not a fork of it.
+
+This section implies no sequencing. POS is first and stays the proving ground. The value
+of writing it down now is that phases 1–3 should not bake in assumptions that make the
+second and third app a rewrite.
 
 ---
 
