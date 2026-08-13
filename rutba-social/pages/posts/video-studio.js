@@ -1761,7 +1761,7 @@ export default function VideoStudioPage() {
                                                 </div>
                                             ) : (
                                                 <>
-                                                    <TrackBrowser tracks={tracks} busy={busy} maxHeight={280}
+                                                    <TrackBrowser tracks={tracks} busy={busy} maxHeight={340} pageSize={10}
                                                         onAdd={(t) => { addSoundLayer(t); setShowSoundPicker(false); }}
                                                         pickLabel="Bed"
                                                         onPick={options.audioMode === "none" ? (t) => {
@@ -2074,7 +2074,7 @@ export default function VideoStudioPage() {
                                             </div>
                                         )}
                                         {options.audioMode === "pick" && tracks.length > 0 && (
-                                            <TrackBrowser tracks={tracks} busy={busy} maxHeight={160}
+                                            <TrackBrowser tracks={tracks} busy={busy} maxHeight={200} pageSize={5}
                                                 pickedId={options.audioTrackId}
                                                 onPick={(t) => setOpt({ audioTrackId: t.documentId })}
                                                 previewingId={previewingId} onAudition={previewTrack} />
@@ -2400,7 +2400,7 @@ export default function VideoStudioPage() {
                                                 {!selectedSoundPatch.url && (
                                                     <>
                                                         <label className="form-label small mb-1">Track</label>
-                                                        <TrackBrowser tracks={tracks} busy={busy} maxHeight={150}
+                                                        <TrackBrowser tracks={tracks} busy={busy} maxHeight={200} pageSize={5}
                                                             pickedId={selectedSoundPatch.trackId}
                                                             onPick={(t) => upsertPatch({ id: selectedSoundPatch.id, trackId: t.documentId, name: t.name || "Sound" })}
                                                             previewingId={previewingId} onAudition={previewTrack} />

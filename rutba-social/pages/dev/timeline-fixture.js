@@ -16,7 +16,7 @@
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import VideoTimeline from "../../components/VideoTimeline";
-import { TimingRows, LookRows } from "../../components/InspectorRows";
+import { TimingRows, LookRows, TrackBrowser } from "../../components/InspectorRows";
 import { buildPlan, paintFrame, layerBounds, layerHandles, scaleFromDrag, resizePatch } from "../../lib/video-maker";
 
 function makePhoto(seed, w, h) {
@@ -60,6 +60,17 @@ const BASE_PATCHES = [
     { id: "caption-again-1", type: "caption", text: "A second typewriter block.", timing: { start: 6, end: 10 } },
     { id: "sound-1", type: "sound", url: "about:none", name: "Voice-over", timing: { start: 2, end: 8 }, enter: { kind: "fade", seconds: 0.5 }, exit: { kind: "fade", seconds: 0.5 } },
 ];
+
+// A library shaped like the real one: a hundred-odd tracks that all share one
+// broad tag and each carry their own filename as a second. That shape is what
+// made the picker unusable — every unique tag became a chip.
+const FIXTURE_TRACKS = Array.from({ length: 114 }, (_, i) => ({
+    documentId: `trk-${i}`,
+    name: `${String(i + 1).padStart(3, "0")} - Track ${i + 1}`,
+    credit: i % 7 === 0 ? "Studio session" : "",
+    tags: ["quran", `${String(i + 1).padStart(3, "0")} - Track ${i + 1}.mp3`, ...(i % 5 === 0 ? ["short"] : [])],
+    audio_file: { id: i },
+}));
 
 // The studio's music bed: a lane the timeline SHOWS but the plan never holds,
 // because the bed lives in the render options. The probe below is what keeps
@@ -448,6 +459,38 @@ export default function TimelineFixturePage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [plan]);
 
+    // ── the track picker at library scale ───────────────────
+    // 114 tracks, one shared tag, 114 one-off filename tags. The picker must
+    // stay a small control: a page of rows, and only the tags worth offering.
+    useEffect(() => {
+        if (!plan || window.__PICKER) return;
+        const results = [];
+        const push = (label, ok) => results.push({ label, ok });
+        const root = document.querySelector('[data-rows-probe="tracks"]');
+        const rows = () => (root ? [...root.querySelectorAll(".list-group-item")] : []);
+        const chips = () => (root ? [...root.querySelectorAll("button")].filter((b) => /^\w[\w\s-]*\s\d+$/.test(b.textContent.trim())) : []);
+        const names = () => rows().map((r) => r.textContent.trim());
+
+        push("the picker mounted", !!root && rows().length > 0);
+        push("one page of rows, not the whole library", rows().length === 5);
+        push("the one-off filename tags are not chips", chips().length <= 8);
+        push("the shared tag is offered", chips().some((b) => b.textContent.includes("quran")));
+        push("the count says how much is hidden", /114/.test(root?.textContent || ""));
+
+        const first = names()[0];
+        const next = [...(root?.querySelectorAll("button") || [])]
+            .find((b) => b.querySelector(".fa-chevron-right"));
+        push("there is a next page", !!next);
+        next?.click();
+        window.__PICKER_STEP = { first, after: null };
+        setTimeout(() => {
+            const after = names()[0];
+            push("next shows different tracks", !!after && after !== first);
+            window.__PICKER = { done: true, pass: results.every((r) => r.ok), results };
+        }, 60);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [plan]);
+
     return (
         <div className="container-fluid py-3" style={{ maxWidth: 1100 }}>
             <h5>Timeline fixture <small className="text-muted">— dev only, no auth, no network</small></h5>
@@ -487,6 +530,10 @@ export default function TimelineFixturePage() {
                     <div className="col-6" data-rows-probe="look">
                         <LookRows layer={plan.layers.find((l) => l.id === "sticker-1") || plan.layers[0]}
                             busy={false} onPatch={(p) => upsertPatch({ id: "sticker-1", ...p })} />
+                    </div>
+                    <div className="col-6" data-rows-probe="tracks">
+                        <TrackBrowser tracks={FIXTURE_TRACKS} busy={false} pageSize={5}
+                            onPick={() => {}} onAdd={() => {}} onAudition={() => {}} />
                     </div>
                 </div>
             )}

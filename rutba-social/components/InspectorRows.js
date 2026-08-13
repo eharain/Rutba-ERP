@@ -30,15 +30,37 @@ export function RangeRow({ label, value, min, max, step, suffix, disabled, onCha
  * buttons. Active chips AND together — "upbeat" + "retail" is tracks tagged
  * both.
  */
-export function TrackBrowser({ tracks, busy, pickedId, onPick, pickLabel = "Use", onAdd, previewingId, onAudition, maxHeight = 190 }) {
+export function TrackBrowser({
+    tracks, busy, pickedId, onPick, pickLabel = "Use", onAdd, previewingId, onAudition,
+    maxHeight = 190, pageSize = 8,
+}) {
     const [q, setQ] = useState("");
     const [tagsOn, setTagsOn] = useState([]);
+    const [showAllTags, setShowAllTags] = useState(false);
+    const [page, setPage] = useState(0);
     const norm = (s) => String(s || "").toLowerCase();
-    const allTags = useMemo(() => {
-        const s = new Set();
-        for (const t of tracks) for (const x of (Array.isArray(t.tags) ? t.tags : [])) s.add(String(x));
-        return [...s].sort((a, b) => a.localeCompare(b));
+
+    // Tags are ranked by how many tracks carry them, not alphabetically, and
+    // the one-offs are held back. A library imported from files tends to tag
+    // every track with its own filename, so "every unique tag" is a wall of
+    // chips that filter one row each — the useful ones are the shared ones.
+    const tagCounts = useMemo(() => {
+        const m = new Map();
+        for (const t of tracks) {
+            for (const x of (Array.isArray(t.tags) ? t.tags : [])) {
+                const k = String(x);
+                m.set(k, (m.get(k) || 0) + 1);
+            }
+        }
+        return [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
     }, [tracks]);
+    const sharedTags = useMemo(() => tagCounts.filter(([, n]) => n > 1), [tagCounts]);
+    const chipTags = showAllTags ? tagCounts : sharedTags.slice(0, 8);
+    const restTags = useMemo(
+        () => tagCounts.filter(([k]) => !chipTags.some(([c]) => c === k)),
+        [tagCounts, chipTags],
+    );
+
     const shown = useMemo(() => {
         const needle = norm(q).trim();
         return tracks.filter((t) => {
@@ -49,31 +71,55 @@ export function TrackBrowser({ tracks, busy, pickedId, onPick, pickLabel = "Use"
                 || tags.some((x) => x.includes(needle));
         });
     }, [tracks, q, tagsOn]);
-    const toggleTag = (x) => setTagsOn((on) => (on.includes(x) ? on.filter((y) => y !== x) : [...on, x]));
+
+    // Narrowing always lands you on the first page: staying on page 9 of a
+    // result set that now has two pages shows an empty list and reads as a bug.
+    const pageCount = Math.max(1, Math.ceil(shown.length / pageSize));
+    const current = Math.min(page, pageCount - 1);
+    const slice = shown.slice(current * pageSize, current * pageSize + pageSize);
+    const narrow = (fn) => { fn(); setPage(0); };
+    const toggleTag = (x) => narrow(() => setTagsOn((on) => (on.includes(x) ? on.filter((y) => y !== x) : [...on, x])));
+
     return (
         <>
-            {(tracks.length > 5 || allTags.length > 0) && (
-                <input className="form-control form-control-sm mb-1" placeholder="Search tracks…" value={q}
-                    onChange={(e) => setQ(e.target.value)} disabled={busy} />
-            )}
-            {allTags.length > 0 && (
-                <div className="d-flex flex-wrap gap-1 mb-1">
-                    {allTags.map((x) => (
-                        <button key={x} type="button" disabled={busy}
-                            className={`btn btn-sm py-0 px-2 ${tagsOn.includes(x) ? "btn-primary" : "btn-outline-secondary"}`}
-                            style={{ fontSize: 11 }} onClick={() => toggleTag(x)}>{x}</button>
-                    ))}
-                    {tagsOn.length > 0 && (
-                        <button type="button" className="btn btn-sm btn-link py-0 px-1" style={{ fontSize: 11 }}
-                            onClick={() => setTagsOn([])}>clear</button>
+            {(tracks.length > 5 || tagCounts.length > 0) && (
+                <div className="input-group input-group-sm mb-1">
+                    <input className="form-control" placeholder="Search tracks…" value={q}
+                        onChange={(e) => narrow(() => setQ(e.target.value))} disabled={busy} />
+                    {q && (
+                        <button className="btn btn-outline-secondary" type="button" disabled={busy}
+                            title="Clear the search" onClick={() => narrow(() => setQ(""))}>
+                            <i className="fas fa-xmark" />
+                        </button>
                     )}
                 </div>
             )}
-            <div className="list-group list-group-flush mb-2" style={{ maxHeight, overflowY: "auto" }}>
+            {chipTags.length > 0 && (
+                <div className="d-flex flex-wrap gap-1 mb-1 align-items-center">
+                    {chipTags.map(([x, n]) => (
+                        <button key={x} type="button" disabled={busy}
+                            className={`btn btn-sm py-0 px-2 ${tagsOn.includes(x) ? "btn-primary" : "btn-outline-secondary"}`}
+                            style={{ fontSize: 11 }} title={`${n} track${n === 1 ? "" : "s"}`}
+                            onClick={() => toggleTag(x)}>{x} <span className="text-muted">{n}</span></button>
+                    ))}
+                    {restTags.length > 0 && (
+                        <button type="button" className="btn btn-sm btn-link py-0 px-1" style={{ fontSize: 11 }}
+                            title={showAllTags ? "Only the tags more than one track shares" : "Every tag in the library, including the one-offs"}
+                            onClick={() => setShowAllTags((v) => !v)}>
+                            {showAllTags ? "fewer tags" : `+${restTags.length} more`}
+                        </button>
+                    )}
+                    {tagsOn.length > 0 && (
+                        <button type="button" className="btn btn-sm btn-link py-0 px-1" style={{ fontSize: 11 }}
+                            onClick={() => narrow(() => setTagsOn([]))}>clear</button>
+                    )}
+                </div>
+            )}
+            <div className="list-group list-group-flush" style={{ maxHeight, overflowY: "auto" }}>
                 {shown.length === 0 && (
                     <div className="text-muted small py-2 px-2">No track matches — clear the search or the tags.</div>
                 )}
-                {shown.map((t) => {
+                {slice.map((t) => {
                     const chosen = pickedId != null && String(pickedId) === String(t.documentId);
                     return (
                         <div key={t.documentId} className={`list-group-item d-flex align-items-center gap-2 py-1 px-2 ${chosen ? "list-group-item-primary" : ""}`}>
@@ -85,9 +131,14 @@ export function TrackBrowser({ tracks, busy, pickedId, onPick, pickLabel = "Use"
                             <span className="flex-grow-1 text-truncate small" title={t.credit || t.name}>
                                 {t.name}
                                 {!t.audio_file?.id && <i className="fas fa-link ms-1 text-muted" title="foreign URL" style={{ fontSize: 10 }} />}
-                                {(Array.isArray(t.tags) ? t.tags : []).slice(0, 3).map((x) => (
-                                    <span key={x} className="badge bg-light text-dark border ms-1" style={{ fontSize: 9 }}>{x}</span>
-                                ))}
+                                {/* Only tags that MEAN something across the library — a row
+                                    wearing its own filename as a badge is just noise. */}
+                                {(Array.isArray(t.tags) ? t.tags : [])
+                                    .filter((x) => sharedTags.some(([k]) => k === String(x)))
+                                    .slice(0, 2)
+                                    .map((x) => (
+                                        <span key={x} className="badge bg-light text-dark border ms-1" style={{ fontSize: 9 }}>{x}</span>
+                                    ))}
                             </span>
                             {onPick && (
                                 <button className={`btn btn-sm ${chosen ? "btn-primary" : "btn-outline-secondary"}`} disabled={busy}
@@ -105,6 +156,31 @@ export function TrackBrowser({ tracks, busy, pickedId, onPick, pickLabel = "Use"
                     );
                 })}
             </div>
+            {/* The count is always shown once a library outgrows one page: with
+                a filter on, "8 of 114" is the only thing that says whether the
+                track you want is behind a Next or behind a better search. */}
+            {shown.length > 0 && (shown.length > pageSize || shown.length !== tracks.length) && (
+                <div className="d-flex align-items-center gap-1 mt-1 mb-2">
+                    <small className="text-muted flex-grow-1">
+                        {shown.length === tracks.length
+                            ? `${shown.length} tracks`
+                            : `${shown.length} of ${tracks.length}`}
+                        {pageCount > 1 ? ` · page ${current + 1}/${pageCount}` : ""}
+                    </small>
+                    {pageCount > 1 && (
+                        <div className="btn-group btn-group-sm">
+                            <button type="button" className="btn btn-outline-secondary py-0 px-2"
+                                disabled={busy || current === 0} onClick={() => setPage(current - 1)}>
+                                <i className="fas fa-chevron-left" style={{ fontSize: 10 }} />
+                            </button>
+                            <button type="button" className="btn btn-outline-secondary py-0 px-2"
+                                disabled={busy || current >= pageCount - 1} onClick={() => setPage(current + 1)}>
+                                <i className="fas fa-chevron-right" style={{ fontSize: 10 }} />
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
         </>
     );
 }
