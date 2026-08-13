@@ -31,6 +31,7 @@ import RecorderDialog from "@rutba/pos-shared/components/RecorderDialog";
 import { RangeRow, TrackBrowser, TimingRows, LookRows, FrameRows } from "../../components/InspectorRows";
 import { onsetTimes, snapEdges, edgesFromLengths, lengthsFromEdges } from "../../lib/beats";
 import { draftStoryboard, withoutDraft } from "../../lib/storyboard";
+import { checkAspects, summarise } from "../../lib/aspects";
 import VideoTimeline from "../../components/VideoTimeline";
 import VideoComposer from "../../components/VideoComposer";
 import { resolveStorefrontBaseUrl, productShortUrl } from "../../lib/storefront-url";
@@ -1586,7 +1587,7 @@ export default function VideoStudioPage() {
     };
 
     // ── render ──────────────────────────────────────────────
-    const doRender = async (thePlan) => {
+    const doRender = async (thePlan, audioOverride) => {
         stopPreview();
         // Auditioning a track leaves it playing straight into the speakers; it is
         // not part of the recorded stream, but it is distracting and the user
@@ -1597,7 +1598,11 @@ export default function VideoStudioPage() {
         setProgress(0);
         abortRef.current = new AbortController();
         try {
-            const audio = await audioForRender();
+            // A caller may hand the bed in already resolved — rendering the
+            // same recipe at three aspects must not draw three DIFFERENT
+            // random tracks, which is what calling audioForRender per render
+            // would do.
+            const audio = audioOverride !== undefined ? audioOverride : await audioForRender();
             // The music bed plus any appended sound layers, as one clip list.
             // With no sound layers the bed goes through in its legacy form.
             const soundClips = await clipsFromSoundLayers(thePlan);
@@ -1645,6 +1650,82 @@ export default function VideoStudioPage() {
     };
 
     const cancelRender = () => { abortRef.current?.abort(); };
+
+    // ── the same recipe at every shape ──────────────────────
+    // Fractional geometry means the recipe already compiles at any aspect;
+    // what it cannot promise is that the LAYOUT still reads, because the frame
+    // changes shape around fixed fractions and each platform covers a
+    // different part of it. So the check comes first and is worth having on
+    // its own — a warning before three renders is cheaper than three renders.
+    //
+    // Deliberately stops at FILES. Attaching still means one video on the
+    // post, because where extra renders live, and how a platform picks one,
+    // is an open question and inventing an answer here would be the wrong
+    // place to answer it.
+    const [aspectReports, setAspectReports] = useState(null);
+    const [aspectFiles, setAspectFiles] = useState([]);
+    const aspectUrls = useRef([]);
+    const buildArgsNow = () => ({
+        images: arranged.images,
+        title: selected?.title,
+        body: captionText,
+        logo,
+        options: effectiveOptions,
+        layerPatches,
+        context: productContext || {},
+        videos: videoLib,
+        assets: imageAssets,
+    });
+    const checkEveryAspect = () => {
+        if (!plan || !canvasRef.current) return null;
+        // A scratch canvas: buildPlan RESIZES what it is given, and resizing
+        // the preview canvas mid-check would blank the frame on screen.
+        const scratch = document.createElement("canvas");
+        const reports = checkAspects(buildArgsNow(), scratch);
+        setAspectReports(reports);
+        return reports;
+    };
+    const renderEveryAspect = async () => {
+        if (!plan || busy) return;
+        const reports = checkEveryAspect();
+        const trouble = (reports || []).filter((r) => r.issues.length);
+        if (trouble.length) toast(`Rendering anyway — ${summarise(reports)}.`, "warning");
+        aspectUrls.current.forEach((u) => URL.revokeObjectURL(u));
+        aspectUrls.current = [];
+        setAspectFiles([]);
+        try {
+            // One bed for all three: the same recipe must not come out with
+            // three different random tracks.
+            const bed = await audioForRender();
+            const done = [];
+            for (const key of Object.keys(ASPECTS)) {
+                const p = buildPlan({ ...buildArgsNow(), canvas: canvasRef.current, options: { ...effectiveOptions, aspect: key } });
+                // eslint-disable-next-line no-await-in-loop
+                const out = await doRender(p, bed);
+                aspectUrls.current.push(out.url);
+                done.push({ key, label: ASPECTS[key].label, out, url: out.url, size: out.blob.size });
+                setAspectFiles([...done]);
+            }
+            toast(`Three files ready — ${done.map((d) => d.label).join(", ")}. Download what you need; attach still puts one video on the post.`, "success");
+        } catch (err) {
+            if (err?.name === "AbortError") { toast("Multi-aspect render cancelled.", "warning"); return; }
+            console.error("Multi-aspect render failed", err);
+            toast(err?.message || "Multi-aspect render failed.", "danger");
+        } finally {
+            // The preview canvas was resized by the last render — put it back
+            // to the aspect the studio is actually showing.
+            if (canvasRef.current) {
+                const back = buildPlan({ ...buildArgsNow(), canvas: canvasRef.current });
+                setPlan(back);
+                paintFrame(canvasRef.current.getContext("2d"), back, Math.min(previewTime, back.duration));
+            }
+        }
+    };
+    // Held in a REF, not keyed off the state array: the array grows once per
+    // aspect, and an effect cleaning up on every change would revoke the first
+    // file's url the moment the second one landed — the download would break
+    // while the button that made it still looked fine.
+    useEffect(() => () => aspectUrls.current.forEach((u) => URL.revokeObjectURL(u)), []);
 
     // ── save the recipe without rendering ───────────────────
     // Everything the editor does lives in React state until something writes
@@ -3020,6 +3101,55 @@ export default function VideoStudioPage() {
                                                 <div className="form-text">Theme background + logo + this line, appended to the end of the video.</div>
                                             </>
                                         )}
+                                    </div>
+                                </div>
+
+                                {/* ── every aspect from this one recipe ── */}
+                                <div className="card mb-3">
+                                    <div className="card-header py-2"><i className="fas fa-crop me-2" />Every aspect</div>
+                                    <div className="card-body py-2">
+                                        <div className="d-flex gap-2">
+                                            <button className="btn btn-sm btn-outline-secondary flex-grow-1" disabled={busy || !plan}
+                                                title="Compile this recipe at 9:16, 1:1 and 16:9 and report anything that lands under platform UI or outside title-safe"
+                                                onClick={() => {
+                                                    const r = checkEveryAspect();
+                                                    if (r) toast(summarise(r), r.some((x) => x.issues.length) ? "warning" : "success");
+                                                }}>
+                                                <i className="fas fa-ruler-combined me-1" />Check the layout
+                                            </button>
+                                            <button className="btn btn-sm btn-outline-primary flex-grow-1" disabled={busy || !plan}
+                                                title="Render the same recipe three times, once per shape. Attach still puts ONE video on the post — these are files to download."
+                                                onClick={renderEveryAspect}>
+                                                <i className="fas fa-layer-group me-1" />Render all three
+                                            </button>
+                                        </div>
+                                        {aspectReports && (
+                                            <ul className="list-unstyled small mb-0 mt-2">
+                                                {aspectReports.map((r) => (
+                                                    <li key={r.aspect} className={r.issues.length ? "text-warning" : "text-muted"}>
+                                                        <i className={`fas ${r.issues.length ? "fa-triangle-exclamation" : "fa-check"} me-1`} />
+                                                        {r.label}: {r.issues.length
+                                                            ? [...new Set(r.issues.map((i) => `${i.name} ${i.what}`))].join("; ")
+                                                            : "clear"}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
+                                        {aspectFiles.length > 0 && (
+                                            <div className="d-flex flex-wrap gap-2 mt-2">
+                                                {aspectFiles.map((f) => (
+                                                    <a key={f.key} className="btn btn-sm btn-success" href={f.url}
+                                                        download={videoFileName(selected, f.out.extension).replace(/(\.\w+)$/, `-${f.key}$1`)}>
+                                                        <i className="fas fa-download me-1" />{f.label} · {fmtBytes(f.size)}
+                                                    </a>
+                                                ))}
+                                            </div>
+                                        )}
+                                        <p className="text-muted mb-0 mt-2" style={{ fontSize: 11 }}>
+                                            The recipe is stored in fractions, so it compiles at any shape — what changes
+                                            is whether the LAYOUT still reads, which is what the check is for. Attaching
+                                            still puts one video on the post.
+                                        </p>
                                     </div>
                                 </div>
 

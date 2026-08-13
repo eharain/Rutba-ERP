@@ -19,6 +19,7 @@ import VideoTimeline from "../../components/VideoTimeline";
 import { TimingRows, LookRows, TrackBrowser } from "../../components/InspectorRows";
 import { onsetTimes, snapEdges, edgesFromLengths, lengthsFromEdges } from "../../lib/beats";
 import { draftStoryboard, withoutDraft, SAFE, SB_PREFIX } from "../../lib/storyboard";
+import { checkAspects, UI_BANDS } from "../../lib/aspects";
 import { buildPlan, paintFrame, layerBounds, layerHandles, scaleFromDrag, resizePatch } from "../../lib/video-maker";
 
 function makePhoto(seed, w, h) {
@@ -622,6 +623,45 @@ export default function TimelineFixturePage() {
         push("drafting twice replaces rather than stacks", ids(once) === ids(twice));
 
         window.__STORY = { done: true, pass: results.every((r) => r.ok), results };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [plan]);
+
+    // ── every aspect (D4) ───────────────────────────────────
+    // The recipe compiles at any shape; the question is whether the LAYOUT
+    // survives. The checker has to find a layer parked under the platform's
+    // bottom bar, and has to leave a well-placed one alone — a checker that
+    // flags everything is the same as no checker.
+    useEffect(() => {
+        if (!plan || window.__ASPECT) return;
+        const results = [];
+        const push = (label, ok) => results.push({ label, ok });
+        const scratch = document.createElement("canvas");
+        const args = (patches) => ({ ...buildArgs(patches), canvas: undefined });
+
+        const safePatches = BASE_PATCHES.map((p) => (p.id === "sticker-1" ? { ...p, fx: 0.5, fy: 0.12 } : p));
+        const clear = checkAspects(args(safePatches), scratch);
+        push("it reports on every aspect", clear.length === 3);
+        push("a well-placed sticker is not flagged",
+            clear.every((r) => !r.issues.some((i) => i.id === "sticker-1")));
+
+        // Parked in the bottom band, where the platform's own controls sit.
+        const bad = checkAspects(args(BASE_PATCHES.map((p) => (p.id === "sticker-1"
+            ? { ...p, fx: 0.5, fy: 1 - UI_BANDS.bottom / 2 } : p))), scratch);
+        push("a sticker under the bottom bar is flagged everywhere",
+            bad.every((r) => r.issues.some((i) => i.id === "sticker-1" && /bottom bar/.test(i.what))));
+
+        // And in the right rail, which only covers the upper part of it.
+        const right = checkAspects(args(BASE_PATCHES.map((p) => (p.id === "sticker-1"
+            ? { ...p, fx: 0.97, fy: 0.4 } : p))), scratch);
+        push("a sticker in the right rail is flagged",
+            right.every((r) => r.issues.some((i) => i.id === "sticker-1")));
+
+        // The photos themselves fill the frame by design — flagging those
+        // would bury every real finding.
+        push("full-bleed photos are never flagged",
+            clear.every((r) => !r.issues.some((i) => /^photo/.test(i.id))));
+
+        window.__ASPECT = { done: true, pass: results.every((r) => r.ok), results };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [plan]);
 
