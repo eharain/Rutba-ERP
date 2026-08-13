@@ -47,7 +47,7 @@ export default function AccountDialog({ account, onSaved, onClose }) {
     const [prefilledFrom, setPrefilledFrom] = useState(null);
 
     // Company domains resolve their IMAP/SMTP settings from the mail-server
-    // registry (User Management → Email Servers) — typed hosts are never
+    // registry (Rutba Admin → Email Servers) — typed hosts are never
     // overwritten, and unknown domains just stay manual BYO.
     const prefillFromRegistry = async () => {
         const domain = String(draft.email || "").split("@")[1]?.trim().toLowerCase();

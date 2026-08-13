@@ -95,9 +95,9 @@ export default function SettingsPage() {
                 <div className="d-flex justify-content-between align-items-center mb-3">
                     <h2 className="mb-0">Mail Accounts</h2>
                     <div>
-                        <a className="btn btn-link me-2" href={`${APP_URLS.users}/mailboxes`} target="_blank" rel="noreferrer"
-                            title="Owners, shared access, servers and per-user assignment are managed centrally in User Management">
-                            <i className="fas fa-users-gear me-1"></i>Manage in User Management
+                        <a className="btn btn-link me-2" href={`${APP_URLS.admin}/mailboxes`} target="_blank" rel="noreferrer"
+                            title="Owners, shared access, servers and per-user assignment are managed centrally in Rutba Admin">
+                            <i className="fas fa-users-gear me-1"></i>Manage in Rutba Admin
                         </a>
                         <button className="btn btn-outline-primary me-2" onClick={() => setShowProvision((v) => !v)}>
                             <i className="fas fa-server me-1"></i>Provision mailbox
@@ -393,7 +393,7 @@ function SnippetsPanel() {
 
 /**
  * Create a mailbox on a registered mail server and connect it in one step
- * (mail_admin only). Servers and their domains come from the User Management
+ * (mail_admin only). Servers and their domains come from the Rutba Admin
  * registry (Email Servers); "auto" picks the server hosting the chosen domain,
  * and the MAILCOW_* env server remains the last fallback. The generated
  * password is stored encrypted; nobody ever sees it.
@@ -446,7 +446,7 @@ function ProvisionForm({ onDone, onClose }) {
                 {!servers.length && (
                     <p className="text-muted small">
                         No mail servers registered — add one in{" "}
-                        <a href={`${APP_URLS.users}/email-servers`} target="_blank" rel="noreferrer">User Management → Email Servers</a>,
+                        <a href={`${APP_URLS.admin}/email-servers`} target="_blank" rel="noreferrer">Rutba Admin → Email Servers</a>,
                         or set the MAILCOW_* env fallback.
                     </p>
                 )}
