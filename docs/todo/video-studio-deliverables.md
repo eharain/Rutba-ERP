@@ -93,7 +93,25 @@ fixture can drive them against a click track.
 Gated by A/B 60/60 plus a 12-check t2 polish probe. Per-photo filters — the
 other half of M3 — had already landed as the Look card.
 
-## D4 · One recipe, every aspect
+## D4 · One recipe, every aspect — **PARKED, needs a decision first**
+
+Not blocked on engineering: fractional geometry already makes three aspects
+nearly free, and the poster's batch path is a contained change. It is blocked
+on what a post with three videos MEANS, and nothing downstream currently has
+an answer:
+
+- `social-post.video_settings` holds ONE recipe and the post holds ONE
+  rendered video. Three renders need somewhere to live — three files on one
+  post, or three posts, or a video per platform target.
+- The poster attaches a video to a post and then posts it per platform. If a
+  post carries three, the attach step needs to know which one each platform
+  gets, which is a per-platform mapping that does not exist yet.
+- Safe zones differ per aspect (D3's guides show the 9:16 case), so "the same
+  recipe at three aspects" can put type under platform UI in one of them
+  unless the layout is checked per aspect.
+
+**What would unblock it:** a decision on where the extra renders live and how
+a platform picks one. Once that is settled the build is small.
 
 Per-platform multi-aspect render on attach: 9:16 + 1:1 + 16:9 from a single
 recipe. Fractional geometry already makes this nearly free — the work is in
