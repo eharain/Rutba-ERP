@@ -1,7 +1,7 @@
 # Phase 3 — `rutba-core`: server skeleton, data shim, api-pro port
 
 A new package `packages/rutba-core` (its own workspace; runnable standalone). It serves
-the identical descriptor API from the identical Postgres schema, so it can take over
+the identical descriptor API from the identical MySQL 8 schema, so it can take over
 routes one module at a time.
 
 ## 3.1 Stack decisions (recommended)
@@ -13,7 +13,11 @@ routes one module at a time.
   workload.
 - **DB: Knex.** It is what Strapi 5 uses underneath, the team already debugs it, and
   reusing it minimizes semantic drift in the shim (identical parameter binding, pooling,
-  transaction model). Migrations via knex-migrate-style plain SQL/JS files.
+  transaction model). Migrations via knex-migrate-style plain SQL/JS files, written
+  against MySQL semantics — notably that MySQL implicitly commits on every DDL
+  statement, so a migration cannot wrap schema changes in a rollback-able transaction
+  (see `rutba-core/migrations/README.md`). rutba-core carries both the `mysql2` and `pg`
+  drivers, but MySQL 8 is the deployed engine; `pg` is optionality, not current state.
 - **Config**: same env conventions as today (root env loader), pino logging, one
   error-handler middleware producing byte-compatible Strapi error bodies.
 

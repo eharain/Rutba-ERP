@@ -66,7 +66,7 @@ Backend code that exists but is not live. Cheap to clear, easy to forget.
 
 - **Contact-entity unification** — Phase 1A + 1C.5 + 3.3 landed; **1B, 1C.1–1C.4, 1C.6, Phase 2, Phase 3 outstanding** (`docs/todo/contact-entity-unification.md`)
 - **Accounting** — engine + completion-spec §1.2 gaps built except **3 frontend pages**
-- **Helpdesk** — backend built, migrations applied, smokes green; **frontend (:4019) not started**
+- **Helpdesk** — backend built, migrations applied, smokes green; **frontend (:4023) not started**
 - **Video studio** — v2 plan in `docs/todo`, **M0 schema flagged urgent**
 - **Documentation review** — a session ended mid-task with "write up findings review" still open (2026-08-11)
 - **Payroll** — remaining items were listed as "what's next" and never closed out (2026-07-29)

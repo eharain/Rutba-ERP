@@ -35,7 +35,7 @@ API" — it must never assume Strapi.
 
 Key leverage: the public contract consumed by all 18 frontends is the descriptor API
 (api-provider generated clients), **not** Strapi's native REST. Downstream apps also
-treat Postgres table names as a stable contract. Both servers can therefore share one
+treat MySQL table names as a stable contract. Both servers can therefore share one
 database and one wire contract during migration.
 
 ## Phases
@@ -62,7 +62,7 @@ what happens to api-provider (kept), strapi-api-pro (ported), strapi-content-syn
 1. **Contract over implementation.** No frontend, descriptor, or DB-table change is
    required by this program. If a migration step needs one, that step is wrong.
 2. **Same database, exclusive write paths.** During strangling, pos-strapi and
-   rutba-core run against the same Postgres DB, but any given module's routes are served
+   rutba-core run against the same MySQL 8 DB, but any given module's routes are served
    by exactly one of them (Caddy path routing). A module migrates atomically with its
    side-effect chokepoints.
 3. **Schema authority handover, never shared.** Until a module migrates, Strapi's

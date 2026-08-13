@@ -87,7 +87,7 @@ rutba.pk works single-tenant; selling to tenant #2 needs the platform layer. Thi
 
 | # | Item | Track | Why / gate | Depends on | Size |
 |---|------|-------|-----------|-----------|------|
-| 2.1 | **Multi-tenancy** — org/tenant model + data isolation in pos-strapi (decide row-scope vs schema/db-per-tenant early) | ④ | Cannot serve a 2nd customer without it; reuses api-pro claim/role machinery | pos-strapi, api-pro | XL |
+| 2.1 | **Multi-tenancy** — org/tenant model + data isolation in pos-strapi. **Decided: database-per-tenant, forever** (not row-scoping) — see [core-server-multitenancy-program](core-server-multitenancy-program/README.md) ground rule 4 | ④ | Cannot serve a 2nd customer without it; reuses api-pro claim/role machinery. Db-per-tenant is what isolation, per-customer backup/restore/offboarding and PK data-residency all depend on | pos-strapi, api-pro | XL |
 | 2.2 | **Self-serve onboarding** — signup → setup wizard (business type, branches, tax, import products/customers) → live in minutes | ④ | Time-to-value is where Rutba beats $40K-implementation incumbents | 2.1, bulk-import | M |
 | 2.3 | **Subscription billing + metering** — plans, seats/branches, usage limits, invoicing, dunning | ④ | No revenue mechanism today | 2.1, payments (0.2) | L |
 | 2.4 | **Tenant admin console** — org profile, users↔app entitlements, branches, tax/locale, branding | ④ | Tenants must self-administer | 2.1 | M |
