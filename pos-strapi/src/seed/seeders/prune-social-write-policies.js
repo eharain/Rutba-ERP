@@ -20,11 +20,19 @@
  * ~4800 rows and does not belong in the same commit as a UI move. So this
  * deletes exactly the rows this change orphaned, and nothing else.
  *
- * Scoped hard, and idempotent: it matches only the two interfaces, only the
- * write actions, and only role keys in the `social` domain. Reads (list,
- * providerStatus, providerMeta, validate, validateConnection) are deliberately
- * untouched — the social app still needs them, and posts/create would break
- * without `list`.
+ * Scoped hard, and idempotent: only these two interfaces, only role keys in
+ * the `social` domain, and only methods outside SOCIAL_READ_METHODS. The reads
+ * are deliberately untouched — the social app still needs them, and
+ * posts/create would break without `list`.
+ *
+ * ── Corrected once, and worth knowing why ─────────────────────────────────
+ * The first version listed the methods to DELETE and named one of them
+ * `delete`. Policy keys carry the descriptor's METHOD name, which is `del`, so
+ * six `…:del:social_*` rows survived and social_admin could still delete
+ * accounts and relay providers. The bug hid because the query used to verify
+ * the prune repeated the same wrong name, and so confirmed its own mistake.
+ * Verify a revocation by asking "what is LEFT for this role", never by
+ * re-asserting the list you just deleted.
  *
  * @param {import('knex').Knex} knex
  */
@@ -37,9 +45,27 @@ const INTERFACES = [
     'api--social-relay-provider-social-relay-provider',
 ];
 
-// The methods that moved. Deliberately NOT a "everything except reads" rule —
-// an explicit list means a method added later is not silently revoked.
-const WRITE_ACTIONS = ['create', 'update', 'delete', 'getConnectUrl', 'syncToken'];
+// The methods rutba-social KEEPS. Everything else on these two interfaces is
+// pruned for social_* roles.
+//
+// This started as the opposite — an allowlist of the write methods to delete —
+// and that was wrong twice over. It shipped naming `delete`, but the policy key
+// carries the descriptor's METHOD name, which is `del`; so six
+// `…:del:social_*` rows survived and social_admin could still delete accounts
+// and relay providers. The allowlist is also fail-OPEN by nature: a write
+// method added to either descriptor later would keep its social_* policy and
+// silently reopen the boundary.
+//
+// Inverted, the rule is fail-CLOSED and states the actual invariant — "social
+// may read these two entities and nothing more" — so a new method is pruned by
+// default and only an explicit addition here can widen social's access again.
+const SOCIAL_READ_METHODS = [
+    'list',
+    'providerStatus',      // social-accounts: which platforms have a server OAuth app
+    'validateConnection',  // social-accounts: probes a stored credential, mutates nothing
+    'providerMeta',        // social-relay-providers: the adapter catalogue
+    'validate',            // social-relay-providers: probes the stored key
+];
 
 async function pruneSocialWritePolicies(knex) {
     const out = { deleted: 0, keys: [], skipped: null };
@@ -49,22 +75,31 @@ async function pruneSocialWritePolicies(knex) {
         return out;
     }
 
-    // Policy keys are `<interface>:<action>:<roleKey>` — match on the exact
-    // triple rather than a LIKE over the whole key, so a role such as
-    // `social_media_admin` (different domain, same prefix) could never match.
-    const wanted = [];
-    for (const iface of INTERFACES) {
-        for (const action of WRITE_ACTIONS) {
-            wanted.push(`${iface}:${action}`);
-        }
-    }
+    // Policy keys are `<interface>:<methodName>:<roleKey>` — note METHOD name,
+    // not the HTTP action: `del` yields `…:del:…`, never `…:delete:…`. Parse
+    // the triple rather than pattern-matching the whole key, so a role such as
+    // `social_media_admin` (different domain, same prefix) can never match, and
+    // an interface whose name merely starts the same way cannot either.
+    const kept = new Set(SOCIAL_READ_METHODS);
+    const ifaces = new Set(INTERFACES);
 
     const rows = await knex(POLICIES).select('id', 'key', 'role_key');
     const doomed = rows.filter((r) => {
-        const key = String(r.key || '');
         const roleKey = String(r.role_key || '');
         if (!/^social_/.test(roleKey)) return false;
-        return wanted.some((prefix) => key === `${prefix}:${roleKey}`);
+
+        const key = String(r.key || '');
+        // Split from the right: the role key is the last segment, the method the
+        // one before it, and whatever precedes both is the interface.
+        if (!key.endsWith(`:${roleKey}`)) return false;
+        const head = key.slice(0, -(roleKey.length + 1));
+        const cut = head.lastIndexOf(':');
+        if (cut < 0) return false;
+        const iface = head.slice(0, cut);
+        const method = head.slice(cut + 1);
+
+        if (!ifaces.has(iface)) return false;
+        return !kept.has(method);
     });
 
     if (!doomed.length) return out;

@@ -6,7 +6,7 @@ import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { SocialAccountsEndpoints } from "@rutba/api-provider/endpoints";
 import { API_URL } from "@rutba/api-provider/lib/api";
 import { useToast } from "../components/Toast";
-import PLATFORMS, { PlatformBadge } from "../components/PlatformBadge";
+import { PlatformBadge } from "../components/PlatformBadge";
 import { APP_URLS } from "@rutba/pos-shared/lib/roles";
 
 
@@ -39,8 +39,6 @@ export default function AccountsPage() {
 
     const [accounts, setAccounts] = useState([]);
     const [loading, setLoading] = useState(false);
-    // Which platforms have a server-level OAuth app (→ hide key fields, one-click Connect).
-    const [providerStatus, setProviderStatus] = useState(null);
 
     const loadAccounts = useCallback(async () => {
         if (!jwt) return;
@@ -58,14 +56,10 @@ export default function AccountsPage() {
 
     useEffect(() => { loadAccounts(); }, [loadAccounts]);
 
-    // Learn which platforms are already configured on the server so the form can
-    // drop the key-entry fields and offer a plain "Save → Connect" instead.
-    useEffect(() => {
-        if (!jwt) return;
-        SocialAccountsEndpoints.providerStatus()
-            .then((res) => setProviderStatus(res?.data || res || null))
-            .catch(() => setProviderStatus(null));
-    }, [jwt]);
+    // providerStatus is deliberately NOT fetched here any more: it only ever fed
+    // the create/edit form's key-entry fields, and that form moved to the
+    // rutba-admin console. Keeping the call would be a request per page load
+    // whose result nothing renders.
 
 
 

@@ -6,6 +6,7 @@ import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { SocialRelayProvidersEndpoints } from "@rutba/api-provider/endpoints";
 import { useToast } from "../components/Toast";
 import PLATFORMS from "../components/PlatformBadge";
+import { APP_URLS } from "@rutba/pos-shared/lib/roles";
 
 // A relay provider is a third-party aggregator API (Ayrshare, Postiz, …) that
 // posts to several platforms through ONE key — the Meta/TikTok developer apps,
@@ -214,8 +215,10 @@ export default function RelaysPage() {
                 <p className="text-muted small">
                     A relay posts to several platforms through one aggregator API key — no Meta/TikTok
                     developer apps, app review, or token plumbing on our side. Connect your accounts on the
-                    provider&apos;s dashboard, paste its key here, pick the platforms it should cover, then use
-                    the <strong>Relay</strong> buttons on the Posts page to push through it.
+                    provider&apos;s dashboard, paste its key here, and pick the platforms it should cover.
+                    Posting through it then happens in{" "}
+                    <a href={`${APP_URLS.social}/posts`}>Social Media → Posts</a>, via the{" "}
+                    <strong>Relay</strong> buttons there.
                 </p>
 
                 {showForm && (
