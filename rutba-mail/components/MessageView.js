@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import {
     MailAccountsEndpoints,
     MailContactsEndpoints,
@@ -23,6 +24,9 @@ export default function MessageView({ account, folder, folders, message, tags = 
     const [linkedNote, setLinkedNote] = useState(null);
     const [msgTags, setMsgTags] = useState([]);
     const [savedSender, setSavedSender] = useState(false);
+    const [imported, setImported] = useState(null);
+
+    const shared = account?.kind === "shared";
 
     useEffect(() => {
         setShowRemote(false);
@@ -32,6 +36,25 @@ export default function MessageView({ account, folder, folders, message, tags = 
         setMsgTags(message?.tags || []);
         setSavedSender(false);
     }, [message?.uid]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // The imported copy of this live message, if one exists. Looked up ONCE
+    // here because both shared-inbox panels below hang off it and either can
+    // create it — two independent lookups would disagree after the first
+    // import. Scoped to the account: identity is (account, message_id).
+    useEffect(() => {
+        setImported(null);
+        if (!shared || !message?.messageId) return;
+        let alive = true;
+        MailMessagesEndpoints.list({
+            accountDocumentId: account.documentId,
+            filters: { message_id: { $eq: message.messageId } },
+            populate: { assigned_to: true },
+            pageSize: 1,
+        })
+            .then((res) => { if (alive) setImported(res?.data?.[0] || null); })
+            .catch(() => { /* triage panel just starts empty */ });
+        return () => { alive = false; };
+    }, [shared, account?.documentId, message?.uid, message?.messageId]);
 
     const srcDoc = useMemo(() => {
         if (!message) return "";
@@ -227,6 +250,11 @@ img{max-width:100%;height:auto;} pre{white-space:pre-wrap;}</style>
                 )}
             </div>
 
+            {shared && (
+                <TriageBar account={account} folder={folder} message={message}
+                    imported={imported} onImported={setImported} />
+            )}
+
             {linking && (
                 <div className="position-relative">
                     <LinkPicker
@@ -258,27 +286,142 @@ img{max-width:100%;height:auto;} pre{white-space:pre-wrap;}</style>
 
             <iframe className="mail-body-frame flex-grow-1" sandbox="" srcDoc={srcDoc} title="Message body" />
 
-            {account?.kind === "shared" && <NotesPanel account={account} folder={folder} message={message} />}
+            {shared && (
+                <NotesPanel account={account} folder={folder} message={message}
+                    imported={imported} onImported={setImported} />
+            )}
         </div>
     );
 }
 
 const MSG_UID = "api::mail-message.mail-message";
+const TRIAGE_STATUSES = ["open", "assigned", "awaiting", "closed", "spam"];
+const STATUS_BADGE = { open: "warning", assigned: "info", awaiting: "secondary", closed: "success", spam: "danger" };
+const UNASSIGN = "__unassign";
+
+/**
+ * Shared-inbox triage controls — THE way into the queue at
+ * /shared/[documentId]. A live message is materialized on first use: "Add to
+ * queue" and "Assign to…" import it AND apply the triage state in one call,
+ * which is the import-on-demand rule doing double duty
+ * (docs/todo/email-program/05-shared-inboxes.md).
+ *
+ * Import is idempotent per (account, message_id) — a message already imported
+ * for a link or an internal note is UPDATED in place, never duplicated — so
+ * once a row exists we take the cheaper direct triage routes instead of
+ * re-fetching the whole message over IMAP just to change a status.
+ */
+function TriageBar({ account, folder, message, imported, onImported }) {
+    const [assignees, setAssignees] = useState([]);
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+        MailAccountsEndpoints.listAssignees()
+            .then((res) => setAssignees(res?.data || []))
+            .catch(() => setAssignees([]));
+    }, []);
+
+    // A row can exist with triage_status 'none' (imported for a link or a
+    // note) — that is NOT a queue item, so it still needs "Add to queue".
+    const inQueue = Boolean(imported?.triage_status && imported.triage_status !== "none");
+
+    const apply = async ({ status, assignTo } = {}) => {
+        setBusy(true);
+        setError(null);
+        try {
+            let documentId = imported?.documentId || null;
+            if (documentId) {
+                if (status) await MailMessagesEndpoints.setTriageStatus(documentId, { status });
+                if (assignTo !== undefined) await MailMessagesEndpoints.assignMessage(documentId, { assignTo });
+            } else {
+                const res = await MailAccountsEndpoints.createImport(account.documentId, message.uid, {
+                    folder,
+                    triage: { ...(status ? { status } : {}), ...(assignTo ? { assignTo } : {}) },
+                });
+                documentId = res?.message?.documentId || null;
+            }
+            // Re-read rather than trusting either response: the import reply
+            // does not populate assigned_to, and assign() moves the status on
+            // its own. One shape, whichever branch got us here.
+            const fresh = documentId
+                ? await MailMessagesEndpoints.byId(documentId, { populate: { assigned_to: true } })
+                : null;
+            onImported(fresh?.data || null);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const onPickAssignee = (e) => {
+        const value = e.target.value;
+        e.target.value = "";
+        if (!value) return;
+        apply({ assignTo: value === UNASSIGN ? null : value });
+    };
+
+    return (
+        <div className="border-bottom bg-light px-2 py-1 d-flex align-items-center flex-wrap gap-2 small">
+            <span className="text-muted text-nowrap">
+                <i className="fa-solid fa-users me-1"></i>Shared inbox
+            </span>
+            {inQueue ? (
+                <>
+                    <select className={`form-select form-select-sm border-${STATUS_BADGE[imported.triage_status] || "secondary"}`}
+                        style={{ width: "8rem" }} value={imported.triage_status} disabled={busy}
+                        onChange={(e) => apply({ status: e.target.value })}>
+                        {["none", ...TRIAGE_STATUSES].map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                    <select className="form-select form-select-sm" style={{ width: "11rem" }} defaultValue="" disabled={busy}
+                        title="Assign this message" onChange={onPickAssignee}>
+                        <option value="">
+                            {imported.assigned_to?.username ? `Assigned: ${imported.assigned_to.username}` : "— assign —"}
+                        </option>
+                        {assignees.map((u) => <option key={u.id} value={u.id}>{u.username}</option>)}
+                        <option value={UNASSIGN}>Unassign</option>
+                    </select>
+                    <Link href={`/shared/${account.documentId}`} className="text-decoration-none">
+                        Open queue<i className="fa-solid fa-arrow-right ms-1"></i>
+                    </Link>
+                </>
+            ) : (
+                <>
+                    <button type="button" className="btn btn-sm btn-outline-primary" disabled={busy}
+                        title="Import this message into the shared triage queue"
+                        onClick={() => apply({ status: "open" })}>
+                        <i className="fa-solid fa-inbox me-1"></i>Add to queue
+                    </button>
+                    <select className="form-select form-select-sm" style={{ width: "11rem" }} defaultValue="" disabled={busy}
+                        title="Assign — imports the message and assigns it in one step" onChange={onPickAssignee}>
+                        <option value="">Assign to…</option>
+                        {assignees.map((u) => <option key={u.id} value={u.id}>{u.username}</option>)}
+                    </select>
+                </>
+            )}
+            {busy && <span className="text-muted">working…</span>}
+            {error && <span className="text-danger">{error}</span>}
+        </div>
+    );
+}
 
 /**
  * Internal notes on a shared-inbox message, inline in the reading pane (the
  * Front/Missive essential). Notes hang off the IMPORTED copy — the first
  * note on a live-only message quietly imports it (link-less), which is
  * exactly the import-on-demand rule: a message becomes a DB row when the
- * team starts working on it.
+ * team starts working on it. The row itself is looked up by the parent and
+ * shared with the triage bar, which can create it first.
  */
-function NotesPanel({ account, folder, message }) {
+function NotesPanel({ account, folder, message, imported, onImported }) {
     const [open, setOpen] = useState(false);
-    const [docId, setDocId] = useState(null);
     const [comments, setComments] = useState([]);
     const [draft, setDraft] = useState("");
     const [busy, setBusy] = useState(false);
     const [noteError, setNoteError] = useState(null);
+
+    const docId = imported?.documentId || null;
 
     const loadComments = useCallback((targetDocumentId) => {
         if (!targetDocumentId) { setComments([]); return; }
@@ -289,19 +432,11 @@ function NotesPanel({ account, folder, message }) {
 
     useEffect(() => {
         setOpen(false);
-        setDocId(null);
-        setComments([]);
         setDraft("");
         setNoteError(null);
-        if (!message?.messageId) return;
-        MailMessagesEndpoints.list({ filters: { message_id: { $eq: message.messageId } }, pageSize: 1 })
-            .then((res) => {
-                const row = res?.data?.[0] || null;
-                setDocId(row?.documentId || null);
-                if (row?.documentId) loadComments(row.documentId);
-            })
-            .catch(() => {});
-    }, [message?.uid, message?.messageId, loadComments]);
+    }, [message?.uid]);
+
+    useEffect(() => { loadComments(docId); }, [docId, loadComments]);
 
     const addNote = async (e) => {
         e.preventDefault();
@@ -313,7 +448,7 @@ function NotesPanel({ account, folder, message }) {
             if (!target) {
                 const res = await MailAccountsEndpoints.createImport(account.documentId, message.uid, { folder });
                 target = res?.message?.documentId;
-                setDocId(target || null);
+                onImported(res?.message || null);
             }
             if (!target) throw new Error("Could not attach the message.");
             await WorkItemCommentsEndpoints.create({

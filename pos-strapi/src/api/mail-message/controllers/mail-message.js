@@ -24,9 +24,11 @@ module.exports = createCoreController(UID, ({ strapi }) => {
 
   /** Load a message and authorize via its account. */
   async function ensureMessageAccess(ctx, user, documentId) {
+    // assigned_to is populated because assign() reads it for the audit trail's
+    // from-value — without it every reassignment logs as if from nobody.
     const message = await strapi.documents(UID).findOne({
       documentId,
-      populate: { account: true, links: true, attachments: true },
+      populate: { account: true, links: true, attachments: true, assigned_to: true },
     });
     if (!message) {
       ctx.send({ error: 'not_found', message: 'Mail message not found.' }, 404);

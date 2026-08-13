@@ -65,6 +65,7 @@ module.exports = createCoreService(MSG_UID, ({ strapi }) => ({
     const identity = messageId ? { message_id: messageId } : { dedupe_hash: dedupeHash };
     let message = await strapi.db.query(MSG_UID).findOne({
       where: { account: { documentId: account.documentId }, ...identity },
+      populate: { assigned_to: true }, // assign() logs the previous assignee
     });
     let created = false;
 

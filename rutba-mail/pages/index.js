@@ -90,6 +90,29 @@ export default function MailClientPage() {
     /* bulk actions from the list toolbar — one IMAP round-trip per action */
     const onBulk = async (action, { uids, targetFolder, add }) => {
         if (!account || !uids?.length) return;
+
+        // Triage is the exception: import has no bulk route (it is one IMAP
+        // fetch per message), and it changes ERP rows rather than the mailbox
+        // — so no listing refresh, and the reading pane stays open.
+        if (action === "queue") {
+            let done = 0;
+            let firstError = null;
+            for (const uid of uids) {
+                try {
+                    await MailAccountsEndpoints.createImport(account.documentId, uid, {
+                        folder, triage: { status: "open" },
+                    });
+                    done += 1;
+                } catch (err) {
+                    firstError = firstError || err.message;
+                }
+            }
+            setNotice(firstError
+                ? { type: "warning", text: `Added ${done} of ${uids.length} to the queue — ${firstError}` }
+                : { type: "success", text: `Added ${done} message${done === 1 ? "" : "s"} to the shared queue.` });
+            return;
+        }
+
         try {
             if (action === "read") await MailAccountsEndpoints.setBulkFlags(account.documentId, { folder, uids, add: ["seen"] });
             else if (action === "unread") await MailAccountsEndpoints.setBulkFlags(account.documentId, { folder, uids, remove: ["seen"] });
@@ -226,6 +249,7 @@ export default function MailClientPage() {
                                     page={page}
                                     tags={tags}
                                     folders={folders}
+                                    sharedInbox={account?.kind === "shared"}
                                     onOpen={openMessage}
                                     onPage={(p) => { setPage(p); setMessage(null); }}
                                     onRefresh={loadMessages}
