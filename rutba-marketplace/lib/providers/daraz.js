@@ -43,6 +43,35 @@ function authHost(account) {
   return REGION_AUTH_HOSTS[regionOf(account)] || REGION_AUTH_HOSTS.pk;
 }
 
+// REST paths served by the auth/token gateway rather than the business API.
+const TOKEN_API_PATH = /^\/auth\/token\//;
+
+/**
+ * Host for the token create/refresh calls.
+ *
+ * Daraz/Lazada document the auth gateway as a host of its OWN, separate from
+ * the regional business host — but the exact hostname is not guessed here, so
+ * the default stays the business host and today's behaviour is unchanged.
+ *
+ * If the token exchange 404s or comes back with a non-zero envelope `code`,
+ * that split is the likely cause (it reads like bad credentials, but isn't):
+ * set DARAZ_TOKEN_HOST to the host their docs give and nothing else moves.
+ * Distinct from `authUrl` (DARAZ_AUTH_URL), which is the browser-facing
+ * *authorize* page, and from `apiHost` (DARAZ_API_HOST), which overrides the
+ * business host — before this existed, DARAZ_API_HOST moved both at once, so
+ * the two could not be pointed at different hosts without a code change.
+ */
+function tokenHost(account) {
+  const cfg = base.getProviderConfig(PLATFORM);
+  if (cfg.tokenHost) return String(cfg.tokenHost).replace(/\/+$/, '');
+  return restHost(account);
+}
+
+/** Route each apiPath to its host — derived, so no caller can forget. */
+function hostFor(account, apiPath) {
+  return TOKEN_API_PATH.test(String(apiPath || '')) ? tokenHost(account) : restHost(account);
+}
+
 /** OAuth client credentials: account-level overrides win over app config. */
 function clientCreds(account) {
   const cfg = base.getProviderConfig(PLATFORM);
@@ -89,7 +118,7 @@ async function callApi({ account, apiPath, business = {}, method = 'GET', needsT
   const all = { ...sys, ...biz };
   all.sign = sign(apiPath, all, appSecret);
 
-  const url = `${restHost(account)}${apiPath}`;
+  const url = `${hostFor(account, apiPath)}${apiPath}`;
   const data = method === 'POST'
     ? await base.httpRequest(url, { method: 'POST', platform: PLATFORM, form: all })
     : await base.httpRequest(url, { method: 'GET', platform: PLATFORM, query: all });
@@ -162,12 +191,34 @@ function normalizeOrder(o) {
   };
 }
 
+/** Trimmed non-empty string, or null — a blank SKU must never become a match candidate. */
+function str(v) {
+  if (v === undefined || v === null) return null;
+  const s = String(v).trim();
+  return s || null;
+}
+
 function normalizeItem(it) {
   const qty = Number(it.quantity) || 1;
   const unitPrice = it.paid_price !== undefined ? Number(it.paid_price)
     : (it.item_price !== undefined ? Number(it.item_price) : undefined);
+
+  // SKU precedence: the SELLER's sku is the one that can match product.sku here
+  // — it is exactly what pushInventory sends back as <SellerSku>. Daraz's own
+  // `sku` is ITS internal identifier for the line, so preferring it (as this
+  // did) resolves to a value no product carries and every line item misses.
+  // It is still recorded as externalSku — useless for matching, but the id that
+  // support and any future listing work actually need — and stays last in the
+  // fallback chain rather than being dropped.
+  const sellerSku = str(it.seller_sku);
+  const shopSku = str(it.shop_sku);
+  const externalSku = str(it.sku) || str(it.sku_id);
+
   return {
-    sku: it.sku || it.shop_sku || it.seller_sku || null,
+    sku: sellerSku || shopSku || externalSku,
+    sellerSku,
+    shopSku,
+    externalSku,
     name: it.name || it.product_name || undefined,
     quantity: qty,
     unitPrice,
@@ -394,5 +445,5 @@ module.exports = {
   },
 
   // Internals exposed for unit tests only (not part of the adapter contract).
-  __test: { sign, xmlEscape, normalizeShipping, pickStatus, normalizeOrder, normalizeItem, flattenCategoryTree, buildPriceQuantityXml },
+  __test: { sign, xmlEscape, normalizeShipping, pickStatus, normalizeOrder, normalizeItem, flattenCategoryTree, buildPriceQuantityXml, restHost, tokenHost, hostFor },
 };

@@ -68,6 +68,11 @@
       "type": "integer",
       "default": 0
     },
+    "attention": {
+      "type": "integer",
+      "default": 0,
+      "description": "Rows that completed but need a human look — currently an order created with line items whose SKU matched no product. Deliberately NOT counted as failed: the order was created and is real, it just landed with dangling lines. A run with attention > 0 and no failures is 'partial', not 'success'."
+    },
     "error": {
       "type": "text"
     },

@@ -50,8 +50,19 @@ module.exports = {
       appKey: process.env.DARAZ_APP_KEY || '',
       appSecret: process.env.DARAZ_APP_SECRET || '',
       region: (process.env.DARAZ_REGION || 'pk').toLowerCase(),
+      // Three separate hosts, because Daraz uses three and they can move
+      // independently. Blank = the regional default for that role.
+      //   apiHost   — business REST host        (e.g. https://api.daraz.pk/rest)
+      //   authUrl   — browser OAuth authorize page
+      //   tokenHost — auth gateway the token create/refresh calls POST to.
+      //               Defaults to apiHost/region so behaviour is unchanged;
+      //               Daraz documents it as a host of its own, so a token
+      //               exchange that 404s (or returns a non-zero envelope code
+      //               that looks like bad credentials) is corrected here by
+      //               config alone. See lib/providers/daraz.js → tokenHost().
       apiHost: process.env.DARAZ_API_HOST || '',
       authUrl: process.env.DARAZ_AUTH_URL || '',
+      tokenHost: process.env.DARAZ_TOKEN_HOST || '',
     },
     // A second Rutba ERP instance treated as a marketplace. Unlike Daraz there is
     // no OAuth: the connection is a Strapi API token + the online instance's API

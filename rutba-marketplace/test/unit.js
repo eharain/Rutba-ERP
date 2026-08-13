@@ -115,6 +115,74 @@ async function test(name, fn) {
     assert.strictEqual(it.total, 200);
     assert.strictEqual(it.variant, 'Red');
   });
+  // Daraz's own `sku` is ITS identifier for the line; only seller_sku/shop_sku can
+  // match product.sku here. Preferring `sku` (the old order) missed every line.
+  await test('normalizeItem: seller_sku wins over shop_sku and Daraz\'s own sku', () => {
+    const it = T.normalizeItem({ sku: 'DARAZ-INTERNAL-9', shop_sku: 'SHOP-1', seller_sku: 'RUTBA-SKU-1', quantity: 1 });
+    assert.strictEqual(it.sku, 'RUTBA-SKU-1');
+    assert.strictEqual(it.sellerSku, 'RUTBA-SKU-1');
+    assert.strictEqual(it.shopSku, 'SHOP-1');
+    assert.strictEqual(it.externalSku, 'DARAZ-INTERNAL-9'); // recorded, not discarded
+  });
+  await test('normalizeItem: shop_sku beats Daraz\'s own sku; sku is the last resort', () => {
+    assert.strictEqual(T.normalizeItem({ sku: 'DZ-1', shop_sku: 'SHOP-1' }).sku, 'SHOP-1');
+    assert.strictEqual(T.normalizeItem({ sku: 'DZ-1' }).sku, 'DZ-1');
+    assert.strictEqual(T.normalizeItem({ sku_id: 'DZ-2' }).externalSku, 'DZ-2');
+  });
+  await test('normalizeItem: blank/whitespace SKUs never become candidates', () => {
+    const it = T.normalizeItem({ seller_sku: '   ', shop_sku: '', sku: ' DZ-3 ' });
+    assert.strictEqual(it.sellerSku, null);
+    assert.strictEqual(it.shopSku, null);
+    assert.strictEqual(it.sku, 'DZ-3');   // trimmed
+    assert.strictEqual(T.normalizeItem({ quantity: 1 }).sku, null);
+  });
+  console.log('— daraz: host resolution (business vs auth/token gateway) —');
+  // getProviderConfig returns the live config object, so patching it here is what
+  // an env var would do at boot. Restored after each case.
+  const darazCfg = require('../lib/config').providers.daraz;
+  function withDarazCfg(patch, fn) {
+    const saved = {};
+    for (const k of Object.keys(patch)) saved[k] = darazCfg[k];
+    Object.assign(darazCfg, patch);
+    try { return fn(); } finally { Object.assign(darazCfg, saved); }
+  }
+  await test('default: token calls go to the regional business host (behaviour unchanged)', () => {
+    withDarazCfg({ apiHost: '', tokenHost: '' }, () => {
+      assert.strictEqual(T.restHost({}), 'https://api.daraz.pk/rest');
+      assert.strictEqual(T.tokenHost({}), 'https://api.daraz.pk/rest');
+      assert.strictEqual(T.hostFor({}, '/auth/token/create'), 'https://api.daraz.pk/rest');
+      assert.strictEqual(T.tokenHost({ region: 'bd' }), 'https://api.daraz.com.bd/rest');
+    });
+  });
+  await test('DARAZ_TOKEN_HOST splits the auth gateway from the business host', () => {
+    withDarazCfg({ apiHost: '', tokenHost: 'https://auth.example.test/rest' }, () => {
+      assert.strictEqual(T.hostFor({}, '/auth/token/create'), 'https://auth.example.test/rest');
+      assert.strictEqual(T.hostFor({}, '/auth/token/refresh'), 'https://auth.example.test/rest');
+      // business calls stay on the regional host
+      assert.strictEqual(T.hostFor({}, '/orders/get'), 'https://api.daraz.pk/rest');
+    });
+  });
+  await test('token host: trailing slashes stripped; overrides the api-host default', () => {
+    withDarazCfg({ apiHost: 'https://api.example.test/rest/', tokenHost: 'https://auth.example.test/rest//' }, () => {
+      assert.strictEqual(T.restHost({}), 'https://api.example.test/rest');
+      assert.strictEqual(T.tokenHost({}), 'https://auth.example.test/rest');
+    });
+  });
+  await test('without a token host, DARAZ_API_HOST still moves BOTH (the documented default)', () => {
+    withDarazCfg({ apiHost: 'https://api.example.test/rest', tokenHost: '' }, () => {
+      assert.strictEqual(T.hostFor({}, '/orders/get'), 'https://api.example.test/rest');
+      assert.strictEqual(T.hostFor({}, '/auth/token/create'), 'https://api.example.test/rest');
+    });
+  });
+  await test('hostFor routes ONLY /auth/token/* to the gateway', () => {
+    withDarazCfg({ apiHost: '', tokenHost: 'https://auth.example.test/rest' }, () => {
+      for (const p of ['/orders/get', '/order/items/get', '/product/price_quantity/update', '/category/tree/get']) {
+        assert.strictEqual(T.hostFor({}, p), 'https://api.daraz.pk/rest', `business path ${p}`);
+      }
+      assert.strictEqual(T.hostFor({}, '/auth/token/create'), 'https://auth.example.test/rest');
+    });
+  });
+
   await test('flattenCategoryTree: parent links + leaf', () => {
     const flat = T.flattenCategoryTree([{ category_id: 1, name: 'A', children: [{ category_id: 2, name: 'B', leaf: true }] }]);
     assert.strictEqual(flat.length, 2);
@@ -174,12 +242,16 @@ async function test(name, fn) {
 
   console.log('— rutba adapter: registry + capabilities —');
   const rutba = providers.getAdapter('rutba');
-  await test('rutba registered, no-oauth, catalog+orders+inventory', () => {
+  await test('rutba registered, no-oauth, catalog+orders+inventory+fulfillment+messages', () => {
     assert.strictEqual(providers.hasAdapter('rutba'), true);
     assert.strictEqual(rutba.key, 'rutba');
-    assert.deepStrictEqual(rutba.capabilities, { oauth: false, orders: true, inventory: true, fulfillment: false, catalog: true });
+    assert.deepStrictEqual(rutba.capabilities, { oauth: false, orders: true, inventory: true, fulfillment: true, catalog: true, messages: true });
     assert.strictEqual(typeof rutba.pushCatalog, 'function');
     assert.strictEqual(typeof rutba.fetchOrders, 'function');
+    // A declared capability the engine gates on MUST have its method, or the job
+    // silently no-ops — this assertion is why the stale expectation mattered.
+    assert.strictEqual(typeof rutba.pushOrderStatus, 'function');
+    assert.strictEqual(typeof rutba.pushOrderMessages, 'function');
   });
 
   console.log('— catalog transforms —');

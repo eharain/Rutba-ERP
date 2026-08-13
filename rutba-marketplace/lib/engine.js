@@ -182,7 +182,10 @@ async function syncOrdersForAccount(accountDocumentId) {
     ? new Date(account.last_orders_synced_at).toISOString()
     : new Date(Date.now() - FIRST_RUN_LOOKBACK_MS).toISOString();
 
-  const counts = { fetched: 0, created: 0, updated: 0, skipped: 0, failed: 0 };
+  // `attention` is a real marketplace-sync-log column — Strapi silently drops
+  // unknown attributes, so a counter without one would vanish from the audit
+  // trail with no error (same trap the messages sync notes below).
+  const counts = { fetched: 0, created: 0, updated: 0, skipped: 0, failed: 0, attention: 0 };
   let detail = [];
   try {
     const orders = await adapter.fetchOrders({ account, since, limit: 100 });
@@ -207,12 +210,21 @@ async function syncOrdersForAccount(accountDocumentId) {
       for (const r of results) {
         const a = r.action || 'failed';
         counts[a] = (counts[a] || 0) + 1;
+        // Created, but with line items that matched no product. Counted apart
+        // from `failed` — the order is real and was written; it just needs
+        // someone to look. Overloading `failed` would make the operator hunt for
+        // an error that isn't there.
+        if (r.needs_attention) counts.attention += 1;
       }
       detail = results;
     }
 
     await strapi.updateAccount(account.documentId, { last_orders_synced_at: runStartedAt });
-    const status = counts.failed > 0 ? (counts.created + counts.updated > 0 ? 'partial' : 'error') : 'success';
+    // A run that created orders with unmatched SKUs is 'partial', not 'success' —
+    // otherwise an order where NOTHING matched reads as a clean run in the UI.
+    const status = counts.failed > 0
+      ? (counts.created + counts.updated > 0 ? 'partial' : 'error')
+      : (counts.attention > 0 ? 'partial' : 'success');
     await strapi.updateSyncLog(log.documentId, { status, ...counts, detail, finished_at: new Date().toISOString() });
     return { ...counts, status };
   } catch (e) {
