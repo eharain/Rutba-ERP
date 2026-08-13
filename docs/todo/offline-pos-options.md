@@ -61,7 +61,7 @@ as an open sync-policy question, not as a separate app.
 What this decision resolves from §7: the replay-granularity question (call-sequence
 replay in the service, per §2), the descriptor-policy question (yes — §3, hosted in
 the service), and the mirror-scope question (whatever the POS reads, per the passive
-replicator). What it leaves open is listed in [§10.4](#104-still-open).
+replicator). What it leaves open is listed in [§10.5](#105-still-open).
 
 Sections 1–8 are the working design for the service. §9 is retained for reference.
 [§10](#10-build-plan) is the build plan.
@@ -491,7 +491,7 @@ bridge are separate machines; step 1 (registration) survives regardless, because
   with it). A single till never opens a port to the shop network.
 - The bridge **never stores credentials** — it forwards the till's JWT and replays
   under the token captured with each queued write (§6). Replay after token expiry is
-  an open item under 10.4.
+  an open item under 10.5.
 - SQLite, one file per branch, in a directory the service owns. The outbox is
   append-only; nothing deletes a queued sale except a confirmed replay.
 
