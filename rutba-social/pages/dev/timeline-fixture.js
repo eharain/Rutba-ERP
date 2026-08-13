@@ -398,6 +398,26 @@ export default function TimelineFixturePage() {
         push("and ends where zoom 2 does",
             Math.abs(yellow(keyed, 2) - yellow(mkImg({ zoom: 2, panX: 0 }), 2)) <= 2);
 
+        // D2: the blurred backdrop is built from the picture, so it has to
+        // follow the crop too — otherwise a cropped photo floats on a blur of
+        // the part you cut away. The frame's extreme corner is backdrop only
+        // (the contained photo sits inside stageRect), so it isolates it.
+        const corner = (p, t) => {
+            paintFrame(x(), p, t);
+            return x().getImageData(0, 0, 48, 48).data;
+        };
+        const cornerDiff = (a, b) => {
+            let n = 0;
+            for (let i = 0; i < a.length; i += 4) if (a[i] !== b[i] || a[i + 1] !== b[i + 1]) n++;
+            return n;
+        };
+        const photoPlain = mk(BASE_PATCHES);
+        const photoCropped = mk([...BASE_PATCHES, { id: "photo-1", crop: { x: 0.55, y: 0.55, w: 0.45, h: 0.45 } }]);
+        push("cropping a photo changes its blurred backdrop",
+            cornerDiff(corner(photoPlain, 1), corner(photoCropped, 1)) > 200);
+        push("an uncropped photo's backdrop is untouched",
+            cornerDiff(corner(photoPlain, 1), corner(mk([...BASE_PATCHES, { id: "photo-1" }]), 1)) === 0);
+
         window.__CROP = { done: true, pass: results.every((r) => r.ok), results };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [plan]);
