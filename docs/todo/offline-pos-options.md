@@ -747,6 +747,125 @@ second and third app a rewrite.
 
 ---
 
+## 13. Amendment (2026-08-14) — sync execution model
+
+Phase 1 is built: [`packages/sync-core`](../../packages/sync-core/README.md), commit
+`c0d7608`. Everything below is about phases 2–3, prompted by a review of standard
+Electron offline-sync practice. Most of it confirms decisions already in this document;
+three things change, and two must **not** be adopted as usually stated.
+
+### 13.1 The engine runs in a UtilityProcess, not the main process
+
+§11 decided the Electron app hosts the bridge rather than a Windows service. That
+argument was about **installers and lifecycle** and it stands untouched: one artifact,
+one lifecycle, nothing to supervise. What it did not decide is *which process inside the
+app* runs the engine, and "the main process" is the wrong answer.
+
+The main process draws the window and services every IPC call. A replay drain, a delta
+pull, or a SQLite query on that event loop freezes the till's UI — and SQLite's
+best-known Node bindings are **synchronous by design**, so this is not a hypothetical
+slow path, it is the normal one. Electron's `UtilityProcess` is the right host:
+
+- a separate OS process, so its own event loop and its own crash domain — a wedged
+  replay does not take the window with it, and it can be restarted without a relaunch;
+- still a Node child of the app, so §11's "one installer, one lifecycle" is intact;
+- `worker_threads` is the weaker choice here: same process, so a native-module crash is
+  still fatal to the app. Keep threads for CPU-bound work *inside* the sync process
+  (a large delta merge), not as its host.
+
+**This costs nothing to adopt**, which was the point of phase 1's shape: `createBridge`
+never calls `process.exit`, installs a signal handler, or reads a config file, so moving
+its host from main to a UtilityProcess is a configuration change, not a port.
+
+### 13.2 The renderer reaches it over loopback HTTP, not Electron IPC
+
+This is the one place the standard Electron recipe should be **declined**. The usual
+advice — keep the database in the main process and expose a narrow IPC surface — is
+right about isolation and wrong about transport here, for two reasons:
+
+- §1: the monorepo's 548 consumer files all route through `authApi` in
+  `packages/api-provider/lib/api.js`, and `npm run validate:endpoint-usage` fails the
+  build when a new one doesn't. An IPC channel would be a *second* transport alongside
+  it, and the seam this whole design rests on is that there is only one.
+- §11.2: the LAN tier serves browser tills **on other machines**, which cannot use IPC
+  at all. One transport serves both hosts; IPC serves only one of them.
+
+Loopback HTTP already gives the isolation the advice is actually after — the renderer
+holds no database handle and no file descriptor, only a URL.
+
+### 13.3 Confirmed, not changed: the outbox is an append-only operation log
+
+"Record discrete operations, never blindly overwrite state" is already §2 and §10.3:
+the outbox is append-only and nothing deletes a queued sale except a confirmed replay.
+No change. It is worth restating only because it is the property that makes §5a's
+ordered idempotent replay possible at all.
+
+### 13.4 Rejected, with the reason written down: PowerSync, RxDB, PouchDB/CouchDB
+
+These will come up again, so this is why the answer is no.
+
+Every one of them brings its own data model and its own replication protocol. That is a
+**second implementation of the domain**, which is precisely what §6 and §10.1 exist to
+prevent — "local reads come from `rutba-core`, not from new code."
+
+The decisive objection is narrower than architecture, though. They replicate **rows**.
+Every read and write in this system is mediated by api-pro's claim resolution — app,
+role, ownership, situation — the same descriptors §3 reads. A generic table replicator
+bypasses that entirely: the till's replica would hold rows its operator is not permitted
+to see, and a replayed write would land without a policy check. That is a **security
+regression**, not a stylistic one, and no amount of configuration in those tools fixes
+it because none of them knows what a claim is.
+
+Custom outbox + rutba-core against local SQLite keeps one domain implementation and one
+authorization path. Cost accepted: we write the delta feed ourselves (§10.2 phase 2,
+and it is not recoverable from the reverted build — see *What this replaces*).
+
+### 13.5 NOT adopted: "the local database is the source of truth"
+
+The phrase is load-bearing and the answer is no. **A till is not the authority on
+stock; the server is.** §5's oversell policy — the sale posts, the already-sold unit is
+not consumed twice, the discrepancy is recorded for a human — and §4's "detecting the
+collision is the server's job" both depend on there being one arbiter. Local-authority
+means two tills can each believe they own the same unit with nothing to adjudicate,
+which is the exact collision §6 and §11.2 are built to prevent.
+
+What *is* adopted is local-first for **availability**: the till keeps trading through an
+outage and reconciles afterwards. Availability-first and authority-first are different
+claims and this document only ever made the first one.
+
+### 13.6 Open: local-first *reads* while the link is up
+
+The one genuinely undecided item. §10.1 and §4 chose **remote-first**: proxy when the
+upstream is reachable, replica only on failure. The recommendation is the opposite —
+always read locally, sync in the background — and it is a real trade, not a mistake:
+
+- **For it:** every read is instant, and the offline path is exercised constantly
+  instead of only during an outage, which is the single best defence against phase 2
+  shipping a replica nobody has proven.
+- **Against it:** it makes every read as stale as the last delta pull, including the one
+  collection that justified a mirror in the first place. §4 calls the mirror "a
+  photograph" and says its job is to keep the collision window small; remote-first keeps
+  that window at **zero** while the link is up.
+
+**Writes are not symmetric and should not move.** Writing locally first means every sale
+mints a provisional id and takes a replay path even on a perfect link — it promotes §2's
+machinery from an outage-only mechanism to an always-on one, and multiplies its blast
+radius accordingly.
+
+**Proposal, to decide with phase 2's numbers, not now:** keep remote-first for both, and
+revisit read-through-replica as a per-collection *latency* facet on the descriptor (§3),
+where stock search can opt in and settings need not. Measure first — if the proxy hop
+costs single-digit milliseconds on a healthy link, the trade is not worth the staleness.
+
+### 13.7 What this replaces
+
+| Where | What it says | What it says now |
+|---|---|---|
+| **§11**, opening | "The bridge runs **inside the Electron main process**." | Inside the Electron **app**, in a `UtilityProcess`. The installer/lifecycle argument is unchanged; only the host process within the app is narrowed (§13.1). |
+| **§10.2, phase 1** | Pass-through bridge + `/bridge/status`. | **BUILT** — `packages/sync-core`, `c0d7608`. §10.2a discovery skipped by §11.1's rule (same machine, nothing to discover). |
+
+---
+
 ## What this replaces
 
 An earlier build of 0.3 landed the server half — an atomic idempotent
