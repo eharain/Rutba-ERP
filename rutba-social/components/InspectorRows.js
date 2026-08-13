@@ -1,4 +1,6 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
+
+const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
 /**
  * The inspector rail's reusable rows. Presentational and prop-only: no
@@ -171,6 +173,162 @@ export function TimingRows({ layer, duration, busy, onPatch }) {
                 suffix="s" disabled={busy} onChange={(v) => ramp("exit", v)} />
             <p className="text-muted mb-0" style={{ fontSize: 11 }}>
                 The same window the lane shows — drag the bar to move it, its ends to trim.
+            </p>
+        </div>
+    );
+}
+
+/**
+ * Which part of a picture a layer uses, and how far into it we push.
+ *
+ * Two controls, because they answer different questions and the renderer
+ * keeps them apart for the same reason:
+ *
+ *   the CROP is a still decision — this layer is about that corner of the
+ *   photo — and is edited as four edge trims, which is how people describe
+ *   it ("take 10% off the left") and what a drag on the thumbnail writes;
+ *   ZOOM and PAN push in WITHIN that crop, and are keyable, so the same
+ *   pair of controls also authors a slow push across a window.
+ *
+ * The thumbnail draws the crop as a solid box and, when zoomed, the visible
+ * region as a dashed one inside it — the nesting is the whole model, so it
+ * is worth being able to see.
+ */
+export function FrameRows({ layer, busy, onPatch, thumb }) {
+    const boxRef = useRef(null);
+    const c = layer.crop || { x: 0, y: 0, w: 1, h: 1 };
+    const zoom = Number(layer.zoom) || 1;
+    const panX = layer.panX == null ? 0.5 : layer.panX;
+    const panY = layer.panY == null ? 0.5 : layer.panY;
+    const isDefault = !layer.crop && zoom === 1 && layer.panX == null && layer.panY == null;
+    const pct = (v) => Math.round(v * 100);
+
+    // Edge trims read and write the same rect the renderer stores; the
+    // opposite edge holds still, which is what "trim this side" means.
+    const setCrop = (next) => {
+        const x = clamp01(next.x);
+        const y = clamp01(next.y);
+        const w = Math.max(0.05, Math.min(next.w, 1 - x));
+        const h = Math.max(0.05, Math.min(next.h, 1 - y));
+        const whole = x === 0 && y === 0 && w === 1 && h === 1;
+        onPatch({ crop: whole ? null : { x: +x.toFixed(4), y: +y.toFixed(4), w: +w.toFixed(4), h: +h.toFixed(4) } });
+    };
+    const trim = (edge, pctValue) => {
+        const v = clamp01((Number(pctValue) || 0) / 100);
+        if (edge === "left") setCrop({ x: v, y: c.y, w: c.x + c.w - v, h: c.h });
+        if (edge === "right") setCrop({ x: c.x, y: c.y, w: 1 - v - c.x, h: c.h });
+        if (edge === "top") setCrop({ x: c.x, y: v, w: c.w, h: c.y + c.h - v });
+        if (edge === "bottom") setCrop({ x: c.x, y: c.y, w: c.w, h: 1 - v - c.y });
+    };
+
+    // Dragging on the thumbnail: the body moves the crop, the corner resizes
+    // it. Both stay inside the picture — a crop that ran off the edge would
+    // only be clamped by the renderer anyway, and silently.
+    const drag = useRef(null);
+    const onDown = (e, mode) => {
+        if (busy || !boxRef.current) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const r = boxRef.current.getBoundingClientRect();
+        drag.current = { mode, x0: e.clientX, y0: e.clientY, rect: r, orig: { ...c } };
+        e.currentTarget.setPointerCapture?.(e.pointerId);
+    };
+    const onMove = (e) => {
+        const d = drag.current;
+        if (!d) return;
+        const dx = (e.clientX - d.x0) / d.rect.width;
+        const dy = (e.clientY - d.y0) / d.rect.height;
+        if (d.mode === "move") {
+            setCrop({
+                x: Math.max(0, Math.min(1 - d.orig.w, d.orig.x + dx)),
+                y: Math.max(0, Math.min(1 - d.orig.h, d.orig.y + dy)),
+                w: d.orig.w, h: d.orig.h,
+            });
+        } else {
+            setCrop({ x: d.orig.x, y: d.orig.y, w: d.orig.w + dx, h: d.orig.h + dy });
+        }
+    };
+    const onUp = () => { drag.current = null; };
+
+    // What the zoom actually shows, in the crop's own coordinates.
+    const zw = c.w / zoom;
+    const zh = c.h / zoom;
+    const zx = c.x + Math.max(0, Math.min(c.w - zw, c.w * panX - zw / 2));
+    const zy = c.y + Math.max(0, Math.min(c.h - zh, c.h * panY - zh / 2));
+
+    return (
+        <div className="border rounded p-2 mt-2">
+            <div className="d-flex align-items-center">
+                <strong className="small">Frame</strong>
+                {!isDefault && (
+                    <span className="badge bg-secondary ms-2">{pct(c.w)}×{pct(c.h)}%{zoom > 1 ? ` · ${zoom.toFixed(1)}×` : ""}</span>
+                )}
+                {!isDefault && (
+                    <button className="btn btn-sm btn-link py-0 ms-auto" style={{ fontSize: 11 }} disabled={busy}
+                        title="The whole picture again, no push-in"
+                        onClick={() => onPatch({ crop: null, zoom: null, panX: null, panY: null })}>Reset</button>
+                )}
+            </div>
+
+            {thumb && (
+                <div ref={boxRef} className="position-relative mt-2 mb-2 bg-dark rounded"
+                    style={{ overflow: "hidden", touchAction: "none", userSelect: "none" }}
+                    onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}>
+                    <img src={thumb} alt="" draggable={false}
+                        style={{ width: "100%", height: 96, objectFit: "contain", display: "block", opacity: 0.55 }} />
+                    <div className="position-absolute" title="Drag to move the crop; the corner resizes it"
+                        style={{
+                            left: `${c.x * 100}%`, top: `${c.y * 100}%`,
+                            width: `${c.w * 100}%`, height: `${c.h * 100}%`,
+                            outline: "2px solid #0d6efd", cursor: "move",
+                            boxShadow: "0 0 0 9999px rgba(0,0,0,0.35)",
+                        }}
+                        onPointerDown={(e) => onDown(e, "move")} onPointerMove={onMove} onPointerUp={onUp}>
+                        {zoom > 1 && (
+                            <div className="position-absolute" style={{
+                                left: `${((zx - c.x) / c.w) * 100}%`, top: `${((zy - c.y) / c.h) * 100}%`,
+                                width: `${(zw / c.w) * 100}%`, height: `${(zh / c.h) * 100}%`,
+                                outline: "1px dashed #ffc107", pointerEvents: "none",
+                            }} />
+                        )}
+                        <div className="position-absolute" title="Resize the crop"
+                            style={{ right: -5, bottom: -5, width: 12, height: 12, background: "#0d6efd", cursor: "nwse-resize" }}
+                            onPointerDown={(e) => onDown(e, "resize")} onPointerMove={onMove} onPointerUp={onUp} />
+                    </div>
+                </div>
+            )}
+
+            <RangeRow label="Zoom" value={zoom} min={1} max={4} step={0.05} suffix="×" disabled={busy}
+                onChange={(v) => onPatch({ zoom: v === 1 ? null : v })} />
+            {zoom > 1 && (
+                <>
+                    <RangeRow label="Pan across" value={panX} min={0} max={1} step={0.01} suffix="" disabled={busy}
+                        onChange={(v) => onPatch({ panX: v === 0.5 ? null : v })} />
+                    <RangeRow label="Pan down" value={panY} min={0} max={1} step={0.01} suffix="" disabled={busy}
+                        onChange={(v) => onPatch({ panY: v === 0.5 ? null : v })} />
+                </>
+            )}
+
+            <label className="form-label small mb-1">Trim the edges</label>
+            <div className="row g-1">
+                {[
+                    ["left", "L", c.x],
+                    ["right", "R", 1 - (c.x + c.w)],
+                    ["top", "T", c.y],
+                    ["bottom", "B", 1 - (c.y + c.h)],
+                ].map(([edge, label, value]) => (
+                    <div className="col-3" key={edge}>
+                        <div className="input-group input-group-sm">
+                            <span className="input-group-text px-1" style={{ fontSize: 10 }}>{label}</span>
+                            <input type="number" className="form-control px-1" min={0} max={95} step={1} disabled={busy}
+                                style={{ fontSize: 11 }} value={pct(value)}
+                                onChange={(e) => trim(edge, e.target.value)} />
+                        </div>
+                    </div>
+                ))}
+            </div>
+            <p className="text-muted mb-0 mt-1" style={{ fontSize: 11 }}>
+                Zoom and pan are keyable — key them at two instants and the shot pushes in.
             </p>
         </div>
     );

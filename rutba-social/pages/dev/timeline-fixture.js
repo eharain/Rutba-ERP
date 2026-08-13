@@ -326,6 +326,71 @@ export default function TimelineFixturePage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [plan]);
 
+    // ── the crop probe: which part of the picture draws ─────
+    // The fixture logo is a yellow disc on its LEFT half and white text on the
+    // right, so "how much yellow reached the frame" answers "which part of the
+    // source did this layer use" without any tolerance games.
+    useEffect(() => {
+        if (!plan || window.__CROP) return;
+        const c = document.createElement("canvas");
+        const x = () => c.getContext("2d", { willReadFrequently: true });
+        const mk = (patches) => buildPlan({ canvas: c, ...buildArgs(patches) });
+        const results = [];
+        const push = (label, ok) => results.push({ label, ok });
+
+        // The accent pill and the compiled logo are the same yellow — hide both
+        // so the count belongs to the probe layer alone.
+        const quiet = BASE_PATCHES.map((p) => (p.id === "sticker-1" ? { ...p, visible: false } : p))
+            .concat({ id: "logo", visible: false });
+        const mkImg = (extra) => mk([...quiet, {
+            id: "crop-1", type: "image", src: "logo", fx: 0.5, fy: 0.5, fw: 0.7, timing: null, ...extra,
+        }]);
+        const yellow = (p, t) => {
+            paintFrame(x(), p, t);
+            const d = x().getImageData(0, 0, c.width, c.height).data;
+            let n = 0;
+            for (let i = 0; i < d.length; i += 4) {
+                if (Math.abs(d[i] - 255) <= 6 && Math.abs(d[i + 1] - 193) <= 6 && Math.abs(d[i + 2] - 7) <= 6) n++;
+            }
+            return n;
+        };
+
+        const whole = yellow(mkImg({}), 3);
+        const left = yellow(mkImg({ crop: { x: 0, y: 0, w: 0.5, h: 1 } }), 3);
+        const right = yellow(mkImg({ crop: { x: 0.5, y: 0, w: 0.5, h: 1 } }), 3);
+        push("the uncropped layer draws the disc", whole > 200);
+        push("cropping to the left half keeps the disc, larger", left > whole);
+        push("cropping to the right half loses it", right < whole / 10);
+
+        // A crop changes the drawn SHAPE too: half the width at the same box
+        // width is twice as tall. Compile-time geometry has to know that.
+        const pWhole = mkImg({});
+        const pHalf = mkImg({ crop: { x: 0, y: 0, w: 0.5, h: 1 } });
+        const hOf = (p) => p.layers.find((l) => l.id === "crop-1")?.h || 0;
+        push("a half-width crop doubles the drawn height",
+            Math.abs(hOf(pHalf) / Math.max(1, hOf(pWhole)) - 2) < 0.02);
+
+        // Zoom + pan pick a region without a crop being set at all.
+        const zoomLeft = yellow(mkImg({ zoom: 2, panX: 0, panY: 0.5 }), 3);
+        const zoomRight = yellow(mkImg({ zoom: 2, panX: 1, panY: 0.5 }), 3);
+        push("zoomed and panned left, the disc fills more", zoomLeft > whole);
+        push("zoomed and panned right, the disc is gone", zoomRight < whole / 10);
+
+        // Keyed, the same pair IS a push-in: at each end it matches the static
+        // frame it should, which is what makes an animated zoom trustworthy.
+        // Sampled at the SAME instants as their static references: the photos
+        // behind are still crossfading, so comparing t=2 with t=3 would be
+        // measuring the background, not the zoom.
+        const keyed = mkImg({ keys: { zoom: [{ t: 0, v: 1 }, { t: 2, v: 2 }], panX: [{ t: 0, v: 0 }, { t: 2, v: 0 }] } });
+        push("a keyed push-in starts where zoom 1 does",
+            Math.abs(yellow(keyed, 0) - yellow(mkImg({ panX: 0 }), 0)) <= 2);
+        push("and ends where zoom 2 does",
+            Math.abs(yellow(keyed, 2) - yellow(mkImg({ zoom: 2, panX: 0 }), 2)) <= 2);
+
+        window.__CROP = { done: true, pass: results.every((r) => r.ok), results };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [plan]);
+
     // ── the rail's rows, mounted for real ───────────────────
     // The studio page needs a session; these components do not, because they
     // take props and nothing else. What they WRITE is the contract worth

@@ -27,7 +27,8 @@ import {
 import { useToast } from "../../components/Toast";
 import useUnsavedGuard from "@rutba/pos-shared/hooks/useUnsavedGuard";
 import StrapiMediaLibrary from "@rutba/pos-shared/components/StrapiMediaLibrary";
-import { RangeRow, TrackBrowser, TimingRows, LookRows } from "../../components/InspectorRows";
+import RecorderDialog from "@rutba/pos-shared/components/RecorderDialog";
+import { RangeRow, TrackBrowser, TimingRows, LookRows, FrameRows } from "../../components/InspectorRows";
 import VideoTimeline from "../../components/VideoTimeline";
 import VideoComposer from "../../components/VideoComposer";
 import { resolveStorefrontBaseUrl, productShortUrl } from "../../lib/storefront-url";
@@ -169,6 +170,10 @@ export default function VideoStudioPage() {
     // The Sound buttons open this: the audio library as a picker, so the track
     // is chosen BEFORE the layer exists — not defaulted and fixed up after.
     const [showSoundPicker, setShowSoundPicker] = useState(false);
+
+    // Recording straight onto the timeline: 'audio' for a voice-over (or what
+    // the machine is playing), 'video' for the webcam. null = closed.
+    const [recordMode, setRecordMode] = useState(null);
 
     // Layer patches are the single write path for everything the editor does —
     // they persist to video_settings and templates as-is.
@@ -1019,6 +1024,26 @@ export default function VideoStudioPage() {
     }, [plan, options.audioMode, options.audioFadeIn, options.audioFadeOut, bedTrack]);
     const bedSelected = selectedLayerId === BED_ID && bedLanes.length > 0;
 
+    /**
+     * A still of the layer's source, for the crop box to sit on. Photos come
+     * from the loaded arrangement, images from their url (the compiled logo
+     * from site settings). A video has no still to show — its lane holds a
+     * <video>, not a picture — so the crop there is edited by the numbers.
+     */
+    const thumbForLayer = (layer) => {
+        if (!layer) return null;
+        if (layer.type === "photo") {
+            const ai = arrangementIndexForPhoto(layer.index);
+            const a = ai >= 0 ? arrangement?.[ai] : null;
+            return a ? (images.find((i) => i.path === a.path)?.objectUrl || null) : null;
+        }
+        if (layer.type === "image") {
+            const p = (layerPatches || []).find((x) => x.id === layer.id);
+            return p?.url || (layer.id === "logo" ? logo?.objectUrl : null) || null;
+        }
+        return null;
+    };
+
     const selectedQrPatch = (layerPatches || []).find((p) => p.id === selectedLayerId && p.type === "qr") || null;
     const selectedSoundPatch = (layerPatches || []).find((p) => p.id === selectedLayerId && p.type === "sound") || null;
     const selectedLayer = plan && selectedLayerId ? plan.layers.find((l) => l.id === selectedLayerId) || null : null;
@@ -1036,13 +1061,17 @@ export default function VideoStudioPage() {
     // A sound layer, placed on the timeline like everything else. The track is
     // chosen up front — from the picker the Sound buttons open, or a row's +
     // in the Music card's list; the inspector can still change it later.
-    const addSoundLayer = (track) => {
+    // `seconds` is for a take whose length we KNOW — a recording made here. A
+    // library track keeps the 8s default instead of its own length: a three
+    // minute music bed would otherwise arrive as a lane spanning everything.
+    const addSoundLayer = (track, seconds) => {
         const t = track && track.documentId ? track : tracks[0];
         if (!plan || !t) return;
         const id = "sound-" + Date.now().toString(36);
+        const want = Number(seconds) > 0 ? Number(seconds) : 8;
         upsertPatch({
             id, type: "sound", trackId: t.documentId, name: t.name || "Sound",
-            timing: { start: 0, end: +Math.min(plan.duration, 8).toFixed(3) },
+            timing: { start: 0, end: +Math.min(plan.duration, want).toFixed(3) },
             enter: { kind: "fade", seconds: 0.4 },
             exit: { kind: "fade", seconds: 0.6 },
         });
@@ -1162,6 +1191,45 @@ export default function VideoStudioPage() {
         setImagePickerFor(null);
     };
 
+    /**
+     * A take recorded in this tab, wired straight onto the timeline.
+     *
+     * It is uploaded first, because everything the renderer draws or plays is
+     * fetched by url through the media proxy — a blob that only exists in this
+     * tab would render here and be gone from the saved recipe. Audio then
+     * becomes a LIBRARY TRACK rather than a bare url: sound layers reference
+     * tracks by id, and a voice-over worth putting in one video is worth having
+     * in the library for the next one.
+     */
+    const placeRecording = async (file, meta) => {
+        const uploaded = await UploadEndpoints.uploadFiles([file], null, null, null, {
+            name: file.name, alt: null, caption: null,
+        });
+        const rec = (Array.isArray(uploaded) ? uploaded : [uploaded])[0];
+        if (!rec?.id || !rec?.url) throw new Error("The upload came back without a file.");
+
+        if (recordMode === "video") { addVideoLayers([rec]); return; }
+
+        const seconds = Number(meta?.seconds);
+        const created = await SocialAudioTracksEndpoints.create({
+            name: file.name.replace(/\.[^.]+$/, ""),
+            url: rec.url,
+            audio_file: rec.id,
+            is_active: true,
+            tags: ["recording"],
+            ...(Number.isFinite(seconds) && seconds > 0 ? { duration_seconds: Math.round(seconds * 100) / 100 } : {}),
+        });
+        const track = created?.data || created;
+        await loadTracks();
+        setShowSoundPicker(false);
+        if (!track?.documentId) {
+            toast("Recording saved to the audio library — add it from the Sound picker.", "warning");
+            return;
+        }
+        addSoundLayer(track, seconds);
+        toast("Recording added to the audio library and placed on its own lane.", "success");
+    };
+
     const selectedVideoPatch = (layerPatches || []).find((p) => p.id === selectedLayerId && p.type === "video") || null;
 
     // Logo and footer are LAYERS — these are their quick-adds. If the layer
@@ -1265,6 +1333,15 @@ export default function VideoStudioPage() {
         keys.fy = put(keys.fy, l.type === "photo" ? (l.fy ?? 0.3) : l.y / plan.H);
         if (l.type === "text") keys.sizeFrac = put(keys.sizeFrac, l.sizeFrac || 0.035);
         else if (l.type !== "qr") keys.fw = put(keys.fw, l.fw ?? (l.w ? l.w / plan.W : undefined));
+        // The push-in, for anything that draws a picture: key zoom and pan at
+        // two instants and the shot moves into the frame between them. Keyed
+        // only once the layer HAS a push — otherwise every key would carry a
+        // pointless zoom:1 that the renderer would then have to honour.
+        if (["photo", "video", "image"].includes(l.type) && ((Number(l.zoom) || 1) !== 1 || keys.zoom)) {
+            keys.zoom = put(keys.zoom, Number(l.zoom) || 1);
+            keys.panX = put(keys.panX, l.panX ?? 0.5);
+            keys.panY = put(keys.panY, l.panY ?? 0.5);
+        }
         upsertPatch({ id: l.id, keys });
         toast(`Key at ${t.toFixed(1)}s — scrub the playhead and drag the layer to record the next one.`, "info");
     };
@@ -1653,6 +1730,14 @@ export default function VideoStudioPage() {
                                 ? addImageLayer(files)
                                 : setLayerImage(imagePickerFor, files))}
                         />
+                        <RecorderDialog
+                            show={!!recordMode}
+                            mode={recordMode === "video" ? "video" : "audio"}
+                            namePrefix={recordMode === "video" ? "clip" : "voice"}
+                            useLabel="Add to the timeline"
+                            onClose={() => setRecordMode(null)}
+                            onRecorded={placeRecording}
+                        />
                         {showSoundPicker && (
                             <div className="modal d-block" tabIndex={-1} style={{ background: "rgba(0,0,0,0.5)", zIndex: 9999 }}
                                 onClick={() => setShowSoundPicker(false)}>
@@ -1660,7 +1745,12 @@ export default function VideoStudioPage() {
                                     <div className="modal-content">
                                         <div className="modal-header py-2">
                                             <h6 className="modal-title mb-0"><i className="fas fa-music me-2" />Add a sound layer</h6>
-                                            <Link className="btn btn-sm btn-link p-0 ms-auto me-3" href="/audio">Library →</Link>
+                                            <button className="btn btn-sm btn-outline-danger py-0 ms-auto me-2" type="button"
+                                                title="Record a new take instead — it joins the library and lands on the timeline"
+                                                onClick={() => { setShowSoundPicker(false); setRecordMode("audio"); }}>
+                                                <i className="fas fa-microphone me-1" />Record
+                                            </button>
+                                            <Link className="btn btn-sm btn-link p-0 me-3" href="/audio">Library →</Link>
                                             <button type="button" className="btn-close" onClick={() => setShowSoundPicker(false)} />
                                         </div>
                                         <div className="modal-body py-2">
@@ -1781,10 +1871,20 @@ export default function VideoStudioPage() {
                                                                 onClick={() => setShowSoundPicker(true)}>
                                                                 <i className="fas fa-music me-1" />Sound
                                                             </button>
+                                                            <button className="btn btn-sm btn-outline-danger py-0" disabled={busy}
+                                                                title="Record a voice-over from a microphone — or what this machine is playing — straight onto its own lane. The take joins the audio library too."
+                                                                onClick={() => setRecordMode("audio")}>
+                                                                <i className="fas fa-microphone me-1" />Voice
+                                                            </button>
                                                             <button className="btn btn-sm btn-outline-primary py-0" disabled={busy}
                                                                 title="A clip from the media library (or an upload — it lands in the library first). Adds TWO lanes: the picture and its audio, trimmed separately."
                                                                 onClick={() => setShowVideoPicker(true)}>
                                                                 <i className="fas fa-film me-1" />Video
+                                                            </button>
+                                                            <button className="btn btn-sm btn-outline-danger py-0" disabled={busy}
+                                                                title="Record from a webcam (or the screen) straight onto the timeline — uploaded to the media library, then added as picture + audio lanes."
+                                                                onClick={() => setRecordMode("video")}>
+                                                                <i className="fas fa-video me-1" />Webcam
                                                             </button>
                                                             <button className="btn btn-sm btn-outline-primary py-0" disabled={busy}
                                                                 title="An image from the media library (or an upload — it lands in the library first) as its own layer — a sticker, a badge, a second mark. Drag, resize and retime it like anything else."
@@ -2349,6 +2449,38 @@ export default function VideoStudioPage() {
                                                         min={0} max={Math.max(1, Math.floor((entry?.duration || 60) - 0.5))} step={0.5}
                                                         suffix="s" disabled={busy}
                                                         onChange={(v) => upsertPatch({ id: selectedVideoPatch.id, offset: v })} />
+                                                    {/* The trim, said plainly: the lane's length decides where the
+                                                        clip stops, so show WHERE inside the source that lands and
+                                                        offer the one adjustment that is otherwise arithmetic. */}
+                                                    {entry && (() => {
+                                                        const inAt = selectedVideoPatch.offset || 0;
+                                                        const win = selectedLayer.timing || { start: 0, end: plan.duration };
+                                                        const laneLen = win.end - win.start;
+                                                        const outAt = Math.min(entry.duration, inAt + laneLen);
+                                                        const rest = Math.max(0, entry.duration - inAt);
+                                                        const runsOut = laneLen > rest + 0.05;
+                                                        return (
+                                                            <div className="mb-2">
+                                                                <div className="d-flex align-items-center gap-2">
+                                                                    <small className={runsOut ? "text-warning" : "text-muted"}>
+                                                                        Uses {inAt.toFixed(1)}s → {outAt.toFixed(1)}s of {entry.duration.toFixed(1)}s
+                                                                        {runsOut ? " — the lane outlasts the clip, which freezes on its last frame." : ""}
+                                                                    </small>
+                                                                    {Math.abs(laneLen - rest) > 0.05 && rest > 0.2 && (
+                                                                        <button className="btn btn-sm btn-link p-0 ms-auto text-nowrap" style={{ fontSize: 11 }}
+                                                                            disabled={busy}
+                                                                            title="Make the lane exactly as long as what is left of the clip from this start point"
+                                                                            onClick={() => upsertPatch({
+                                                                                id: selectedVideoPatch.id,
+                                                                                timing: { start: +win.start.toFixed(3), end: +Math.min(plan.duration, win.start + rest).toFixed(3) },
+                                                                            })}>
+                                                                            Fit the lane
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })()}
                                                     <div className="form-check form-switch mb-1">
                                                         <input className="form-check-input" type="checkbox" id="video-inset" disabled={busy}
                                                             checked={!!selectedVideoPatch.fw}
@@ -2394,6 +2526,13 @@ export default function VideoStudioPage() {
                                             </p>
                                         )}
 
+                                        {/* ── frame: which part of the picture, and how far in ── */}
+                                        {["photo", "video", "image"].includes(selectedLayer.type) && (
+                                            <FrameRows layer={selectedLayer} busy={busy}
+                                                thumb={thumbForLayer(selectedLayer)}
+                                                onPatch={(p) => upsertPatch({ id: selectedLayer.id, ...p })} />
+                                        )}
+
                                         {/* ── look: opacity + picture filters, per layer ── */}
                                         {/* Opacity and filters ride in the paint WRAPPER, which every
                                             painter goes through — so a caption fades like a sticker. */}
@@ -2411,7 +2550,8 @@ export default function VideoStudioPage() {
 
                                         {/* ── motion: keys on the layer's local clock ── */}
                                         {(["text", "qr", "image"].includes(selectedLayer.type)
-                                            || ((selectedLayer.type === "photo" || selectedLayer.type === "video") && !!selectedLayer.fw)) && (
+                                            || (["photo", "video"].includes(selectedLayer.type)
+                                                && (!!selectedLayer.fw || (Number(selectedLayer.zoom) || 1) !== 1))) && (
                                             <div className="border rounded p-2 mt-2">
                                                 <div className="d-flex align-items-center gap-2">
                                                     <strong className="small">Motion</strong>

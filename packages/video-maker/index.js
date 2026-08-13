@@ -166,9 +166,14 @@ export function imageItems(post) {
     return out;
 }
 
-/** True when a media file is a video, by mime or by extension. */
+/** True when a media file is a video, by mime or — failing that — by extension.
+ *  A KNOWN non-video mime settles it: `.webm` is a container both audio and
+ *  video use, so a recorded voice-over would otherwise read as a video. */
 export function isVideoFile(m) {
-    return /^video\//i.test(m?.mime || '') || /\.(mp4|mov|webm|m4v)(\?|$)/i.test(m?.url || '');
+    const mime = m?.mime || '';
+    if (/^video\//i.test(mime)) return true;
+    if (/^(audio|image|text)\//i.test(mime)) return false;
+    return /\.(mp4|mov|webm|m4v)(\?|$)/i.test(m?.url || '');
 }
 
 /** True when a post carries a video — attached or sitting in its gallery. */
@@ -285,9 +290,13 @@ export async function loadAudioTrack(url, { signal, fetchMedia } = {}) {
     });
 }
 
-/** True when a media-library file is a music track we can use. */
+/** True when a media-library file is a music track we can use. Mime decides
+ *  when there is one — see isVideoFile for why the extension cannot. */
 export function isAudioFile(file) {
-    return /^audio\//i.test(file?.mime || '') || /\.(mp3|m4a|aac|wav|ogg|opus|flac)(\?|$)/i.test(file?.url || file?.name || '');
+    const mime = file?.mime || '';
+    if (/^audio\//i.test(mime)) return true;
+    if (/^(video|image|text)\//i.test(mime)) return false;
+    return /\.(mp3|m4a|aac|wav|ogg|opus|flac|weba)(\?|$)/i.test(file?.url || file?.name || '');
 }
 
 /**
@@ -610,13 +619,14 @@ export function applyLayerPatches(plan, patches) {
                 if (patch.url !== undefined) {
                     existing.src = patch.url ? (plan.assets[patch.url] || null) : plan.logo;
                     existing.visible = !!existing.visible && !!existing.src?.img;
-                    existing.h = existing.w * ((existing.src?.height || 1) / (existing.src?.width || 1));
                 }
-                if (patch.fw !== undefined) {
-                    existing.w = W * patch.fw;
-                    const srcH = existing.src?.height || 1;
-                    const srcW = existing.src?.width || 1;
-                    existing.h = existing.w * (srcH / srcW);
+                if (patch.crop !== undefined) existing.crop = sanitizeCrop(patch.crop);
+                if (patch.fw !== undefined) existing.w = W * patch.fw;
+                // A new picture, a new crop or a new zoom all change the drawn
+                // ASPECT, so the height follows any of them — not just a resize.
+                if (patch.url !== undefined || patch.fw !== undefined || patch.crop !== undefined
+                    || patch.zoom !== undefined || patch.panX !== undefined || patch.panY !== undefined) {
+                    existing.h = existing.w * srcAspect(existing.src, existing);
                 }
                 if (patch.fx !== undefined) existing.x = W * patch.fx;
                 if (patch.fy !== undefined) existing.y = H * patch.fy;
@@ -722,6 +732,8 @@ export function applyLayerPatches(plan, patches) {
                 rot: patch.rot || 0,
                 opacity: patch.opacity,
                 filter: patch.filter || null,
+                crop: sanitizeCrop(patch.crop),
+                zoom: patch.zoom, panX: patch.panX, panY: patch.panY,
                 keys: sanitizeKeys(patch.keys),
             });
             continue;
@@ -734,7 +746,7 @@ export function applyLayerPatches(plan, patches) {
             const src = (patch.src === 'logo' || !patch.url) ? plan.logo : (plan.assets[patch.url] || null);
             const fw = patch.fw || 0.16;
             const w = W * fw;
-            const h = src ? w * (src.height / Math.max(1, src.width)) : w;
+            const h = src ? w * srcAspect(src, patch) : w;
             plan.layers.push({
                 id: patch.id, type: 'image',
                 name: patch.name || 'Image',
@@ -751,6 +763,8 @@ export function applyLayerPatches(plan, patches) {
                 shadow: patch.shadow !== false,
                 fx: patch.fx ?? 0.5, fy: patch.fy ?? 0.5, fw,
                 rot: patch.rot || 0,
+                crop: sanitizeCrop(patch.crop),
+                zoom: patch.zoom, panX: patch.panX, panY: patch.panY,
                 keys: sanitizeKeys(patch.keys),
                 draggable: true,
             });
@@ -779,6 +793,8 @@ export function applyLayerPatches(plan, patches) {
                 rot: patch.rot || 0,
                 opacity: patch.opacity,
                 filter: patch.filter || null,
+                crop: sanitizeCrop(patch.crop),
+                zoom: patch.zoom, panX: patch.panX, panY: patch.panY,
                 keys: sanitizeKeys(patch.keys),
             });
             continue;
@@ -845,7 +861,11 @@ export function applyLayerPatches(plan, patches) {
 // QR size is deliberately NOT keyable — the matrix re-rasterizes per size and
 // an animated QR is unscannable anyway. fx/fy/opacity/rot still work on it.
 
-const KEYABLE = ['fx', 'fy', 'fw', 'sizeFrac', 'opacity', 'rot'];
+// zoom/panX/panY are keyable because a push-in is a motion, not a setting:
+// keyed across a window they are Ken Burns for any layer that draws a picture,
+// including a video clip. The crop rect itself is not keyed — it says which
+// part of the source this layer is ABOUT, and that does not change mid-shot.
+const KEYABLE = ['fx', 'fy', 'fw', 'sizeFrac', 'opacity', 'rot', 'zoom', 'panX', 'panY'];
 
 /**
  * A layer's `filter` → a canvas filter string, or null when every field is
@@ -927,6 +947,15 @@ function applyKeyedGeometry(plan, layer, t) {
     const kfw = keyValueAt(keys.fw, t);
     const kfrac = keyValueAt(keys.sizeFrac, t);
 
+    // The push-in trio needs no derived pixel field — srcRect reads them
+    // straight off the layer — so it applies to every type that draws a source.
+    const kzoom = keyValueAt(keys.zoom, t);
+    const kpx = keyValueAt(keys.panX, t);
+    const kpy = keyValueAt(keys.panY, t);
+    if (kzoom !== null) set('zoom', kzoom);
+    if (kpx !== null) set('panX', kpx);
+    if (kpy !== null) set('panY', kpy);
+
     if (layer.type === 'photo' || layer.type === 'video') {
         if (kfx !== null) set('fx', kfx);
         if (kfy !== null) set('fy', kfy);
@@ -942,11 +971,9 @@ function applyKeyedGeometry(plan, layer, t) {
         }
         if (layer.type === 'image' && kfw !== null) {
             const w = W * kfw;
-            const srcH = layer.src?.height || 1;
-            const srcW = layer.src?.width || 1;
             set('fw', kfw);
             set('w', w);
-            set('h', w * (srcH / srcW));
+            set('h', w * srcAspect(layer.src, layer));
         }
     }
     return () => { for (const f of Object.keys(saved)) layer[f] = saved[f]; };
@@ -1042,6 +1069,76 @@ function roundRect(ctx, x, y, w, h, r) {
     ctx.closePath();
 }
 
+const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+
+/**
+ * The rectangle of the SOURCE a layer draws from, in source pixels.
+ *
+ * Two things compose here, and they answer different questions:
+ *
+ *   `crop: {x, y, w, h}`   — WHICH PART of the picture this layer uses. Stored
+ *                            as fractions of the source, so one recipe holds
+ *                            for any aspect and survives a re-encode of the
+ *                            same image at another size.
+ *   `zoom` + `panX/panY`   — a push-in WITHIN that part. Scalars, so they are
+ *                            keyable: zoom 1 → 1.6 across a window is a slow
+ *                            push, on a video clip or a sticker, not just the
+ *                            photos Ken Burns already moves.
+ *
+ * Pan is in region-relative coordinates (0..1 of the crop), so panning does
+ * not walk out of a crop the author chose. With neither set the result is
+ * `whole`, and every caller then makes the SAME five-argument drawImage call
+ * the renderer always made — which is what keeps legacy plans byte-identical.
+ */
+function srcRect(iw, ih, layer) {
+    const c = layer && layer.crop ? layer.crop : null;
+    const zoom = Math.max(1, Number(layer && layer.zoom) || 1);
+    if (!c && zoom === 1) return { sx: 0, sy: 0, sw: iw, sh: ih, whole: true };
+
+    let x = c ? clamp01(c.x ?? 0) : 0;
+    let y = c ? clamp01(c.y ?? 0) : 0;
+    // A crop running past the edge is clamped rather than rejected: a recipe
+    // authored against a wider picture must still draw something.
+    let w = Math.max(0.02, Math.min(c ? clamp01(c.w ?? 1) : 1, 1 - x));
+    let h = Math.max(0.02, Math.min(c ? clamp01(c.h ?? 1) : 1, 1 - y));
+
+    if (zoom > 1) {
+        const zw = w / zoom;
+        const zh = h / zoom;
+        const px = layer.panX == null ? 0.5 : clamp01(layer.panX);
+        const py = layer.panY == null ? 0.5 : clamp01(layer.panY);
+        x += Math.max(0, Math.min(w - zw, w * px - zw / 2));
+        y += Math.max(0, Math.min(h - zh, h * py - zh / 2));
+        w = zw;
+        h = zh;
+    }
+    return { sx: x * iw, sy: y * ih, sw: w * iw, sh: h * ih, whole: false };
+}
+
+/** drawImage through a source rect — the 5-arg call when there is no crop. */
+function drawSrc(ctx, drawable, s, dx, dy, dw, dh) {
+    if (s.whole) ctx.drawImage(drawable, dx, dy, dw, dh);
+    else ctx.drawImage(drawable, s.sx, s.sy, s.sw, s.sh, dx, dy, dw, dh);
+}
+
+/** A layer's drawn aspect (h/w) once its crop is taken — what compile-time
+ *  geometry must use, or a cropped image would keep the whole picture's shape. */
+function srcAspect(entry, layer) {
+    const s = srcRect(entry?.width || 1, entry?.height || 1, layer);
+    return s.sh / Math.max(1, s.sw);
+}
+
+/** Keep a stored crop inside the picture, or drop it when it is the whole. */
+function sanitizeCrop(crop) {
+    if (!crop || typeof crop !== 'object') return null;
+    const x = clamp01(Number(crop.x) || 0);
+    const y = clamp01(Number(crop.y) || 0);
+    const w = Math.max(0.02, Math.min(Number(crop.w) > 0 ? Number(crop.w) : 1, 1 - x));
+    const h = Math.max(0.02, Math.min(Number(crop.h) > 0 ? Number(crop.h) : 1, 1 - y));
+    if (x === 0 && y === 0 && w === 1 && h === 1) return null;
+    return { x, y, w, h };
+}
+
 function coverRect(iw, ih, w, h) {
     const s = Math.max(w / iw, h / ih);
     return { w: iw * s, h: ih * s };
@@ -1092,10 +1189,12 @@ function backdropFor(entry, W, H, theme) {
     return off;
 }
 
-function drawImageLayer(ctx, plan, entry, index, p, alpha, stageRect, kbOverride) {
+function drawImageLayer(ctx, plan, entry, index, p, alpha, stageRect, kbOverride, layer) {
     const { img } = entry;
     const { W, H, opts, theme } = plan;
     const kb = kenBurns(index, p, kbOverride ?? opts.kenBurns);
+    // The crop narrows what this photo shows; Ken Burns still drifts within it.
+    const s = srcRect(entry.width, entry.height, layer);
 
     ctx.save();
     // Multiplied, not assigned — the entry/exit envelope may already have
@@ -1103,7 +1202,7 @@ function drawImageLayer(ctx, plan, entry, index, p, alpha, stageRect, kbOverride
     ctx.globalAlpha *= alpha;
 
     if (opts.fit === 'cover') {
-        const c = coverRect(entry.width, entry.height, W, H);
+        const c = coverRect(s.sw, s.sh, W, H);
         const w = c.w * kb.zoom;
         const h = c.h * kb.zoom;
         // The focal point (0..1 of the source image) is what the crop keeps in
@@ -1112,7 +1211,7 @@ function drawImageLayer(ctx, plan, entry, index, p, alpha, stageRect, kbOverride
         const f = entry.focal || { fx: 0.5, fy: 0.5 };
         const x = Math.min(0, Math.max(W - w, W / 2 - f.fx * w));
         const y = Math.min(0, Math.max(H - h, H / 2 - f.fy * h));
-        ctx.drawImage(img, x + kb.dx * W, y + kb.dy * H, w, h);
+        drawSrc(ctx, img, s, x + kb.dx * W, y + kb.dy * H, w, h);
     } else {
         // Blurred, darkened cover behind so an off-aspect photo never leaves a
         // dead letterbox — then the whole photo, uncropped, on top of it.
@@ -1121,7 +1220,7 @@ function drawImageLayer(ctx, plan, entry, index, p, alpha, stageRect, kbOverride
         const bh = H * kb.zoom;
         ctx.drawImage(backdrop, (W - bw) / 2, (H - bh) / 2, bw, bh);
 
-        const f = containRect(entry.width, entry.height, stageRect.w, stageRect.h);
+        const f = containRect(s.sw, s.sh, stageRect.w, stageRect.h);
         const w = f.w * kb.zoom;
         const h = f.h * kb.zoom;
         const x = stageRect.x + (stageRect.w - w) / 2 + kb.dx * stageRect.w * 0.4;
@@ -1129,7 +1228,7 @@ function drawImageLayer(ctx, plan, entry, index, p, alpha, stageRect, kbOverride
         ctx.save();
         roundRect(ctx, x, y, w, h, Math.round(W * 0.022));
         ctx.clip();
-        ctx.drawImage(img, x, y, w, h);
+        drawSrc(ctx, img, s, x, y, w, h);
         ctx.restore();
     }
 
@@ -1155,15 +1254,16 @@ function revealPosition(lines, n) {
 
 // Cover-fit `entry` into an arbitrary rect honoring its focal point — the
 // inset (picture-in-picture) form of a photo layer.
-function drawCoverInRect(ctx, plan, entry, x, y, w, h) {
-    const c = coverRect(entry.width, entry.height, w, h);
+function drawCoverInRect(ctx, plan, entry, x, y, w, h, layer) {
+    const s = srcRect(entry.width, entry.height, layer);
+    const c = coverRect(s.sw, s.sh, w, h);
     const f = entry.focal || { fx: 0.5, fy: 0.5 };
     const ix = Math.min(x, Math.max(x + w - c.w, x + w / 2 - f.fx * c.w));
     const iy = Math.min(y, Math.max(y + h - c.h, y + h / 2 - f.fy * c.h));
     ctx.save();
     roundRect(ctx, x, y, w, h, Math.round(plan.W * 0.015));
     ctx.clip();
-    ctx.drawImage(entry.img, ix, iy, c.w, c.h);
+    drawSrc(ctx, entry.img, s, ix, iy, c.w, c.h);
     ctx.restore();
 }
 
@@ -1180,8 +1280,8 @@ function paintPhoto(ctx, plan, layer, time) {
     // the photo's own aspect at `fw` width. No Ken Burns — insets hold still.
     if (layer.fw) {
         const w = plan.W * layer.fw;
-        const h = layer.fh ? plan.H * layer.fh : w * (entry.height / Math.max(1, entry.width));
-        drawCoverInRect(ctx, plan, entry, plan.W * (layer.fx ?? 0.3), plan.H * (layer.fy ?? 0.3), w, h);
+        const h = layer.fh ? plan.H * layer.fh : w * srcAspect(entry, layer);
+        drawCoverInRect(ctx, plan, entry, plan.W * (layer.fx ?? 0.3), plan.H * (layer.fy ?? 0.3), w, h, layer);
         return;
     }
 
@@ -1191,7 +1291,7 @@ function paintPhoto(ctx, plan, layer, time) {
     // kbIndex keeps the alternating Ken Burns direction stable when a photo is
     // duplicated or reordered — it is the image's place in the arrangement.
     // `kb` overrides the global slow-zoom for just this photo.
-    drawImageLayer(ctx, plan, entry, layer.kbIndex ?? layer.index, local, 1, plan.stageRect, layer.kb);
+    drawImageLayer(ctx, plan, entry, layer.kbIndex ?? layer.index, local, 1, plan.stageRect, layer.kb, layer);
 }
 
 // A video clip's picture. The <video> element is drawn like any bitmap; the
@@ -1216,12 +1316,13 @@ function paintVideo(ctx, plan, layer, time) {
 
     if (layer.fw) {
         const rw = plan.W * layer.fw;
-        const rh = layer.fh ? plan.H * layer.fh : rw * (entry.height / Math.max(1, entry.width));
-        drawCoverInRect(ctx, plan, entry, plan.W * (layer.fx ?? 0.3), plan.H * (layer.fy ?? 0.3), rw, rh);
+        const rh = layer.fh ? plan.H * layer.fh : rw * srcAspect(entry, layer);
+        drawCoverInRect(ctx, plan, entry, plan.W * (layer.fx ?? 0.3), plan.H * (layer.fy ?? 0.3), rw, rh, layer);
         return;
     }
-    const c = coverRect(entry.width, entry.height, plan.W, plan.H);
-    ctx.drawImage(entry.el, (plan.W - c.w) / 2, (plan.H - c.h) / 2, c.w, c.h);
+    const s = srcRect(entry.width, entry.height, layer);
+    const c = coverRect(s.sw, s.sh, plan.W, plan.H);
+    drawSrc(ctx, entry.el, s, (plan.W - c.w) / 2, (plan.H - c.h) / 2, c.w, c.h);
 }
 
 // Legibility gradient under the caption band.
@@ -1389,7 +1490,7 @@ function paintImage(ctx, plan, layer) {
         ctx.shadowColor = 'rgba(0,0,0,0.45)';
         ctx.shadowBlur = Math.round(plan.W * 0.012);
     }
-    ctx.drawImage(entry.img, layer.x, layer.y, layer.w, layer.h);
+    drawSrc(ctx, entry.img, srcRect(entry.width, entry.height, layer), layer.x, layer.y, layer.w, layer.h);
     ctx.restore();
 }
 
@@ -1932,7 +2033,7 @@ export function layerBounds(ctx, plan, layer) {
         // configured from their lane and the inspector, not dragged.
         const entry = layer.type === 'photo' ? plan.images[layer.index] : plan.videos[layer.url];
         const w = plan.W * layer.fw;
-        const h = layer.fh ? plan.H * layer.fh : (entry ? w * (entry.height / Math.max(1, entry.width)) : w);
+        const h = layer.fh ? plan.H * layer.fh : (entry ? w * srcAspect(entry, layer) : w);
         return { x: plan.W * (layer.fx ?? 0.3), y: plan.H * (layer.fy ?? 0.3), w, h };
     }
     if (layer.type === 'photo' || layer.type === 'video') {
