@@ -132,9 +132,11 @@ filled but never overwritten, and safe to press twice (its layers are `sb-`
 prefixed and a second draft replaces that set). Pure in `lib/storyboard.js`,
 9 checks in t2.
 
-**Open — the voice-over, and it needs a decision.** TTS is the only piece of
-this program that reaches outside the app, and none of it can be built
-sensibly until a provider is chosen. What the answer changes:
+**PARKED by decision (2026-08-13) — the voice-over.** Asked and answered: TTS
+waits rather than being built against a guessed provider. The seam v3 left for
+it is unchanged and costs nothing to leave sitting, so picking this up later
+is an afternoon. When it is picked up, these are the questions that were
+open:
 
 - **Which provider** — the practical choice is between a cloud TTS (Google,
   Azure, ElevenLabs, OpenAI) and nothing. Urdu quality varies a lot between
