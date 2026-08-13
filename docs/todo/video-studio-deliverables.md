@@ -45,7 +45,19 @@ fields), plus a fixture probe: two caption layers with different colours paint
 different pixels, and a caption with no fields set is byte-identical to one
 compiled before the change.
 
-## D2 · Crop where you can see it
+## D2 · Crop where you can see it — **DONE (f0ab73a + 7d6cae6)**
+
+Reframing is a MODE, not another handle: turn it on and the picture itself is
+the control — drag to move the region, wheel to zoom about its centre.
+Dragging right shows more of the left, because the hand is on the picture and
+not on the window. A region back at the whole frame is written as no crop
+rather than as 0,0,1,1. Video layers get a thumbnail by grabbing a decoded
+frame off the element (blob-backed, so the canvas is not tainted), and the
+blurred backdrop now carries the crop in its cache key — held in a small map,
+so two layers cropping one photo bake twice instead of re-baking a 46px blur
+every frame. Gated by A/B 60/60 (the blur fit is a legacy look, so this had to
+be invisible without a crop) plus two corner-reading checks in the t2 crop
+probe.
 
 **The gap.** Crop landed with a real editor, but on a thumbnail in the rail
 rather than on the stage, and three things were left behind it.
