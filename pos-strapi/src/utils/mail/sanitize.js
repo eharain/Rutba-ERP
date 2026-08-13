@@ -98,10 +98,23 @@ function sanitizeEmailHtml(html, { cidResolver } = {}) {
 }
 
 /**
- * Sanitize a user-authored signature. Same allowlist, but remote images stay
- * loadable — this is the user's own outbound content, not foreign input.
+ * Sanitize user-authored OUTBOUND html — compose bodies, signatures, snippets.
+ *
+ * Same allowlist as the reader, because the tag/attribute/style rules describe
+ * what HTML mail may contain at all, not who wrote it. What it deliberately
+ * does NOT do is the inbound remote-image rewrite: `src` stays `src`. The
+ * recipient is supposed to see the images the author put in, and no mail
+ * client understands `data-remote-src` — running the inbound policy over
+ * outbound content would ship every image dead and rewrite the author's links
+ * with target/rel they never asked for.
+ *
+ * It still strips what must never leave the ERP under the company's own
+ * domain, however the body was assembled: <script> and <style> blocks with
+ * their contents, on* event handlers, javascript: URLs, and CSS url() /
+ * expression() values. Authored does not mean trusted — bodies arrive over
+ * the API, and a paste from a hostile page is authored too.
  */
-function sanitizeSignature(html) {
+function sanitizeOutboundHtml(html) {
   return sanitizeHtml(String(html || ''), {
     allowedTags: ALLOWED_TAGS,
     allowedAttributes: ALLOWED_ATTRIBUTES,
@@ -111,4 +124,8 @@ function sanitizeSignature(html) {
   });
 }
 
-module.exports = { sanitizeEmailHtml, sanitizeSignature };
+// A signature (and a snippet) is just outbound content authored in a smaller
+// box — same policy, kept under its old name for the callers that save them.
+const sanitizeSignature = sanitizeOutboundHtml;
+
+module.exports = { sanitizeEmailHtml, sanitizeOutboundHtml, sanitizeSignature };

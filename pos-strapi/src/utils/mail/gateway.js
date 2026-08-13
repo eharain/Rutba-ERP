@@ -22,7 +22,7 @@ const {
   MailError, withAccount, credsFor, evictAccount, deadline,
   imapConfig, connectTimeoutMs, opTimeoutMs, intEnv,
 } = require('./pool');
-const { sanitizeEmailHtml } = require('./sanitize');
+const { sanitizeEmailHtml, sanitizeOutboundHtml } = require('./sanitize');
 
 const attachMaxBytes = () => intEnv('MAIL_ATTACH_MAX_MB', 15) * 1024 * 1024;
 const messageMaxBytes = () => intEnv('MAIL_MESSAGE_MAX_MB', 25) * 1024 * 1024;
@@ -421,13 +421,14 @@ async function transferMessage(strapi, account, folder, uid, toFolder) {
 
 /** APPEND a draft to the Drafts folder (M1). Recipients may be empty. */
 async function saveDraft(strapi, account, { to, cc, bcc, subject, html, text } = {}) {
+  const safeHtml = html ? sanitizeOutboundHtml(html) : '';
   const composer = new MailComposer({
     from: account.from_name ? { name: account.from_name, address: account.email } : account.email,
     ...(normalizeAddressInput(to).length ? { to: normalizeAddressInput(to) } : {}),
     ...(normalizeAddressInput(cc).length ? { cc: normalizeAddressInput(cc) } : {}),
     ...(normalizeAddressInput(bcc).length ? { bcc: normalizeAddressInput(bcc) } : {}),
     subject: subject || '',
-    ...(html ? { html } : {}),
+    ...(safeHtml ? { html: safeHtml } : {}),
     text: text || ' ',
   });
   const raw = await new Promise((resolve, reject) => {
@@ -595,6 +596,9 @@ async function removeMessage(strapi, account, folder, uid) {
  * Send and append are separate failure domains: once SMTP accepted the
  * message, an append failure is reported (`appendError`) but never thrown —
  * the mail IS sent.
+ *
+ * The body is sanitized here rather than in the controller so that send and
+ * saveDraft — the only two ways authored html leaves the ERP — cannot diverge.
  */
 async function sendMessage(strapi, account, {
   to, cc, bcc, subject, html, text, attachments = [], inReplyTo, references,
@@ -620,6 +624,7 @@ async function sendMessage(strapi, account, {
   }
 
   const { smtpPassword } = await credsFor(strapi, account);
+  const safeHtml = html ? sanitizeOutboundHtml(html) : '';
 
   // Raw RFC822 built once, WITHOUT a Bcc header, then reused for SMTP (with an
   // explicit envelope that includes bcc) and for the Sent APPEND.
@@ -628,7 +633,7 @@ async function sendMessage(strapi, account, {
     to: toList,
     ...(ccList.length ? { cc: ccList } : {}),
     subject: subject || '',
-    ...(html ? { html } : {}),
+    ...(safeHtml ? { html: safeHtml } : {}),
     text: text || ' ',
     ...(account.reply_to ? { replyTo: account.reply_to } : {}),
     ...(inReplyTo ? { inReplyTo } : {}),

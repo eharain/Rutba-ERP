@@ -5,8 +5,14 @@ import RecipientInput from "./RecipientInput";
 
 // Compose / reply / forward. Sends through the account's own SMTP; the backend
 // appends the sent copy to the account's Sent folder. The body is authored as
-// rich HTML (RichTextArea — sanitized again server-side on send); a plain-text
-// alternative is derived from it so every client gets a readable part.
+// rich HTML (RichTextArea); a plain-text alternative is derived from it so
+// every client gets a readable part.
+//
+// The html is sanitized server-side in gateway.sendMessage/saveDraft with the
+// OUTBOUND policy (utils/mail/sanitize.js sanitizeOutboundHtml) — script/style
+// blocks, on* handlers, javascript: URLs and CSS url() go; formatting, links
+// and remote image src survive, unlike the inbound reader policy. Nothing here
+// sanitizes: treat the client as a convenience, never as the control.
 
 const escapeHtml = (s) =>
     String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
