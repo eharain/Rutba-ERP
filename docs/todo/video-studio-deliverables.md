@@ -121,7 +121,35 @@ three. Revisit that question before building.
 **Gate.** The same recipe renders at three aspects with every layer inside
 frame; t4 carries a multi-aspect job.
 
-## D5 · Storyboard and voice-over (v4 M-AI)
+## D5 · Storyboard and voice-over (v4 M-AI) — **HALF DONE (be94767)**
+
+**Done — the storyboard.** "Draft from the product" places the discount hook
+(first three seconds), the price (taking over when the hook leaves), and the
+QR (last third), times the caption lines and fills an empty end card. Rules
+that are the deliverable and therefore the gate: inside the video, out of the
+platform UI bands, nothing invented from data that is not there, options
+filled but never overwritten, and safe to press twice (its layers are `sb-`
+prefixed and a second draft replaces that set). Pure in `lib/storyboard.js`,
+9 checks in t2.
+
+**Open — the voice-over, and it needs a decision.** TTS is the only piece of
+this program that reaches outside the app, and none of it can be built
+sensibly until a provider is chosen. What the answer changes:
+
+- **Which provider** — the practical choice is between a cloud TTS (Google,
+  Azure, ElevenLabs, OpenAI) and nothing. Urdu quality varies a lot between
+  them, and this catalogue is bilingual.
+- **Where it runs.** A key in the browser is a key published. It wants a
+  route in rutba-core (like the media proxy) that holds the credential and
+  returns audio, which is a small server change but a real one.
+- **What it costs per video**, since the poster generates unattended in
+  batches and a per-character bill is easy to run up without noticing.
+
+The seam is already there: v3 built sound layers for exactly this, so once
+audio exists the studio side is "put this buffer on a lane" — an afternoon,
+not a milestone. Auto-captions follow TTS and inherit the same decision.
+
+### Original scope
 
 The highest-scoring item in the v4 backlog, and the one that needs the most
 outside the renderer:
