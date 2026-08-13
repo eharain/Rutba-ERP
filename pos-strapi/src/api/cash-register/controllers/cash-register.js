@@ -11,15 +11,26 @@
  *
  * Custom routes use `auth: false` to bypass Strapi's scope-based
  * permission check (which rejects custom action names the role
- * doesn't explicitly list).  Because `auth: false` also skips JWT
- * parsing, every handler calls `ensureUser()` first to manually
- * extract the authenticated user from the Bearer token.
+ * doesn't explicitly list).  That also skips the api-pro interceptor
+ * (it needs a ctx.state.user nothing has populated yet), so these
+ * routes have NO authorization layer above the controller: every
+ * handler calls `requireAppRole()` to parse the Bearer token AND
+ * confirm the caller actually works a POS/accounting desk. Merely
+ * being authenticated is not enough — a rutba.pk storefront customer
+ * holds a perfectly valid JWT.
  */
 
 const { createCoreController } = require('@strapi/strapi').factories;
-const { hasAppRole } = require('../../../utils/require-admin');
+const { hasAppRole, requireAppRole } = require('../../../utils/require-admin');
 
 const EXPIRY_HOURS = 20;
+
+// The drawer is POS + accounting territory (`accounts` also matches the
+// accounts_viewer_* keys by prefix). Level stays open for the everyday
+// actions — reading and opening a register is the cashier's own job, so
+// sale_staff must pass. `close` re-checks ownership and `expire` narrows to
+// manager+ on top of this baseline.
+const DRAWER_DOMAINS = ['sale', 'accounts'];
 
 /** Returns true when the register has been open longer than EXPIRY_HOURS */
 function isExpired(register) {
@@ -136,32 +147,6 @@ function resolveOwnership(register, user) {
   return null; // ownerless
 }
 
-/**
- * Manually parse the JWT and populate ctx.state.user.
- * Returns the user object, or null (after sending 401) if invalid.
- */
-async function ensureUser(ctx, strapi) {
-  if (ctx.state?.user) return ctx.state.user;
-  try {
-    const token = await strapi
-      .plugin('users-permissions')
-      .service('jwt')
-      .getToken(ctx);
-    if (token?.id) {
-      const user = await strapi
-        .plugin('users-permissions')
-        .service('user')
-        .fetchAuthenticatedUser(token.id);
-      if (user && !user.blocked) {
-        ctx.state.user = user;
-        return user;
-      }
-    }
-  } catch (_) { /* invalid / missing token */ }
-  ctx.unauthorized('Authentication required');
-  return null;
-}
-
 module.exports = createCoreController('api::cash-register.cash-register', ({ strapi }) => ({
 
   /* ── GET /cash-registers/active?desk_id=X&user_id=Y ────────
@@ -173,7 +158,10 @@ module.exports = createCoreController('api::cash-register.cash-register', ({ str
    *  3. Auto-expire stale registers.
    * ──────────────────────────────────────────────────────────── */
   async active(ctx) {
-    if (!await ensureUser(ctx, strapi)) return;
+    if (!await requireAppRole(ctx, strapi, {
+      domains: DRAWER_DOMAINS,
+      message: 'A POS or accounts app role is required to read a cash register',
+    })) return;
 
     const { desk_id, user_id } = ctx.query;
     if (!desk_id && !user_id) return ctx.badRequest('desk_id or user_id is required');
@@ -274,7 +262,10 @@ module.exports = createCoreController('api::cash-register.cash-register', ({ str
    * register is returned instead of creating a duplicate.
    * ──────────────────────────────────────────────────────────── */
   async open(ctx) {
-    if (!await ensureUser(ctx, strapi)) return;
+    if (!await requireAppRole(ctx, strapi, {
+      domains: DRAWER_DOMAINS,
+      message: 'A POS or accounts app role is required to open a cash register',
+    })) return;
 
     const { desk_id, desk_name, branch_id, branch_name, opening_cash,
             opened_by, opened_by_id, branch: branchConnect,
@@ -430,7 +421,10 @@ module.exports = createCoreController('api::cash-register.cash-register', ({ str
 
   /* ── PUT /cash-registers/:id/close ─────────────────────────── */
   async close(ctx) {
-    if (!await ensureUser(ctx, strapi)) return;
+    if (!await requireAppRole(ctx, strapi, {
+      domains: DRAWER_DOMAINS,
+      message: 'A POS or accounts app role is required to close a cash register',
+    })) return;
 
     const { id } = ctx.params;
     const { counted_cash, closing_cash, cash_left, cash_drawn, notes,
@@ -454,10 +448,10 @@ module.exports = createCoreController('api::cash-register.cash-register', ({ str
     if (register.status === 'Cancelled') return ctx.badRequest('Register has been cancelled');
 
     // ── Who may close this ──────────────────────────────────
-    // The route is `auth: false`, so nothing else gates it: without this any
-    // authenticated user could close any desk's drawer. The rule matches the
-    // POS UI — you close your own live register; someone else's, or an expired
-    // one, needs a manager/admin (that's the path the registers list uses).
+    // The gate above only established that the caller works a desk at all;
+    // this decides WHICH drawer they may close. The rule matches the POS UI —
+    // you close your own live register; someone else's, or an expired one,
+    // needs a manager/admin (that's the path the registers list uses).
     const actor = ctx.state.user;
     const actorId = actor.id;
     const ownership = resolveOwnership(register, actor);
@@ -473,13 +467,13 @@ module.exports = createCoreController('api::cash-register.cash-register', ({ str
       const sameDesk = actorDeskId != null && register.desk_id != null
         && Number(actorDeskId) === Number(register.desk_id);
       if (sameDesk) {
-        isOwner = await hasAppRole(strapi, actorId, { domains: ['sale', 'accounts'] });
+        isOwner = await hasAppRole(strapi, actorId, { domains: DRAWER_DOMAINS });
       }
     }
 
     if (forceClose || !isOwner || register.status === 'Expired') {
       const privileged = await hasAppRole(strapi, actorId, {
-        domains: ['sale', 'accounts'],
+        domains: DRAWER_DOMAINS,
         levels: ['admin', 'manager'],
       });
       if (!privileged) {
@@ -625,7 +619,14 @@ module.exports = createCoreController('api::cash-register.cash-register', ({ str
 
   /* ── PUT /cash-registers/:id/expire ────────────────────────── */
   async expire(ctx) {
-    if (!await ensureUser(ctx, strapi)) return;
+    // Expiring is the manual override for the auto-expiry `active`/`open`
+    // already apply — it retires a drawer someone else is still holding, so
+    // it needs the same manager+ standing that closing a foreign register does.
+    if (!await requireAppRole(ctx, strapi, {
+      domains: DRAWER_DOMAINS,
+      levels: ['admin', 'manager'],
+      message: 'Only a manager or admin can expire a cash register',
+    })) return;
 
     const { id } = ctx.params;
     const register = await strapi.documents('api::cash-register.cash-register').findOne({

@@ -15,6 +15,7 @@ export interface MediaLibraryEndpointsType {
     delFile(id: any): Promise<any>;
     mediaVideos(params?: any): Promise<any>;
     mediaVideoFolders(): Promise<any>;
+    mediaVideoTags(params?: any): Promise<any>;
     linkMediaVideos(data: any): Promise<any>;
     videoScanStatus(): Promise<any>;
     videoScan(data?: any): Promise<any>;

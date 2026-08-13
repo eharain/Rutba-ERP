@@ -3,27 +3,24 @@
 /**
  * GET /reorder-policies/suggestions?branch=<documentId>
  *
- * Compute-on-read replenishment suggestions (Epic 4). Any authenticated user
- * (inventory staff); auth enforced manually since the route is auth:false so
- * Strapi doesn't reject the custom action name.
+ * Compute-on-read replenishment suggestions (Epic 4). The route is auth:false
+ * so Strapi doesn't reject the custom action name — which also means neither
+ * the users-permissions scope check nor the api-pro interceptor runs, and a
+ * bare authentication check would expose supplier costs and per-product
+ * deficits to any valid JWT (a storefront customer's included). Any inventory
+ * or stock member passes: reading the replenishment list is the stock clerk's
+ * daily job, and the descriptor declares admin/manager/staff. Acting on it
+ * (generate-purchases / generate-work-orders) is manager+ — see generate.js.
  */
 
-async function ensureUser(ctx, strapi) {
-  if (ctx.state?.user) return ctx.state.user;
-  try {
-    const token = await strapi.plugin('users-permissions').service('jwt').getToken(ctx);
-    if (token?.id) {
-      const user = await strapi.plugin('users-permissions').service('user').fetchAuthenticatedUser(token.id);
-      if (user && !user.blocked) { ctx.state.user = user; return user; }
-    }
-  } catch (_) { /* invalid / missing token */ }
-  ctx.unauthorized('Authentication required');
-  return null;
-}
+const { requireAppRole } = require('../../../utils/require-admin');
 
 module.exports = {
   async getReorderSuggestions(ctx) {
-    const user = await ensureUser(ctx, strapi);
+    const user = await requireAppRole(ctx, strapi, {
+      domains: ['inventory', 'stock'],
+      message: 'An inventory or stock app role is required to view reorder suggestions',
+    });
     if (!user) return;
 
     const branchDocId = ctx.query?.branch || null;

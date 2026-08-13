@@ -141,6 +141,13 @@ async function main() {
     // a sale role on the same actor.
     const saleRole = await db('api_pro_app_roles').where('key', 'sale_admin').first('id');
     if (saleRole) await grantIfMissing(staff.id, saleRole.id);
+    // The cash-register routes are auth:false + requireAppRole('sale'/'accounts'),
+    // so the POS actor needs a real drawer role — staff level, because that is
+    // the cashier the gate has to keep letting through.
+    const cashierRole = await db('api_pro_app_roles').where('key', 'sale_staff').first('id')
+      || saleRole;
+    check('a sale app-role exists for the POS actor', Boolean(cashierRole));
+    if (cashierRole) await grantIfMissing(posUser.id, cashierRole.id);
 
     const tokenStaff = jwt.sign({ id: staff.id }, get('JWT_SECRET'), { expiresIn: '10m' });
     const tokenPos = jwt.sign({ id: posUser.id }, get('JWT_SECRET'), { expiresIn: '10m' });

@@ -112,12 +112,18 @@ async function main() {
     const noAuth = await req('GET', '/api/reorder-policies/suggestions');
     check('suggestions 401 without token', noAuth.status === 401, `got ${noAuth.status}`);
 
+    // The route is auth:false, so a valid JWT alone used to be enough — which
+    // meant a storefront customer could read every product's deficit, supplier
+    // and unit cost. It now takes an inventory/stock membership (any level).
+    const sugDenied = await req('GET', '/api/reorder-policies/suggestions', tokenA);
+    check('suggestions 403 without an inventory/stock role', sugDenied.status === 403, `got ${sugDenied.status}`);
+
     const p1 = await documents(PRODUCT_UID).create({
       data: { name: `${MARK} product`, sku: `${MARK}-sku`, reorder_level: 7, cost_price: 50 },
     });
     track(PRODUCT_UID, p1.documentId);
 
-    const fb = await req('GET', '/api/reorder-policies/suggestions', tokenA);
+    const fb = await req('GET', '/api/reorder-policies/suggestions', tokenB);
     const fbRow = fb.status === 200 && (fb.body.data || []).find((s) => s.product === p1.documentId);
     check('legacy fallback suggestion (reorder_level, no policy)',
       Boolean(fbRow) && fbRow.fallback === true && fbRow.min_stock === 7 && fbRow.suggested_qty === 7
@@ -132,7 +138,7 @@ async function main() {
     });
     track(POLICY_UID, pol.documentId);
 
-    const ps = await req('GET', '/api/reorder-policies/suggestions', tokenA);
+    const ps = await req('GET', '/api/reorder-policies/suggestions', tokenB);
     const psRow = ps.status === 200 && (ps.body.data || []).find((s) => s.product === p1.documentId);
     check('policy suggestion (MinMax up-to-max, deficit ranked)',
       Boolean(psRow) && psRow.fallback === false && psRow.policy === pol.documentId

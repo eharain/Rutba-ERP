@@ -33,7 +33,7 @@ const POLICY_UID = 'plugin::api-pro.api-method-policy';
 // deployment to reseed even if descriptor contents are unchanged. A mismatch
 // between this constant and the value stored in the checkpoint forces a
 // reseed regardless of file hashes.
-const SEEDER_VERSION = 4;
+const SEEDER_VERSION = 5;
 
 // â”€â”€â”€ api-provider resolution â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // api-provider's package.json doesn't export './package.json', so we can't
@@ -80,6 +80,8 @@ function inferAction(method, endpointPath, methodName) {
   return null;
 }
 
+// Names that read as an endpoint. Only a fallback: a descriptor carrying an
+// explicit `action` is admitted whatever it is called (see walkApiDescriptors).
 function isDescriptorMethodName(methodName) {
   const name = String(methodName || '').toLowerCase();
   if (!name || name === 'meta') return false;
@@ -173,7 +175,6 @@ async function walkApiDescriptors(root, domainsConfig, rolesConfig, strapi) {
 
       for (const [methodName, value] of Object.entries(exported)) {
         if (methodName === 'meta' || typeof value !== 'function') continue;
-        if (!isDescriptorMethodName(methodName)) continue;
         if (value.constructor?.name === 'AsyncFunction') continue;
 
         let descriptor;
@@ -186,6 +187,18 @@ async function walkApiDescriptors(root, domainsConfig, rolesConfig, strapi) {
 
         const endpointPath = descriptor.path || descriptor.url;
         if (!endpointPath || String(endpointPath).startsWith('/upload')) continue;
+
+        // The verb whitelist is a guess at "is this an endpoint?" made from the
+        // method's NAME. It is wrong for every custom action named after its
+        // subject rather than a verb (mediaVideos, videoScan, submitClaim,
+        // attachStockItem…), and being wrong is silent: no policy row is
+        // written, so api-pro's deny-by-default answers the route with 403 for
+        // every role. A descriptor that spells out `action` has already said
+        // which controller handler it hits — that is a stronger signal than the
+        // name, so trust it and let the name-based guess cover the rest.
+        const verbNamed = isDescriptorMethodName(methodName);
+        const explicitAction = typeof descriptor.action === 'string' && descriptor.action.trim() !== '';
+        if (!verbNamed && !explicitAction) continue;
 
         const uid = metaUid || inferUidFromPath(endpointPath, lookup);
         if (!uid) continue;
@@ -211,6 +224,7 @@ async function walkApiDescriptors(root, domainsConfig, rolesConfig, strapi) {
           uid,
           methodName,
           action,
+          verbNamed,
           method: String(descriptor.method || 'GET').toLowerCase(),
           path: endpointPath,
           routeTokens,
@@ -222,7 +236,33 @@ async function walkApiDescriptors(root, domainsConfig, rolesConfig, strapi) {
       }
     }
   }
-  return out;
+
+  // Enforcement resolves a policy by (uid, action, roleKey) alone — the path is
+  // not part of the lookup, and getPolicyForActionAndRole takes findOne. So two
+  // descriptors that land on the same (uid, action) mint two policy rows for
+  // the same role and whichever the DB returns first wins. That is how an
+  // alias like `payments.fetchByRegister` (action `find`, no scope) could
+  // silently outrank the scoped `find` policy the verb-named descriptor
+  // authored, handing a role rows it is not meant to see.
+  //
+  // So a name-verified descriptor always keeps its pair, and one admitted only
+  // on its explicit `action` is dropped when that pair is already covered:
+  // it is an alias for a route the policy already governs, never a new one.
+  const claimed = new Set(out.filter((d) => d.verbNamed).map((d) => `${d.uid}::${d.action}`));
+  const kept = [];
+  let aliases = 0;
+  for (const d of out) {
+    if (!d.verbNamed) {
+      const pair = `${d.uid}::${d.action}`;
+      if (claimed.has(pair)) { aliases += 1; continue; }
+      claimed.add(pair);
+    }
+    kept.push(d);
+  }
+  if (aliases > 0) {
+    strapi.log.info(`[api-pro seeder] skipped ${aliases} descriptor alias(es) whose action is already covered`);
+  }
+  return kept;
 }
 
 // â”€â”€â”€ upsert helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

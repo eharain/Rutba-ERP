@@ -2,48 +2,39 @@
 
 /**
  * POST /reorder-policies/generate-purchases
+ * POST /reorder-policies/generate-work-orders
  *
- * Turn reviewed (or freshly-computed) Purchase-source reorder suggestions into
- * draft purchases grouped by supplier (Epic 4 P3). Manager/admin only. Route is
- * auth:false so Strapi doesn't reject the custom action name — auth + role gate
- * are enforced here.
+ * Turn reviewed (or freshly-computed) reorder suggestions into draft purchases
+ * grouped by supplier, or into draft work-orders against each product's default
+ * BOM (Epic 4 P3). Manager/admin only — these commit spend and shop-floor time.
+ *
+ * Routes are auth:false so Strapi doesn't reject the custom action names, which
+ * also skips the api-pro interceptor; the gate below is the only authorization
+ * these endpoints get.
  *
  * Body: { branch?: docId, suggestions?: [{ product, suggested_qty, unit_cost, preferred_supplier }] }
  */
 
 const POLICY_UID = 'api::reorder-policy.reorder-policy';
 
-async function ensureUser(ctx, strapi) {
-  if (ctx.state?.user) return ctx.state.user;
-  try {
-    const token = await strapi.plugin('users-permissions').service('jwt').getToken(ctx);
-    if (token?.id) {
-      const user = await strapi.plugin('users-permissions').service('user').fetchAuthenticatedUser(token.id);
-      if (user && !user.blocked) { ctx.state.user = user; return user; }
-    }
-  } catch (_) { /* invalid / missing token */ }
-  ctx.unauthorized('Authentication required');
-  return null;
-}
+const { requireAppRole } = require('../../../utils/require-admin');
 
-// Super-admin OR an inventory/stock/purchase admin|manager app-role.
-async function isReplenishManager(userId, strapi) {
-  const user = await strapi.query('plugin::users-permissions.user').findOne({
-    where: { id: userId },
-    populate: { role: { select: ['type'] }, app_roles: { select: ['key'] } },
-  });
-  if (user?.role?.type === 'admin') return true;
-  const keys = (user?.app_roles || []).map((r) => r?.key).filter(Boolean);
-  return keys.some((k) => /^(inventory|stock|purchase)_(admin|manager)$/.test(String(k)));
-}
+// Purchasing is the inventory/stock supervisors' call; work-orders add
+// manufacturing, which the generateWorkOrders descriptor declares. The regex
+// these replaced also listed `purchase_*`, a role prefix no domain defines —
+// it never matched anything.
+const PURCHASE_DOMAINS = ['inventory', 'stock'];
+const WORK_ORDER_DOMAINS = ['inventory', 'stock', 'manufacturing'];
+const LEVELS = ['admin', 'manager'];
 
 module.exports = {
   async generatePurchases(ctx) {
-    const user = await ensureUser(ctx, strapi);
+    const user = await requireAppRole(ctx, strapi, {
+      domains: PURCHASE_DOMAINS,
+      levels: LEVELS,
+      message: 'Inventory / purchasing manager access is required',
+    });
     if (!user) return;
-    if (!(await isReplenishManager(user.id, strapi))) {
-      return ctx.forbidden('Inventory / purchasing manager access is required');
-    }
 
     const body = ctx.request.body?.data ?? ctx.request.body ?? {};
     const res = await strapi.service(POLICY_UID).generatePurchases({
@@ -55,11 +46,12 @@ module.exports = {
   },
 
   async generateWorkOrders(ctx) {
-    const user = await ensureUser(ctx, strapi);
+    const user = await requireAppRole(ctx, strapi, {
+      domains: WORK_ORDER_DOMAINS,
+      levels: LEVELS,
+      message: 'Inventory / manufacturing manager access is required',
+    });
     if (!user) return;
-    if (!(await isReplenishManager(user.id, strapi))) {
-      return ctx.forbidden('Inventory / manufacturing manager access is required');
-    }
 
     const body = ctx.request.body?.data ?? ctx.request.body ?? {};
     const res = await strapi.service(POLICY_UID).generateWorkOrders({

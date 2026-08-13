@@ -72,13 +72,13 @@ async function mediaVideos(params = {}) {
     return authApi.fetch(ep.path, ep.params);
 }
 
-async function mediaVideoTags(params = {}) {
-    const ep = MediaLibraryEndpointsApi.mediaVideoTags(params);
+async function mediaVideoFolders() {
+    const ep = MediaLibraryEndpointsApi.mediaVideoFolders();
     return authApi.fetch(ep.path, ep.params);
 }
 
-async function mediaVideoFolders() {
-    const ep = MediaLibraryEndpointsApi.mediaVideoFolders();
+async function mediaVideoTags(params = {}) {
+    const ep = MediaLibraryEndpointsApi.mediaVideoTags(params);
     return authApi.fetch(ep.path, ep.params);
 }
 

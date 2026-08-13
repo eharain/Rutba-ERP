@@ -9,26 +9,37 @@ export const MediaLibraryEndpoints = {
         roles: ['admin', 'manager', 'staff'],
     },
 
-    foldersTree: () => ({ path: '/media-library/folders/tree' }),
+    // Every descriptor here spells out `action`, and the value is the media-library
+    // controller's handler name — `folderTree`, not `foldersTree`. That name is
+    // what both backends put in the route handler api-pro parses (pos-strapi via
+    // `media-library.<handler>`, rutba-core via the module route's `action`), so a
+    // policy seeded under any other spelling is never found and the route 403s.
+    // Nothing infers it: these method names are not verb-shaped, so the seeder's
+    // name-based action guess returns null and skips them entirely.
+    foldersTree: () => ({ path: '/media-library/folders/tree', action: 'folderTree', method: 'get' }),
     folders: (parentId = null) => ({
         path: '/media-library/folders',
+        action: 'getFolders',
+        method: 'get',
         params: parentId ? { parent: parentId } : {},
     }),
-    folder: (id) => ({ path: `/media-library/folders/${id}` }),
-    files: (params = {}) => ({ path: '/media-library/files', params }),
-    file: (id) => ({ path: `/media-library/files/${id}` }),
+    folder: (id) => ({ path: `/media-library/folders/${id}`, action: 'getFolder', method: 'get' }),
+    files: (params = {}) => ({ path: '/media-library/files', action: 'getFiles', method: 'get', params }),
+    file: (id) => ({ path: `/media-library/files/${id}`, action: 'getFile', method: 'get' }),
     moveFiles: (data) => ({ path: '/media-library/files/move', action: 'moveFiles', method: 'post', data }),
     uploadToFolder: (data) => ({ path: '/media-library/upload', action: 'uploadToFolder', method: 'post', data }),
     createFolder: (data) => ({ path: '/media-library/folders', action: 'createFolder', method: 'post', data }),
     renameFolder: (id, data) => ({ path: `/media-library/folders/${id}`, action: 'renameFolder', method: 'put', data }),
     deleteFolder: (id) => ({ path: `/media-library/folders/${id}`, action: 'deleteFolder', method: 'delete' }),
     updateFileInfo: (id, data) => ({ path: `/media-library/files/${id}`, action: 'updateFileInfo', method: 'put', data }),
-    // todo: speculative stub — rutba-cms/pages/media.js and rutba-social/pages/media.js
-    // call these. Verify the upload route shape (multipart vs JSON) and the
-    // delete file route exists in pos-strapi media-library plugin/controller.
-    uploadFile: (data) => ({ path: '/media-library/upload', action: 'uploadFile', method: 'post', data }),
-    // todo: speculative stub — see uploadFile above. Confirm DELETE route is wired.
-    delFile: (id) => ({ path: `/media-library/files/${id}`, action: 'delFile', method: 'delete' }),
+    // Second name for the upload route rutba-cms/pages/media.js and
+    // rutba-social/pages/media.js call. Same path, same handler as
+    // uploadToFolder above — so it declares the same action and the seeder
+    // treats it as the alias it is rather than minting a second policy.
+    uploadFile: (data) => ({ path: '/media-library/upload', action: 'uploadToFolder', method: 'post', data }),
+    // `deleteFile` is the controller's handler; `delFile` is only what this
+    // client method is called.
+    delFile: (id) => ({ path: `/media-library/files/${id}`, action: 'deleteFile', method: 'delete' }),
 
     // Media-server video surface. The backend proxies these to the Rutba Media
     // FileServer, which owns the video bytes, the drives and the scanner.

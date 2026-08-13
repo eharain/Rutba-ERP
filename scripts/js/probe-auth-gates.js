@@ -19,6 +19,11 @@
  *     node scripts/js/probe-auth-gates.js
  *
  * Without tokens only the anonymous column runs.
+ *
+ * PROBE_BASE defaults to pos-strapi. Pointing it at rutba-core (:4020) works —
+ * core mounts the same controller files zero-copy — except for the three seed/*
+ * rows: their 403 expectation is the users-permissions public role talking, and
+ * core's own auth middleware answers 401 there instead. Everything else matches.
  */
 
 const BASE = (process.env.PROBE_BASE || 'http://localhost:4010').replace(/\/$/, '');
@@ -50,6 +55,26 @@ const ENDPOINTS = [
   // deliberately withheld from the storefront (applies_to_web:false).
   ['POST', '/api/sale-orders/x/update-items', 401],
   ['GET', '/api/sale-offers/for-product/x', 401],
+  // The cash drawer. All four were ensureUser-only, so any authenticated JWT
+  // could read a desk's takings, open a register in someone else's name, or
+  // retire a live one. `active`/`open`/`close` stay open to sale_staff — a
+  // cashier runs their own drawer — and `expire` narrows to manager+.
+  ['GET', '/api/cash-registers/active?desk_id=1', 401],
+  ['POST', '/api/cash-registers/open', 401],
+  ['POST', '/api/cash-registers/1/close', 401],
+  ['POST', '/api/cash-registers/1/expire', 401],
+  // Inventory reads + maintenance jobs. The privileged column really does run
+  // the reconcile jobs (they're idempotent full-DB rebuilds, same as
+  // stock-batches/recompute-product-bulk above) — expect them to be slow on a
+  // production-sized catalog.
+  ['POST', '/api/stock-items/transfer', 401],
+  ['GET', '/api/stock-items/valuation', 401],
+  ['POST', '/api/stock-items/backfill-default-locations', 401],
+  ['POST', '/api/stock-items/recompute-product-stock', 401],
+  ['POST', '/api/stock-levels/recompute', 401],
+  ['GET', '/api/reorder-policies/suggestions', 401],
+  ['POST', '/api/reorder-policies/generate-purchases', 401],
+  ['POST', '/api/reorder-policies/generate-work-orders', 401],
   ['POST', '/api/seed/run', 403, true],
   ['GET', '/api/seed/status', 403, true],
   ['GET', '/api/seed/runs', 403, true],

@@ -17,36 +17,19 @@
  * descriptor for this path; both the global /stock-items page and the
  * per-product Assign tab call it (replacing the previous N-call update loop).
  *
- * Auth is enforced manually (auth: false on the route) so Strapi doesn't
- * reject the custom action name. Any authenticated user in roles
- * admin / manager / staff for the stock domain can transfer — the action
- * itself does not destroy data, only moves it.
+ * `auth: false` on the route skips BOTH the users-permissions scope check and
+ * the api-pro interceptor, so nothing above the controller authorizes this
+ * call — a bare authentication check would hand a bulk cross-branch stock move
+ * to any valid JWT, storefront customers included. Gate it at the level the
+ * StockItemsEndpoints.transfer descriptor declares: inventory/stock
+ * manager-or-admin. (Staff scan and sell stock; relocating a hundred units
+ * between branches with no transfer document behind it is a supervisor's call.)
  */
 
 const STOCK_ITEM_UID = 'api::stock-item.stock-item';
 const BRANCH_UID = 'api::branch.branch';
 
-async function ensureUser(ctx, strapi) {
-  if (ctx.state?.user) return ctx.state.user;
-  try {
-    const token = await strapi
-      .plugin('users-permissions')
-      .service('jwt')
-      .getToken(ctx);
-    if (token?.id) {
-      const user = await strapi
-        .plugin('users-permissions')
-        .service('user')
-        .fetchAuthenticatedUser(token.id);
-      if (user && !user.blocked) {
-        ctx.state.user = user;
-        return user;
-      }
-    }
-  } catch (_) { /* invalid / missing token */ }
-  ctx.unauthorized('Authentication required');
-  return null;
-}
+const { requireAppRole } = require('../../../utils/require-admin');
 
 // Resolve a branch reference (documentId or numeric id) to the numeric DB id.
 async function resolveBranchId(ref) {
@@ -84,7 +67,11 @@ async function resolveStockItem(ref) {
 
 module.exports = {
   async run(ctx) {
-    const user = await ensureUser(ctx, strapi);
+    const user = await requireAppRole(ctx, strapi, {
+      domains: ['inventory', 'stock'],
+      levels: ['admin', 'manager'],
+      message: 'Only inventory/stock managers can transfer stock between branches',
+    });
     if (!user) return;
 
     const body = ctx.request.body?.data ?? ctx.request.body ?? {};
