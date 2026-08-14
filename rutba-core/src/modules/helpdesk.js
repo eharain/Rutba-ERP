@@ -19,9 +19,26 @@
  *   /api/helpdesk/*         agent and admin — interceptor-gated on uid + action
  *   /api/me/helpdesk/*      requester — selfAuth, ownership-checked
  *   /api/helpdesk/public/*  anonymous — selfAuth, per-desk opt-in, rate-limited
+ *   /api/web/help/*         anonymous KB read — selfAuth, rate-limited
  *
  * A scoping mistake in an agent handler therefore cannot leak into a requester
  * one: they do not share a handler, a filter or a gate.
+ *
+ * The fourth is the public KB, and it lives under `web` rather than under
+ * /api/helpdesk/public because spec 11 §11.7 and spec 27 §27.6 both put it
+ * there: it is the read API the storefront and the CMS consume, and §11.2 rules
+ * that public articles reach the storefront through the CMS rather than through
+ * a second content stack. It is listed as its own block for the same reason the
+ * other three are — it is the surface where a visibility mistake reaches an
+ * anonymous reader.
+ *
+ * KB VISIBILITY IS THREE TIERS, NOT A BOOLEAN, AND NO HANDLER DECIDES IT. Every
+ * KB handler below resolves an actor and calls a service; the tier list comes
+ * from domain/helpdesk/policy/kb-visibility.js and is pushed into SQL by
+ * repository/kb.repo.js. `agent_only` is absent from an anonymous or requester
+ * actor's list before any query is built, which is what makes §11's acceptance
+ * criterion — such articles never appear in requester search, suggestions, the
+ * portal or the public pages — a property of the code rather than a promise.
  *
  * NEVER PASS A FALSY ACTOR TO THE ENTITLEMENT LAYER. `resolveActor(null)`
  * returns the SYSTEM actor, and the system band reads every ticket on every
@@ -86,6 +103,10 @@ const messageService = require('../domain/helpdesk/message.service');
 const slaService = require('../domain/helpdesk/sla.service');
 const routingService = require('../domain/helpdesk/routing.service');
 const deskService = require('../domain/helpdesk/desk.service');
+// Requiring kb-article.service is what registers the KB staleness sweep cron,
+// for the same reason sla.service is required eagerly above.
+const kbArticleService = require('../domain/helpdesk/kb-article.service');
+const kbCategoryService = require('../domain/helpdesk/kb-category.service');
 
 const { ValidationError, NotFoundError } = ticketService;
 
@@ -101,6 +122,12 @@ const TICKET = ticketRepo.TICKET_UID;
 // only file that can seed a policy for them.
 const DESK = 'api::helpdesk-desk.helpdesk-desk';
 const CONFIG = 'api::helpdesk-config.helpdesk-config';
+// ONE uid for every KB route, articles and categories alike. Not tidiness: the
+// api-pro seeder reads a single `meta.uid` per descriptor FILE and ignores a
+// per-method override, so two uids here would force the KB descriptors into two
+// files that must then be kept in step by hand. The service layer is the
+// authoritative gate either way (spec 29 §29.9) — this uid is the second one.
+const KB = 'api::helpdesk-kb.helpdesk-kb';
 
 const PERSON_UID = 'api::person.person';
 const EMPLOYEE_UID = 'api::hr-employee.hr-employee';
@@ -113,6 +140,7 @@ const EMPLOYEE_UID = 'api::hr-employee.hr-employee';
 const GUEST = Object.freeze({});
 
 const HOUR_MS = 60 * 60 * 1000;
+const MINUTE_MS = 60 * 1000;
 const MAX_BULK = 100;
 const REPOINT_PAGE = 100;
 const MAX_REPOINT_PASSES = 200;
@@ -222,10 +250,16 @@ function listQuery(ctx) {
 // ── public-intake rate limiting (spec 27.9) ───────────────────────────────
 
 /**
- * A deliberately small in-process limiter, wired to the anonymous namespace and
- * nothing else. It is not a substitute for an edge limiter — it is per process
- * and resets on restart — but an unauthenticated POST with no ceiling at all is
- * an abuse vector we would be shipping knowingly.
+ * A deliberately small in-process limiter, wired to the anonymous surfaces and
+ * nothing else — public ticket intake and the public KB reads. It is not a
+ * substitute for an edge limiter — it is per process and resets on restart —
+ * but an unauthenticated request with no ceiling at all is an abuse vector we
+ * would be shipping knowingly.
+ *
+ * Bucket keys are prefixed per surface (`hd:pub:` vs `hd:kb:`) so one surface's
+ * traffic cannot exhaust another's allowance, and so a future tenant prefix is
+ * a change to the key builders rather than to the limiter (spec 34 T5 — every
+ * limiter is tenant-keyed).
  */
 const buckets = new Map();
 const MAX_BUCKETS = 20000;
@@ -250,8 +284,8 @@ function consume(key, limit, windowMs) {
   return Math.max(1, Math.ceil((bucket.resetAt - now) / 1000));
 }
 
-function rateLimit(ctx, key, limit) {
-  const retryAfter = consume(key, limit, HOUR_MS);
+function rateLimit(ctx, key, limit, windowMs = HOUR_MS) {
+  const retryAfter = consume(key, limit, windowMs);
   if (!retryAfter) return;
   ctx.set('Retry-After', String(retryAfter));
   const err = new Error('Too many requests — try again later');
@@ -570,6 +604,153 @@ const config = {
   },
 };
 
+// ── knowledge base (spec 11 §11.7) ────────────────────────────────────────
+
+/**
+ * KB list/search query, shared by all three namespaces. It carries no
+ * visibility decision of any kind — the tiers come from the actor via
+ * policy/kb-visibility.js inside the service, and a `visibility` filter arriving
+ * here can only ever narrow that (KbArticleService.find). A handler that
+ * widened it would be the one place the acceptance criterion could be lost.
+ */
+function kbQuery(ctx, overrides = {}) {
+  const q = ctx.query || {};
+  return {
+    q: q.q,
+    page: q.page,
+    pageSize: q.pageSize,
+    sort: q.sort,
+    locale: q.locale,
+    categoryId: q.categoryId || q.category_id,
+    deskId: q.deskId || q.desk_id,
+    status: q.status,
+    visibility: q.visibility,
+    includeArchived: boolOf(q.includeArchived),
+    ...overrides,
+  };
+}
+
+/** ip / user-agent for the deflection session fallback — see sessionKeyFor. */
+function requestOf(ctx) {
+  return { ip: ctx.ip || null, userAgent: ctx.get('user-agent') || null };
+}
+
+const kb = {
+  async find(ctx) {
+    const actor = await actorOf(ctx);
+    return kbArticleService.find(actor, kbQuery(ctx));
+  },
+
+  async findOne(ctx) {
+    const actor = await actorOf(ctx);
+    return one(await kbArticleService.findOne(actor, ctx.params.idOrSlug, {
+      locale: (ctx.query || {}).locale, includeArchived: true,
+    }));
+  },
+
+  /** Deflection at the point of intent — typeahead while composing a ticket. */
+  async suggest(ctx) {
+    const actor = await actorOf(ctx);
+    const q = ctx.query || {};
+    return many(await kbArticleService.suggest(actor, {
+      q: q.q, ticketId: q.ticketId || q.ticket, deskId: q.deskId, limit: q.limit,
+    }));
+  },
+
+  async listCategories(ctx) {
+    const actor = await actorOf(ctx);
+    const q = ctx.query || {};
+    return many(boolOf(q.flat)
+      ? await kbCategoryService.list(actor, { includeInactive: boolOf(q.includeInactive) })
+      : await kbCategoryService.tree(actor, { includeInactive: boolOf(q.includeInactive) }));
+  },
+
+  async createCategory(ctx) {
+    const actor = await actorOf(ctx);
+    const category = await kbCategoryService.create(actor, bodyOf(ctx));
+    ctx.status = 201;
+    return one(category);
+  },
+
+  async updateCategory(ctx) {
+    const actor = await actorOf(ctx);
+    return one(await kbCategoryService.update(actor, ctx.params.idOrKey, bodyOf(ctx)));
+  },
+
+  async create(ctx) {
+    const actor = await actorOf(ctx);
+    const article = await kbArticleService.create(actor, bodyOf(ctx));
+    ctx.status = 201;
+    return one(article);
+  },
+
+  async update(ctx) {
+    const actor = await actorOf(ctx);
+    return one(await kbArticleService.update(actor, ctx.params.idOrSlug, bodyOf(ctx)));
+  },
+
+  async submitReview(ctx) {
+    const actor = await actorOf(ctx);
+    return one(await kbArticleService.submitReview(actor, ctx.params.idOrSlug, bodyOf(ctx)));
+  },
+
+  async reject(ctx) {
+    const actor = await actorOf(ctx);
+    return one(await kbArticleService.reject(actor, ctx.params.idOrSlug, bodyOf(ctx)));
+  },
+
+  async publish(ctx) {
+    const actor = await actorOf(ctx);
+    return one(await kbArticleService.publish(actor, ctx.params.idOrSlug, bodyOf(ctx)));
+  },
+
+  async archive(ctx) {
+    const actor = await actorOf(ctx);
+    return one(await kbArticleService.archive(actor, ctx.params.idOrSlug, bodyOf(ctx)));
+  },
+
+  async restore(ctx) {
+    const actor = await actorOf(ctx);
+    return one(await kbArticleService.restore(actor, ctx.params.idOrSlug));
+  },
+
+  async versions(ctx) {
+    const actor = await actorOf(ctx);
+    return many(await kbArticleService.versions(actor, ctx.params.idOrSlug));
+  },
+
+  /** Restores by writing a NEW version — history is never mutated (§11.4). */
+  async rollback(ctx) {
+    const actor = await actorOf(ctx);
+    return one(await kbArticleService.rollback(actor, ctx.params.idOrSlug, bodyOf(ctx)));
+  },
+
+  async feedback(ctx) {
+    const actor = await actorOf(ctx);
+    return one(await kbArticleService.feedback(actor, ctx.params.idOrSlug, bodyOf(ctx), requestOf(ctx)));
+  },
+
+  async effectiveness(ctx) {
+    const actor = await actorOf(ctx);
+    return one(await kbArticleService.effectiveness(actor, ctx.params.idOrSlug));
+  },
+
+  /** The KB's backlog: searched for, not found (§11.10). */
+  async searchGaps(ctx) {
+    const actor = await actorOf(ctx);
+    const q = ctx.query || {};
+    return many(await kbArticleService.searchGaps(actor, { surface: q.surface, limit: q.limit }));
+  },
+
+  /** The authoring path that turns work already done into knowledge (§11.4). */
+  async draftFromTicket(ctx) {
+    const actor = await actorOf(ctx);
+    const article = await kbArticleService.draftFromTicket(actor, ctx.params.ticketDocumentId, bodyOf(ctx));
+    ctx.status = article.reused_existing_draft ? 200 : 201;
+    return one(article);
+  },
+};
+
 // ══ namespace 2 — requester (/api/me/helpdesk) ════════════════════════════
 // selfAuth: the api-pro interceptor never runs, so every handler here gates
 // itself. Two rules hold for all of them: the caller must be signed in, and the
@@ -674,6 +855,66 @@ const portal = {
     const { actor, ticket } = await myTicket(ctx);
     return one(await ticketService.close(actor, ticket.documentId, bodyOf(ctx)));
   },
+
+  // ── knowledge base, requester tier ──────────────────────────────────────
+  // The surface behind /support/knowledge (customer portal) and /knowledge
+  // (ESS). §11.7 lists the agent paths and the public ones; this namespace is
+  // required by spec 27 §27.2's structural separation — a requester holds no
+  // api-pro grant, so they cannot reach /api/helpdesk/kb/* at all, and pointing
+  // the portal at the agent endpoint would be exactly the shared-gate mistake
+  // the three namespaces exist to prevent.
+  //
+  // Nothing here decides visibility. The actor resolves to a requester band
+  // holding no helpdesk role, kb-visibility gives it ['public', 'internal'],
+  // and `agent_only` is absent from that list before any query is built.
+
+  async myKbArticles(ctx) {
+    requireUser(ctx);
+    const actor = await actorOf(ctx, 'portal');
+    return kbArticleService.find(actor, kbQuery(ctx, { includeArchived: false }));
+  },
+
+  async myKbArticle(ctx) {
+    requireUser(ctx);
+    const actor = await actorOf(ctx, 'portal');
+    return one(await kbArticleService.findOne(actor, ctx.params.idOrSlug, {
+      locale: (ctx.query || {}).locale,
+    }));
+  },
+
+  async myKbCategories(ctx) {
+    requireUser(ctx);
+    const actor = await actorOf(ctx, 'portal');
+    return many(await kbCategoryService.tree(actor));
+  },
+
+  async myKbSuggest(ctx) {
+    requireUser(ctx);
+    const actor = await actorOf(ctx, 'portal');
+    const q = ctx.query || {};
+    return many(await kbArticleService.suggest(actor, {
+      q: q.q, ticketId: q.ticketId || q.ticket, limit: q.limit,
+    }));
+  },
+
+  async myKbFeedback(ctx) {
+    requireUser(ctx);
+    const actor = await actorOf(ctx, 'portal');
+    return one(await kbArticleService.feedback(actor, ctx.params.idOrSlug, bodyOf(ctx), requestOf(ctx)));
+  },
+
+  /**
+   * The deflection signal (§11.6). Reported here because the composing surface
+   * is the only place that knows whether the form was abandoned — see
+   * KbArticleService.recordDeflection for why the server cannot infer it.
+   */
+  async myKbDeflection(ctx) {
+    requireUser(ctx);
+    const actor = await actorOf(ctx, 'portal');
+    return one(await kbArticleService.recordDeflection(
+      actor, ctx.params.idOrSlug, bodyOf(ctx), requestOf(ctx)
+    ));
+  },
 };
 
 // ══ namespace 3 — public (/api/helpdesk/public) ═══════════════════════════
@@ -710,6 +951,77 @@ const publicIntake = {
     // requester's contact details and the desk's internal ids, and there is no
     // public read of a ticket by reference (spec 27.6).
     return one({ ticket_no: ticket.ticket_no, status: ticket.status, created_at: ticket.createdAt });
+  },
+};
+
+// ══ namespace 3b — public KB (/api/web/help) ══════════════════════════════
+//
+// UNDER `web`, NOT UNDER /api/helpdesk/public. Spec 11 §11.7 and spec 27 §27.6
+// both put it there, and the reason is worth stating: this is the read API the
+// storefront and the CMS consume, and §11.2 rules that public articles reach
+// the storefront THROUGH the CMS — the KB owns authoring, versioning and
+// internal visibility, the CMS owns public presentation, SEO and navigation.
+// So there is deliberately no public category tree and no public search-
+// suggestion surface here: navigation is the CMS's job, and building a second
+// one would duplicate its page, menu and SEO machinery for no gain.
+//
+// ANONYMOUS, SO THE SAME CARE AS PUBLIC INTAKE. Rate limited per IP (spec 27.9
+// puts the public KB at 100/min), resolved as GUEST rather than null — see the
+// file docblock, `resolveActor(null)` is the SYSTEM actor and would read every
+// tier — and answered from a scope that contains `public` and nothing else.
+//
+// `agent_only` AND `internal` ARE UNREACHABLE FROM HERE BY CONSTRUCTION, not by
+// a check in these two handlers: an anonymous actor's tier list is ['public'],
+// it is built before the query, and the query cannot be built without it.
+
+const publicKb = {
+  async findArticles(ctx) {
+    rateLimit(ctx, `hd:kb:ip:${ctx.ip}`, intEnv('RUTBA_CORE_HELPDESK_PUBLIC_KB_RATE', 100), MINUTE_MS);
+    const actor = await actorOf(ctx, 'web');
+    const q = ctx.query || {};
+    return kbArticleService.find(actor, {
+      q: q.q,
+      page: q.page,
+      pageSize: q.pageSize,
+      sort: q.sort,
+      locale: q.locale,
+      categoryId: q.categoryId || q.category_id,
+      includeArchived: false,
+    });
+  },
+
+  /**
+   * By slug — the address §11.7 and the storefront's `/help/[slug]` both use.
+   * A published `public` article or a 404; never a 403, which would confirm
+   * that a slug somebody guessed names a real internal article (spec 27.8).
+   */
+  async findArticle(ctx) {
+    rateLimit(ctx, `hd:kb:ip:${ctx.ip}`, intEnv('RUTBA_CORE_HELPDESK_PUBLIC_KB_RATE', 100), MINUTE_MS);
+    const actor = await actorOf(ctx, 'web');
+    return one(await kbArticleService.findOne(actor, ctx.params.slug, {
+      locale: (ctx.query || {}).locale,
+    }));
+  },
+
+  /**
+   * Helpful / not helpful from the public help pages. Deduped per reader by the
+   * session key rather than by a login nobody here has — see sessionKeyFor: the
+   * fallback is a rate limit expressed as a key, and deliberately not a record
+   * of who read which article.
+   */
+  async feedback(ctx) {
+    rateLimit(ctx, `hd:kb:fb:${ctx.ip}`, intEnv('RUTBA_CORE_HELPDESK_PUBLIC_KB_FEEDBACK_RATE', 20), MINUTE_MS);
+    const actor = await actorOf(ctx, 'web');
+    return one(await kbArticleService.feedback(actor, ctx.params.slug, bodyOf(ctx), requestOf(ctx)));
+  },
+
+  /** The deflection outcome from the storefront's "still need help?" flow. */
+  async deflection(ctx) {
+    rateLimit(ctx, `hd:kb:df:${ctx.ip}`, intEnv('RUTBA_CORE_HELPDESK_PUBLIC_KB_FEEDBACK_RATE', 20), MINUTE_MS);
+    const actor = await actorOf(ctx, 'web');
+    return one(await kbArticleService.recordDeflection(
+      actor, ctx.params.slug, bodyOf(ctx), requestOf(ctx)
+    ));
   },
 };
 
@@ -1157,6 +1469,32 @@ function registerHelpdeskModule() {
     { method: 'post', path: '/api/helpdesk/routing/rules', uid: CONFIG, action: 'createRoutingRule', handler: (c) => config.createRoutingRule(c) },
     { method: 'patch', path: '/api/helpdesk/routing/rules/:ruleId', uid: CONFIG, action: 'updateRoutingRule', handler: (c) => config.updateRoutingRule(c) },
 
+    // ── namespace 1c: knowledge base, agent and admin (spec 11 §11.7) ────
+    // Literal segments first: /kb/suggest, /kb/categories, /kb/from-ticket and
+    // /kb/search-gaps all sit at the same depth as /kb/articles, and
+    // /kb/articles/:idOrSlug would swallow nothing here only because none of
+    // them is a child of it — the ordering is kept anyway so that adding
+    // /kb/:something later cannot silently capture them.
+    { method: 'get', path: '/api/helpdesk/kb/suggest', uid: KB, action: 'suggest', handler: (c) => kb.suggest(c) },
+    { method: 'get', path: '/api/helpdesk/kb/search-gaps', uid: KB, action: 'searchGaps', handler: (c) => kb.searchGaps(c) },
+    { method: 'get', path: '/api/helpdesk/kb/categories', uid: KB, action: 'listCategories', handler: (c) => kb.listCategories(c) },
+    { method: 'post', path: '/api/helpdesk/kb/categories', uid: KB, action: 'createCategory', handler: (c) => kb.createCategory(c) },
+    { method: 'patch', path: '/api/helpdesk/kb/categories/:idOrKey', uid: KB, action: 'updateCategory', handler: (c) => kb.updateCategory(c) },
+    { method: 'post', path: '/api/helpdesk/kb/from-ticket/:ticketDocumentId', uid: KB, action: 'draftFromTicket', handler: (c) => kb.draftFromTicket(c) },
+    { method: 'get', path: '/api/helpdesk/kb/articles', uid: KB, action: 'find', handler: (c) => kb.find(c) },
+    { method: 'post', path: '/api/helpdesk/kb/articles', uid: KB, action: 'create', handler: (c) => kb.create(c) },
+    { method: 'get', path: '/api/helpdesk/kb/articles/:idOrSlug', uid: KB, action: 'findOne', handler: (c) => kb.findOne(c) },
+    { method: 'patch', path: '/api/helpdesk/kb/articles/:idOrSlug', uid: KB, action: 'update', handler: (c) => kb.update(c) },
+    { method: 'post', path: '/api/helpdesk/kb/articles/:idOrSlug/submit-review', uid: KB, action: 'submitReview', handler: (c) => kb.submitReview(c) },
+    { method: 'post', path: '/api/helpdesk/kb/articles/:idOrSlug/reject', uid: KB, action: 'reject', handler: (c) => kb.reject(c) },
+    { method: 'post', path: '/api/helpdesk/kb/articles/:idOrSlug/publish', uid: KB, action: 'publish', handler: (c) => kb.publish(c) },
+    { method: 'post', path: '/api/helpdesk/kb/articles/:idOrSlug/archive', uid: KB, action: 'archive', handler: (c) => kb.archive(c) },
+    { method: 'post', path: '/api/helpdesk/kb/articles/:idOrSlug/restore', uid: KB, action: 'restore', handler: (c) => kb.restore(c) },
+    { method: 'get', path: '/api/helpdesk/kb/articles/:idOrSlug/versions', uid: KB, action: 'versions', handler: (c) => kb.versions(c) },
+    { method: 'post', path: '/api/helpdesk/kb/articles/:idOrSlug/rollback', uid: KB, action: 'rollback', handler: (c) => kb.rollback(c) },
+    { method: 'post', path: '/api/helpdesk/kb/articles/:idOrSlug/feedback', uid: KB, action: 'feedback', handler: (c) => kb.feedback(c) },
+    { method: 'get', path: '/api/helpdesk/kb/articles/:idOrSlug/effectiveness', uid: KB, action: 'effectiveness', handler: (c) => kb.effectiveness(c) },
+
     // ── namespace 2: requester (selfAuth, ownership-checked) ─────────────
     { method: 'get', path: '/api/me/helpdesk/tickets', selfAuth: true, handler: (c) => portal.myTickets(c) },
     { method: 'post', path: '/api/me/helpdesk/tickets', selfAuth: true, handler: (c) => portal.createMyTicket(c) },
@@ -1167,8 +1505,23 @@ function registerHelpdeskModule() {
     { method: 'post', path: '/api/me/helpdesk/tickets/:documentId/reopen', selfAuth: true, handler: (c) => portal.reopenMyTicket(c) },
     { method: 'post', path: '/api/me/helpdesk/tickets/:documentId/close', selfAuth: true, handler: (c) => portal.closeMyTicket(c) },
 
+    // ── namespace 2b: requester knowledge base ───────────────────────────
+    // Literal /kb/categories and /kb/suggest before /kb/articles/:idOrSlug.
+    { method: 'get', path: '/api/me/helpdesk/kb/categories', selfAuth: true, handler: (c) => portal.myKbCategories(c) },
+    { method: 'get', path: '/api/me/helpdesk/kb/suggest', selfAuth: true, handler: (c) => portal.myKbSuggest(c) },
+    { method: 'get', path: '/api/me/helpdesk/kb/articles', selfAuth: true, handler: (c) => portal.myKbArticles(c) },
+    { method: 'get', path: '/api/me/helpdesk/kb/articles/:idOrSlug', selfAuth: true, handler: (c) => portal.myKbArticle(c) },
+    { method: 'post', path: '/api/me/helpdesk/kb/articles/:idOrSlug/feedback', selfAuth: true, handler: (c) => portal.myKbFeedback(c) },
+    { method: 'post', path: '/api/me/helpdesk/kb/articles/:idOrSlug/deflection', selfAuth: true, handler: (c) => portal.myKbDeflection(c) },
+
     // ── namespace 3: public (anonymous, rate-limited) ────────────────────
     { method: 'post', path: '/api/helpdesk/public/tickets', selfAuth: true, handler: (c) => publicIntake.createPublicTicket(c) },
+
+    // ── namespace 3b: public KB, under `web` per §11.7 / §27.6 ───────────
+    { method: 'get', path: '/api/web/help/articles', selfAuth: true, handler: (c) => publicKb.findArticles(c) },
+    { method: 'get', path: '/api/web/help/articles/:slug', selfAuth: true, handler: (c) => publicKb.findArticle(c) },
+    { method: 'post', path: '/api/web/help/articles/:slug/feedback', selfAuth: true, handler: (c) => publicKb.feedback(c) },
+    { method: 'post', path: '/api/web/help/articles/:slug/deflection', selfAuth: true, handler: (c) => publicKb.deflection(c) },
 
     // ── legacy contact-ticket contracts (F13) ────────────────────────────
     // These claim the same verb+path pairs crm.js registers; whichever module
