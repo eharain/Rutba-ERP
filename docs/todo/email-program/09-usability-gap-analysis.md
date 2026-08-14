@@ -152,10 +152,12 @@ banner · plus flag-as-bulk, `\Answered` on reply, delete confirmation, and
 draft resume (which the table above never listed, because the gap was
 invisible until someone tried to finish a half-written mail).
 
-*Still open in P1:* unified inbox and cross-folder search — both blocked on
-the message-index decision, deliberately not started · per-user shared
-signature · CSV import UX · click-by-URL report · suppression browser ·
-email-groups/aliases · offboarding flow · role-grant lag fix.
+*Still open in P1:* unified inbox and cross-folder search — deliberately not
+started, because both wait on the index question, whose recommendation now
+lives in [`10-index-decision.md`](./10-index-decision.md) and is **not yet
+ratified** · per-user shared signature · CSV import UX · click-by-URL report ·
+suppression browser · email-groups/aliases · offboarding flow · role-grant
+lag fix.
 
 **P2 (parity chasing — schedule, don't rush):** A/B + journeys (M7) · SLAs ·
 snooze/undo · tags · deliverability card · quota surfacing · access audit.
