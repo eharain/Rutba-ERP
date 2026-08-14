@@ -52,7 +52,7 @@ Make tenant #1 credible and legal before selling anything. Half-built internals 
 
 | # | Item | Track | Why now / gate | Depends on | Size |
 |---|------|-------|----------------|-----------|------|
-| 0.1 | **FBR Digital Invoicing** — PRAL API (DI v1.12), IRN + verifiable QR on every invoice, sandbox cert, 6-yr archive, 18% GST, offline buffer | ① | **Legally mandatory** (phased mandate completed 31 Dec 2025); can't invoice compliantly in PK without it | sale/sale-order posting | L |
+| 0.1 | **FBR Digital Invoicing** — PRAL API (DI v1.12), IRN + verifiable QR on every invoice, sandbox cert, 6-yr archive, 18% GST, offline buffer. Build as the **first adapter behind a fiscalization seam**, not PK-shaped code → [fiscalization-multi-region.md §4](./fiscalization-multi-region.md#4-what-01-must-not-hardcode) | ① | **Legally mandatory** (phased mandate completed 31 Dec 2025); can't invoice compliantly in PK without it | sale/sale-order posting | L |
 | 0.2 | **Local digital payments** — Raast + JazzCash + Easypaisa + QR acceptance at POS/checkout | ① | 88–92% of PK retail is digital; merchant acceptance is the national gap; cuts COD returns | pos-sale, checkout | M |
 | 0.3 | **Offline-first POS hardening** — graceful degrade + reconcile-on-reconnect | ① | Table stakes for every PK POS; intermittent connectivity is the norm | pos-sale | M |
 | 0.4 | **Finish accounting posting wiring** — web/cash/purchase/payroll → GL — **✅ done (2026-08-10)**. Web/COD, cash-register and the payroll run already posted; the real gaps were elsewhere: purchase bills expensed goods instead of capitalizing them, purchase-return never posted, `SHRINKAGE_EXPENSE` was resolved but never seeded (so every inventory loss was silently absent), advances were paid out with no debit to `EMPLOYEE_ADVANCES`, and the posting endpoints were gated on a `permission_roles` relation that has no schema — always empty, so only super-admins could reach them. Covered by `smoke-accounting-gl.js` on both servers. See [accounting-completion-spec](./accounting-completion-spec.md) | ② | Books must be trustworthy before Rutba is the system of record | acc-* (mostly built) | M |
@@ -91,7 +91,7 @@ rutba.pk works single-tenant; selling to tenant #2 needs the platform layer. Thi
 | 2.2 | **Self-serve onboarding** — signup → setup wizard (business type, branches, tax, import products/customers) → live in minutes | ④ | Time-to-value is where Rutba beats $40K-implementation incumbents | 2.1, bulk-import | M |
 | 2.3 | **Subscription billing + metering** — plans, seats/branches, usage limits, invoicing, dunning | ④ | No revenue mechanism today | 2.1, payments (0.2) | L |
 | 2.4 | **Tenant admin console** — org profile, users↔app entitlements, branches, tax/locale, branding | ④ | Tenants must self-administer | 2.1 | M |
-| 2.5 | **Pluggable tax/payments/locale** — un-hard-code PK specifics so other markets drop in | ①/④ | Turns the PK moat into a reusable localization framework (GCC/Africa/SE-Asia) | 0.1, 0.2 | M |
+| 2.5 | **Pluggable tax/payments/locale** — un-hard-code PK specifics so other markets drop in; **Peppol access point** is the highest-leverage 2nd adapter (covers much of EU + UAE/AU/SG/NZ in one build) → [fiscalization-multi-region.md](./fiscalization-multi-region.md) | ①/④ | Turns the PK moat into a reusable localization framework (GCC/Africa/SE-Asia) | 0.1, 0.2 | M |
 
 **H2 exit gate:** an external business signs up, onboards itself, and pays — without the Rutba team touching their instance.
 
@@ -128,11 +128,13 @@ Everything else sequences around these three spines.
 - **Why AI/analytics (H1) before multi-tenancy (H2):** parity features are smaller, demoable, and de-risk the value proposition before the expensive tenancy rebuild.
 - **Multi-tenancy is the long pole (XL):** design it in H0/H1 (a spike) even though you build it in H2 — retrofitting isolation is far costlier than designing for it. Keep [[project_erp_generic_vs_rutba_pk_implementation]] discipline (generic product vs tenant data) — it's the pre-work that makes 2.1 tractable.
 - **Keep PK specifics pluggable (2.5):** or the beachhead moat becomes a global-expansion anchor. The **multi-country/regional seeding layer** (tax profiles + shipping) + industry-onboarding packs already in the repo are the substrate for this — per-region marketplace accounts (1.7/3.10) plug into the same regional model.
+- **Fiscalization ≠ tax rates, and 0.1 is the seam-setting moment:** rate *calculation* is already multi-region (`tax-profiles.js` covers PK/UK/US/EU/MENA/APAC/Canada); **fiscalization** — transmitting an invoice to a tax authority and printing what it returns — doesn't exist at all. India, Saudi (ZATCA) and Egypt use the *same* clearance→ID→QR shape as FBR, so 0.1 should leave the offline/retry queue, QR encoder, sequential numbering, hash-chain hook, credential onboarding and retention period generic. Cost during 0.1: small. Cost to retrofit: a rewrite. Full landscape (EU/UK/US/MENA/India) parked in [fiscalization-multi-region.md](./fiscalization-multi-region.md) — **plan only, re-verify dates before costing.**
 - **Marketplace connectors are a wedge, not an afterthought:** omnichannel (own store + POS + Amazon + eBay + Daraz) is a headline SME-ERP feature the specialists (Cin7) lead with. Build the **framework once** (1.7) so each new channel/region is config, not a rewrite — this is what makes the global multi-region SaaS story real. Start with Amazon + eBay; fan out in 3.10.
 - **Don't chase up-market depth:** the story is "start in minutes, grow for years," not "enterprise ERP." Resist scope that pulls toward NetSuite/SAP territory.
 
 ## Cross-references
 - HR org chart + moving approval authority onto the reporting line → [hr-org-chart-and-reporting-line.md](./hr-org-chart-and-reporting-line.md)
+- Multi-region fiscalization landscape & seam design (0.1 / 2.5) → [fiscalization-multi-region.md](./fiscalization-multi-region.md)
 - Market rationale & competitor benchmark → [market-strategy/README.md](./market-strategy/README.md)
 - App-level gap detail & CRM carry-over → [rightapp-gap-analysis/README.md](./rightapp-gap-analysis/README.md) + [app-feature-map.md](./rightapp-gap-analysis/app-feature-map.md)
 - Standalone-service pattern (Rutba-MTA, Rutba-Media-FileServer) for infra builds → gap-analysis §1/§4a
