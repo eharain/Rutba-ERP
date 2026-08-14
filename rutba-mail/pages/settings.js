@@ -11,6 +11,7 @@ import {
 import { APP_URLS } from "@rutba/pos-shared/lib/roles";
 import AccountDialog from "../components/AccountDialog";
 import RichTextArea from "../components/RichTextArea";
+import { useMarkReadOnOpen } from "../components/readingPrefs";
 
 // Connected mailboxes. Staff see the accounts they own (personal + shared they
 // belong to); mail_admin sees everything. Passwords are write-only — the API
@@ -215,12 +216,42 @@ export default function SettingsPage() {
                     </div>
                 )}
 
+                <ReadingPanel />
+
                 <div className="row g-3 mt-1">
                     <div className="col-lg-6"><TagsPanel /></div>
                     <div className="col-lg-6"><SnippetsPanel /></div>
                 </div>
             </Layout>
         </ProtectedRoute>
+    );
+}
+
+/**
+ * Reading behaviour. The gateway PEEKs message bodies and sets \Seen only
+ * when the client asks, so whether opening a message marks it read is a real
+ * setting rather than a label on something that happens anyway. It is a
+ * per-device preference, so it lives in the browser, not on the account.
+ */
+function ReadingPanel() {
+    const [markRead, setMarkRead] = useMarkReadOnOpen();
+    return (
+        <div className="card mt-4">
+            <div className="card-header py-2"><strong><i className="fa-solid fa-book-open me-2"></i>Reading</strong></div>
+            <div className="card-body py-2">
+                <div className="form-check form-switch">
+                    <input className="form-check-input" type="checkbox" id="mark-read-on-open"
+                        checked={markRead} onChange={(e) => setMarkRead(e.target.checked)} />
+                    <label className="form-check-label" htmlFor="mark-read-on-open">
+                        Mark messages as read when I open them
+                    </label>
+                </div>
+                <p className="text-muted small mb-0 mt-1">
+                    Turn this off to preview messages without changing their read state — they
+                    stay unread until you mark them read yourself. Applies to this browser only.
+                </p>
+            </div>
+        </div>
     );
 }
 
