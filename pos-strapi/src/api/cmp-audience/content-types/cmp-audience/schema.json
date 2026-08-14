@@ -28,7 +28,7 @@
       ],
       "default": "filter",
       "required": true,
-      "description": "static = the uploaded list in static_members; filter = filter_json applied to `entity`; segment = a saved crm-segment (not built yet — ROADMAP 0.6)."
+      "description": "static = the uploaded list in static_members; filter = filter_json applied to `entity`; segment = the saved crm-segment in `segment` (ROADMAP 0.6 — resolved through the whitelisted segment engine)."
     },
     "entity": {
       "type": "enumeration",
@@ -59,6 +59,12 @@
     },
     "last_resolved_at": {
       "type": "datetime"
+    },
+    "segment": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-segment.crm-segment",
+      "description": "The saved CRM segment this audience resolves through when source = 'segment'. Ignored for the other sources."
     },
     "campaigns": {
       "type": "relation",

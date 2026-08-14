@@ -29,6 +29,7 @@ export { ContactTicketsEndpoints } from './contact-tickets.js';
 export { CrmActivitiesEndpoints } from './crm-activities.js';
 export { CrmContactsEndpoints } from './crm-contacts.js';
 export { CrmLeadsEndpoints } from './crm-leads.js';
+export { CrmSegmentsEndpoints } from './crm-segments.js';
 export { CustomersEndpoints } from './customers.js';
 export { DeliveryMethodsEndpoints } from './delivery-methods.js';
 export { DeliveryZonesEndpoints } from './delivery-zones.js';

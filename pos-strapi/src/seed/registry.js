@@ -39,6 +39,7 @@ const { runJsonSeedFile } = require('./json-seed-runner');
 const ensureSeoMetaPerEntity = require('./seo-meta-backfill');
 const backfillProductSlugs = require('./product-slug-backfill');
 const backfillEssOwners = require('./ess-owners-backfill');
+const { backfillCrmContactPersons } = require('./seeders/crm-contact-person-backfill');
 const provisionEssEmployees = require('./ess-employee-provisioning');
 const repairOrphanedLeaveRequests = require('./ess-orphaned-leave-repair');
 const { applyAdminDomainGrants } = require('./seeders/admin-domain-grants');
@@ -470,6 +471,21 @@ const REGISTRY = [
         supportsFull: true,
         hasMigration: false,
         run: (strapi) => backfillEssOwners(strapi),
+    },
+    // Contact-unification Phase 1C.1. Not essential: a fresh DB has no legacy
+    // contacts to link, and the crm-contact controller dual-writes every new
+    // row. This exists for databases that predate the dual-write. Idempotent
+    // and non-destructive; `RUTBA_PERSON_BACKFILL_DRY_RUN=1` plans without
+    // writing. Ambiguous matches go to person-dedup-audit for a human.
+    {
+        key: 'crm-contact-person',
+        title: 'CRM contact → person backfill (contact unification 1C.1)',
+        category: 'backfill',
+        essential: false,
+        supportsPartial: true,
+        supportsFull: false,
+        hasMigration: false,
+        run: (strapi) => backfillCrmContactPersons(strapi),
     },
     // ── Industry onboarding packs ────────────────────────────────────────
     // A tenant runs the ONE pack for their trade: a starter category tree +

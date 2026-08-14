@@ -32,6 +32,7 @@ export * from './content-sync.js';
 export * from './crm-activities.js';
 export * from './crm-contacts.js';
 export * from './crm-leads.js';
+export * from './crm-segments.js';
 export * from './customers.js';
 export * from './delivery-methods.js';
 export * from './delivery-zones.js';

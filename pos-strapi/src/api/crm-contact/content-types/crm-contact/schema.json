@@ -43,6 +43,12 @@
       "target": "api::crm-activity.crm-activity",
       "mappedBy": "contact"
     },
+    "person": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::person.person",
+      "inversedBy": "crm_contacts"
+    },
     "owners": {
       "type": "relation",
       "relation": "manyToMany",

@@ -65,6 +65,12 @@
       "target": "api::crm-contact.crm-contact",
       "inversedBy": "leads"
     },
+    "activities": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::crm-activity.crm-activity",
+      "mappedBy": "lead"
+    },
     "customer": {
       "type": "relation",
       "relation": "manyToOne",

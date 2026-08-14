@@ -48,6 +48,12 @@
       "relation": "oneToMany",
       "target": "api::address.address",
       "mappedBy": "person"
+    },
+    "crm_contacts": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::crm-contact.crm-contact",
+      "mappedBy": "person"
     }
   }
 }

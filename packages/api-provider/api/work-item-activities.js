@@ -3,13 +3,14 @@
  * Generic, entity-agnostic audit trail for workflow-driven work items
  * (keyed by entity_uid + target_document_id). Plus the `assign` action that
  * sets a work item's assignee and records it. Shared by the manufacturing
- * (work orders) and order-management (sale orders + returns) apps.
+ * (work orders), order-management (sale orders + returns) and CRM
+ * (contacts) apps.
  */
 export const WorkItemActivitiesEndpoints = {
 
     meta: {
         uid: 'api::work-item-activity.work-item-activity',
-        domains: ['manufacturing', 'order-management'],
+        domains: ['manufacturing', 'order-management', 'crm'],
         roles: ['admin', 'manager', 'staff'],
     },
 
@@ -17,7 +18,7 @@ export const WorkItemActivitiesEndpoints = {
         path: '/work-item-activities',
         action: 'find',
         method: 'get',
-        apps: ['manufacturing', 'order-management'],
+        apps: ['manufacturing', 'order-management', 'crm'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             filters: {
@@ -39,7 +40,7 @@ export const WorkItemActivitiesEndpoints = {
         path: '/work-item-activities/assign',
         action: 'assign',
         method: 'post',
-        apps: ['manufacturing', 'order-management'],
+        apps: ['manufacturing', 'order-management', 'crm'],
         approle: ['admin', 'manager', 'staff'],
         data,
     }),

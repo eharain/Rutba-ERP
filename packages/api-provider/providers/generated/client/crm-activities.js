@@ -27,6 +27,21 @@ async function del(documentId) {
     return authApi.del(withQuery(ep.path, ep.params));
 }
 
+async function getTimeline(arg1 = {}) {
+    const ep = CrmActivitiesEndpointsApi.getTimeline(arg1);
+    return authApi.fetch(ep.path, ep.params);
+}
+
+async function listFollowups(arg1 = {}) {
+    const ep = CrmActivitiesEndpointsApi.listFollowups(arg1);
+    return authApi.fetch(ep.path, ep.params);
+}
+
+async function markFollowupDone(documentId, data = { done: true }) {
+    const ep = CrmActivitiesEndpointsApi.markFollowupDone(documentId, data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
 const endpoints = strictEndpointGuard(
     'CrmActivitiesEndpoints',
     {
@@ -35,9 +50,12 @@ const endpoints = strictEndpointGuard(
         create,
         update,
         del,
+        getTimeline,
+        listFollowups,
+        markFollowupDone,
         meta: CrmActivitiesEndpointsApi.meta,
     },
-    ["list","byId","create","update","del","meta"],
+    ["list","byId","create","update","del","getTimeline","listFollowups","markFollowupDone","meta"],
 );
 
 export default endpoints;

@@ -31,6 +31,8 @@ const STANDARD_ACTIONS = ['find', 'findOne', 'create', 'update', 'delete'];
 const CUSTOM_ACTIONS = {
   'api::sale.sale': ['detail', 'checkout', 'markPayLater', 'unlockPayLater'],
   'api::crm-lead.crm-lead': ['assignees'],
+  'api::crm-activity.crm-activity': ['timeline', 'followups', 'completeFollowup'],
+  'api::crm-segment.crm-segment': ['fields', 'resolve', 'members', 'audience', 'recomputeCount'],
   'api::product.product': ['publishedStatus'],
   'api::stock-item.stock-item': ['resolveBulkStock', 'processBulkStock'],
   'api::hr-leave-request.hr-leave-request': ['myRequests', 'teamQueue', 'approve', 'reject', 'cancel'],

@@ -5,7 +5,7 @@ import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { CrmLeadsEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 import LeadForm from "../components/form/LeadForm";
-import { LEAD_STATUSES, leadStatusColor } from "../components/leadStatus";
+import { useLeadStatuses, leadStatusColor } from "../components/leadStatus";
 
 export default function Leads() {
     const { jwt } = useAuth();
@@ -13,6 +13,7 @@ export default function Leads() {
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
     const [view, setView] = useState("board");
+    const { statuses } = useLeadStatuses();
 
     const loadLeads = () => {
         if (!jwt) return;
@@ -106,7 +107,7 @@ export default function Leads() {
 
                 {!loading && leads.length > 0 && view === "board" && (
                     <div className="row g-2 flex-nowrap overflow-auto pb-2">
-                        {LEAD_STATUSES.map((status) => {
+                        {statuses.map((status) => {
                             const column = leads.filter((l) => (l.status || "New") === status);
                             const total = column.reduce((sum, l) => sum + (Number(l.value) || 0), 0);
                             return (
@@ -151,7 +152,7 @@ export default function Leads() {
                                                             value={l.status || "New"}
                                                             onChange={(e) => handleStatusChange(l, e.target.value)}
                                                         >
-                                                            {LEAD_STATUSES.map((s) => (
+                                                            {statuses.map((s) => (
                                                                 <option key={s} value={s}>{s}</option>
                                                             ))}
                                                         </select>

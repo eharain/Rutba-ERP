@@ -11,9 +11,7 @@ import AppHome, {
     AppHomeSection,
 } from "@rutba/pos-shared/components/AppHome";
 import Link from "next/link";
-import { LEAD_STATUSES, leadStatusColor } from "../components/leadStatus";
-
-const OPEN_STATUSES = ["New", "Contacted", "Qualified", "Negotiation"];
+import { useLeadStatuses, isOpenStatus, leadStatusColor } from "../components/leadStatus";
 
 export default function Home() {
     const { jwt } = useAuth();
@@ -22,6 +20,7 @@ export default function Home() {
     const [followUps, setFollowUps] = useState([]);
     const [contactCount, setContactCount] = useState(null);
     const [loading, setLoading] = useState(true);
+    const { statuses } = useLeadStatuses();
 
     useEffect(() => {
         if (!jwt) return;
@@ -50,7 +49,7 @@ export default function Home() {
             .finally(() => setLoading(false));
     }, [jwt]);
 
-    const byStatus = LEAD_STATUSES.map((status) => {
+    const byStatus = statuses.map((status) => {
         const rows = leads.filter((l) => (l.status || "New") === status);
         return {
             status,
@@ -58,7 +57,7 @@ export default function Home() {
             value: rows.reduce((sum, l) => sum + (Number(l.value) || 0), 0),
         };
     });
-    const openLeads = leads.filter((l) => OPEN_STATUSES.includes(l.status || "New"));
+    const openLeads = leads.filter((l) => isOpenStatus(l.status));
     const pipelineValue = openLeads.reduce((sum, l) => sum + (Number(l.value) || 0), 0);
     const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
     const newThisWeek = leads.filter((l) => new Date(l.createdAt).getTime() >= weekAgo).length;

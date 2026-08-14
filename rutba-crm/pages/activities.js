@@ -2,11 +2,11 @@ import { useState, useEffect } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import EnumSelect from "@rutba/pos-shared/components/EnumSelect";
 import { CrmActivitiesEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 import ActivityForm from "../components/form/ActivityForm";
 
-const TYPES = ["Call", "Email", "Meeting", "Note", "Follow-up"];
 const PAGE_SIZE = 25;
 
 export default function Activities() {
@@ -15,6 +15,7 @@ export default function Activities() {
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
     const [typeFilter, setTypeFilter] = useState("");
+    const [directionFilter, setDirectionFilter] = useState("");
     const [fromDate, setFromDate] = useState("");
     const [toDate, setToDate] = useState("");
     const [page, setPage] = useState(1);
@@ -26,6 +27,7 @@ export default function Activities() {
 
         const filters = {};
         if (typeFilter) filters.type = { $eq: typeFilter };
+        if (directionFilter) filters.direction = { $eq: directionFilter };
         if (fromDate || toDate) {
             filters.date = {
                 ...(fromDate ? { $gte: new Date(fromDate).toISOString() } : {}),
@@ -50,7 +52,7 @@ export default function Activities() {
 
     useEffect(() => {
         loadActivities();
-    }, [jwt, page, typeFilter, fromDate, toDate]);
+    }, [jwt, page, typeFilter, directionFilter, fromDate, toDate]);
 
     const handleDelete = async (activity) => {
         if (!window.confirm(`Delete activity "${activity.subject}"?`)) return;
@@ -94,17 +96,25 @@ export default function Activities() {
                 )}
 
                 <div className="row g-2 mb-3">
-                    <div className="col-md-3">
-                        <select
-                            className="form-select"
+                    <div className="col-md-2">
+                        {/* Types come from the schema (/enums/crm-activity/type),
+                            never a local copy that silently drifts. */}
+                        <EnumSelect
+                            name="crm-activity"
+                            field="type"
                             value={typeFilter}
                             onChange={(e) => { setPage(1); setTypeFilter(e.target.value); }}
-                        >
-                            <option value="">All types</option>
-                            {TYPES.map((t) => (
-                                <option key={t} value={t}>{t}</option>
-                            ))}
-                        </select>
+                            includeBlank="All types"
+                        />
+                    </div>
+                    <div className="col-md-2">
+                        <EnumSelect
+                            name="crm-activity"
+                            field="direction"
+                            value={directionFilter}
+                            onChange={(e) => { setPage(1); setDirectionFilter(e.target.value); }}
+                            includeBlank="All directions"
+                        />
                     </div>
                     <div className="col-md-3">
                         <input
@@ -122,11 +132,17 @@ export default function Activities() {
                             onChange={(e) => { setPage(1); setToDate(e.target.value); }}
                         />
                     </div>
-                    {(typeFilter || fromDate || toDate) && (
+                    {(typeFilter || directionFilter || fromDate || toDate) && (
                         <div className="col-auto">
                             <button
                                 className="btn btn-outline-secondary"
-                                onClick={() => { setPage(1); setTypeFilter(""); setFromDate(""); setToDate(""); }}
+                                onClick={() => {
+                                    setPage(1);
+                                    setTypeFilter("");
+                                    setDirectionFilter("");
+                                    setFromDate("");
+                                    setToDate("");
+                                }}
                             >
                                 Clear filters
                             </button>
@@ -149,7 +165,9 @@ export default function Activities() {
                                         <th>Date</th>
                                         <th>Type</th>
                                         <th>Subject</th>
+                                        <th>Outcome</th>
                                         <th>Contact</th>
+                                        <th>Follow-up</th>
                                         <th className="text-end"></th>
                                     </tr>
                                 </thead>
@@ -159,6 +177,14 @@ export default function Activities() {
                                             <td>{new Date(a.date).toLocaleString()}</td>
                                             <td>
                                                 <span className="badge bg-secondary">{a.type || "Note"}</span>
+                                                {a.direction && a.direction !== "Internal" && (
+                                                    <div>
+                                                        <small className="text-muted">
+                                                            <i className={`fas ${a.direction === "Inbound" ? "fa-arrow-down" : "fa-arrow-up"} me-1`}></i>
+                                                            {a.direction}
+                                                        </small>
+                                                    </div>
+                                                )}
                                             </td>
                                             <td>
                                                 {a.subject}
@@ -167,10 +193,25 @@ export default function Activities() {
                                                 )}
                                             </td>
                                             <td>
+                                                {a.outcome ? <span className="badge bg-info text-dark">{a.outcome}</span> : "—"}
+                                                {a.duration_minutes != null && (
+                                                    <div><small className="text-muted">{a.duration_minutes} min</small></div>
+                                                )}
+                                            </td>
+                                            <td>
                                                 {a.contact ? (
                                                     <Link href={`/${a.contact.documentId || a.contact.id}/contact`}>
                                                         {a.contact.name}
                                                     </Link>
+                                                ) : "—"}
+                                            </td>
+                                            <td>
+                                                {a.followup_at ? (
+                                                    <span className={`badge ${a.followup_done_at
+                                                        ? "bg-success"
+                                                        : new Date(a.followup_at) < new Date() ? "bg-danger" : "bg-warning text-dark"}`}>
+                                                        {new Date(a.followup_at).toLocaleDateString()}
+                                                    </span>
                                                 ) : "—"}
                                             </td>
                                             <td className="text-end">
