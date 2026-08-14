@@ -135,7 +135,7 @@ explicitly out of scope for now. The four-layer model in
 8. **§§1–5 and §10 of `offline-pos-options.md` are settled.** Cite them; do not
    re-derive them. Where this program extends one, it says which section and why.
 
-## The four documents
+## The documents
 
 | # | Document | What it owns |
 |---|---|---|
@@ -143,6 +143,7 @@ explicitly out of scope for now. The four-layer model in
 | 2 | [`02-desktop-shell.md`](02-desktop-shell.md) | The Electron container: process shape, the build-time/runtime origin problem, security posture, Electron hazards as release gates, updates, packaging. |
 | 3 | [`03-app-policies.md`](03-app-policies.md) | The four-layer adoption model, and what each of POS / Mail / Studio actually needs. |
 | 4 | [`04-server-prerequisites.md`](04-server-prerequisites.md) | Five small, independently-correct, gating server changes — and the offline-readiness gate. |
+| 5 | [`05-sqlite-viability.md`](05-sqlite-viability.md) | **Measured, not specified.** Does rutba-core actually run on SQLite? What ports, what breaks, and whether the "bridge = rutba-core on SQLite" assumption survives contact with a real database file. |
 
 ## Phases
 
