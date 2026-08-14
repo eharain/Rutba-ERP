@@ -38,7 +38,7 @@ read-after-write that follows every offline create.
 
 | App | L0 | L1 | L2 | L3 | The one hard thing |
 |---|---|---|---|---|---|
-| **POS** (`pos-sale`) | ✓ | ✓ | stock items — the one search box that justifies the cost | sales, payments, stock consumption | Replay granularity — [§10.5.1](../offline-pos-options.md#105-still-open) |
+| **POS** (`pos-sale`) | ✓ | ✓ | stock items — the one search box that justifies the cost | sales, payments, stock consumption | Replay granularity — settled in [06](06-sync-back-granularity.md) |
 | **Mail** (`rutba-mail`) | ✓ | ✓ | the local IMAP cache | sends, flags, moves | `uid` is only valid with `uidvalidity` |
 | **Studio** (`rutba-social`) | ✓ | ✓ | posts + media library | recipe saves, queued publishes | Assets are large; the render is already local |
 
@@ -76,9 +76,18 @@ design decision in the whole program and it sits inside D4:
 > holding a printed receipt naming unit X, and a database recording unit Y, is a
 > real discrepancy even when the money and the count are both right.
 >
-> **This is not decided.** It should be decided before D4 is specced, not during
-> it — it determines the outbox's payload shape, and changing that shape later
-> means draining every field outbox before upgrading.
+> **DECIDED 2026-08-14 — (a), with (b) as the repair path.** See
+> [`06-sync-back-granularity.md`](06-sync-back-granularity.md). The replayer
+> replays the captured references and falls back to the allocator only for a
+> reference it cannot honour; **divisible lines stay product+qty**, because they
+> already are; **the outbox payload carries both shapes.** Two findings in 06
+> outlive the decision: the POS has no state machine (its stock walk is the
+> browser client, one `PUT` per unit), and `allocateSellableUnits`' in-process
+> mutex does not cover a replaying bridge on a horizontally scaled Strapi.
+>
+> The cost recorded above — *"it changes what the receipt's line items mean"* —
+> **does not hold**, and 06 says why: the printed receipt carries nothing
+> unit-specific. The case against (b) is returns, COGS and unit lookup.
 
 The oversell policy *is* decided and does not reopen: the sale **posts**, the
 already-sold unit is **not** consumed twice, and the discrepancy is recorded for a
