@@ -63,6 +63,7 @@ export default function SyncRunsPage() {
                                     <th>When</th><th>Account</th><th>Kind</th><th>Status</th>
                                     <th className="text-end">Fetched</th><th className="text-end">Created</th>
                                     <th className="text-end">Updated</th><th className="text-end">Failed</th>
+                                    <th className="text-end" title="Rows that completed but need a look — e.g. an order created with line items whose SKU matched no product.">Attention</th>
                                     <th>Took</th><th></th>
                                 </tr>
                             </thead>
@@ -78,9 +79,10 @@ export default function SyncRunsPage() {
                                             <td className="text-end">{l.created ?? 0}</td>
                                             <td className="text-end">{l.updated ?? 0}</td>
                                             <td className="text-end">{l.failed ? <span className="text-danger fw-bold">{l.failed}</span> : 0}</td>
+                                            <td className="text-end">{l.attention ? <span className="text-warning-emphasis fw-bold"><i className="fas fa-triangle-exclamation me-1"></i>{l.attention}</span> : 0}</td>
                                             <td className="small">{duration(l.started_at, l.finished_at)}</td>
                                             <td>
-                                                {(l.error || (Array.isArray(l.detail) && l.detail.length)) ? (
+                                                {(l.error || l.attention > 0 || (Array.isArray(l.detail) && l.detail.length)) ? (
                                                     <button className="btn btn-sm btn-link p-0" onClick={() => setExpanded(expanded === l.id ? null : l.id)}>
                                                         {expanded === l.id ? "hide" : "details"}
                                                     </button>
@@ -89,8 +91,17 @@ export default function SyncRunsPage() {
                                         </tr>
                                         {expanded === l.id && (
                                             <tr>
-                                                <td colSpan={10} className="bg-light">
+                                                <td colSpan={11} className="bg-light">
                                                     {l.error && <div className="text-danger small mb-2"><strong>Error:</strong> {l.error}</div>}
+                                                    {l.attention > 0 && (
+                                                        <div className="alert alert-warning py-2 px-3 small mb-2">
+                                                            <i className="fas fa-triangle-exclamation me-1"></i>
+                                                            <strong>{l.attention}</strong> order(s) were created with line items whose SKU matched no product.
+                                                            The orders are real and safe to process — but those lines carry no product link, so stock is
+                                                            not attributed. The unmatched SKUs are listed under <code>unmatched_skus</code> below (and on
+                                                            each order&apos;s <code>channel_meta</code>). Add or correct the product SKU, then re-check the order.
+                                                        </div>
+                                                    )}
                                                     {Array.isArray(l.detail) && l.detail.length > 0 && (
                                                         <pre className="small mb-0" style={{ maxHeight: 240, overflow: "auto" }}>{JSON.stringify(l.detail, null, 2)}</pre>
                                                     )}

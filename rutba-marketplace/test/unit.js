@@ -115,11 +115,187 @@ async function test(name, fn) {
     assert.strictEqual(it.total, 200);
     assert.strictEqual(it.variant, 'Red');
   });
+  // Daraz's own `sku` is ITS identifier for the line; only seller_sku/shop_sku can
+  // match product.sku here. Preferring `sku` (the old order) missed every line.
+  await test('normalizeItem: seller_sku wins over shop_sku and Daraz\'s own sku', () => {
+    const it = T.normalizeItem({ sku: 'DARAZ-INTERNAL-9', shop_sku: 'SHOP-1', seller_sku: 'RUTBA-SKU-1', quantity: 1 });
+    assert.strictEqual(it.sku, 'RUTBA-SKU-1');
+    assert.strictEqual(it.sellerSku, 'RUTBA-SKU-1');
+    assert.strictEqual(it.shopSku, 'SHOP-1');
+    assert.strictEqual(it.externalSku, 'DARAZ-INTERNAL-9'); // recorded, not discarded
+  });
+  await test('normalizeItem: shop_sku beats Daraz\'s own sku; sku is the last resort', () => {
+    assert.strictEqual(T.normalizeItem({ sku: 'DZ-1', shop_sku: 'SHOP-1' }).sku, 'SHOP-1');
+    assert.strictEqual(T.normalizeItem({ sku: 'DZ-1' }).sku, 'DZ-1');
+    assert.strictEqual(T.normalizeItem({ sku_id: 'DZ-2' }).externalSku, 'DZ-2');
+  });
+  await test('normalizeItem: blank/whitespace SKUs never become candidates', () => {
+    const it = T.normalizeItem({ seller_sku: '   ', shop_sku: '', sku: ' DZ-3 ' });
+    assert.strictEqual(it.sellerSku, null);
+    assert.strictEqual(it.shopSku, null);
+    assert.strictEqual(it.sku, 'DZ-3');   // trimmed
+    assert.strictEqual(T.normalizeItem({ quantity: 1 }).sku, null);
+  });
+  console.log('— daraz: host resolution (business vs auth/token gateway) —');
+  // getProviderConfig returns the live config object, so patching it here is what
+  // an env var would do at boot. Restored after each case.
+  const darazCfg = require('../lib/config').providers.daraz;
+  function withDarazCfg(patch, fn) {
+    const saved = {};
+    for (const k of Object.keys(patch)) saved[k] = darazCfg[k];
+    Object.assign(darazCfg, patch);
+    try { return fn(); } finally { Object.assign(darazCfg, saved); }
+  }
+  await test('default: token calls go to the regional business host (behaviour unchanged)', () => {
+    withDarazCfg({ apiHost: '', tokenHost: '' }, () => {
+      assert.strictEqual(T.restHost({}), 'https://api.daraz.pk/rest');
+      assert.strictEqual(T.tokenHost({}), 'https://api.daraz.pk/rest');
+      assert.strictEqual(T.hostFor({}, '/auth/token/create'), 'https://api.daraz.pk/rest');
+      assert.strictEqual(T.tokenHost({ region: 'bd' }), 'https://api.daraz.com.bd/rest');
+    });
+  });
+  await test('DARAZ_TOKEN_HOST splits the auth gateway from the business host', () => {
+    withDarazCfg({ apiHost: '', tokenHost: 'https://auth.example.test/rest' }, () => {
+      assert.strictEqual(T.hostFor({}, '/auth/token/create'), 'https://auth.example.test/rest');
+      assert.strictEqual(T.hostFor({}, '/auth/token/refresh'), 'https://auth.example.test/rest');
+      // business calls stay on the regional host
+      assert.strictEqual(T.hostFor({}, '/orders/get'), 'https://api.daraz.pk/rest');
+    });
+  });
+  await test('token host: trailing slashes stripped; overrides the api-host default', () => {
+    withDarazCfg({ apiHost: 'https://api.example.test/rest/', tokenHost: 'https://auth.example.test/rest//' }, () => {
+      assert.strictEqual(T.restHost({}), 'https://api.example.test/rest');
+      assert.strictEqual(T.tokenHost({}), 'https://auth.example.test/rest');
+    });
+  });
+  await test('without a token host, DARAZ_API_HOST still moves BOTH (the documented default)', () => {
+    withDarazCfg({ apiHost: 'https://api.example.test/rest', tokenHost: '' }, () => {
+      assert.strictEqual(T.hostFor({}, '/orders/get'), 'https://api.example.test/rest');
+      assert.strictEqual(T.hostFor({}, '/auth/token/create'), 'https://api.example.test/rest');
+    });
+  });
+  await test('hostFor routes ONLY /auth/token/* to the gateway', () => {
+    withDarazCfg({ apiHost: '', tokenHost: 'https://auth.example.test/rest' }, () => {
+      for (const p of ['/orders/get', '/order/items/get', '/product/price_quantity/update', '/category/tree/get']) {
+        assert.strictEqual(T.hostFor({}, p), 'https://api.daraz.pk/rest', `business path ${p}`);
+      }
+      assert.strictEqual(T.hostFor({}, '/auth/token/create'), 'https://auth.example.test/rest');
+    });
+  });
+
   await test('flattenCategoryTree: parent links + leaf', () => {
     const flat = T.flattenCategoryTree([{ category_id: 1, name: 'A', children: [{ category_id: 2, name: 'B', leaf: true }] }]);
     assert.strictEqual(flat.length, 2);
     assert.deepStrictEqual(flat[0], { external_id: '1', name: 'A', parent_id: null, leaf: false });
     assert.deepStrictEqual(flat[1], { external_id: '2', name: 'B', parent_id: '1', leaf: true });
+  });
+
+  console.log('— daraz: connection spec (operator setup guidance) —');
+  await test('connectionSpec documents EVERY api path the adapter calls', () => {
+    const spec = daraz.connectionSpec;
+    const documented = new Set((spec.apiScopes || []).flatMap((s) => s.paths || []));
+    // The adapter's own path table is the source of truth — if a new call is
+    // added and not documented, the setup page would understate what Daraz has
+    // to grant, and the operator applies for too little.
+    const called = Object.values(T.API);
+    assert.ok(called.length >= 8, 'expected the adapter to declare its api paths');
+    for (const p of called) {
+      assert.ok(documented.has(p), `api path ${p} is called but missing from connectionSpec.apiScopes`);
+    }
+    // ...and nothing invented in the other direction.
+    for (const p of documented) {
+      assert.ok(called.includes(p), `connectionSpec lists ${p}, which the adapter never calls`);
+    }
+  });
+  await test('connectionSpec: exactly one recommended account type, none unavailable-and-recommended', () => {
+    const types = daraz.connectionSpec.accountTypes || [];
+    assert.ok(types.length >= 4, 'all Daraz app categories should be described');
+    const rec = types.filter((t) => t.recommended);
+    assert.strictEqual(rec.length, 1);
+    assert.strictEqual(rec[0].key, 'seller_inhouse');
+    assert.ok(!rec[0].unavailable);
+    for (const t of types) assert.ok(t.label && t.why, `account type ${t.key} needs a label + rationale`);
+  });
+  await test('getConnectionSpec: resolves the OAuth callback, null for non-oauth, throws on unknown', () => {
+    const d = engine.getConnectionSpec('daraz');
+    assert.strictEqual(d.platform, 'daraz');
+    assert.ok(d.redirectUri.endsWith('/api/oauth/callback'));
+    const r = engine.getConnectionSpec('rutba');
+    assert.strictEqual(r.redirectUri, null);      // no OAuth on a peer instance
+    assert.strictEqual(r.authKind, 'api_token');
+    assert.throws(() => engine.getConnectionSpec('nope'));
+  });
+  await test('connectionSpec carries no credentials (safe to send to the browser)', () => {
+    // It is served to the operator UI, so a secret leaking in here would ship to
+    // the browser. Assert on the serialized form to catch nesting.
+    const json = JSON.stringify(engine.getConnectionSpec('daraz'));
+    for (const bad of ['appKey', 'appSecret', 'app_secret', 'access_token', 'refresh_token', 'api_secret']) {
+      assert.ok(!json.includes(bad), `connectionSpec must not carry ${bad}`);
+    }
+  });
+
+  console.log('— daraz: downloadable application document —');
+  await test('applicationForm declares fields; required ones are marked', () => {
+    const f = daraz.connectionSpec.applicationForm;
+    assert.ok(f && Array.isArray(f.fields) && f.fields.length >= 5);
+    for (const x of f.fields) assert.ok(x.key && x.label, 'each field needs key + label');
+    assert.ok(f.fields.some((x) => x.required), 'at least one field should be required');
+  });
+  await test('render: fills values in, and the endpoint table comes from the adapter apiScopes', () => {
+    const { html, filename } = daraz.renderApplicationDoc({ values: { businessName: 'Acme Traders' } });
+    assert.ok(filename.endsWith('.html'));
+    assert.ok(html.startsWith('<!doctype html>'));
+    assert.ok(html.includes('Acme Traders'));
+    // every path the adapter calls must appear in the generated document
+    for (const p of Object.values(T.API)) {
+      assert.ok(html.includes(p), `document is missing endpoint ${p}`);
+    }
+  });
+  await test('render: blank fields become visible prompts and are reported as missing', () => {
+    const { html, missing } = daraz.renderApplicationDoc({ values: {} });
+    assert.ok(missing.includes('businessName'));
+    assert.ok(html.includes('class="todo"'), 'unfilled fields must be visibly marked');
+    assert.ok(html.includes('Before uploading:'), 'a reminder box should appear while fields are blank');
+    // the production callback is known to us, so it is filled in rather than left blank
+    assert.ok(!missing.includes('productionCallback'));
+    assert.ok(html.includes('/api/oauth/callback'));
+  });
+  await test('render: no missing-fields box once everything is answered', () => {
+    const values = {};
+    for (const f of daraz.connectionSpec.applicationForm.fields) values[f.key] = `v-${f.key}`;
+    const { html, missing } = daraz.renderApplicationDoc({ values });
+    assert.deepStrictEqual(missing, []);
+    assert.ok(!html.includes('Before uploading:'));
+    assert.ok(!html.includes('class="todo"'));
+  });
+  await test('render: operator input is HTML-escaped (the doc is opened in a browser)', () => {
+    const { html } = daraz.renderApplicationDoc({
+      values: { businessName: '<script>alert(1)</script>', contactEmail: 'a"b&c<d' },
+    });
+    assert.ok(!html.includes('<script>alert(1)</script>'), 'script tag must not survive');
+    assert.ok(html.includes('&lt;script&gt;'));
+    assert.ok(html.includes('a&quot;b&amp;c&lt;d'));
+  });
+  await test('reason answer: long + short, and every called endpoint is named', () => {
+    const { reason } = daraz.renderApplicationDoc({ values: {} });
+    assert.ok(reason.long.length > reason.short.length);
+    for (const p of Object.values(T.API)) {
+      assert.ok(reason.long.includes(p), `reason text is missing endpoint ${p}`);
+    }
+    // the scope limits must survive into the pasted answer
+    assert.ok(/no other seller|any other seller/i.test(reason.long));
+    assert.ok(/chat/i.test(reason.short));
+  });
+  await test('connection spec carries the reason so the page needs no extra round trip', () => {
+    const spec = engine.getConnectionSpec('daraz');
+    assert.ok(spec.applicationForm.reason.long.includes('/orders/get'));
+    assert.ok(spec.applicationForm.reason.short.length > 100);
+    // ...and the same call for a provider without one does not invent it
+    assert.strictEqual(engine.getConnectionSpec('rutba').applicationForm, undefined);
+  });
+  await test('renderApplicationDoc: unsupported platform fails loudly', () => {
+    assert.throws(() => engine.renderApplicationDoc('rutba', {}), /no application document/);
+    assert.throws(() => engine.renderApplicationDoc('nope', {}));
   });
 
   console.log('— engine: price adjustment —');
@@ -174,12 +350,16 @@ async function test(name, fn) {
 
   console.log('— rutba adapter: registry + capabilities —');
   const rutba = providers.getAdapter('rutba');
-  await test('rutba registered, no-oauth, catalog+orders+inventory', () => {
+  await test('rutba registered, no-oauth, catalog+orders+inventory+fulfillment+messages', () => {
     assert.strictEqual(providers.hasAdapter('rutba'), true);
     assert.strictEqual(rutba.key, 'rutba');
-    assert.deepStrictEqual(rutba.capabilities, { oauth: false, orders: true, inventory: true, fulfillment: false, catalog: true });
+    assert.deepStrictEqual(rutba.capabilities, { oauth: false, orders: true, inventory: true, fulfillment: true, catalog: true, messages: true });
     assert.strictEqual(typeof rutba.pushCatalog, 'function');
     assert.strictEqual(typeof rutba.fetchOrders, 'function');
+    // A declared capability the engine gates on MUST have its method, or the job
+    // silently no-ops — this assertion is why the stale expectation mattered.
+    assert.strictEqual(typeof rutba.pushOrderStatus, 'function');
+    assert.strictEqual(typeof rutba.pushOrderMessages, 'function');
   });
 
   console.log('— catalog transforms —');

@@ -141,6 +141,47 @@ function getCatalogSpec(platform) {
   return adapter.catalogSpec || { label: adapter.label || platform, dimensions: [] };
 }
 
+// What the operator has to arrange on the provider's side before an account can
+// connect — app category, the APIs to request, setup steps. Static and
+// non-sensitive, so it is safe to hand to the browser; the one computed value is
+// the OAuth callback URL, which must be whitelisted verbatim and is a frequent
+// setup mistake, so we show the resolved value rather than describing it.
+function getConnectionSpec(platform) {
+  const adapter = providers.getAdapter(platform);
+  const spec = adapter.connectionSpec;
+  if (!spec) return null;
+  // The provider's application form (if it has one) travels with the spec, so
+  // the setup page can show BOTH answers the portal asks for — the written
+  // description and the uploadable document — without a second round trip.
+  const applicationForm = spec.applicationForm
+    ? {
+      ...spec.applicationForm,
+      reason: typeof adapter.renderApplicationReason === 'function'
+        ? adapter.renderApplicationReason()
+        : null,
+    }
+    : undefined;
+  return {
+    ...spec,
+    ...(applicationForm ? { applicationForm } : {}),
+    platform,
+    label: spec.label || adapter.label || platform,
+    capabilities: adapter.capabilities || {},
+    redirectUri: adapter.capabilities?.oauth ? base.redirectUri() : null,
+  };
+}
+
+// Render a provider's application/onboarding document from the operator's
+// answers (the attachment Daraz asks for when applying for API access). Pure
+// string building — no credentials are read and nothing is persisted.
+function renderApplicationDoc(platform, values) {
+  const adapter = providers.getAdapter(platform);
+  if (typeof adapter.renderApplicationDoc !== 'function') {
+    throw new Error(`${adapter.label || platform} has no application document`);
+  }
+  return adapter.renderApplicationDoc({ values: values || {} });
+}
+
 // Pull a marketplace's taxonomy so the operator can map our categories/brands/
 // terms onto it. Read-only — persisting the chosen mappings is plain datastore
 // CRUD the UI does via @rutba/api-provider against marketplace-mappings.
@@ -182,7 +223,10 @@ async function syncOrdersForAccount(accountDocumentId) {
     ? new Date(account.last_orders_synced_at).toISOString()
     : new Date(Date.now() - FIRST_RUN_LOOKBACK_MS).toISOString();
 
-  const counts = { fetched: 0, created: 0, updated: 0, skipped: 0, failed: 0 };
+  // `attention` is a real marketplace-sync-log column — Strapi silently drops
+  // unknown attributes, so a counter without one would vanish from the audit
+  // trail with no error (same trap the messages sync notes below).
+  const counts = { fetched: 0, created: 0, updated: 0, skipped: 0, failed: 0, attention: 0 };
   let detail = [];
   try {
     const orders = await adapter.fetchOrders({ account, since, limit: 100 });
@@ -207,12 +251,21 @@ async function syncOrdersForAccount(accountDocumentId) {
       for (const r of results) {
         const a = r.action || 'failed';
         counts[a] = (counts[a] || 0) + 1;
+        // Created, but with line items that matched no product. Counted apart
+        // from `failed` — the order is real and was written; it just needs
+        // someone to look. Overloading `failed` would make the operator hunt for
+        // an error that isn't there.
+        if (r.needs_attention) counts.attention += 1;
       }
       detail = results;
     }
 
     await strapi.updateAccount(account.documentId, { last_orders_synced_at: runStartedAt });
-    const status = counts.failed > 0 ? (counts.created + counts.updated > 0 ? 'partial' : 'error') : 'success';
+    // A run that created orders with unmatched SKUs is 'partial', not 'success' —
+    // otherwise an order where NOTHING matched reads as a clean run in the UI.
+    const status = counts.failed > 0
+      ? (counts.created + counts.updated > 0 ? 'partial' : 'error')
+      : (counts.attention > 0 ? 'partial' : 'success');
     await strapi.updateSyncLog(log.documentId, { status, ...counts, detail, finished_at: new Date().toISOString() });
     return { ...counts, status };
   } catch (e) {
@@ -865,6 +918,8 @@ module.exports = {
   refreshAccountToken,
   setAccountEnabled,
   getCatalogSpec,
+  getConnectionSpec,
+  renderApplicationDoc,
   pullTaxonomy,
   syncOrdersForAccount,
   syncInventoryForAccount,

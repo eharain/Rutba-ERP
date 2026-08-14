@@ -93,7 +93,7 @@ export default function DashboardPage() {
                                             <th>Account</th>
                                             <th>Kind</th>
                                             <th>Status</th>
-                                            <th className="text-end pe-3">Created / Updated / Failed</th>
+                                            <th className="text-end pe-3">Created / Updated / Failed / Attention</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -103,7 +103,7 @@ export default function DashboardPage() {
                                                 <td className="small">{l.marketplace_account?.account_name || "—"} <span className="text-muted">({l.platform})</span></td>
                                                 <td><span className="badge bg-light text-dark border text-capitalize">{l.kind}</span></td>
                                                 <td><span className={`badge bg-${STATUS_VARIANT[l.status] || "secondary"}`}>{l.status}</span></td>
-                                                <td className="text-end pe-3 small">{l.created || 0} / {l.updated || 0} / {l.failed ? <span className="text-danger fw-bold">{l.failed}</span> : 0}</td>
+                                                <td className="text-end pe-3 small">{l.created || 0} / {l.updated || 0} / {l.failed ? <span className="text-danger fw-bold">{l.failed}</span> : 0} / {l.attention ? <span className="text-warning-emphasis fw-bold" title="Created, but with line items whose SKU matched no product — see Sync Runs.">{l.attention}</span> : 0}</td>
                                             </tr>
                                         ))}
                                     </tbody>
