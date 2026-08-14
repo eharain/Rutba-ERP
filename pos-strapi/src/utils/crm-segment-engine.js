@@ -27,7 +27,20 @@
  * (see `open_followup`, which pins both conditions to a single activity).
  */
 
-const { ValidationError } = require('@strapi/utils').errors;
+/**
+ * Deliberately NOT `@strapi/utils`.errors.ValidationError: this module is pure
+ * logic — a filter compiler with no Strapi runtime, no DB, no I/O — and that
+ * property is what lets tests/crm-segment-engine.test.js run it standalone
+ * with `node`, the same way the other util tests in tests/ do. Every throw
+ * site here is caught by the controllers, which match on `name` and answer
+ * 400, so nothing depends on the framework's class identity.
+ */
+class ValidationError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'ValidationError';
+  }
+}
 
 const PERSON_UID = 'api::person.person';
 const CONTACT_UID = 'api::crm-contact.crm-contact';
