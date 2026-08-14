@@ -82,6 +82,7 @@ export * from './hr-lifecycle-events';
 export * from './hr-offers';
 export * from './hr-overtime-rules';
 export * from './hr-positions';
+export * from './hr-reporting-lines';
 export * from './hr-rosters';
 export * from './hr-shifts';
 export * from './hr-skills';

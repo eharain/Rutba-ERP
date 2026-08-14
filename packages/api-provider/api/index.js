@@ -80,6 +80,7 @@ export { HrLifecycleEventsEndpoints } from './hr-lifecycle-events.js';
 export { HrOffersEndpoints } from './hr-offers.js';
 export { HrOvertimeRulesEndpoints } from './hr-overtime-rules.js';
 export { HrPositionsEndpoints } from './hr-positions.js';
+export { HrReportingLinesEndpoints } from './hr-reporting-lines.js';
 export { HrRostersEndpoints } from './hr-rosters.js';
 export { HrShiftsEndpoints } from './hr-shifts.js';
 export { HrSkillsEndpoints } from './hr-skills.js';

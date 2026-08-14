@@ -1,0 +1,54 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_reporting_lines",
+  "info": {
+    "singularName": "hr-reporting-line",
+    "pluralName": "hr-reporting-lines",
+    "displayName": "HR Reporting Line",
+    "description": "Secondary (matrix / dotted-line) reporting relationships. The primary line stays on hr-employee.reports_to."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "employee": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee",
+      "inversedBy": "reporting_lines"
+    },
+    "manager": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee",
+      "inversedBy": "managed_reporting_lines"
+    },
+    "kind": {
+      "type": "enumeration",
+      "enum": [
+        "Dotted",
+        "Solid"
+      ],
+      "default": "Dotted"
+    },
+    "grants_authority": {
+      "type": "boolean",
+      "default": false
+    },
+    "valid_from": {
+      "type": "date"
+    },
+    "valid_to": {
+      "type": "date"
+    },
+    "note": {
+      "type": "text"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

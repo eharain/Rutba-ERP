@@ -143,6 +143,7 @@ function registerHrModule() {
   const incident = ctrl('hr-incident-report', strapi);
   const complianceItem = ctrl('hr-compliance-item', strapi);
   const generatedDocument = ctrl('hr-generated-document', strapi);
+  const reportingLine = ctrl('hr-reporting-line', strapi);
   const selfOwned = Object.fromEntries(SELF_OWNED_ENTITIES.map((name) => [name, ctrl(name, strapi)]));
 
   const LR = 'api::hr-leave-request.hr-leave-request';
@@ -150,6 +151,7 @@ function registerHrModule() {
   const EMP = 'api::hr-employee.hr-employee';
   const ATT = 'api::hr-attendance.hr-attendance';
   const LE = 'api::hr-lifecycle-event.hr-lifecycle-event';
+  const RLINE = 'api::hr-reporting-line.hr-reporting-line';
   const ROSTER = 'api::hr-roster.hr-roster';
   const ENROLL = 'api::hr-benefit-enrollment.hr-benefit-enrollment';
   const BONUS = 'api::pay-bonus.pay-bonus';
@@ -192,6 +194,16 @@ function registerHrModule() {
     { method: 'get', path: '/api/hr-employees/org-chart', uid: EMP, action: 'orgChart', handler: (c) => employee.orgChart(c) },
     { method: 'get', path: '/api/hr-employees/without-reporting-line', uid: EMP, action: 'withoutReportingLine', handler: (c) => employee.withoutReportingLine(c) },
     { method: 'post', path: '/api/hr-employees/backfill-reporting-line', uid: EMP, action: 'backfillReportingLine', handler: (c) => employee.backfillReportingLine(c) },
+    { method: 'put', path: '/api/hr-employees/:id/reporting-line', uid: EMP, action: 'setReportingLine', handler: (c) => employee.setReportingLine(c) },
+
+    // Core-action overrides: the secondary reporting-line writes carry graph
+    // validation (no self-loop, no duplicate of the primary line) that the
+    // generic seeded CRUD handler does not. Registered here so a bad edge is
+    // rejected on :4020 as well as :4010 — an unvalidated row here grants
+    // approval authority.
+    { method: 'post', path: '/api/hr-reporting-lines', uid: RLINE, action: 'create', handler: (c) => reportingLine.create(c) },
+    { method: 'put', path: '/api/hr-reporting-lines/:documentId', uid: RLINE, action: 'update', handler: (c) => reportingLine.update(c) },
+    { method: 'delete', path: '/api/hr-reporting-lines/:documentId', uid: RLINE, action: 'delete', handler: (c) => reportingLine.delete(c) },
 
     { method: 'get', path: '/api/hr-attendances/my-attendance', uid: ATT, action: 'myAttendance', handler: (c) => attendance.myAttendance(c) },
     { method: 'get', path: '/api/hr-attendances/team-attendance', uid: ATT, action: 'teamAttendance', handler: (c) => attendance.teamAttendance(c) },

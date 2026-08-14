@@ -4,6 +4,7 @@ export interface HrEmployeesEndpointsType {
     updateMyProfile(data: any): Promise<any>;
     getDashboard(): Promise<any>;
     getOrgChart({ view, root, depth }?: any): Promise<any>;
+    setReportingLine(documentId: any, manager: any, dryRun?: any): Promise<any>;
     listWithoutReportingLine(): Promise<any>;
     runReportingLineBackfill(dryRun?: any): Promise<any>;
     list({ page, pageSize, sort, populate, filters, fields }?: any): Promise<any>;

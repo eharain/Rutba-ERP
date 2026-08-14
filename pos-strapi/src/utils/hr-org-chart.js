@@ -23,8 +23,8 @@ const DEFAULT_DEPTH = 4;
 const MAX_DEPTH = 10;
 const MAX_NODES = 2000;
 
-function nodeOf(e) {
-  return {
+function nodeOf(e, secondaryByEmployee) {
+  const node = {
     documentId: e.documentId,
     name: e.name,
     email: e.email || null,
@@ -33,15 +33,22 @@ function nodeOf(e) {
     designation: e.position?.title || e.designation || null,
     department: e.department?.name || null,
     status: e.status || null,
+    is_org_root: e.is_org_root === true,
     children: [],
   };
+  // Secondary (matrix) managers hang off the node rather than becoming a second
+  // parent edge. A person with two managers is not a tree, and duplicating them
+  // under both would inflate every headcount read off the chart.
+  const secondary = secondaryByEmployee?.get(e.documentId);
+  if (secondary?.length) node.secondary_managers = secondary;
+  return node;
 }
 
 /** One flat read of every active employee + the relations both views need. */
 async function loadEmployees(strapi) {
   return strapi.documents(EMP_UID).findMany({
     filters: { status: { $ne: 'Inactive' } },
-    fields: ['documentId', 'name', 'email', 'status', 'designation'],
+    fields: ['documentId', 'name', 'email', 'status', 'designation', 'is_org_root'],
     populate: {
       department: { fields: ['name'] },
       position: { fields: ['title'] },
@@ -55,7 +62,7 @@ async function loadEmployees(strapi) {
  * Reporting-line tree. Roots are the employees in scope with no manager (or
  * whose manager is outside the loaded set), unless an explicit root is given.
  */
-function buildReportingTree(employees, { rootDocId, depth }) {
+function buildReportingTree(employees, { rootDocId, depth, secondaryByEmployee } = {}) {
   const byId = new Map(employees.map((e) => [e.documentId, e]));
   const childrenOf = new Map();
   for (const e of employees) {
@@ -67,7 +74,7 @@ function buildReportingTree(employees, { rootDocId, depth }) {
 
   const visited = new Set();
   const expand = (emp, level) => {
-    const node = nodeOf(emp);
+    const node = nodeOf(emp, secondaryByEmployee);
     if (level >= depth) {
       // Report what is being withheld so the UI can offer "expand" instead of
       // silently presenting a truncated tree as if it were complete.
@@ -162,7 +169,7 @@ async function buildTeamTree(strapi, { rootDocId, depth }) {
 }
 
 /** The caller's own chain upward, nearest manager first. */
-function buildChainUpward(employees, employeeDocId) {
+function buildChainUpward(employees, employeeDocId, secondaryByEmployee) {
   const byId = new Map(employees.map((e) => [e.documentId, e]));
   const chain = [];
   const seen = new Set([employeeDocId]);
@@ -171,7 +178,7 @@ function buildChainUpward(employees, employeeDocId) {
     const next = byId.get(cur.reports_to.documentId);
     if (!next || seen.has(next.documentId)) break; // cycle guard
     seen.add(next.documentId);
-    chain.push(nodeOf(next));
+    chain.push(nodeOf(next, secondaryByEmployee));
     cur = next;
   }
   return chain;
