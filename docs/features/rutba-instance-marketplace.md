@@ -1,5 +1,7 @@
 # Rutba instance as a Marketplace (instance-to-instance sync)
 
+<!-- verify-docs: planned pos-strapi/src/seed/seeders/rutba-marketplace-target.js -->
+
 Connect a **second Rutba ERP instance** — typically a public **online store** — to
 your primary **in-house** instance and treat it as just another marketplace
 channel (like Daraz). The in-house instance stays the source of truth: you

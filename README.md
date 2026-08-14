@@ -29,6 +29,7 @@ An open-source, modular business management system built as an **npm workspaces 
 | Directory | App | Port | Description |
 |---|---|---|---|
 | `pos-strapi/` | **Strapi API** | 4010 | Strapi 5.x headless CMS — content types, REST API, lifecycle hooks |
+| `rutba-core/` | **Core API** | 4020 | In-house backend replacing pos-strapi: serves the descriptor API from the same database (strangler migration) |
 | `packages/pos-shared/` | **Shared Library** | — | Components, context providers, utilities shared by all apps |
 | `packages/api-provider/` | **API descriptors** | — | Single source of truth for every Strapi endpoint; scaffolder emits per-app client + server bindings |
 | `packages/strapi-api-pro/` | **Strapi RBAC plugin** | — | Replaces api-guard-pro: descriptor-driven auth, role scope, claim caching |
@@ -48,6 +49,12 @@ An open-source, modular business management system built as an **npm workspaces 
 | `rutba-payroll/` | **Payroll** | 4008 | Salary structures, payroll runs, payslips, deduction rules, employee profiles, adjustments |
 | `rutba-manufacturing/` | **Manufacturing** | 4014 | Tailoring production — work orders, tasks/piece-rate, BOM (multi-output + auto-consume), bundles, operations, material lots/issues, QC, reusable production templates |
 | `rutba-inventory/` | **Inventory Management** | 4017 | Warehouses/bins, stock levels, transfers, adjustments, cycle counts, batch/expiry, reorder/replenishment, inventory valuation |
+| `rutba-marketplace/` | **Marketplace** | 4016 | Channel listings, mapping, pricing and account wiring; a background sync worker (portless) runs alongside |
+| `rutba-seed/` | **Seeding Control** | 4018 | Guarded runner for the seed registry — run history, per-seeder execution |
+| `rutba-campaigns/` | **Campaigns** | 4019 | Audiences, templates, campaign runs and delivery settings |
+| `rutba-mail/` | **Mail** | 4021 | Mail client over live IMAP — shared inboxes, contacts, server settings |
+| `rutba-users/` | **User Management** | 4022 | Central users, app domains, mailboxes, email-server registry, invite flow |
+| `rutba-helpdesk/` | **Helpdesk** | 4023 | Tickets, desks and routing — the first Rutba-Core-native module |
 
 > Ports above are the workspace defaults; `process.env.PORT` (set by Hostinger / Passenger / Docker) always overrides. See [.env.example](.env.example) for the `<APP_PREFIX>__PORT=` overrides.
 
@@ -158,54 +165,42 @@ docker compose down
 | Rider App | http://localhost:4012 |
 | Order Management | http://localhost:4013 |
 | Manufacturing | http://localhost:4014 |
+| Marketplace | http://localhost:4016 |
 | Inventory Management | http://localhost:4017 |
+| Seeding Control | http://localhost:4018 |
+| Campaigns | http://localhost:4019 |
+| Core API | http://localhost:4020 |
+| Mail | http://localhost:4021 |
+| User Management | http://localhost:4022 |
+| Helpdesk | http://localhost:4023 |
 
 ## Scripts Directory
 
 | Script | Purpose |
 |---|---|
-| `scripts/setup-and-start-all.bat` | Interactive first-time setup (env config, install, start) — Windows |
-| `scripts/setup-and-start-all.sh` | Same as above — Linux/macOS |
-| `scripts/setup-and-start-all_custom_node.bat` | Same setup using a local Node.js binary |
-| `scripts/run_strapi_and_pos.bat` | Quick start Strapi + all Next.js apps — Windows |
-| `scripts/run_strapi_and_pos_custom_node.bat` | Same using local Node.js binary |
+| `scripts/rutba_apps.sh` | **Service registry — single source of truth** for every deployable unit, its npm command and its port |
 | `scripts/rutba_deploy.sh` | Production deploy script — clone, build, swap systemd services |
 | `scripts/rutba_rollback.sh` | Rollback to a previous build (instant, no rebuild) |
 | `scripts/rutba_services.sh` | Service manager: start/stop/restart/status/rebuild/tail/diagnose |
 | `scripts/rutba_deployed_environment.sh` | Shared env bootstrap for all deployment scripts |
+| `scripts/rutba_seed.sh` | Run the seed engine against a deployed build |
+| `scripts/rutba_db_backup.sh` | Database backup |
+| `scripts/rutba_log_rotate.sh` | Vacuum journals, rotate the deploy log |
 | `scripts/setup-systemd-services.sh` | Standalone systemd unit installer (legacy; prefer `rutba_services.sh rebuild`) |
 | `scripts/js/load-env.js` | Centralized env loader — reads `.env.<ENVIRONMENT>`, injects per-app vars |
-| `scripts/hostinger/deploy.js` | One-command Hostinger deploy orchestrator (build, upload, Passenger setup, restart) |
-| `scripts/hostinger/restart.js` | Restart Passenger for one or all Hostinger apps |
+| `scripts/js/generate-docker-env.js` | Generate `.env.docker` for Docker Compose from the env files |
+| `scripts/js/verify-app-wiring.js` | Check every app in the registry is wired into package.json, env, Docker and the dev launcher |
+| `scripts/js/verify-docs.js` | Check the documentation against the tree — links, cited paths, line numbers, ports, commits |
 
 > **📖 Full deployment guide:** [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
 
-## Hostinger Deployment (Shared Hosting)
+## Managed hosting (Hostinger / PaaS)
 
-The `scripts/hostinger/` directory contains a full deployment toolkit for
-Hostinger Business Web Hosting (Passenger + Node.js 22). See
-[scripts/hostinger/README.md](scripts/hostinger/README.md) for details.
-
-### Setup Steps
-
-1. **Create domains** — In Hostinger hPanel, create the website/subdomain for each app (e.g. `rutba.pk`, `rutba.rutba.pk`, `stock.rutba.pk`, etc.)
-2. **Create MySQL database** — In hPanel → Databases, create a MySQL database and user for Strapi
-3. **Configure environment** — Copy `.env.example` to `.env.production` at the repo root and fill in all `NEXT_PUBLIC_*` URLs, Strapi DB credentials, and `NEXTAUTH_SECRET` values
-4. **Set SSH password** — Export the Hostinger SSH password: `set HOSTINGER_SSH_PASSWORD=<password>`
-5. **Deploy Strapi** — `node scripts/hostinger/deploy.js strapi` (uploads source, installs deps, builds, configures Passenger)
-6. **Deploy web apps** — `node scripts/hostinger/deploy.js web` (builds locally as standalone, uploads, configures Passenger)
-7. **Verify** — Visit `https://rutba.rutba.pk` (Strapi API) and `https://rutba.pk` (web app)
-
-### Common Commands
-
-```bash
-node scripts/hostinger/deploy.js web                # Full deploy (build + upload + restart)
-node scripts/hostinger/deploy.js strapi              # Full Strapi deploy
-node scripts/hostinger/deploy.js web --skip-build    # Re-upload existing build
-node scripts/hostinger/deploy.js strapi --env-only   # Update Strapi .env + restart
-node scripts/hostinger/restart.js web                # Restart single app
-node scripts/hostinger/restart.js --all              # Restart all apps
-```
+To run a single app (typically `rutba-web`) on managed Node.js hosting rather
+than the systemd estate, see
+[§13 of the deployment guide](docs/DEPLOYMENT.md#13-deploying-a-single-app-on-hostinger--paas).
+The platform sets `PORT` and the env loader respects it, so no per-app port
+configuration is needed.
 
 ## Strapi Content Types
 
@@ -269,7 +264,7 @@ Forward-looking work, organised by surface. Items marked ✓ have shipped. Cross
 - [contact-entity-unification.md](docs/todo/contact-entity-unification.md) — Phase 1A (person + address + sale-order rewire) and 1C.5 (contact-ticket), 3.3 (UP signup promotion) ✓. Phase 1B (customer backfill) is next.
 - [contact-unification-launch-test-plan.md](docs/todo/contact-unification-launch-test-plan.md) — Tier P0/P1/P2 test plan for the unification work.
 - [rutba-web-launch-backlog.md](docs/todo/rutba-web-launch-backlog.md) — storefront pre/post-launch backlog.
-- [rutba-web-readable-slug-urls.md](docs/todo/rutba-web-readable-slug-urls.md) — ✓ shipped (commit `99500f3`).
+- [rutba-web-readable-slug-urls.md](docs/todo/rutba-web-readable-slug-urls.md) — ✓ shipped (commit `4bb1dd7`).
 - [address-book-server-side.md](docs/todo/address-book-server-side.md) — ✓ server-side address book shipped (`/me/addresses` on the person/address model); only fold-anonymous-on-login + a checkout multi-address picker remain.
 - [barcode-qr-deep-link.md](docs/todo/barcode-qr-deep-link.md) — storefront-URL QR + POS scanner strip. Blocked on the slug pass (now done).
 - [cms-preview-from-storefront.md](docs/todo/cms-preview-from-storefront.md) — draft-mode preview from CMS to storefront.

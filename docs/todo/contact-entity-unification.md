@@ -1,5 +1,7 @@
 # Contact-entity unification
 
+<!-- verify-docs: planned pos-strapi/src/seed/person-backfill-customer-seed.js api/crm/persons.js -->
+
 > **Status (May 2026):** Phase 1A landed before rutba-web's first launch.
 > `api::person.person`, `api::address.address`, and the `sale-order` rewire
 > (`customer_person` / `delivery_address` / `delivery_snapshot`, no more

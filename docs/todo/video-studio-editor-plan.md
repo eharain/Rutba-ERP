@@ -1,5 +1,8 @@
 # Video Studio v2 — layers, editing, customization
 
+<!-- verify-docs: planned packages/video-maker/test/ -->
+<!-- The harness pair is checked in at M1; until then it lives in scratchpad form. -->
+
 **Superseded by v3:** `docs/todo/video-studio-timeline-plan.md` (BUILT) made
 the layer model universal — photos and sounds are layers with one envelope
 (z, timing, enter/exit, geometry, state), edited on a timeline of lanes, with

@@ -1,5 +1,10 @@
 # Session carry-over — consolidated 2026-08-11
 
+<!-- verify-docs: historical -->
+<!-- A dated session handoff. It records worktree branches not yet merged into dev
+     and machine-local Claude paths; both are true as of 2026-08-11 and are not
+     meant to track the tree. -->
+
 Every Claude session store on this machine was scanned (440 transcripts, all repos,
 CLI + desktop app + worktrees) and mined for unfinished work. This file is the
 consolidated result, grouped by theme. It is meant to survive the deletion of the

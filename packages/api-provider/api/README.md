@@ -9,7 +9,7 @@ This directory holds the **endpoint descriptor source** for every Strapi-backed 
 Two consumers read this directory:
 
 1. **`scripts/scaffold-endpoint-providers.mjs`** â€” emits typed JS client wrappers under `providers/generated/client/` so app code can call `byRegister(documentId)` etc. without rebuilding the URL.
-2. **`api-pro/services/seeder.js`** â€” walks each file, infers `(uid, action, method, path, grants)`, and upserts rows into `api_pro_interfaces`, `api_pro_interface_methods`, `api_pro_method_policies`.
+2. **`packages/strapi-api-pro/server/src/services/seeder.js`** â€” walks each file, infers `(uid, action, method, path, grants)`, and upserts rows into `api_pro_interfaces`, `api_pro_interface_methods`, `api_pro_method_policies`.
 
 Anything you put here ends up in BOTH the generated client AND the plugin's seeded policy rows.
 

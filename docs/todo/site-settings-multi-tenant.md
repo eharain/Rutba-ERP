@@ -1,12 +1,14 @@
 # Site Settings: singleType → collectionType (per-app)
 
+<!-- verify-docs: planned pages/robots.txt.ts -->
+
 ## Goal
 Convert `site-setting` from a Strapi `singleType` to a `collectionType` so each app
 (pos, cms, admin, etc.) can have its own site settings record, looked up by
 documentId.
 
 ## Current state
-[pos-strapi/src/api/site-setting/content-types/site-setting/schema.json](pos-strapi/src/api/site-setting/content-types/site-setting/schema.json):
+[pos-strapi/src/api/site-setting/content-types/site-setting/schema.json](../../pos-strapi/src/api/site-setting/content-types/site-setting/schema.json):
 
 ```json
 "kind": "singleType",
@@ -30,10 +32,10 @@ Only one row exists; every app shares it.
    downstream readers to the new lookup.
 3. API provider: update the descriptors — list + getByDocumentId + getByAppKey;
    drop the implicit single-record assumption. Two files are involved:
-   - [packages/api-provider/api/site-setting.js](packages/api-provider/api/site-setting.js)
+   - [packages/api-provider/api/site-setting.js](../../packages/api-provider/api/site-setting.js)
      — the admin/CMS descriptor (`SiteSettingEndpoints`: draft/published
      get + updateDraft/publish/discard).
-   - [packages/api-provider/api/web/site-settings.js](packages/api-provider/api/web/site-settings.js)
+   - [packages/api-provider/api/web/site-settings.js](../../packages/api-provider/api/web/site-settings.js)
      — the storefront read descriptor (`WebSiteSettingsEndpoints.get`, the
      deep-populate the storefront reads at request time).
 4. CMS UI: list page + edit-by-documentId page (replace whatever currently

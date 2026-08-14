@@ -1,5 +1,9 @@
 # Shop Page Redesign — Product Groups with Layouts & Priority
 
+<!-- verify-docs: historical -->
+<!-- Phases 1-7 shipped and sections A-F remain proposals, so the paths below are a
+     mix of what was built (often at different paths) and what was only ever planned. -->
+
 > **Phases 1–7 shipped (2026); historical plan.** Sections A–F remain proposals.
 
 ## Overview

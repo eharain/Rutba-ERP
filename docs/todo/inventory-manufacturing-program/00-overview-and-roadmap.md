@@ -49,7 +49,7 @@ shell) on branch `inventory-mfg-foundation` — see [Implementation status
 
 | Item | Status | Notes |
 |---|---|---|
-| **F1** Location model (`warehouse`, `storage-location` bin tree) | ✅ Built | + backfill controller `warehouse/controllers/backfill.js` |
+| **F1** Location model (`warehouse`, `storage-location` bin tree) | ✅ Built | + backfill controller `stock-item/controllers/backfill.js` (POST /stock-items/backfill-default-locations) |
 | **F2** Per-location `stock-level` cache | ✅ Built | `recomputeStockLevelsForProduct(s)` / `recomputeAllStockLevels` + `suppressStockLevelRecompute` batch guard; invariant `Σ stock-level.quantity_on_hand === product.stock_quantity` preserved |
 | **F3** Batch/lot + per-unit expiry (`stock-batch`, `stock_item.expiry_date`/`batch`) | ✅ Built | `mfg-material-lot` kept for raw material; `stock-batch` is the finished-goods lot ("keep both" convergence option) |
 | **F4** Unified append-only `stock-transaction` ledger | ⬜ Not built | Was flagged *optional / retrofit-later*. The stock-item lifecycle is the single writer, so it can still be introduced without rewriting call-sites |

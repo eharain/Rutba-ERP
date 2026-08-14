@@ -1,5 +1,9 @@
 # `rutba-campaigns` — Implementation Spec
 
+<!-- verify-docs: planned campaign/start.js unsubscribe/ -->
+<!-- verify-docs: external RMAILX/** -->
+<!-- RMAILX paths are in the legacy RightApp codebase. -->
+
 > **Status update (2026-08-09, later): Phases 4–5 built** under the
 > email-program umbrella (M6). The §5 tracking decision was taken as
 > **option (b) — local** — with cause: the MTA's own FUNCTION.md scopes

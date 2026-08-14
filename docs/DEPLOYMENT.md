@@ -458,6 +458,7 @@ sudo journalctl -fu rutba_pos_strapi
 | Service Name | Description | App Directory | Default Port |
 |---|---|---|---|
 | `rutba_pos_strapi` | Strapi API + admin | `pos-strapi/` | 4010 |
+| `rutba_core` | Core API (strangler replacement for Strapi) | `rutba-core/` | 4020 |
 | `rutba_pos_auth` | Staff auth portal | `pos-auth/` | 4003 |
 | `rutba_pos_stock` | Stock management | `pos-stock/` | 4001 |
 | `rutba_pos_sale` | Point of sale | `pos-sale/` | 4002 |
@@ -473,7 +474,14 @@ sudo journalctl -fu rutba_pos_strapi
 | `rutba_cms` | Content editor | `rutba-cms/` | 4009 |
 | `rutba_social` | Social media | `rutba-social/` | 4011 |
 | `rutba_manufacturing` | Manufacturing | `rutba-manufacturing/` | 4014 |
+| `rutba_marketplace` | Marketplace channels | `rutba-marketplace/` | 4016 |
+| `rutba_marketplace_worker` | Marketplace sync worker (no HTTP surface) | `rutba-marketplace/` | — |
 | `rutba_inventory` | Inventory management | `rutba-inventory/` | 4017 |
+| `rutba_seed` | Seeding control | `rutba-seed/` | 4018 |
+| `rutba_campaigns` | Campaigns | `rutba-campaigns/` | 4019 |
+| `rutba_mail` | Mail client | `rutba-mail/` | 4021 |
+| `rutba_users` | User management | `rutba-users/` | 4022 |
+| `rutba_helpdesk` | Helpdesk | `rutba-helpdesk/` | 4023 |
 
 ### systemd Unit File Structure
 
@@ -941,7 +949,7 @@ cat /var/log/rutba_log_rotate.log
 | `scripts/js/env-config.js` | internal | Registry of required variables with severity levels |
 | `scripts/js/env-utils.js` | internal | Shared env utilities: parser, two-mode resolver, validator |
 | `scripts/js/postinstall.js` | internal | Post-install hook: installs pos-strapi dependencies with recursion guard |
-| `scripts/generate-docker-env.js` | dev | Generate `.env.docker` for Docker Compose from env files |
+| `scripts/js/generate-docker-env.js` | dev | Generate `.env.docker` for Docker Compose from env files |
 
 ### Config Constants (in `scripts/rutba_deployed_environment.sh` — edit to match your server)
 

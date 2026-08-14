@@ -7,6 +7,10 @@ metadata:
   originSessionId: fcd105ef-dfd6-48f9-a4bd-3519a8356db4
 ---
 
+<!-- verify-docs: removed providers/generated/server/ packages/api-provider/providers/generated/server/ packages/api-provider/providers/createStrapiProxy.js packages/api-provider/server/index.js -->
+<!-- The server-proxy layer this doc argues against was deleted in 2026-06; the paths
+     are named so the argument still reads. See tech-debt-cleanup.md section 2. -->
+
 > **STATUS BLOCK — what's actually true now (supersedes the design narrative below).**
 >
 > The architectural **goals** in this doc were achieved, but via a **different mechanism** than the design it describes. Read this block first; treat the rest of the doc as a design record, not a description of the current system.

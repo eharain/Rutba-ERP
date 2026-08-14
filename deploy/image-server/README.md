@@ -1,5 +1,8 @@
 # Rutba media server — masters-only, resize-on-request, LRU cache
 
+<!-- verify-docs: runtime ./.cache -->
+<!-- The variant cache directory the server creates at run time. -->
+
 A Node.js media origin for `images.rutba.pk` (reusable for `images.trustlist.uk`),
 built for **Hostinger Node.js hosting** (Business Web Hosting, `77.37.37.27`).
 

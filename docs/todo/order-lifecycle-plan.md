@@ -1,5 +1,7 @@
 # Order lifecycle — complete plan
 
+<!-- verify-docs: planned pos-strapi/src/api/payment/providers/ -->
+
 > **Status (May 2026):** Drafted after the storefront launch + COD payment
 > collection landed. Phases A-G below are forward work; the "already wired"
 > recap reflects what shipped in the cart / checkout / order-management /

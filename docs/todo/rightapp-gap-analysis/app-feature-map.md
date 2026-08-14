@@ -2,6 +2,12 @@
 
 Companion to [README.md](./README.md). Quick-scan mapping of what equates to what, and what remains.
 
+<!-- verify-docs: subset -->
+<!-- The tables below are keyed by RightApp module. Rutba apps with no RightApp
+     counterpart (payroll, ESS, mail, users, helpdesk) are deliberately absent —
+     this is a mapping, not an inventory of the estate. -->
+
+
 **Legend**
 | Icon | Meaning |
 |------|---------|
@@ -24,13 +30,13 @@ Companion to [README.md](./README.md). Quick-scan mapping of what equates to wha
 | RGTAPP | Marketing landing shell | rutba-web (:4000) | ✅ Done | — |
 | RGTAPPWEB | Marketing website / CMS | rutba-cms (:4009) + rutba-web | ✅ Done | Superseded |
 | RCRMXX | CRM | rutba-crm (:4005) + crm-* | 🟡 Partial | Build-out (see Table 3) |
-| RPRODX | Products / PIM | product/brand/category backend | 🟡 Partial | Optional `rutba-pim` (:4019) — P4 |
+| RPRODX | Products / PIM | product/brand/category backend | 🟡 Partial | Optional `rutba-pim` (port TBD) — P4 |
 | RORDER (sales) | Sales orders | rutba-order-management (:4013) | ✅ Done | — |
-| RORDER (purchase) | Purchase orders | purchase/supplier backend | 🟡 Partial | Optional `rutba-procurement` (:4020) — P5 |
+| RORDER (purchase) | Purchase orders | purchase/supplier backend | 🟡 Partial | Optional `rutba-procurement` (port TBD) — P5 |
 | RINVNT | Inventory / stock | rutba-inventory (:4017) + pos-stock (:4001) | ✅ Done | Superseded (bin/batch/FEFO) |
 | RBOOKS | Accounting | rutba-accounts (:4007) + acc-* | ✅ Done | Superseded (RBOOKS was empty) |
 | RTMPLT | Email/content templates | — (only notification-template) | ❌ Gap | Fold into `rutba-campaigns` — P1 |
-| RMAILX | Email-marketing UI | — | ❌ Gap | **`rutba-campaigns`** (:4018) — P1 |
+| RMAILX | Email-marketing UI | — | ❌ Gap | **`rutba-campaigns`** (:4019) — P1, since built |
 | RIGHTMTA | MTA send engine | **Rutba-MTA** (standalone) | ✅ Done | Already ported |
 | RSMTPREST | SMTP/REST ingress | Rutba-MTA (optional ingress) | 🟡 Partial | Add SMTP ingress if needed |
 | RANALYTICS | Web/email analytics | — | ❌ Gap | **`rutba-analytics`** service (:8030) — P3 |

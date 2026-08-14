@@ -1,5 +1,9 @@
 # Video Studio v3 — everything is a layer, on a timeline
 
+<!-- verify-docs: external tools/** bb3aa06 bd696e6 -->
+<!-- The tools/*-check.js rigs and the poster commits live in the
+     Rutba-Social-Poster repo (D:RutbaRutba-Social-Poster). -->
+
 **Status:** BUILT — T1–T5 complete, all gates green · 2026-08-11
 **Checkpoint:** started from ERP `90e15fa` / poster `bd696e6` (v2 M0–M6).
 T1 `1249f12` · T2 `ca421f1` · T3 `5c9b713` (ERP); T4 `bb3aa06` (poster).

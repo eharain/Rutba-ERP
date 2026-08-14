@@ -1,5 +1,10 @@
 # Test Run — 2026-05-15 (pre-deploy audit)
 
+<!-- verify-docs: historical -->
+<!-- A frozen audit trail: every path, port and line number here is a record of
+     what was true on 2026-05-15, and must not be updated to match the tree. -->
+
+
 > **Historical snapshot — 2026-05-15. Superseded; do NOT update.** The headline fails are resolved: the `/api/products/public/list` pageSize bug is fixed (`clampInt` in the pos-strapi product controller now bounds it to 1–100), and api-pro enforcement + `/me/permissions` are resolved (hybrid + denyByDefault, no policy = 403; populate fixed). Carry-forward items still worth a fresh check on the next deploy: the CORS whitelist for any extra ports (T4.38 — 4020/4030 unwhitelisted at the time), the anonymous Public-role over-grant on products/categories/brands/customers/sales (T0.6), and the manual-only tiers (T4.39 email, T4.40 backup/restore). Kept as the pre-deploy audit trail.
 
 Automated portion of [../pre-deployment-test-plan.md](../pre-deployment-test-plan.md)

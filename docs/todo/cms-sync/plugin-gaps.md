@@ -1,5 +1,10 @@
 # strapi-content-sync-pro — code gaps blocking Rutba CMS sync
 
+<!-- verify-docs: external server/** admin/** a810890 -->
+<!-- This document is a code review OF the strapi-content-sync-pro plugin repo
+     (D:Rutbastrapi-pluginsstrapi-content-sync-pro). Every path and commit
+     below is relative to that repo, not this one. -->
+
 > **Status (2026-07-29), updated:** GAP-1, GAP-2, GAP-8 and GAP-10 are now
 > **fixed** — commit `a810890` on branch `fix/sync-core` in
 > `D:\Rutba\strapi-plugins\strapi-content-sync-pro` (committed locally; **not
