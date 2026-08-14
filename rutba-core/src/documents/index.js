@@ -58,9 +58,13 @@ function mapRow(model, row) {
 /** Strapi `fields` selection: id + documentId always, then only the asked-for
  *  attributes (createdAt etc. included only when requested). */
 function projectFields(mapped, fields) {
-  if (!Array.isArray(fields) || !fields.length || !mapped) return mapped;
+  // `fields=name` arrives as a bare string, same as populate — without this it
+  // failed the Array check and silently projected nothing, quietly returning
+  // every column instead of the one asked for.
+  const list = Array.isArray(fields) ? fields : asAttrList(fields);
+  if (!list || !list.length || !mapped) return mapped;
   const out = { id: mapped.id, documentId: mapped.documentId };
-  for (const attr of fields) {
+  for (const attr of list) {
     if (attr in mapped) out[attr] = mapped[attr];
   }
   return out;
@@ -102,11 +106,29 @@ function applyStatus(qb, model, status, alias) {
   else qb.whereNull(`${alias}.published_at`);
 }
 
+/**
+ * Strapi's query parser hands through whatever shape the caller sent, and a
+ * single-value `populate=employee` arrives as a bare STRING, not a one-element
+ * array. Without this, such a string fell to the Object.entries branch below
+ * and was walked character by character — "cannot populate unknown attribute
+ * \"0\"", a 500 on a query pos-strapi answers fine. Comma-separated
+ * (`populate=a,b`) is accepted for the same reason.
+ */
+function asAttrList(value) {
+  if (typeof value !== 'string') return null;
+  const parts = value.split(',').map((s) => s.trim()).filter(Boolean);
+  return parts.length ? parts : null;
+}
+
 function normalizePopulate(model, populate) {
-  // Accept true | '*' | ['a','b'] | { a: true|{...} } → Map(attr → opts object)
+  // Accept true | '*' | 'a' | 'a,b' | ['a','b'] | { a: true|{...} } → Map(attr → opts)
   const out = new Map();
   if (!populate) return out;
   const all = populate === true || populate === '*';
+  if (!all) {
+    const scalar = asAttrList(populate);
+    if (scalar) populate = scalar;
+  }
   const attrs = [
     ...model.relations.map((r) => r.attr),
     ...model.media.map((m) => m.attr),

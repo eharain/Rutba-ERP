@@ -82,10 +82,18 @@ function inferAction(method, endpointPath, methodName) {
 
 // Names that read as an endpoint. Only a fallback: a descriptor carrying an
 // explicit `action` is admitted whatever it is called (see walkApiDescriptors).
+//
+// It is still only a pre-filter — the loop below invokes each method and drops
+// anything that is not an object carrying a `path`, a resolvable uid, an action
+// and at least one grant. A descriptor that matches neither the name nor an
+// explicit `action` is skipped silently, so it seeds no policy and answers 403
+// for every role: a miss here presents as a permission bug, not a seeding
+// error. Audit with the scan in docs/todo/api-pro-descriptor-whitelist-gap.md
+// before adding a verb.
 function isDescriptorMethodName(methodName) {
   const name = String(methodName || '').toLowerCase();
   if (!name || name === 'meta') return false;
-  return /^(list|by|get|find|search|create|update|del|delete|remove|publish|unpublish|archive|unarchive|assign|process|open|close|transfer|validate|shipping|tracking|messages|send|make|mark|unlock|checkout|record|set|toggle|reset|approve|reject|accept|cancel|reorder|merge|resolve|recompute|sync|run|rebuild|sell|duplicate)/.test(name);
+  return /^(list|by|get|find|search|create|update|del|delete|remove|publish|unpublish|archive|unarchive|assign|process|open|close|transfer|validate|shipping|tracking|messages|send|make|mark|unlock|checkout|record|set|toggle|reset|approve|reject|accept|cancel|reorder|merge|resolve|recompute|sync|run|rebuild|sell|duplicate|submit)/.test(name);
 }
 
 function createInvocationArgs(fn) {
