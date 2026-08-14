@@ -16,6 +16,132 @@ import { API_URL, IMAGE_URL } from './api-url-resolver.js';
 export { API_URL, IMAGE_URL };
 
 
+// ------------------ Request Timeouts ------------------
+//
+// axios has no default timeout: a backend that accepts the socket and then
+// never answers holds the caller open until something else gives up. Since
+// every app in the monorepo makes its HTTP calls through this file, that one
+// omission had two consequences.
+//
+//   - An SSR page waits forever. getServerSideProps has no deadline of its
+//     own, so a wedged backend leaves the tab spinning until the browser
+//     abandons it. The storefront's /qr/<code> resolver had to bound its own
+//     call by hand for exactly this reason (rutba-web/src/services/qr.ts).
+//   - Nothing downstream can tell "slow" from "gone". A caller that wants to
+//     make that distinction — a connectivity indicator, a retry, the offline
+//     bridge in docs/todo/offline-pos-options.md — needs a request that
+//     *fails* when the upstream is dead, not one that waits.
+//
+// The bound is a backstop against a wedged upstream, not a latency budget, so
+// it is deliberately generous. 60s is roughly where a reverse proxy in front
+// of the API would cut the connection anyway (Caddy and nginx both default to
+// about that), which means it fails no request that would have survived in
+// production — the calls this rescues are the ones going direct to the API
+// host, where nothing was cutting them at all.
+//
+// Uploads get their own, much longer bound: the wait there scales with the
+// file and the link, and a 20MB video over a slow connection is a working
+// request, not a wedged one.
+//
+// Both are overridable per deployment. Read as literal member expressions
+// because that is the only form Next.js inlines into the browser bundle — a
+// computed process.env[name] lookup resolves to undefined client-side, and
+// would silently hand every browser call the fallback.
+
+/**
+ * Parse a millisecond bound out of an env value.
+ *
+ * Anything that isn't a positive finite integer falls back to the default. A
+ * typo'd or empty env var must not disable the bound, and axios reads both 0
+ * and NaN as "wait forever" — which is precisely the state this section
+ * exists to make unreachable.
+ */
+function timeoutFromEnv(value, fallback) {
+    const ms = Number.parseInt(value ?? '', 10);
+    return Number.isFinite(ms) && ms > 0 ? ms : fallback;
+}
+
+/** Bound for ordinary reads and writes. NEXT_PUBLIC_API_TIMEOUT_MS. */
+export const DEFAULT_TIMEOUT_MS = timeoutFromEnv(process.env.NEXT_PUBLIC_API_TIMEOUT_MS, 60000);
+
+/** Bound for multipart uploads. NEXT_PUBLIC_API_UPLOAD_TIMEOUT_MS. */
+export const UPLOAD_TIMEOUT_MS = timeoutFromEnv(process.env.NEXT_PUBLIC_API_UPLOAD_TIMEOUT_MS, 300000);
+
+/**
+ * Stamp a bounded timeout onto an axios request config.
+ *
+ * Every axios call in this module is built through here, so an unbounded
+ * request is not reachable by forgetting one at a call site.
+ *
+ * axios aborts the underlying request when the bound elapses. That is the
+ * difference between this and racing a promise against a timer (the pattern
+ * the QR resolver had to use before this existed): a race stops the *caller*
+ * waiting but leaves the socket open, so a wedged backend still accumulates
+ * connections. The rejection carries no `.response`, so `isNetworkError`
+ * reports true for it and the refresh path below reads it as transient.
+ *
+ * A numeric string is honoured rather than ignored — an override that arrived
+ * through JSON or an env read is obviously intended, and silently substituting
+ * the default for it would be the least debuggable outcome available. Anything
+ * that is not a positive finite number after coercion falls back.
+ *
+ * @param {object} config       axios request config (headers, params, …)
+ * @param {number|string} [ms]  override; non-positive or absent means the default
+ */
+export function withTimeout(config = {}, ms) {
+    const requested = typeof ms === 'number' ? ms : Number(ms);
+    const bound = Number.isFinite(requested) && requested > 0 ? requested : DEFAULT_TIMEOUT_MS;
+    return { ...config, timeout: bound };
+}
+
+// Transport-level failure codes. axios reports its own timeout as
+// ECONNABORTED (ETIMEDOUT when transitional.clarifyTimeoutError is on), passes
+// Node's socket errors through by code, and collapses everything the browser
+// refuses to explain — DNS, connection refused, CORS — into ERR_NETWORK.
+const NETWORK_ERROR_CODES = new Set([
+    'ECONNABORTED',
+    'ETIMEDOUT',
+    'ERR_NETWORK',
+    'ECONNREFUSED',
+    'ECONNRESET',
+    'EPIPE',
+    'EHOSTUNREACH',
+    'ENETUNREACH',
+    'ENOTFOUND',
+    'EAI_AGAIN',
+]);
+
+/**
+ * True when a request failed at the transport — the upstream never produced an
+ * HTTP response (timed out, refused the connection, failed DNS, reset).
+ *
+ * The distinction this draws is the one the codebase needs and did not have:
+ * **an HTTP error is an answer**. A 401 means the session is bad, a 500 means
+ * the server is unhappy — either way something is listening and has an
+ * opinion. A transport failure tells us nothing about the server's opinion,
+ * only that we could not reach it.
+ *
+ * Everything that recovers has to branch on that difference. The refresh path
+ * below is the sharp case: treating a network blip as a rejected refresh token
+ * signs the user out over an outage they did not cause.
+ *
+ * @param {unknown} err
+ * @returns {boolean}
+ */
+export function isNetworkError(err) {
+    if (!err || typeof err !== 'object') return false;
+    // The server answered, whatever it said. Not a transport failure.
+    if (err.response) return false;
+    // An explicit abort is the caller's decision, not the network's.
+    if (err.code === 'ERR_CANCELED') return false;
+    if (NETWORK_ERROR_CODES.has(err.code)) return true;
+    // axios attaches `request` once the request has actually been dispatched.
+    // Reaching here with one set means it went out and nothing came back; with
+    // none set, the failure was in building the request and never left us.
+    return Boolean(err.request);
+}
+
+
 // ------------------ App + Role Headers ------------------
 //
 // Every authenticated API request sends:
@@ -155,9 +281,9 @@ export async function refreshAccessToken() {
         const refreshToken = storage.getItem('refreshToken');
         if (!refreshToken) return { jwt: null, reason: 'no-token' };
         try {
-            const res = await axios.post(`${API_URL}/auth/refresh`, { refreshToken }, {
+            const res = await axios.post(`${API_URL}/auth/refresh`, { refreshToken }, withTimeout({
                 headers: { 'Content-Type': 'application/json' },
-            });
+            }));
             const newJwt = res.data?.jwt;
             const newRefresh = res.data?.refreshToken;
             if (!newJwt) return { jwt: null, reason: 'rejected' };
@@ -168,8 +294,14 @@ export async function refreshAccessToken() {
             const status = err?.response?.status;
             console.warn('Token refresh failed', status || err.message);
             // 4xx from the refresh endpoint = the refresh token itself is no
-            // good. Anything else is treated as transient.
-            const reason = (status >= 400 && status < 500) ? 'rejected' : 'network';
+            // good. Anything else is treated as transient — including the
+            // timeout this call now carries, which surfaces as a transport
+            // failure with no status at all. A refresh that ran out of time
+            // says nothing about whether the token is still valid, so it must
+            // never be read as a rejection: that path signs the user out.
+            const reason = (!isNetworkError(err) && status >= 400 && status < 500)
+                ? 'rejected'
+                : 'network';
             return { jwt: null, reason };
         } finally {
             _refreshPromise = null;
@@ -178,19 +310,22 @@ export async function refreshAccessToken() {
     return _refreshPromise;
 }
 
-// `ctx` (optional) lets the public-wrapper layer bake per-call header state
-// (currently just `appName`) into the request without mutating module state.
-// Used by `webApi` so storefront SSR fetches always send X-Rutba-App: web
-// even when the singleton `_appName` is unset (HMR reloads, race with
-// _app.tsx, tree-shaken side-effect imports).
+// `ctx` (optional) lets the public-wrapper layer bake per-call state into the
+// request without mutating module state:
+//   appName    — used by `webApi` so storefront SSR fetches always send
+//                X-Rutba-App: web even when the singleton `_appName` is unset
+//                (HMR reloads, race with _app.tsx, tree-shaken side-effect
+//                imports).
+//   timeoutMs  — a non-default transport bound, set from a descriptor's
+//                `timeoutMs` by the `call()` wrappers below.
 async function get(path, data = {}, jwt, ctx) {
 
     let query = "";// Object.keys(data).length > 0 ? "?" + qs.stringify(data, { encodeValuesOnly: true }) : "";
 
-    const res = await axios.get(querify(`${API_URL}${path}${query}`, data), {
+    const res = await axios.get(querify(`${API_URL}${path}${query}`, data), withTimeout({
         data,
         headers: { ...authHeaders(jwt, ctx?.appName) },
-    });
+    }, ctx?.timeoutMs));
     return res.data; // Strapi returns { data, meta }
 }
 
@@ -203,9 +338,13 @@ async function getAll(path, params = {}, jwt, ctx) {
             ...params,
             pagination: { page, pageSize }
         });
-        const res = await axios.get(`${API_URL}${path}?${query}`, {
+        // The bound is per page request, not for the walk as a whole: a
+        // collection large enough to need twenty pages is doing twenty
+        // healthy round trips, and capping the total would punish size
+        // rather than catch a wedged upstream.
+        const res = await axios.get(`${API_URL}${path}?${query}`, withTimeout({
             headers: { ...authHeaders(jwt, ctx?.appName) },
-        });
+        }, ctx?.timeoutMs));
 
         const data = res.data.data || res.data;
 
@@ -224,38 +363,38 @@ async function getAll(path, params = {}, jwt, ctx) {
 
 
 async function getWithPagination(path, data = {}, jwt, ctx) {
-    const res = await axios.get(querify(`${API_URL}${path}`, data), {
+    const res = await axios.get(querify(`${API_URL}${path}`, data), withTimeout({
         data,
         headers: { ...authHeaders(jwt, ctx?.appName) },
-    });
+    }, ctx?.timeoutMs));
     return { data: res.data.data, meta: res.data.meta };
 }
 
 async function post(path, data, jwt, ctx) {
-    const res = await axios.post(`${API_URL}${path}`, data, {
+    const res = await axios.post(`${API_URL}${path}`, data, withTimeout({
         headers: { "Content-Type": "application/json", ...authHeaders(jwt, ctx?.appName) },
-    });
+    }, ctx?.timeoutMs));
     return res.data;
 }
 
 async function patch(path, data, jwt, ctx) {
-    const res = await axios.patch(`${API_URL}${path}`, data, {
+    const res = await axios.patch(`${API_URL}${path}`, data, withTimeout({
         headers: { "Content-Type": "application/json", ...authHeaders(jwt, ctx?.appName) },
-    });
+    }, ctx?.timeoutMs));
     return res.data;
 }
 
 async function put(path, data, jwt, ctx) {
-    const res = await axios.put(`${API_URL}${path}`, data, {
+    const res = await axios.put(`${API_URL}${path}`, data, withTimeout({
         headers: { "Content-Type": "application/json", ...authHeaders(jwt, ctx?.appName) },
-    });
+    }, ctx?.timeoutMs));
     return res.data;
 }
 
 async function del(path, jwt, ctx) {
-    const res = await axios.delete(`${API_URL}${path}`, {
+    const res = await axios.delete(`${API_URL}${path}`, withTimeout({
         headers: { ...authHeaders(jwt, ctx?.appName) },
-    });
+    }, ctx?.timeoutMs));
     return res.data;
 }
 
@@ -301,9 +440,13 @@ async function uploadFile(files, ref, field, refId, { name, alt, caption } = {},
         form.append('fileInfo', JSON.stringify(finfor));
 
     }
-    const res = await axios.post(`${API_URL}/upload`, form, {
+    // Uploads get the long bound: the wait scales with the file and the link,
+    // so a large video over a slow connection is a working request, not a
+    // wedged one. It is still bounded — a dead upload host must eventually
+    // fail rather than pin the caller open.
+    const res = await axios.post(`${API_URL}/upload`, form, withTimeout({
         headers: { 'Content-Type': 'multipart/form-data', ...authHeaders(jwt) },
-    });
+    }, UPLOAD_TIMEOUT_MS));
 
     const data = res.data;
 
@@ -317,9 +460,11 @@ async function uploadFile(files, ref, field, refId, { name, alt, caption } = {},
     return data;
 }
 async function deleteFile(fileId, jwt) {
-    const res = await axios.delete(`${API_URL}/upload/files/${fileId}`, {
+    // Deleting carries no payload, so this is an ordinary request — the long
+    // upload bound would be the wrong shape for it.
+    const res = await axios.delete(`${API_URL}/upload/files/${fileId}`, withTimeout({
         headers: { 'Content-Type': 'multipart/form-data', ...authHeaders(jwt) },
-    });
+    }));
     // Strapi v5 DELETE returns 204 No Content on success
   //  console.log('Delete file status:', res.status); // 204
     return res.status === 204;
@@ -339,6 +484,29 @@ export function isPDF(file) {
 
 export function isVideo(file) {
     return (file?.mime ?? '').startsWith('video/');
+}
+
+/**
+ * Build the per-call transport context for a descriptor-driven request.
+ *
+ * A descriptor may declare `timeoutMs` where the default backstop is the wrong
+ * shape for that endpoint. Two directions matter, both real:
+ *   - wider: a bulk commit that writes thousands of rows inside one request
+ *     boundary (`/stock-items/bulk-process`, `/cms-bulk/import`) is working,
+ *     not wedged, well past a minute.
+ *   - tighter: a liveness probe wants to learn the upstream is gone in
+ *     seconds, not wait out the backstop.
+ *
+ * It rides on the descriptor rather than the call site because that is where
+ * this codebase already keeps an endpoint's policy — `path`, `method`, `apps`,
+ * `approle` all live there, and the offline work reads the same files.
+ *
+ * @param {{ timeoutMs?: number }} ep
+ * @param {object} [base]  context to extend (e.g. the storefront's appName)
+ */
+function callCtx(ep, base) {
+    if (!ep?.timeoutMs) return base;
+    return { ...base, timeoutMs: ep.timeoutMs };
 }
 
 export function relationConnects(relations) {
@@ -374,12 +542,13 @@ export const api = {
      */
     call: (ep, body) => {
         const method = (ep.method ?? 'GET').toUpperCase();
+        const ctx = callCtx(ep);
         switch (method) {
-            case 'POST':   return post(ep.path, body ?? ep.params);
-            case 'PATCH':  return patch(ep.path, body ?? ep.params);
-            case 'PUT':    return put(ep.path, body ?? ep.params);
-            case 'DELETE': return del(ep.path);
-            default:       return get(ep.path, ep.params);
+            case 'POST':   return post(ep.path, body ?? ep.params, null, ctx);
+            case 'PATCH':  return patch(ep.path, body ?? ep.params, null, ctx);
+            case 'PUT':    return put(ep.path, body ?? ep.params, null, ctx);
+            case 'DELETE': return del(ep.path, null, ctx);
+            default:       return get(ep.path, ep.params, null, ctx);
         }
     },
 };
@@ -407,12 +576,13 @@ export const webApi = {
     del: async (path) => await del(path, null, WEB_CTX),
     call: (ep, body) => {
         const method = (ep.method ?? 'GET').toUpperCase();
+        const ctx = callCtx(ep, WEB_CTX);
         switch (method) {
-            case 'POST':   return post(ep.path, body ?? ep.params, null, WEB_CTX);
-            case 'PATCH':  return patch(ep.path, body ?? ep.params, null, WEB_CTX);
-            case 'PUT':    return put(ep.path, body ?? ep.params, null, WEB_CTX);
-            case 'DELETE': return del(ep.path, null, WEB_CTX);
-            default:       return get(ep.path, ep.params, null, WEB_CTX);
+            case 'POST':   return post(ep.path, body ?? ep.params, null, ctx);
+            case 'PATCH':  return patch(ep.path, body ?? ep.params, null, ctx);
+            case 'PUT':    return put(ep.path, body ?? ep.params, null, ctx);
+            case 'DELETE': return del(ep.path, null, ctx);
+            default:       return get(ep.path, ep.params, null, ctx);
         }
     },
 };
@@ -510,6 +680,18 @@ async function authCall(fn, ...args) {
     }
 }
 
+// `authCall` appends the jwt as the final argument, so the transport
+// functions' trailing `ctx` parameter cannot be reached positionally through
+// it. Bind it in a closure instead, and only for the descriptors that ask for
+// a non-default bound — the common path stays a direct reference.
+function withCallCtx(fn, ctx) {
+    if (!ctx) return fn;
+    return (...args) => {
+        const jwt = args.pop();
+        return fn(...args, jwt, ctx);
+    };
+}
+
 export const authApi = {
     fetch: (path, data) => authCall(get, path, data),
     fetchWithPagination: (path, data) => authCall(getWithPagination, path, data),
@@ -529,12 +711,13 @@ export const authApi = {
      */
     call: (ep, body) => {
         const method = (ep.method ?? 'GET').toUpperCase();
+        const ctx = callCtx(ep);
         switch (method) {
-            case 'POST':   return authCall(post, ep.path, body ?? ep.params);
-            case 'PATCH':  return authCall(patch, ep.path, body ?? ep.params);
-            case 'PUT':    return authCall(put,  ep.path, body ?? ep.params);
-            case 'DELETE': return authCall(del,  ep.path);
-            default:       return authCall(get,  ep.path, ep.params);
+            case 'POST':   return authCall(withCallCtx(post, ctx), ep.path, body ?? ep.params);
+            case 'PATCH':  return authCall(withCallCtx(patch, ctx), ep.path, body ?? ep.params);
+            case 'PUT':    return authCall(withCallCtx(put,  ctx), ep.path, body ?? ep.params);
+            case 'DELETE': return authCall(withCallCtx(del,  ctx), ep.path);
+            default:       return authCall(withCallCtx(get,  ctx), ep.path, ep.params);
         }
     },
 };

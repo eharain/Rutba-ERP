@@ -9,6 +9,7 @@
     "dev": "nodemon src/index.js",
     "validate-schema": "node scripts/validate-schema.js",
     "smoke": "node scripts/smoke-documents.js",
+    "check:sqlite": "node scripts/check-sqlite.js",
     "migrate": "node scripts/migrate.js up",
     "migrate:status": "node scripts/migrate.js status",
     "migrate:down": "node scripts/migrate.js down",
@@ -17,6 +18,7 @@
   },
   "dependencies": {
     "@koa/router": "^15.7.0",
+    "better-sqlite3": "^13.0.3",
     "jsonwebtoken": "^9.0.3",
     "knex": "^3.1.0",
     "koa": "^3.2.1",
@@ -27,7 +29,7 @@
     "qs": "^6.15.3"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"

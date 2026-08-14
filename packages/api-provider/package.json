@@ -11,6 +11,7 @@
     "validate:endpoint-usage": "node ./scripts/validate-endpoint-usage.mjs",
     "validate:descriptor-apps": "node ./scripts/validate-descriptor-apps.mjs",
     "validate": "npm run validate:exports && npm run validate:web-proxies && npm run validate:endpoint-usage && npm run validate:descriptor-apps",
+    "test": "node tests/api-timeout.test.js",
     "build": "npm run scaffold:endpoint-providers && npm run validate",
     "watch": "node ./scripts/watch-api.mjs",
     "dev": "node ./scripts/watch-api.mjs"
