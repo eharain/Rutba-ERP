@@ -120,6 +120,13 @@ Costs, and how they're paid:
 - **Cross-entity timelines need persisted rows** → that's what import-on-link
   is; see [`04-crm-linkage-and-identity.md`](./04-crm-linkage-and-identity.md).
 
+> **Under examination (2026-08-14).** [`10-index-decision.md`](./10-index-decision.md)
+> tests this ADR against [`09`](./09-usability-gap-analysis.md)'s findings and
+> recommends **qualifying** it, not reversing it: a headers-only envelope index,
+> with **bodies still never stored**. Body search, cross-folder search,
+> cross-account search, unified inbox and real threading turn out to be one
+> missing capability rather than five features. Not yet ratified.
+
 Mailbox onboarding is **bring-your-own IMAP/SMTP first** (works with the
 mailcow at mail.trustlist.uk, Hostinger, Gmail app-passwords — anything), with
 **mailcow admin-API provisioning** as its own phase
@@ -137,6 +144,8 @@ mailcow at mail.trustlist.uk, Hostinger, Gmail app-passwords — anything), with
 | [`06-mailcow-provisioning.md`](./06-mailcow-provisioning.md) | mailcow admin API, provision flows, password custody |
 | [`07-campaigns-integration.md`](./07-campaigns-integration.md) | How this program sequences rutba-campaigns 2–6 |
 | [`08-security.md`](./08-security.md) | Credential crypto, HTML threat model, ACLs, timeouts |
+| [`09-usability-gap-analysis.md`](./09-usability-gap-analysis.md) | Feature-by-feature walk against Gmail/Outlook, Front/Missive, Mailchimp/Brevo |
+| [`10-index-decision.md`](./10-index-decision.md) | **Does this ADR survive 09?** Recommends a headers-only envelope index (bodies never stored) and names MODSEQ as the prerequisite |
 
 Campaigns' own spec stays authoritative for campaigns internals:
 [`../rutba-campaigns-implementation.md`](../rutba-campaigns-implementation.md).
@@ -163,5 +172,7 @@ only the roadmap and (from M6) the person identity layer.
   adapter behind the same gateway API if ever demanded.)
 - No mail hosting inside the ERP — mailcow (or any provider) hosts; we connect.
 - No full-text index of unimported mail — search is server-side IMAP SEARCH.
+  ([`10`](./10-index-decision.md) recommends an **envelope** index, which is not
+  a full-text index and does not change this line's intent.)
 - Campaigns continue to send through **Rutba-MTA**, never through a user's
   personal SMTP (see 07 §identity separation).
