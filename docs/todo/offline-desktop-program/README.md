@@ -97,6 +97,7 @@ Recorded here so no document below reopens them.
 | 3 | **v1 bundles POS, Mail and Studio only.** | [offline-pos-options §12](../offline-pos-options.md#12-amendment-2026-08-13--one-engine-three-apps) |
 | 4 | **The Electron main process hosts the bridge** — no separate Windows service. | [offline-pos-options §11](../offline-pos-options.md#11-amendment-2026-08-13--electron-hosts-the-bridge) |
 | 5 | **Local reads come from `rutba-core` against SQLite**, never a second implementation of the domain. | [offline-pos-options §10.1](../offline-pos-options.md#101-shape), §6 |
+| 6 | **The replayer replays the captured stock-unit references**, falling back to allocation only when one cannot be honoured. Divisible lines stay product+qty. **The outbox payload carries both shapes.** | [06](06-sync-back-granularity.md) — settles [§10.5.1](../offline-pos-options.md#105-still-open) |
 
 **Rider, inventory and manufacturing are strong later candidates** — connectivity
 genuinely fails in a delivery van, a warehouse aisle and a stitching floor, which
@@ -135,7 +136,7 @@ explicitly out of scope for now. The four-layer model in
 8. **§§1–5 and §10 of `offline-pos-options.md` are settled.** Cite them; do not
    re-derive them. Where this program extends one, it says which section and why.
 
-## The four documents
+## The documents
 
 | # | Document | What it owns |
 |---|---|---|
@@ -143,6 +144,8 @@ explicitly out of scope for now. The four-layer model in
 | 2 | [`02-desktop-shell.md`](02-desktop-shell.md) | The Electron container: process shape, the build-time/runtime origin problem, security posture, Electron hazards as release gates, updates, packaging. |
 | 3 | [`03-app-policies.md`](03-app-policies.md) | The four-layer adoption model, and what each of POS / Mail / Studio actually needs. |
 | 4 | [`04-server-prerequisites.md`](04-server-prerequisites.md) | Five small, independently-correct, gating server changes — and the offline-readiness gate. |
+| 5 | [`05-sqlite-viability.md`](05-sqlite-viability.md) | **Measured, not specified.** Does rutba-core actually run on SQLite? What ports, what breaks, and whether the "bridge = rutba-core on SQLite" assumption survives contact with a real database file. |
+| 6 | [`06-sync-back-granularity.md`](06-sync-back-granularity.md) | **Decision.** What the replayer replays for an offline POS sale — captured unit references, with allocation as the repair. Fixes the outbox payload shape, so it gates D4. |
 
 ## Phases
 
