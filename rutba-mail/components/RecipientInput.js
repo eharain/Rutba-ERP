@@ -79,7 +79,12 @@ export default function RecipientInput({ value, onChange, placeholder, autoFocus
         if (e.key === "ArrowDown") { e.preventDefault(); setHi((h) => (h + 1) % options.length); }
         else if (e.key === "ArrowUp") { e.preventDefault(); setHi((h) => (h - 1 + options.length) % options.length); }
         else if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); pick(options[hi]); }
-        else if (e.key === "Escape") setOpen(false);
+        else if (e.key === "Escape") {
+            // Escape dismisses the suggestions ONLY. Without this the event
+            // reaches the composer's handler and closes the whole dialog.
+            e.stopPropagation();
+            setOpen(false);
+        }
     };
 
     return (

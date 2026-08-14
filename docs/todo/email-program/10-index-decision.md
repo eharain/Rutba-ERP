@@ -28,10 +28,10 @@ is the mistake this document exists to prevent:
 
 | Gap | Recorded at | Priority given |
 |---|---|---|
-| Conversation threading | [`09:37`](./09-usability-gap-analysis.md) | P0 — *"the single loudest gap"* |
-| Unified "all inboxes" view | [`09:41`](./09-usability-gap-analysis.md) | P1 |
-| Cross-folder search | [`09:47`](./09-usability-gap-analysis.md) | P1 |
-| Offline | [`09:48`](./09-usability-gap-analysis.md) | *"Non-goal — recorded ADR"* |
+| Conversation threading | [`09:61`](./09-usability-gap-analysis.md) | P0 — *"the single loudest gap"* |
+| Unified "all inboxes" view | [`09:65`](./09-usability-gap-analysis.md) | P1 |
+| Cross-folder search | [`09:71`](./09-usability-gap-analysis.md) | P1 |
+| Offline | [`09:72`](./09-usability-gap-analysis.md) | *"Non-goal — recorded ADR"* |
 
 Add body search — never listed, because
 [`00:165`](./00-overview-and-roadmap.md) rules it out as a non-goal

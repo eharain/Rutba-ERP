@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import {
     MailAccountsEndpoints,
     MailContactsEndpoints,
@@ -7,6 +8,7 @@ import {
     WorkItemCommentsEndpoints,
 } from "@rutba/api-provider/endpoints";
 import LinkPicker from "./LinkPicker";
+import AttachmentPreview, { isPreviewable } from "./AttachmentPreview";
 
 // Reading pane. The body is server-sanitized AND rendered inside a fully
 // sandboxed iframe (no scripts, no same-origin) — defense in depth against
@@ -16,7 +18,11 @@ import LinkPicker from "./LinkPicker";
 const addrText = (a) => (a ? (a.name ? `${a.name} <${a.address}>` : a.address) : "");
 const listText = (list) => (list || []).map(addrText).join(", ");
 
-export default function MessageView({ account, folder, folders, message, tags = [], onReply, onDeleted, onMoved, onFlagChanged, onClose }) {
+export default function MessageView({
+    account, folder, folders, archiveFolder, message, tags = [],
+    onReply, onDeleted, onMoved, onFlagChanged, onSeenChanged, onClose,
+}) {
+    const { user } = useAuth();
     const [showRemote, setShowRemote] = useState(false);
     const [busy, setBusy] = useState(null);
     const [error, setError] = useState(null);
@@ -25,6 +31,7 @@ export default function MessageView({ account, folder, folders, message, tags = 
     const [msgTags, setMsgTags] = useState([]);
     const [savedSender, setSavedSender] = useState(false);
     const [imported, setImported] = useState(null);
+    const [preview, setPreview] = useState(null);
 
     const shared = account?.kind === "shared";
 
@@ -35,6 +42,7 @@ export default function MessageView({ account, folder, folders, message, tags = 
         setLinkedNote(null);
         setMsgTags(message?.tags || []);
         setSavedSender(false);
+        setPreview(null);
     }, [message?.uid]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // The imported copy of this live message, if one exists. Looked up ONCE
@@ -78,20 +86,75 @@ img{max-width:100%;height:auto;} pre{white-space:pre-wrap;}</style>
         );
     }
 
+    /**
+     * Fetch one attachment as a blob. `mimePart` is the IMAP part number, so
+     * the server fetches BODY[<part>] alone instead of downloading the whole
+     * message again — which is what previewing three attachments used to cost
+     * on a connection every other request queues behind.
+     */
+    const fetchBlob = async (att) => {
+        const res = await MailAccountsEndpoints.getAttachment(account.documentId, message.uid, {
+            folder, part: att.partId, mimePart: att.part || undefined,
+        });
+        const bytes = Uint8Array.from(atob(res.base64), (c) => c.charCodeAt(0));
+        return {
+            filename: res.filename || att.filename || "attachment",
+            contentType: res.contentType || att.contentType,
+            url: URL.createObjectURL(new Blob([bytes], { type: res.contentType })),
+        };
+    };
+
     const download = async (att) => {
         setBusy(`att:${att.partId}`);
         setError(null);
         try {
-            const res = await MailAccountsEndpoints.getAttachment(account.documentId, message.uid, { folder, part: att.partId });
-            const bytes = Uint8Array.from(atob(res.base64), (c) => c.charCodeAt(0));
-            const url = URL.createObjectURL(new Blob([bytes], { type: res.contentType }));
+            const blob = await fetchBlob(att);
             const link = document.createElement("a");
-            link.href = url;
-            link.download = res.filename || "attachment";
+            link.href = blob.url;
+            link.download = blob.filename;
             link.click();
-            URL.revokeObjectURL(url);
+            URL.revokeObjectURL(blob.url);
         } catch (err) {
             setError(`Download failed: ${err.message}`);
+        } finally {
+            setBusy(null);
+        }
+    };
+
+    const openPreview = async (att) => {
+        setBusy(`att:${att.partId}`);
+        setError(null);
+        try {
+            setPreview(await fetchBlob(att));
+        } catch (err) {
+            setError(`Preview failed: ${err.message}`);
+        } finally {
+            setBusy(null);
+        }
+    };
+
+    const closePreview = () => {
+        setPreview((p) => {
+            if (p?.url) URL.revokeObjectURL(p.url);
+            return null;
+        });
+    };
+
+    /**
+     * Read/unread as a verb you can use on the message you are READING —
+     * previously only a bulk action, so the one message you could not mark
+     * unread was the one open in front of you.
+     */
+    const setSeen = async (seen) => {
+        setBusy("seen");
+        setError(null);
+        try {
+            await MailAccountsEndpoints.setFlags(account.documentId, message.uid, {
+                folder, ...(seen ? { add: ["seen"] } : { remove: ["seen"] }),
+            });
+            onSeenChanged?.(seen);
+        } catch (err) {
+            setError(`Could not change the read state: ${err.message}`);
         } finally {
             setBusy(null);
         }
@@ -111,6 +174,16 @@ img{max-width:100%;height:auto;} pre{white-space:pre-wrap;}</style>
     };
 
     const remove = async () => {
+        // Deleting a tag or a contact asks first; deleting mail did not.
+        const subject = message.envelope?.subject || "(no subject)";
+        const trash = (folders || []).find((f) => f.specialUse === "\\Trash")?.path
+            || account?.special_folders?.trash || "";
+        const inTrash = Boolean(trash) && folder.toLowerCase() === String(trash).toLowerCase();
+        if (!window.confirm(
+            `Delete "${subject}"?\n\n${inTrash
+                ? "This message is already in Trash — deleting it here is permanent."
+                : "It moves to Trash."}`
+        )) return;
         setBusy("delete");
         try {
             await MailAccountsEndpoints.removeMessage(account.documentId, message.uid, { folder });
@@ -132,6 +205,11 @@ img{max-width:100%;height:auto;} pre{white-space:pre-wrap;}</style>
             setBusy(null);
         }
     };
+
+    // Archive is just a move to the \Archive special-use folder — but a verb
+    // the user reaches for a hundred times a day does not belong behind a
+    // generic "Move…" dropdown.
+    const archive = () => move(archiveFolder);
 
     const toggleTag = async (slug) => {
         const has = msgTags.includes(slug);
@@ -167,37 +245,52 @@ img{max-width:100%;height:auto;} pre{white-space:pre-wrap;}</style>
             <div className="border-bottom p-2">
                 <div className="d-flex justify-content-between align-items-start gap-2">
                     <h5 className="mb-1 text-break">{message.envelope?.subject || "(no subject)"}</h5>
-                    <div className="btn-group btn-group-sm flex-shrink-0">
-                        <button className="btn btn-outline-primary" title="Reply" onClick={() => onReply("reply")}>
-                            <i className="fa-solid fa-reply"></i>
-                        </button>
-                        <button className="btn btn-outline-primary" title="Reply all" onClick={() => onReply("reply-all")}>
-                            <i className="fa-solid fa-reply-all"></i>
-                        </button>
-                        <button className="btn btn-outline-primary" title="Forward" onClick={() => onReply("forward")}>
-                            <i className="fa-solid fa-share"></i>
-                        </button>
-                        <button className={`btn btn-outline-warning ${message.flags?.flagged ? "active" : ""}`}
-                            title="Flag" disabled={busy === "flag"} onClick={toggleFlag}>
-                            <i className="fa-solid fa-flag"></i>
-                        </button>
-                        <button className="btn btn-outline-success" title="Link to CRM / order"
-                            onClick={() => setLinking((v) => !v)}>
-                            <i className="fa-solid fa-link"></i>
-                        </button>
-                        <select className="btn btn-outline-secondary" style={{ maxWidth: "7.5rem" }} title="Move to folder"
+                    <div className="d-flex align-items-start gap-1 flex-shrink-0">
+                        <div className="btn-group btn-group-sm">
+                            <button className="btn btn-outline-primary" title="Reply (r)" onClick={() => onReply("reply")}>
+                                <i className="fa-solid fa-reply"></i>
+                            </button>
+                            <button className="btn btn-outline-primary" title="Reply all (a)" onClick={() => onReply("reply-all")}>
+                                <i className="fa-solid fa-reply-all"></i>
+                            </button>
+                            <button className="btn btn-outline-primary" title="Forward (f)" onClick={() => onReply("forward")}>
+                                <i className="fa-solid fa-share"></i>
+                            </button>
+                            {archiveFolder && archiveFolder !== folder && (
+                                <button className="btn btn-outline-primary" title={`Archive — move to ${archiveFolder} (e)`}
+                                    disabled={busy === "move"} onClick={archive}>
+                                    <i className="fa-solid fa-box-archive"></i>
+                                </button>
+                            )}
+                            <button className="btn btn-outline-secondary" disabled={busy === "seen"}
+                                title={message.flags?.seen ? "Mark as unread (m)" : "Mark as read (m)"}
+                                onClick={() => setSeen(!message.flags?.seen)}>
+                                <i className={`fa-solid ${message.flags?.seen ? "fa-envelope" : "fa-envelope-open"}`}></i>
+                            </button>
+                            <button className={`btn btn-outline-warning ${message.flags?.flagged ? "active" : ""}`}
+                                title="Flag (s)" disabled={busy === "flag"} onClick={toggleFlag}>
+                                <i className="fa-solid fa-flag"></i>
+                            </button>
+                            <button className="btn btn-outline-success" title="Link to CRM / order"
+                                onClick={() => setLinking((v) => !v)}>
+                                <i className="fa-solid fa-link"></i>
+                            </button>
+                            <button className="btn btn-outline-danger" title="Delete (#)" disabled={busy === "delete"} onClick={remove}>
+                                <i className="fa-solid fa-trash"></i>
+                            </button>
+                            <button className="btn btn-outline-secondary" title="Close (u)" onClick={onClose}>
+                                <i className="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                        {/* A <select> is not a <button>: styling it `btn` gave it
+                            button padding with a native dropdown arrow on top. */}
+                        <select className="form-select form-select-sm" style={{ width: "7.5rem" }} title="Move to folder"
                             value="" disabled={busy === "move"} onChange={(e) => move(e.target.value)}>
                             <option value="">Move…</option>
                             {(folders || []).filter((f) => f.path !== folder).map((f) => (
                                 <option key={f.path} value={f.path}>{f.name || f.path}</option>
                             ))}
                         </select>
-                        <button className="btn btn-outline-danger" title="Delete" disabled={busy === "delete"} onClick={remove}>
-                            <i className="fa-solid fa-trash"></i>
-                        </button>
-                        <button className="btn btn-outline-secondary" title="Close" onClick={onClose}>
-                            <i className="fa-solid fa-xmark"></i>
-                        </button>
                     </div>
                 </div>
                 <div className="small text-muted">
@@ -237,18 +330,36 @@ img{max-width:100%;height:auto;} pre{white-space:pre-wrap;}</style>
                 )}
                 {(message.attachments || []).length > 0 && (
                     <div className="mt-2 d-flex flex-wrap gap-2">
-                        {message.attachments.map((att) => (
-                            <button key={att.partId} className="btn btn-sm btn-outline-secondary"
-                                disabled={busy === `att:${att.partId}`}
-                                title={`${att.contentType} — ${Math.round((att.size || 0) / 1024)} KB`}
-                                onClick={() => download(att)}>
-                                <i className="fa-solid fa-paperclip me-1"></i>
-                                {att.filename}
-                            </button>
-                        ))}
+                        {message.attachments.map((att) => {
+                            const canPreview = isPreviewable(att.contentType);
+                            const size = `${Math.round((att.size || 0) / 1024)} KB`;
+                            return (
+                                <div key={att.partId} className="btn-group btn-group-sm">
+                                    <button className="btn btn-outline-secondary"
+                                        disabled={busy === `att:${att.partId}`}
+                                        title={canPreview
+                                            ? `Preview — ${att.contentType}, ${size}`
+                                            : `Download — ${att.contentType}, ${size}`}
+                                        onClick={() => (canPreview ? openPreview(att) : download(att))}>
+                                        <i className={`fa-solid ${canPreview ? "fa-eye" : "fa-paperclip"} me-1`}></i>
+                                        {att.filename}
+                                    </button>
+                                    {canPreview && (
+                                        <button className="btn btn-outline-secondary" title="Download"
+                                            disabled={busy === `att:${att.partId}`} onClick={() => download(att)}>
+                                            <i className="fa-solid fa-download"></i>
+                                        </button>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
             </div>
+
+            {shared && (
+                <CollisionBanner account={account} imported={imported} userId={user?.id} onImported={setImported} />
+            )}
 
             {shared && (
                 <TriageBar account={account} folder={folder} message={message}
@@ -290,6 +401,54 @@ img{max-width:100%;height:auto;} pre{white-space:pre-wrap;}</style>
                 <NotesPanel account={account} folder={folder} message={message}
                     imported={imported} onImported={setImported} />
             )}
+
+            {preview && <AttachmentPreview file={preview} onClose={closePreview} />}
+        </div>
+    );
+}
+
+/**
+ * "Assigned to X — take over?" — the Front/Missive collision guard, spec'd in
+ * docs/todo/email-program/05-shared-inboxes.md and never built. True presence
+ * ("Ali is typing…") needs websockets and stays deferred; knowing the message
+ * already belongs to a colleague BEFORE you start writing is most of the
+ * value, and it costs nothing — the parent already loaded the imported row
+ * with assigned_to for the triage bar.
+ */
+function CollisionBanner({ account, imported, userId, onImported }) {
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState(null);
+
+    const assignee = imported?.assigned_to || null;
+    // Ids come back as numbers from the relation and can arrive as strings
+    // from a JWT profile — compare as strings so a real match is never missed.
+    const mine = assignee && userId != null && String(assignee.id) === String(userId);
+    if (!assignee || mine) return null;
+
+    const takeOver = async () => {
+        setBusy(true);
+        setError(null);
+        try {
+            await MailMessagesEndpoints.assignMessage(imported.documentId, { assignTo: userId });
+            const fresh = await MailMessagesEndpoints.byId(imported.documentId, { populate: { assigned_to: true } });
+            onImported(fresh?.data || null);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    return (
+        <div className="alert alert-warning rounded-0 border-0 border-bottom mb-0 py-1 px-2 small d-flex align-items-center justify-content-between gap-2">
+            <span>
+                <i className="fa-solid fa-triangle-exclamation me-1"></i>
+                Assigned to <strong>{assignee.username || assignee.email || "someone else"}</strong> — they may already be replying.
+                {error && <span className="text-danger ms-2">{error}</span>}
+            </span>
+            <button type="button" className="btn btn-sm btn-outline-dark flex-shrink-0" disabled={busy} onClick={takeOver}>
+                {busy ? "…" : "Take over"}
+            </button>
         </div>
     );
 }

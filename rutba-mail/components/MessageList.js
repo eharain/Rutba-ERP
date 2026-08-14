@@ -1,9 +1,13 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 // Envelope list for one folder — server-paged, newest first, grouped into
 // conversations. Everything shown here came from a live IMAP FETCH; nothing
 // is stored. Threading v1 groups by normalized subject within the loaded
 // page (References-based chains can graduate later without UI change).
+//
+// The list also owns the keyboard CURSOR's ordering: only this component
+// knows which rows are actually on screen once conversations collapse, so it
+// publishes the visible uid order upward and the page drives j/k from that.
 
 function fmtDate(value) {
     if (!value) return "";
@@ -31,10 +35,22 @@ function TagChips({ slugs, tags }) {
     });
 }
 
-function Row({ m, activeUid, selected, tags, indent, onOpen, onToggleSelect }) {
+/** Keeps the cursored row inside the scroll viewport as j/k walks past it. */
+function useScrollIntoView(active) {
+    const ref = useRef(null);
+    useEffect(() => {
+        if (active) ref.current?.scrollIntoView({ block: "nearest" });
+    }, [active]);
+    return ref;
+}
+
+function Row({ m, activeUid, cursorUid, selected, tags, indent, onOpen, onToggleSelect }) {
+    const cursored = m.uid === cursorUid;
+    const ref = useScrollIntoView(cursored);
     return (
         <div
-            className={`mail-row ${m.seen ? "" : "unseen"} ${m.uid === activeUid ? "active" : ""}`}
+            ref={ref}
+            className={`mail-row ${m.seen ? "" : "unseen"} ${m.uid === activeUid ? "active" : ""} ${cursored ? "cursor" : ""}`}
             style={indent ? { paddingLeft: "1.6rem" } : undefined}
             onClick={() => onOpen(m)}
         >
@@ -59,8 +75,9 @@ function Row({ m, activeUid, selected, tags, indent, onOpen, onToggleSelect }) {
 }
 
 export default function MessageList({
-    listing, activeUid, loading, error, page, tags = [], folders = [], sharedInbox = false,
-    onOpen, onPage, onRefresh, onBulk,
+    listing, activeUid, cursorUid, loading, error, page, tags = [], folders = [],
+    archiveFolder = null, sharedInbox = false,
+    onOpen, onPage, onRefresh, onBulk, onVisibleUids,
 }) {
     const total = listing?.total || 0;
     const pageSize = listing?.pageSize || 50;
@@ -83,6 +100,23 @@ export default function MessageList({
         return [...byKey.entries()].map(([key, list]) => ({ key, list }));
     }, [messages]);
 
+    // What j/k walks: rows in render order. A COLLAPSED conversation
+    // contributes only its head — otherwise a folder of two-message threads
+    // would have almost nothing the keyboard could land on.
+    const visibleUids = useMemo(() => {
+        const out = [];
+        for (const { key, list } of groups) {
+            if (list.length === 1 || !expanded.has(key)) out.push(list[0].uid);
+            else out.push(...list.map((m) => m.uid));
+        }
+        return out;
+    }, [groups, expanded]);
+
+    const visibleKey = visibleUids.join(",");
+    useEffect(() => {
+        onVisibleUids?.(visibleUids);
+    }, [visibleKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
     const toggleSelect = (uid) => setSelected((s) => {
         const next = new Set(s);
         if (next.has(uid)) next.delete(uid); else next.add(uid);
@@ -97,6 +131,15 @@ export default function MessageList({
         clearSelection();
         setMoveTo("");
         setTagPick("");
+    };
+
+    // Deleting a tag asks; deleting mail used to just go. Same prompt, and it
+    // names the count, because "Delete" on 40 selected rows is the one click
+    // in this app nobody gets to take back.
+    const confirmBulkDelete = () => {
+        const n = selected.size;
+        if (!window.confirm(`Delete ${n} message${n === 1 ? "" : "s"}?\n\nThey move to Trash (or are expunged if this IS Trash).`)) return;
+        bulk("delete");
     };
 
     const toggleGroup = (key) => setExpanded((s) => {
@@ -130,9 +173,23 @@ export default function MessageList({
             {selected.size > 0 && (
                 <div className="d-flex align-items-center gap-1 flex-wrap border-bottom bg-light px-2 py-1">
                     <span className="small me-1">{selected.size} selected</span>
+                    {archiveFolder && (
+                        <button className="btn btn-sm btn-outline-primary" title={`Move to ${archiveFolder}`}
+                            onClick={() => bulk("archive")}>
+                            <i className="fa-solid fa-box-archive me-1"></i>Archive
+                        </button>
+                    )}
                     <button className="btn btn-sm btn-outline-secondary" onClick={() => bulk("read")}>Read</button>
                     <button className="btn btn-sm btn-outline-secondary" onClick={() => bulk("unread")}>Unread</button>
-                    <button className="btn btn-sm btn-outline-danger" onClick={() => bulk("delete")}>Delete</button>
+                    <button className="btn btn-sm btn-outline-warning" title="Flag these messages"
+                        onClick={() => bulk("flag")}>
+                        <i className="fa-solid fa-flag"></i>
+                    </button>
+                    <button className="btn btn-sm btn-outline-secondary" title="Clear the flag"
+                        onClick={() => bulk("unflag")}>
+                        <i className="fa-regular fa-flag"></i>
+                    </button>
+                    <button className="btn btn-sm btn-outline-danger" onClick={confirmBulkDelete}>Delete</button>
                     {sharedInbox && (
                         <button className="btn btn-sm btn-outline-primary" title="Import these into the shared triage queue"
                             onClick={() => bulk("queue")}>
@@ -164,15 +221,19 @@ export default function MessageList({
                 <div className="flex-grow-1">
                     {groups.map(({ key, list }) => {
                         if (list.length === 1) {
-                            return <Row key={list[0].uid} m={list[0]} activeUid={activeUid} selected={selected}
-                                tags={tags} onOpen={onOpen} onToggleSelect={toggleSelect} />;
+                            return <Row key={list[0].uid} m={list[0]} activeUid={activeUid} cursorUid={cursorUid}
+                                selected={selected} tags={tags} onOpen={onOpen} onToggleSelect={toggleSelect} />;
                         }
                         const head = list[0];
                         const unseen = list.filter((m) => !m.seen).length;
                         const open = expanded.has(key);
+                        // While collapsed the group row stands in for its head,
+                        // so the cursor has somewhere to show.
+                        const cursored = !open && head.uid === cursorUid;
                         return (
                             <div key={key}>
-                                <div className={`mail-row ${unseen ? "unseen" : ""}`} onClick={() => toggleGroup(key)}>
+                                <div className={`mail-row ${unseen ? "unseen" : ""} ${cursored ? "cursor" : ""}`}
+                                    onClick={() => toggleGroup(key)}>
                                     <div className="mail-row-from">
                                         <span className="text-truncate">
                                             <i className={`fa-solid fa-chevron-${open ? "down" : "right"} text-muted me-2`}></i>
@@ -187,7 +248,7 @@ export default function MessageList({
                                     </div>
                                 </div>
                                 {open && list.map((m) => (
-                                    <Row key={m.uid} m={m} activeUid={activeUid} selected={selected}
+                                    <Row key={m.uid} m={m} activeUid={activeUid} cursorUid={cursorUid} selected={selected}
                                         tags={tags} indent onOpen={onOpen} onToggleSelect={toggleSelect} />
                                 ))}
                             </div>
