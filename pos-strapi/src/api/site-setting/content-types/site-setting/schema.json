@@ -100,6 +100,26 @@
       "type": "relation",
       "relation": "oneToOne",
       "target": "api::cms-footer.cms-footer"
+    },
+    "ga_measurement_id": {
+      "type": "string",
+      "description": "Google Analytics 4 measurement id (G-XXXXXXX). Optional — nothing is injected when empty. The storefront resolves its row by X-Rutba-App: web, so set this on the `web` row (or the is_default row); setting it on another app's row has no effect on the storefront."
+    },
+    "meta_pixel_id": {
+      "type": "string",
+      "description": "Meta (Facebook) Pixel id. Optional — nothing is injected when empty."
+    },
+    "gtm_container_id": {
+      "type": "string",
+      "description": "Google Tag Manager container id (GTM-XXXXXXX). Optional — nothing is injected when empty."
+    },
+    "custom_head_html": {
+      "type": "text",
+      "description": "Raw markup appended to <head> client-side. Injected unescaped — CMS-editor-only, deliberately not exposed in the admin app."
+    },
+    "custom_body_end_html": {
+      "type": "text",
+      "description": "Raw markup rendered at the end of <body>. Injected unescaped — CMS-editor-only, deliberately not exposed in the admin app."
     }
   }
 }

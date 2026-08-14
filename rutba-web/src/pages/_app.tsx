@@ -8,12 +8,14 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AppContextEndpoints } from "@rutba/api-provider/endpoints";
 import Seo from "@/components/seo/seo";
 import SiteJsonLd from "@/components/seo/site-json-ld";
+import TrackingScripts from "@/components/seo/tracking-scripts";
 import {
   fetchSiteSettings,
   SITE_SETTINGS_DEFAULTS,
   type SiteSettings,
 } from "@/services/site-settings";
 import { SITE_SETTINGS_QUERY_KEY } from "@/hooks/use-site-settings";
+import type { CmsPageDetailInterface } from "@/types/api/cms-page";
 
 // Tag every request from rutba-web with X-Rutba-App so the strapi-api-pro
 // claim middleware can pick the correct policy. The storefront acts in the
@@ -22,6 +24,31 @@ import { SITE_SETTINGS_QUERY_KEY } from "@/hooks/use-site-settings";
 AppContextEndpoints.setAppName('web');
 
 type RutbaAppProps = AppProps & { siteSettings?: SiteSettings };
+
+/**
+ * The footer the current route has chosen, if any — read straight out of the
+ * page's own server-side props.
+ *
+ * Every CMS route that picks a footer (index, blog/[slug], info/[slug],
+ * news/[slug], page/[slug], shop/[slug]) returns its page under the same
+ * `initialPage` key from getServerSideProps and renders
+ * `<LayoutMain footer={page.footer}>`. Reading it here is what lets
+ * <TrackingScripts /> live at the app level and still honour a footer-level
+ * tracking id — the whole point of keeping a single mount.
+ *
+ * Why not read the live react-query value the page renders from: that would
+ * mean a hook per page-shape, and the two can only differ after a refetch of
+ * the same slug, which returns the same footer. `initialPage` also travels in
+ * __NEXT_DATA__, so server and client agree on the first render and there is
+ * no hydration mismatch and no late second value for next/script to ignore.
+ *
+ * Routes without a footer (checkout, login, …) simply have no `initialPage`,
+ * and tracking falls through to the site-settings values.
+ */
+function pageFooter(pageProps: unknown): CmsPageDetailInterface["footer"] {
+  return (pageProps as { initialPage?: CmsPageDetailInterface | null })
+    ?.initialPage?.footer;
+}
 
 // When the Strapi refresh token is dead (NextAuth marks the session with
 // error: "SessionExpired"), drop to guest browsing quietly instead of letting
@@ -92,6 +119,12 @@ function RutbaApp({
             first og:image it found — the site logo, on every share. */}
         <Seo />
         <SiteJsonLd />
+        {/* Analytics / pixel / GTM — mounted here, not in <Footer>, because
+            <Footer> doesn't render on checkout, contact, login, register or
+            the password-reset pair, and those routes were firing nothing.
+            Exactly ONE mount site-wide: next/script dedupes <Script id>, but
+            two gtag('config') calls would double every page_view. */}
+        <TrackingScripts footer={pageFooter(pageProps)} />
         <Component {...pageProps} />
       </QueryClientProvider>
     </SessionProvider>

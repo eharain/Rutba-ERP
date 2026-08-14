@@ -11,7 +11,6 @@ import {
 import { useSiteSettings } from "@/hooks/use-site-settings";
 import { resolveMediaUrl } from "@/lib/media-url";
 import { ArrowRight, Mail, MapPin, Phone } from "lucide-react";
-import TrackingScripts from "@/components/seo/tracking-scripts";
 
 interface FooterProps {
   footer?: CmsFooterInterface;
@@ -22,8 +21,13 @@ export default function Footer({ footer: pageFooter }: FooterProps) {
   const session = useSession();
   const isAuthenticated = session.status === "authenticated";
   // Fallback chain: page-level footer → site_settings.default_footer.
-  // Tracking codes (GA / Pixel / GTM) ride on the resolved footer so
-  // site-wide analytics fire even on pages that don't pick a footer.
+  //
+  // Tracking codes used to ride on this resolved footer, mounted right here.
+  // They don't any more: <Footer> renders on maybe half the routes, so
+  // checkout and the auth pages fired no analytics at all. <TrackingScripts />
+  // now mounts once from _app.tsx and resolves the same footer chain there.
+  // Do not re-add it here — two mounts means two gtag('config') calls and
+  // doubled page_views.
   const footer = pageFooter || settings.default_footer || undefined;
   const phone = footer?.phone || "+923245303530";
   const openingHours = footer?.opening_hours || [
@@ -38,7 +42,6 @@ export default function Footer({ footer: pageFooter }: FooterProps) {
 
   return (
     <>
-      <TrackingScripts footer={footer} />
       <footer className="bg-foreground text-background mt-20">
       <div className="container-fluid py-16 md:py-20">
         {/* Brand + columns */}
