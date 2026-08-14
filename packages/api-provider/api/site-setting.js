@@ -19,7 +19,10 @@ export const SiteSettingEndpoints = {
     meta: {
         uid: 'api::site-setting.site-setting',
         // 'social' reads site_logo to brand the videos the Video Studio renders.
-        domains: ['cms', 'order-management', 'social', 'web', 'web-user'],
+        // 'admin' administers the rows themselves — the admin app's
+        // /site-settings list + editor. Without it here the admin app 403s on
+        // every site-setting call, which is why it could not read them at all.
+        domains: ['admin', 'cms', 'order-management', 'social', 'web', 'web-user'],
         roles: ['admin', 'manager', 'staff', 'public', 'user'],
     },
 

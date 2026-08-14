@@ -32,6 +32,18 @@ export const SITE_SETTINGS_DEFAULTS = {
     // relation. Carries tracking codes (GA / Meta Pixel / GTM / custom HTML)
     // so site-wide analytics work without configuring each page individually.
     default_footer: null as import('@/types/api/cms-page').CmsFooterInterface | null,
+    // Tracking codes at the SITE level — the fallback under any footer-level
+    // value (see components/seo/tracking-scripts.tsx for the resolution rule).
+    // Every one is optional: empty means that block is not injected at all.
+    //
+    // These are typed here because SiteSettings is derived from this object —
+    // a field absent from the defaults is typed out of existence no matter what
+    // the API returns.
+    ga_measurement_id: '',
+    meta_pixel_id: '',
+    gtm_container_id: '',
+    custom_head_html: '',
+    custom_body_end_html: '',
 };
 
 export type SiteSettings = typeof SITE_SETTINGS_DEFAULTS;

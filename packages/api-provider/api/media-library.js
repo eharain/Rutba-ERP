@@ -5,7 +5,10 @@
 export const MediaLibraryEndpoints = {
     meta: {
         uid: 'plugin::upload.file',
-        domains: ['cms', 'social', 'stock'],
+        // 'admin' pairs with the same grant on UploadEndpoints: FileView reads
+        // back the file it just uploaded through MediaLibraryEndpoints.file(),
+        // so granting upload without this leaves the picker half-working.
+        domains: ['admin', 'cms', 'social', 'stock'],
         roles: ['admin', 'manager', 'staff'],
     },
 

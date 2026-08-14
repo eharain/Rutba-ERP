@@ -1,33 +1,68 @@
 import Script from "next/script";
 import { CmsFooterInterface } from "@/types/api/cms-page";
+import { useSiteSettings } from "@/hooks/use-site-settings";
 
 interface TrackingScriptsProps {
+  /**
+   * The footer in effect for this route, when there is one. Optional: most
+   * routes (checkout, login, register, …) have no footer at all, which is
+   * exactly why the site-settings fallback below exists.
+   */
   footer?: CmsFooterInterface;
 }
 
+/** "" and whitespace mean unset, not "a value that happens to be empty". */
+function firstSet(...values: (string | undefined | null)[]) {
+  for (const v of values) {
+    const t = v?.trim();
+    if (t) return t;
+  }
+  return undefined;
+}
+
 /**
- * Injects analytics / pixel / GTM scripts based on the active CMS footer.
+ * Injects analytics / pixel / GTM scripts. Every id is optional — a block that
+ * isn't configured is not rendered at all, so an unconfigured site ships no
+ * third-party script tags whatsoever.
  *
- * - All IDs are optional — render only what's configured.
- * - `custom_head_html` and `custom_body_end_html` accept editor-pasted raw
- *   markup for partners that don't fit a tidy ID slot (Hotjar, Clarity,
- *   LinkedIn Insight, etc). Both render via dangerouslySetInnerHTML — this
- *   is privileged CMS-authenticated content, not user input.
- * - The "head" custom block is appended to <head> on the client after mount
- *   (SSR-safe, but a small flash before scripts run; acceptable for
- *   analytics).
+ * RESOLUTION: a footer value wins when set, otherwise the site-settings value.
  *
- * Mount once per page from <Footer>. Next.js dedupes <Script id> if it
- * sneaks in twice through different layouts.
+ * The footer is checked FIRST even though site settings are now the primary
+ * place to configure this. That order is deliberate and is about not breaking
+ * live sites: these five fields existed on cms-footer before site-setting had
+ * them, so a site that already carries a GA id on its footer keeps using that
+ * exact id after this change, with nothing to migrate. Site settings fill in
+ * underneath — which is what finally covers the footerless routes. Flip the
+ * order and any footer configured today would be silently overridden by a
+ * blank-or-different site-setting value.
+ *
+ * MOUNTED ONCE, FROM `_app`. It used to mount from <Footer>, which meant the
+ * six routes that render no footer — checkout, contact, login, register,
+ * forgot-password, reset-password — fired no analytics at all; an untracked
+ * checkout being the expensive half of that. `_app` resolves the per-page
+ * footer from `pageProps.initialPage.footer` (see _app.tsx), so the footer
+ * override survives the move. Keep it to a single mount: next/script dedupes
+ * two <Script> tags sharing an `id`, but nothing dedupes two
+ * `gtag('config', …)` calls, and that shows up as doubled page_views.
+ *
+ * `custom_head_html` / `custom_body_end_html` accept editor-pasted raw markup
+ * for partners with no tidy id slot (Hotjar, Clarity, LinkedIn Insight). Both
+ * inject unescaped, so they are privileged CMS-authenticated content — edited
+ * in rutba-cms only, deliberately not exposed as editable fields in the admin
+ * app. The "head" block is appended to <head> client-side after mount: SSR-safe,
+ * at the cost of a small flash before it runs, which is fine for analytics.
  */
 export default function TrackingScripts({ footer }: TrackingScriptsProps) {
-  if (!footer) return null;
+  const settings = useSiteSettings();
 
-  const ga = footer.ga_measurement_id?.trim();
-  const pixel = footer.meta_pixel_id?.trim();
-  const gtm = footer.gtm_container_id?.trim();
-  const headHtml = footer.custom_head_html?.trim();
-  const bodyEndHtml = footer.custom_body_end_html?.trim();
+  const ga = firstSet(footer?.ga_measurement_id, settings.ga_measurement_id);
+  const pixel = firstSet(footer?.meta_pixel_id, settings.meta_pixel_id);
+  const gtm = firstSet(footer?.gtm_container_id, settings.gtm_container_id);
+  const headHtml = firstSet(footer?.custom_head_html, settings.custom_head_html);
+  const bodyEndHtml = firstSet(
+    footer?.custom_body_end_html,
+    settings.custom_body_end_html
+  );
 
   return (
     <>

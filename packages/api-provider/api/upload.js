@@ -27,7 +27,10 @@ async function getAuthApi() {
 }
 
 export const UploadEndpoints = {
-    meta: { domains: ['social', 'stock'] },
+    // 'admin' is here for the site-settings editor's logo / favicon / OG-image
+    // pickers — FileView uploads through these, so without the grant the
+    // pickers 403 while the rest of the form saves fine.
+    meta: { domains: ['admin', 'social', 'stock'] },
 
     /** Upload one or more files to the Strapi media library, optionally
      *  attaching them to an entity field (`ref`/`refId`/`field`). */

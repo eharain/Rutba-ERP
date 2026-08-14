@@ -7,6 +7,9 @@ const SECTIONS = [
     { href: "/users", label: "Users", icon: "fa-users" },
     { href: "/users/access-assignment", label: "Access Assignment", icon: "fa-user-shield" },
     { href: "/app-domains", label: "App Domains", icon: "fa-key" },
+    // One row per app, resolved by app slug. The storefront's row is `web` —
+    // that is where its GA / GTM / Pixel ids have to go to have any effect.
+    { href: "/site-settings", label: "Site Settings", icon: "fa-sliders" },
     { href: "/mailboxes", label: "Mailboxes", icon: "fa-envelope" },
     { href: "/email-servers", label: "Email Servers", icon: "fa-server" },
     // Integrations. rutba-social keeps read-only views of both; connecting,

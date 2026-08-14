@@ -11,6 +11,7 @@ const SECTIONS = [
     { href: "/users", title: "Users", icon: "fa-users", tone: "primary", text: "Accounts, roles and app access.", ready: true },
     { href: "/users/access-assignment", title: "Access Assignment", icon: "fa-user-shield", tone: "info", text: "The bulk per-app access matrix.", ready: true },
     { href: "/app-domains", title: "App Domains", icon: "fa-key", tone: "warning", text: "api-pro app domains and their roles.", ready: true },
+    { href: "/site-settings", title: "Site Settings", icon: "fa-sliders", tone: "primary", text: "Per-app branding, SEO defaults and the storefront's analytics ids.", ready: true },
     { href: "/mailboxes", title: "Mailboxes", icon: "fa-envelope", tone: "teal", text: "Mailbox ownership, shared-inbox access and provisioning.", ready: true },
     { href: "/email-servers", title: "Email Servers", icon: "fa-server", tone: "secondary", text: "Registered mail-server admin endpoints (mailcow).", ready: true },
     { href: "/social-accounts", title: "Social Accounts", icon: "fa-share-nodes", tone: "info", text: "Connect and configure API credentials for each social platform.", ready: true },
