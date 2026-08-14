@@ -46,20 +46,42 @@ module.exports = createCoreService(POST_UID, ({ strapi }) => ({
     return strapi.documents(ACCOUNT_UID).update({ documentId: account.documentId, data });
   },
 
-  /** Refresh the access token if it is near expiry and the adapter supports it. */
+  /**
+   * Refresh the access token if it is near expiry and the adapter supports it.
+   *
+   * A refresh that fails is NOT recoverable by carrying on: the token is known
+   * expired, so the publish that follows fails anyway — and it fails with
+   * whatever the platform says about a bad token ("Error validating access
+   * token", "401"), which sends whoever reads platform_results looking in the
+   * wrong place. Throw the real reason instead, so it is what gets recorded.
+   */
   async _ensureFreshToken(account) {
-    try {
-      if (!base.tokenExpired(account, 300)) return account;
-      const adapter = providers.getAdapter(account.platform);
-      if (!adapter.capabilities?.oauth || typeof adapter.refreshToken !== 'function') return account;
-      const patch = await adapter.refreshToken({ strapi, account });
-      if (!patch) return account;
-      strapi.log.info(`[social] refreshed ${account.platform} token for account ${account.documentId}`);
-      return this._applyAccountPatch(account, patch);
-    } catch (e) {
-      strapi.log.warn(`[social] token refresh failed for ${account?.platform} ${account?.documentId}: ${e.message}`);
-      return account;
+    if (!base.tokenExpired(account, 300)) return account;
+    const adapter = providers.getAdapter(account.platform);
+    if (!adapter.capabilities?.oauth || typeof adapter.refreshToken !== 'function') {
+      throw new base.ProviderError(
+        `${account.platform} access token expired and ${adapter.label || account.platform} cannot refresh it — reconnect the account.`,
+        { platform: account.platform }
+      );
     }
+    let patch;
+    try {
+      patch = await adapter.refreshToken({ strapi, account });
+    } catch (e) {
+      strapi.log.warn(`[social] token refresh failed for ${account.platform} ${account.documentId}: ${e.message}`);
+      throw new base.ProviderError(
+        `${account.platform} token refresh failed: ${e.message} — reconnect the account.`,
+        { platform: account.platform, raw: e.raw }
+      );
+    }
+    if (!patch) {
+      throw new base.ProviderError(
+        `${account.platform} access token expired and no refresh token is stored — reconnect the account.`,
+        { platform: account.platform }
+      );
+    }
+    strapi.log.info(`[social] refreshed ${account.platform} token for account ${account.documentId}`);
+    return this._applyAccountPatch(account, patch);
   },
 
   // ── post / media helpers ───────────────────────────────────────────────────
@@ -80,7 +102,7 @@ module.exports = createCoreService(POST_UID, ({ strapi }) => ({
    *   - videos   = video field, then gallery videos (deduped)
    * coverUrl/videoUrls stay for adapters that only take a single item.
    */
-  _prepareMedia(post) {
+  async _prepareMedia(post) {
     const cover = post.cover || null;
     const videoField = Array.isArray(post.video) ? post.video : (post.video ? [post.video] : []);
     const gallery = Array.isArray(post.media) ? post.media : (post.media ? [post.media] : []);
@@ -101,13 +123,21 @@ module.exports = createCoreService(POST_UID, ({ strapi }) => ({
     const images = dedupe([cover, ...gallery.filter((f) => base.isImageFile(f))]);
     const videos = dedupe([...videoField, ...gallery.filter((f) => base.isVideoFile(f))]);
 
+    // Resolve every outbound URL against the media origin AND confirm it
+    // answers before a platform is asked to fetch it — see base.resolveMediaUrl.
+    const [coverUrl, imageUrls, videoUrls] = await Promise.all([
+      base.resolveMediaUrl(strapi, cover, { preferFormat: 'large' }),
+      Promise.all(images.map((f) => base.resolveMediaUrl(strapi, f, { preferFormat: 'large' }))),
+      Promise.all(videos.map((v) => base.resolveMediaUrl(strapi, v))),
+    ]);
+
     return {
       cover,
-      coverUrl: base.absoluteMediaUrl(strapi, cover, { preferFormat: 'large' }),
+      coverUrl,
       images,
-      imageUrls: images.map((f) => base.absoluteMediaUrl(strapi, f, { preferFormat: 'large' })).filter(Boolean),
+      imageUrls: imageUrls.filter(Boolean),
       videos,
-      videoUrls: videos.map((v) => base.absoluteMediaUrl(strapi, v)).filter(Boolean),
+      videoUrls: videoUrls.filter(Boolean),
     };
   },
 
@@ -155,7 +185,7 @@ module.exports = createCoreService(POST_UID, ({ strapi }) => ({
     if (!post) throw new Error('Post not found');
 
     const { targets, missing } = this._resolveTargets(post);
-    const media = this._prepareMedia(post);
+    const media = await this._prepareMedia(post);
     const results = { ...(post.platform_results || {}) };
 
     if (targets.length === 0 && missing.length === 0) {
@@ -303,7 +333,7 @@ module.exports = createCoreService(POST_UID, ({ strapi }) => ({
       throw new Error('No active relay provider configured. Add one under Relays first.');
     }
 
-    const media = this._prepareMedia(post);
+    const media = await this._prepareMedia(post);
     const results = { ...(post.platform_results || {}) };
     const postPlatforms = Array.isArray(post.platforms) ? post.platforms : [];
     const skipped = [];
@@ -766,7 +796,13 @@ module.exports = createCoreService(POST_UID, ({ strapi }) => ({
     let account = await this._accountFull(accountDocumentId);
     if (!account) throw new Error('Account not found');
     if (!account.access_token) return { ok: false, reason: 'No access token — connect the account first.' };
-    account = await this._ensureFreshToken(account);
+    // A probe reports; it does not throw. An expired token that cannot be
+    // refreshed IS the answer the Test button exists to give.
+    try {
+      account = await this._ensureFreshToken(account);
+    } catch (e) {
+      return { ok: false, platform: account.platform, account_name: account.account_name, reason: this._msg(e) };
+    }
     return { ok: true, platform: account.platform, account_name: account.account_name, token_expires_at: account.token_expires_at || null };
   },
 
@@ -831,13 +867,21 @@ module.exports = createCoreService(POST_UID, ({ strapi }) => ({
       select: ['documentId', 'platform', 'token_expires_at'],
     });
     let refreshed = 0;
+    const failed = [];
     for (const a of accounts) {
       if (!base.tokenExpired(a, 3600)) continue;
       const full = await this._accountFull(a.documentId);
-      const after = await this._ensureFreshToken(full);
-      if (after !== full) refreshed += 1;
+      // One dead account must not stop the sweep — the whole point of the cron
+      // is the accounts that CAN still be refreshed.
+      try {
+        const after = await this._ensureFreshToken(full);
+        if (after !== full) refreshed += 1;
+      } catch (e) {
+        failed.push({ documentId: a.documentId, platform: a.platform, error: this._msg(e) });
+        strapi.log.warn(`[social] cron refresh failed for ${a.platform} ${a.documentId}: ${this._msg(e)}`);
+      }
     }
-    return { refreshed };
+    return { refreshed, failed };
   },
 
   _msg(e) {
