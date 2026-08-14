@@ -134,24 +134,52 @@ export const MailAccountsEndpoints = {
         },
     }),
 
-    /** Full sanitized read of one message (marks it seen on the server). */
-    getMessage: (documentId, uid, { folder = 'INBOX' } = {}) => ({
+    /**
+     * Full sanitized read of one message. Reading is a PEEK — pass
+     * `markSeen` to set \Seen, so previewing without marking read is possible
+     * and "mark as read" stays a decision. `forEdit` returns the body under
+     * the outbound sanitizer, ready to load back into the composer (drafts).
+     */
+    getMessage: (documentId, uid, { folder = 'INBOX', markSeen, forEdit } = {}) => ({
         path: `/mail-accounts/${documentId}/messages/${uid}`,
         action: 'getMessage',
         method: 'get',
         apps: ['mail'],
         approle: ['admin', 'manager', 'staff'],
-        params: { folder },
+        params: {
+            folder,
+            ...(markSeen ? { markSeen: 1 } : {}),
+            ...(forEdit ? { forEdit: 1 } : {}),
+        },
     }),
 
-    /** One attachment by partId (from getMessage), base64-bounded. */
-    getAttachment: (documentId, uid, { folder = 'INBOX', part } = {}) => ({
+    /**
+     * One attachment, base64-bounded. `part` is the index within the
+     * message's attachment list; pass `mimePart` (the IMAP part number
+     * getMessage returns) to fetch just that part instead of re-downloading
+     * the whole message.
+     */
+    getAttachment: (documentId, uid, { folder = 'INBOX', part, mimePart } = {}) => ({
         path: `/mail-accounts/${documentId}/messages/${uid}/attachment`,
         action: 'getAttachment',
         method: 'get',
         apps: ['mail'],
         approle: ['admin', 'manager', 'staff'],
-        params: { folder, part },
+        params: { folder, part, ...(mimePart ? { mimePart } : {}) },
+    }),
+
+    /**
+     * Unseen counts for the folders the client is showing — one pooled STATUS
+     * sweep (max 12 folders). Powers live badge refresh and the new-mail
+     * indicator; the folders asked for here become the cron's poll set.
+     */
+    listUnseen: (documentId, { folders = ['INBOX'] } = {}) => ({
+        path: `/mail-accounts/${documentId}/unseen`,
+        action: 'listUnseen',
+        method: 'get',
+        apps: ['mail'],
+        approle: ['admin', 'manager', 'staff'],
+        params: { folders: (Array.isArray(folders) ? folders : [folders]).join(',') },
     }),
 
     /** Flag ops — seen / flagged / answered only. */
@@ -184,8 +212,13 @@ export const MailAccountsEndpoints = {
         data: { folder, toFolder },
     }),
 
-    /** APPEND a draft to the Drafts folder. Recipients optional. */
-    createDraft: (documentId, { to, cc, bcc, subject, html, text } = {}) => ({
+    /**
+     * APPEND a draft to the Drafts folder. Recipients optional.
+     * `replaceUid` makes it an edit rather than a new copy: the new draft is
+     * appended first, the old uid expunged only after — which is what lets
+     * auto-save run on a timer without stacking up drafts.
+     */
+    createDraft: (documentId, { to, cc, bcc, subject, html, text, replaceUid } = {}) => ({
         path: `/mail-accounts/${documentId}/drafts`,
         action: 'createDraft',
         method: 'post',
@@ -198,6 +231,7 @@ export const MailAccountsEndpoints = {
             subject,
             ...(html ? { html } : {}),
             ...(text ? { text } : {}),
+            ...(replaceUid ? { replaceUid } : {}),
         },
     }),
 

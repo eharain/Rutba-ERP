@@ -52,6 +52,11 @@ async function getAttachment(documentId, uid, arg3 = {}) {
     return authApi.fetch(ep.path, ep.params);
 }
 
+async function listUnseen(documentId, arg2 = {}) {
+    const ep = MailAccountsEndpointsApi.listUnseen(documentId, arg2);
+    return authApi.fetch(ep.path, ep.params);
+}
+
 async function setFlags(documentId, uid, arg3 = {}) {
     const ep = MailAccountsEndpointsApi.setFlags(documentId, uid, arg3);
     return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
@@ -145,6 +150,7 @@ const endpoints = strictEndpointGuard(
         listMessages,
         getMessage,
         getAttachment,
+        listUnseen,
         setFlags,
         removeMessage,
         transferMessage,
@@ -163,7 +169,7 @@ const endpoints = strictEndpointGuard(
         sendMessage,
         meta: MailAccountsEndpointsApi.meta,
     },
-    ["list","byId","create","update","del","validateConnection","listFolders","listMessages","getMessage","getAttachment","setFlags","removeMessage","transferMessage","createDraft","createImport","createProvision","setBulkFlags","removeBulkMessages","transferBulkMessages","setTags","setMailboxPassword","getServerDefaults","listAccess","setAccess","listAssignees","sendMessage","meta"],
+    ["list","byId","create","update","del","validateConnection","listFolders","listMessages","getMessage","getAttachment","listUnseen","setFlags","removeMessage","transferMessage","createDraft","createImport","createProvision","setBulkFlags","removeBulkMessages","transferBulkMessages","setTags","setMailboxPassword","getServerDefaults","listAccess","setAccess","listAssignees","sendMessage","meta"],
 );
 
 export default endpoints;
