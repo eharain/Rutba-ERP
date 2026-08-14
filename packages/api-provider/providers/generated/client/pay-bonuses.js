@@ -1,35 +1,35 @@
 import { authApi } from '../../../lib/api.js';
-import { withQuery, wrapData, strictEndpointGuard } from './___core__.js';
+import { withQuery, wrapData, epCtx, strictEndpointGuard } from './___core__.js';
 import { PayBonusesEndpoints as PayBonusesEndpointsApi } from '../../../api/pay-bonuses.js';
 
 async function listMine() {
     const ep = PayBonusesEndpointsApi.listMine();
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 async function listTeam() {
     const ep = PayBonusesEndpointsApi.listTeam();
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 async function list(arg1 = {}) {
     const ep = PayBonusesEndpointsApi.list(arg1);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 async function byId(documentId, arg2 = {}) {
     const ep = PayBonusesEndpointsApi.byId(documentId, arg2);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 async function create(data) {
     const ep = PayBonusesEndpointsApi.create(data);
-    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 async function update(documentId, data) {
     const ep = PayBonusesEndpointsApi.update(documentId, data);
-    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 const endpoints = strictEndpointGuard(

@@ -1,10 +1,10 @@
 import { webApi } from '../../../../lib/api.js';
-import { withQuery, wrapData, strictEndpointGuard } from '../___core__.js';
+import { withQuery, wrapData, epCtx, strictEndpointGuard } from '../___core__.js';
 import { WebLeadsEndpoints as WebLeadsEndpointsApi } from '../../../../api/web/leads.js';
 
 async function create(data) {
     const ep = WebLeadsEndpointsApi.create(data);
-    return webApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return webApi.post(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 const endpoints = strictEndpointGuard(

@@ -95,6 +95,12 @@ export const CmpCampaignsEndpoints = {
         method: 'post',
         apps: ['campaigns'],
         approle: ['admin', 'manager'],
+        // Resolves the audience and then creates one recipient row per member in
+        // a serial loop before the batch goes to the MTA — the service comments
+        // call this out as loop-create because relations rule out createMany. At
+        // real list sizes that dominates the request. See the follow-up note:
+        // the fix is to batch the recipient writes, not to widen this further.
+        timeoutMs: 600_000,
         data: {},
     }),
 

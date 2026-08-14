@@ -31,6 +31,11 @@ export const ContentSyncEndpoints = {
         path: '/content-sync/run',
         action: 'run',
         method: 'post',
+        // The transfer itself is a background job, but this call is not free: it
+        // runs the planner's full preview() to expand every syncable type before
+        // it can narrow the job to the requested subset and hand back a jobId.
+        // The bound covers the planning, not the sync.
+        timeoutMs: 180_000,
         data,
     }),
 

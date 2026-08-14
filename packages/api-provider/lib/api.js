@@ -525,14 +525,14 @@ export function relationConnects(relations) {
 // clients under api/web/ use this so storefront SSR calls don't hang
 // looking for a session that never exists.
 export const api = {
-    fetch: async (path, params) => await get(path, params),
-    fetchWithPagination: async (path, params) => await getWithPagination(path, params),
-    get: async (path, params) => await get(path, params),
-    getAll: async (path, params) => await getAll(path, params),
-    post: async (path, data) => await post(path, data),
-    patch: async (path, data) => await patch(path, data),
-    put: async (path, data) => await put(path, data),
-    del: async (path) => await del(path),
+    fetch: async (path, params, ctx) => await get(path, params, null, ctx),
+    fetchWithPagination: async (path, params, ctx) => await getWithPagination(path, params, null, ctx),
+    get: async (path, params, ctx) => await get(path, params, null, ctx),
+    getAll: async (path, params, ctx) => await getAll(path, params, null, ctx),
+    post: async (path, data, ctx) => await post(path, data, null, ctx),
+    patch: async (path, data, ctx) => await patch(path, data, null, ctx),
+    put: async (path, data, ctx) => await put(path, data, null, ctx),
+    del: async (path, ctx) => await del(path, null, ctx),
     uploadFile: async (file, ref, field, refId, info) =>
         await uploadFile(file, ref, field, refId, info ?? {}),
     /**
@@ -565,15 +565,22 @@ export const api = {
 // instead of `api` so the app identity is baked into the request itself, not
 // inferred from runtime state. Reliable across SSR / HMR / tree-shaking.
 const WEB_CTX = Object.freeze({ appName: 'web' });
+// The baked `appName: 'web'` is the whole point of this surface, so a per-call
+// ctx extends it rather than replacing it — a storefront descriptor that widens
+// its bound must not silently lose the app identity that makes the route
+// resolve at all.
+function webCtx(ctx) {
+    return ctx ? { ...WEB_CTX, ...ctx } : WEB_CTX;
+}
 export const webApi = {
-    fetch: async (path, params) => await get(path, params, null, WEB_CTX),
-    fetchWithPagination: async (path, params) => await getWithPagination(path, params, null, WEB_CTX),
-    get: async (path, params) => await get(path, params, null, WEB_CTX),
-    getAll: async (path, params) => await getAll(path, params, null, WEB_CTX),
-    post: async (path, data) => await post(path, data, null, WEB_CTX),
-    patch: async (path, data) => await patch(path, data, null, WEB_CTX),
-    put: async (path, data) => await put(path, data, null, WEB_CTX),
-    del: async (path) => await del(path, null, WEB_CTX),
+    fetch: async (path, params, ctx) => await get(path, params, null, webCtx(ctx)),
+    fetchWithPagination: async (path, params, ctx) => await getWithPagination(path, params, null, webCtx(ctx)),
+    get: async (path, params, ctx) => await get(path, params, null, webCtx(ctx)),
+    getAll: async (path, params, ctx) => await getAll(path, params, null, webCtx(ctx)),
+    post: async (path, data, ctx) => await post(path, data, null, webCtx(ctx)),
+    patch: async (path, data, ctx) => await patch(path, data, null, webCtx(ctx)),
+    put: async (path, data, ctx) => await put(path, data, null, webCtx(ctx)),
+    del: async (path, ctx) => await del(path, null, webCtx(ctx)),
     call: (ep, body) => {
         const method = (ep.method ?? 'GET').toUpperCase();
         const ctx = callCtx(ep, WEB_CTX);
@@ -692,15 +699,21 @@ function withCallCtx(fn, ctx) {
     };
 }
 
+// The trailing `ctx` on each verb is how a generated provider hands the
+// descriptor's `timeoutMs` to the transport. Generated actions call these verbs
+// directly (they resolve the verb at scaffold time rather than going through
+// `call()`), so without it a descriptor's bound would be built and then
+// dropped on the floor. `withCallCtx` is a no-op when ctx is absent, which is
+// the overwhelmingly common case.
 export const authApi = {
-    fetch: (path, data) => authCall(get, path, data),
-    fetchWithPagination: (path, data) => authCall(getWithPagination, path, data),
-    get: (path, data) => authCall(get, path, data),
-    getAll: (path, params) => authCall(getAll, path, params),
-    post: (path, data) => authCall(post, path, data),
-    patch: (path, data) => authCall(patch, path, data),
-    put: (path, data) => authCall(put, path, data),
-    del: (path) => authCall(del, path),
+    fetch: (path, data, ctx) => authCall(withCallCtx(get, ctx), path, data),
+    fetchWithPagination: (path, data, ctx) => authCall(withCallCtx(getWithPagination, ctx), path, data),
+    get: (path, data, ctx) => authCall(withCallCtx(get, ctx), path, data),
+    getAll: (path, params, ctx) => authCall(withCallCtx(getAll, ctx), path, params),
+    post: (path, data, ctx) => authCall(withCallCtx(post, ctx), path, data),
+    patch: (path, data, ctx) => authCall(withCallCtx(patch, ctx), path, data),
+    put: (path, data, ctx) => authCall(withCallCtx(put, ctx), path, data),
+    del: (path, ctx) => authCall(withCallCtx(del, ctx), path),
     uploadFile: (file, ref, field, refId, info) => authCall(uploadFile, file, ref, field, refId, info),
     deleteFile: (fileId) => authCall(deleteFile, fileId),
     /**

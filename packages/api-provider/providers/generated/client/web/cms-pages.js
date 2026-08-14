@@ -1,25 +1,25 @@
 import { webApi } from '../../../../lib/api.js';
-import { strictEndpointGuard } from '../___core__.js';
+import { epCtx, strictEndpointGuard } from '../___core__.js';
 import { WebCmsPagesEndpoints as WebCmsPagesEndpointsApi } from '../../../../api/web/cms-pages.js';
 
 async function list(pageSize = 50) {
     const ep = WebCmsPagesEndpointsApi.list(pageSize);
-    return webApi.fetch(ep.path, ep.params);
+    return webApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 async function listByType(pageType, pageSize = 50) {
     const ep = WebCmsPagesEndpointsApi.listByType(pageType, pageSize);
-    return webApi.fetch(ep.path, ep.params);
+    return webApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 async function bySlug(slug, arg2 = {}) {
     const ep = WebCmsPagesEndpointsApi.bySlug(slug, arg2);
-    return webApi.fetch(ep.path, ep.params);
+    return webApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 async function header() {
     const ep = WebCmsPagesEndpointsApi.header();
-    return webApi.fetch(ep.path, ep.params);
+    return webApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 const endpoints = strictEndpointGuard(

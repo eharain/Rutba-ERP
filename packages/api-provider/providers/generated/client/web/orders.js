@@ -1,50 +1,50 @@
 import { webApi } from '../../../../lib/api.js';
-import { withQuery, wrapData, strictEndpointGuard } from '../___core__.js';
+import { withQuery, wrapData, epCtx, strictEndpointGuard } from '../___core__.js';
 import { WebOrdersEndpoints as WebOrdersEndpointsApi } from '../../../../api/web/orders.js';
 
 async function myOrders() {
     const ep = WebOrdersEndpointsApi.myOrders();
-    return webApi.fetch(ep.path, ep.params);
+    return webApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 async function byId(documentId) {
     const ep = WebOrdersEndpointsApi.byId(documentId);
-    return webApi.fetch(ep.path, ep.params);
+    return webApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 async function create(data) {
     const ep = WebOrdersEndpointsApi.create(data);
-    return webApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return webApi.post(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 async function validateAddress(data) {
     const ep = WebOrdersEndpointsApi.validateAddress(data);
-    return webApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return webApi.post(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 async function shippingRate(data) {
     const ep = WebOrdersEndpointsApi.shippingRate(data);
-    return webApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return webApi.post(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 async function calculateDelivery(data) {
     const ep = WebOrdersEndpointsApi.calculateDelivery(data);
-    return webApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return webApi.post(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 async function tracking(documentId, secret) {
     const ep = WebOrdersEndpointsApi.tracking(documentId, secret);
-    return webApi.fetch(ep.path, ep.params);
+    return webApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 async function messages(documentId) {
     const ep = WebOrdersEndpointsApi.messages(documentId);
-    return webApi.fetch(ep.path, ep.params);
+    return webApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 async function sendMessage(documentId, data) {
     const ep = WebOrdersEndpointsApi.sendMessage(documentId, data);
-    return webApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return webApi.post(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 const endpoints = strictEndpointGuard(

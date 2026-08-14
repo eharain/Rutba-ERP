@@ -224,6 +224,51 @@ test('a descriptor can widen its own bound', async () => {
     assert.ok(elapsed > BOUND * 1.2, `took ${elapsed}ms — it was cut at the default instead of the descriptor's bound`);
 });
 
+// ------------------ the generated-client path ------------------
+// The two tests above go through `api.call(ep)`, which reads the descriptor
+// directly. Generated providers do NOT use call(): the scaffolder resolves the
+// verb at build time and emits `authApi.<verb>(path, body, epCtx(ep))`. That
+// third argument is the only thing carrying `timeoutMs` on the path every app
+// actually uses, and when it was missing the descriptor bound was built and
+// then silently discarded — with call()-based tests still green.
+
+test('a verb honours a per-call ctx bound, not just call()', async () => {
+    const { elapsed, err } = await timed(() => api.get('/hang', {}, { timeoutMs: BOUND * 2 }));
+    assert.ok(err && isNetworkError(err));
+    assert.ok(elapsed > BOUND * 1.2, `took ${elapsed}ms — the ctx bound never reached axios`);
+});
+
+test('every generated client action forwards the descriptor transport ctx', async () => {
+    const { readdirSync, readFileSync } = await import('node:fs');
+    const { join, dirname } = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+
+    const root = join(dirname(fileURLToPath(import.meta.url)), '..', 'providers', 'generated', 'client');
+    const files = [];
+    const walk = (dir) => {
+        for (const e of readdirSync(dir, { withFileTypes: true })) {
+            if (e.isDirectory()) walk(join(dir, e.name));
+            else if (e.name.endsWith('.js') && !e.name.startsWith('___') && e.name !== 'index.js') {
+                files.push(join(dir, e.name));
+            }
+        }
+    };
+    walk(root);
+    assert.ok(files.length > 100, `only found ${files.length} generated clients — the scan is wrong`);
+
+    // Every dispatch line inside a generated action must end with epCtx(ep).
+    const dispatch = /return \w+(?:\[__verb\]|\.(?:fetch|get|getAll|post|put|patch|del))\(/;
+    const offenders = [];
+    for (const file of files) {
+        readFileSync(file, 'utf8').split('\n').forEach((line, i) => {
+            if (dispatch.test(line) && !line.includes('epCtx(ep)')) {
+                offenders.push(`${file.slice(root.length + 1)}:${i + 1} ${line.trim()}`);
+            }
+        });
+    }
+    assert.deepStrictEqual(offenders, [], `these actions drop the descriptor's timeoutMs:\n${offenders.join('\n')}`);
+});
+
 // ------------------ server gone ------------------
 
 test('a dead upstream fails fast and reads as a network error', async () => {

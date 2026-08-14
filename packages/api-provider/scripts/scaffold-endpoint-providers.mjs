@@ -803,6 +803,11 @@ function buildActionBody(functionName, clientName, apiRef, verb, signature, forw
     // resolved at scaffold time from the descriptor's `method:` literal (or
     // its key prefix as a fallback). withQuery/wrapData are pure shape
     // helpers; the HTTP dispatch happens right here at the call site.
+    //
+    // epCtx(ep) is the transport context (currently the descriptor's
+    // `timeoutMs`). Because dispatch is inlined here rather than routed through
+    // authApi.call(), anything on the descriptor that is not path/params/data
+    // reaches the transport only if this emits it.
     const lines = [`async function ${functionName}(${signature}) {`];
     lines.push(`    const ep = ${apiRef}(${forwarding});`);
 
@@ -810,17 +815,17 @@ function buildActionBody(functionName, clientName, apiRef, verb, signature, forw
         // Delegating descriptor — the verb rides on the returned ep at runtime.
         const body = rawBody ? 'ep.data' : 'wrapData(ep.data)';
         lines.push(`    const __verb = (ep.method || 'get').toLowerCase();`);
-        lines.push(`    if (__verb === 'get') return ${clientName}.fetch(ep.path, ep.params);`);
-        lines.push(`    if (__verb === 'delete') return ${clientName}.del(withQuery(ep.path, ep.params));`);
-        lines.push(`    return ${clientName}[__verb](withQuery(ep.path, ep.params), ${body});`);
+        lines.push(`    if (__verb === 'get') return ${clientName}.fetch(ep.path, ep.params, epCtx(ep));`);
+        lines.push(`    if (__verb === 'delete') return ${clientName}.del(withQuery(ep.path, ep.params), epCtx(ep));`);
+        lines.push(`    return ${clientName}[__verb](withQuery(ep.path, ep.params), ${body}, epCtx(ep));`);
         lines.push('}');
         return lines;
     }
 
     if (verb === 'GET') {
-        lines.push(`    return ${clientName}.fetch(ep.path, ep.params);`);
+        lines.push(`    return ${clientName}.fetch(ep.path, ep.params, epCtx(ep));`);
     } else if (verb === 'DELETE') {
-        lines.push(`    return ${clientName}.del(withQuery(ep.path, ep.params));`);
+        lines.push(`    return ${clientName}.del(withQuery(ep.path, ep.params), epCtx(ep));`);
     } else {
         // POST / PUT / PATCH — params (if any) ride in the query string. By
         // default the request body is wrapped to match Strapi's { data: ... }
@@ -828,7 +833,7 @@ function buildActionBody(functionName, clientName, apiRef, verb, signature, forw
         // descriptorWantsRawBody) bypass the wrap and send ep.data raw.
         const verbLower = verb.toLowerCase();
         const body = rawBody ? 'ep.data' : 'wrapData(ep.data)';
-        lines.push(`    return ${clientName}.${verbLower}(withQuery(ep.path, ep.params), ${body});`);
+        lines.push(`    return ${clientName}.${verbLower}(withQuery(ep.path, ep.params), ${body}, epCtx(ep));`);
     }
 
     lines.push('}');
@@ -845,7 +850,8 @@ function buildProviderArtifacts(parsed, apiShape, imports) {
     const endpointPropertyLines = [];
     const methodNameByKey = new Map();
     const dtsMembers = [];
-    const usedCoreHelpers = new Set(['strictEndpointGuard']);
+    // epCtx rides on every action body, so it is always imported.
+    const usedCoreHelpers = new Set(['strictEndpointGuard', 'epCtx']);
 
     functionEntries.forEach(({ key, params, method, rawBody }) => {
         const functionName = isValidIdentifier(key) ? key : `_endpoint_${key.replace(/[^A-Za-z0-9_$]/g, '_')}`;
@@ -896,7 +902,7 @@ function buildProviderArtifacts(parsed, apiShape, imports) {
             .filter(Boolean),
     );
 
-    const coreImportList = ['withQuery', 'wrapData', 'strictEndpointGuard']
+    const coreImportList = ['withQuery', 'wrapData', 'epCtx', 'strictEndpointGuard']
         .filter((name) => usedCoreHelpers.has(name))
         .join(', ');
 

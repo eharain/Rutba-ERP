@@ -1,20 +1,20 @@
 import { authApi } from '../../../lib/api.js';
-import { withQuery, wrapData, strictEndpointGuard } from './___core__.js';
+import { withQuery, wrapData, epCtx, strictEndpointGuard } from './___core__.js';
 import { StockLevelsEndpoints as StockLevelsEndpointsApi } from '../../../api/stock-levels.js';
 
 async function list(page = 1, pageSize = 100, arg3 = {}) {
     const ep = StockLevelsEndpointsApi.list(page, pageSize, arg3);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 async function byProduct(productDocId, arg2 = {}) {
     const ep = StockLevelsEndpointsApi.byProduct(productDocId, arg2);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 async function recompute() {
     const ep = StockLevelsEndpointsApi.recompute();
-    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 const endpoints = strictEndpointGuard(

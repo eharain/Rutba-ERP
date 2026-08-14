@@ -1,20 +1,20 @@
 import { authApi } from '../../../lib/api.js';
-import { withQuery, wrapData, strictEndpointGuard } from './___core__.js';
+import { withQuery, wrapData, epCtx, strictEndpointGuard } from './___core__.js';
 import { SeedEndpoints as SeedEndpointsApi } from '../../../api/seed.js';
 
 async function runSeed(data) {
     const ep = SeedEndpointsApi.runSeed(data);
-    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 async function getStatus(arg1 = {}) {
     const ep = SeedEndpointsApi.getStatus(arg1);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 async function listRuns(arg1 = {}) {
     const ep = SeedEndpointsApi.listRuns(arg1);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 const endpoints = strictEndpointGuard(

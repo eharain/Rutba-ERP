@@ -85,6 +85,10 @@ export const HrEmployeesEndpoints = {
         apps: ['hr'],
         approle: ['admin', 'manager'],
         params: { dry_run: dryRun ? 'true' : 'false' },
+        // One-shot migration across the whole employee table. Headcount keeps it
+        // well short of the inventory jobs, but comfortably past a minute on a
+        // large org.
+        timeoutMs: 300_000,
     }),
 
     // Read access is shared with the apps that reference employees (assignee /
