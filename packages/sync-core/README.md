@@ -1,5 +1,11 @@
 # @rutba/sync-core
 
+<!-- verify-docs: planned 4030 -->
+<!-- 4030 is the bridge's loopback default, bound in-process by the desktop
+     shell that will host it (§11). It is deliberately not a deployed service,
+     so it is absent from scripts/rutba_apps.sh and stays absent; the marker
+     above is what keeps verify-docs from reading that absence as drift. -->
+
 The offline sync-bridge. **This is phase 1 and phase 1 only: a transparent
 pass-through proxy.** No caching, no replica, no outbox, no offline behaviour
 of any kind — see [`docs/todo/offline-pos-options.md`](../../docs/todo/offline-pos-options.md) §10.2.
