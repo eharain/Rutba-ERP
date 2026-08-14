@@ -144,6 +144,7 @@ explicitly out of scope for now. The four-layer model in
 | 2 | [`02-desktop-shell.md`](02-desktop-shell.md) | The Electron container: process shape, the build-time/runtime origin problem, security posture, Electron hazards as release gates, updates, packaging. |
 | 3 | [`03-app-policies.md`](03-app-policies.md) | The four-layer adoption model, and what each of POS / Mail / Studio actually needs. |
 | 4 | [`04-server-prerequisites.md`](04-server-prerequisites.md) | Five small, independently-correct, gating server changes — and the offline-readiness gate. |
+| 5 | [`05-sqlite-viability.md`](05-sqlite-viability.md) | **Measured, not specified.** Does rutba-core actually run on SQLite? What ports, what breaks, and whether the "bridge = rutba-core on SQLite" assumption survives contact with a real database file. |
 | 6 | [`06-sync-back-granularity.md`](06-sync-back-granularity.md) | **Decision.** What the replayer replays for an offline POS sale — captured unit references, with allocation as the repair. Fixes the outbox payload shape, so it gates D4. |
 
 ## Phases
