@@ -147,12 +147,19 @@ export default function MailClientPage() {
         applyCounts({ ...current, [path]: Math.max(0, Number(current[path] || 0) + delta) });
     }, [applyCounts]);
 
+    // The selected folder rides in a ref rather than the dependency list:
+    // switching folders must not tear down and immediately re-fire the sweep.
+    // Clicking through six folders is a navigation, not six reasons to go back
+    // to the mail server.
+    const folderRef = useRef(folder);
+    folderRef.current = folder;
+
     // One pooled STATUS sweep over every folder on screen. The folders asked
     // for here also become the cron's poll set, which is what finally gives
     // folders other than INBOX a badge at all.
     useEffect(() => {
         if (!account || !folders.length) return undefined;
-        const paths = [...new Set(["INBOX", folder, ...folders.map((f) => f.path)])]
+        const paths = [...new Set(["INBOX", folderRef.current, ...folders.map((f) => f.path)])]
             .filter(Boolean)
             .slice(0, 12);
         let alive = true;
@@ -182,7 +189,7 @@ export default function MailClientPage() {
         tick();
         const timer = setInterval(tick, UNSEEN_POLL_MS);
         return () => { alive = false; clearInterval(timer); };
-    }, [account, folders, folder, applyCounts]);
+    }, [account, folders, applyCounts]);
 
     /* ------------------------------------------------------------ actions */
 
