@@ -480,7 +480,7 @@ sudo journalctl -fu rutba_pos_strapi
 | `rutba_seed` | Seeding control | `rutba-seed/` | 4018 |
 | `rutba_campaigns` | Campaigns | `rutba-campaigns/` | 4019 |
 | `rutba_mail` | Mail client | `rutba-mail/` | 4021 |
-| `rutba_users` | User management | `rutba-users/` | 4022 |
+| `rutba_admin` | Admin console | `rutba-admin/` | 4022 |
 | `rutba_helpdesk` | Helpdesk | `rutba-helpdesk/` | 4023 |
 
 ### systemd Unit File Structure

@@ -53,7 +53,7 @@ An open-source, modular business management system built as an **npm workspaces 
 | `rutba-seed/` | **Seeding Control** | 4018 | Guarded runner for the seed registry — run history, per-seeder execution |
 | `rutba-campaigns/` | **Campaigns** | 4019 | Audiences, templates, campaign runs and delivery settings |
 | `rutba-mail/` | **Mail** | 4021 | Mail client over live IMAP — shared inboxes, contacts, server settings |
-| `rutba-users/` | **User Management** | 4022 | Central users, app domains, mailboxes, email-server registry, invite flow |
+| `rutba-admin/` | **Admin Console** | 4022 | Central users, app domains, mailboxes, email-server registry, invite flow, social accounts and relay providers |
 | `rutba-helpdesk/` | **Helpdesk** | 4023 | Tickets, desks and routing — the first Rutba-Core-native module |
 
 > Ports above are the workspace defaults; `process.env.PORT` (set by Hostinger / Passenger / Docker) always overrides. See [.env.example](.env.example) for the `<APP_PREFIX>__PORT=` overrides.

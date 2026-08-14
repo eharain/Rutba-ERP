@@ -1,7 +1,5 @@
 # 02 — Integrations & Connected Accounts
 
-<!-- verify-docs: planned utils/credentials/vault.js -->
-
 > **Status: specification only.** Part of the [Admin Console Program](README.md).
 > §1 is a security finding about code that is live on dev today.
 
