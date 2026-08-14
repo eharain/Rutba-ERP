@@ -1,5 +1,29 @@
 # Email Program — Usability Gap Analysis vs Market Leaders
 
+> **Status update (2026-08-15): the daily-driver slice of P1 is BUILT**
+> (production build green; api-provider validators green). Archive and
+> read/unread as verbs · keyboard shortcuts (j/k/Enter/u/r/a/f/e/s/m/#//,c,
+> `?`, Ctrl+Enter, Esc) · draft resume with replace-on-save, 45s auto-save and
+> save-on-close · attachment preview for images and PDFs over selective
+> `BODY[<part>]` fetch · multi-folder unseen polling with a client-side
+> refresh and a new-mail banner · the shared-inbox collision banner from
+> [05](./05-shared-inboxes.md) · flag as a bulk action · `\Answered` set when
+> a reply is sent · delete confirmation on single and bulk.
+>
+> Two things came out of that work that were not on this list. First,
+> **reading never marked messages read in the first place** — imapflow peeks,
+> so `getMessage`'s hardcoded `seen: true` was a lie and messages reverted to
+> unread on refresh; `\Seen` is now an explicit decision, which is also what
+> makes preview-without-marking-read a real setting. Second, **drafts silently
+> dropped Bcc** — nodemailer strips the header unless `keepBcc` is set.
+>
+> **Still untested against a live mailbox.** The stored `contact@rutba.pk`
+> credential still fails authentication against `mail.trustlist.uk:993` (the
+> host answers; the password does not work), so every behaviour above is
+> verified by build, by unit-level checks of the pure functions, and by
+> compiling the exact IMAP commands each path emits — not by a round trip to a
+> real mailbox. The human browser pass is STILL outstanding.
+
 > **Status update (2026-08-10, later): the P0 wave + the named must-haves are
 > BUILT** (21/21 smoke, production build green). Address books (personal +
 > company directory, `mail-contact`), tags (`mail-tag` registry → IMAP
@@ -122,10 +146,16 @@ must-haves: personal/global address books, tags, advanced filters.
 **Still open from P0: the backend-split decision** (core `mail` module vs
 pinning rutba-mail at pos-strapi).
 
-**P1 (retention):** unified inbox · archive/unread verbs · shortcuts ·
-attachment preview · new-mail notifications · collision banner · per-user
-shared signature · CSV import UX · click-by-URL report · suppression
-browser · email-groups/aliases · offboarding flow · role-grant lag fix.
+**P1 (retention): the daily-driver half is BUILT 2026-08-15** — archive/unread
+verbs · shortcuts · attachment preview · new-mail notifications · collision
+banner · plus flag-as-bulk, `\Answered` on reply, delete confirmation, and
+draft resume (which the table above never listed, because the gap was
+invisible until someone tried to finish a half-written mail).
+
+*Still open in P1:* unified inbox and cross-folder search — both blocked on
+the message-index decision, deliberately not started · per-user shared
+signature · CSV import UX · click-by-URL report · suppression browser ·
+email-groups/aliases · offboarding flow · role-grant lag fix.
 
 **P2 (parity chasing — schedule, don't rush):** A/B + journeys (M7) · SLAs ·
 snooze/undo · tags · deliverability card · quota surfacing · access audit.
