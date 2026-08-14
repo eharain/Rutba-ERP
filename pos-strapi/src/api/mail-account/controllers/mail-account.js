@@ -23,6 +23,9 @@ const MANAGE_LEVELS = ['admin', 'manager'];
 
 const gate = (ctx, strapi, levels) => requireAppRole(ctx, strapi, { domains: ['mail'], levels });
 
+/** Query flags arrive as strings ('1'/'true') — one reading for every route. */
+const truthy = (v) => v === '1' || v === 'true' || v === true;
+
 // Core routes bind the document id as `:id` (the VALUE is a documentId, the
 // param name is not); our custom routes declare `:documentId`. Accept either.
 const docIdParam = (ctx) => ctx.params?.documentId ?? ctx.params?.id;
@@ -320,7 +323,6 @@ module.exports = createCoreController(UID, ({ strapi }) => {
         folder = 'INBOX', page, pageSize, search,
         unread, flagged, from, to, subject, since, before, tag,
       } = ctx.query || {};
-      const truthy = (v) => v === '1' || v === 'true' || v === true;
       try {
         return ctx.send(await gateway.listMessages(strapi, account, folder, {
           page, pageSize, search,
@@ -332,32 +334,85 @@ module.exports = createCoreController(UID, ({ strapi }) => {
       }
     },
 
-    /** GET /mail-accounts/:documentId/messages/:uid?folder= */
+    /**
+     * GET /mail-accounts/:documentId/messages/:uid?folder=&markSeen=1&forEdit=1
+     *
+     * Reading is a peek: \Seen is set only when markSeen says so, which is
+     * what makes "mark as read" a decision the client owns rather than a side
+     * effect of opening the pane. forEdit returns the body ready to go back
+     * into the composer (draft resume).
+     */
     async getMessage(ctx) {
       const user = await gate(ctx, strapi, ALL_LEVELS);
       if (!user) return;
       const account = await ensureAccess(ctx, user, ctx.params.documentId);
       if (!account) return;
-      const { folder = 'INBOX' } = ctx.query || {};
+      const { folder = 'INBOX', markSeen, forEdit } = ctx.query || {};
       try {
-        return ctx.send(await gateway.getMessage(strapi, account, folder, ctx.params.uid));
+        return ctx.send(await gateway.getMessage(strapi, account, folder, ctx.params.uid, {
+          markSeen: truthy(markSeen),
+          forEdit: truthy(forEdit),
+        }));
       } catch (e) {
         return fail(ctx, e);
       }
     },
 
-    /** GET /mail-accounts/:documentId/messages/:uid/attachment?folder=&part= */
+    /**
+     * GET /mail-accounts/:documentId/messages/:uid/attachment?folder=&part=&mimePart=
+     * `part` is the index within the message's attachment list; `mimePart` is
+     * the IMAP part number, which turns this into a single-part fetch instead
+     * of another full download of the message.
+     */
     async getAttachment(ctx) {
       const user = await gate(ctx, strapi, ALL_LEVELS);
       if (!user) return;
       const account = await ensureAccess(ctx, user, ctx.params.documentId);
       if (!account) return;
-      const { folder = 'INBOX', part } = ctx.query || {};
+      const { folder = 'INBOX', part, mimePart } = ctx.query || {};
       if (part === undefined) {
         return ctx.send({ error: 'mail_bad_request', message: 'The `part` query parameter is required.' }, 400);
       }
+      // Part numbers are dotted digits and nothing else — never let a client
+      // hand an arbitrary string to the FETCH builder.
+      if (mimePart !== undefined && mimePart !== '' && !/^\d+(\.\d+)*$/.test(String(mimePart))) {
+        return ctx.send({ error: 'mail_bad_request', message: 'Invalid `mimePart`.' }, 400);
+      }
       try {
-        return ctx.send(await gateway.getAttachment(strapi, account, folder, ctx.params.uid, part));
+        return ctx.send(await gateway.getAttachment(strapi, account, folder, ctx.params.uid, part, {
+          mimePart: mimePart || null,
+        }));
+      } catch (e) {
+        return fail(ctx, e);
+      }
+    },
+
+    /**
+     * GET /mail-accounts/:documentId/unseen?folders=INBOX,Archive
+     * One pooled STATUS sweep over the folders the client is actually showing,
+     * so badges refresh (and decrement) while the page is open instead of
+     * waiting on the 2-minute cron.
+     *
+     * The written map doubles as the cron's folder set: whatever the client
+     * last asked about is what the background sweep keeps warm afterwards.
+     */
+    async listUnseen(ctx) {
+      const user = await gate(ctx, strapi, ALL_LEVELS);
+      if (!user) return;
+      const account = await ensureAccess(ctx, user, ctx.params.documentId);
+      if (!account) return;
+      const folders = String(ctx.query?.folders || 'INBOX')
+        .split(',')
+        .map((f) => f.trim())
+        .filter(Boolean);
+      try {
+        const counts = await gateway.getUnseenCounts(strapi, account, folders);
+        const checked_at = new Date().toISOString();
+        await strapi.documents(UID).update({
+          documentId: account.documentId,
+          data: { unseen_counts: { ...counts, checked_at }, last_checked_at: new Date() },
+        }).catch(() => { /* the live counts are the answer; caching them is best-effort */ });
+        return ctx.send({ counts, checked_at });
       } catch (e) {
         return fail(ctx, e);
       }

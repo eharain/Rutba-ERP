@@ -11,12 +11,13 @@ export interface MailAccountsEndpointsType {
         folder = 'INBOX', page, pageSize, search,
         unread, flagged, from, to, subject, since, before, tag,
     }?: any): Promise<any>;
-    getMessage(documentId: any, uid: any, { folder = 'INBOX' }?: any): Promise<any>;
-    getAttachment(documentId: any, uid: any, { folder = 'INBOX', part }?: any): Promise<any>;
+    getMessage(documentId: any, uid: any, { folder = 'INBOX', markSeen, forEdit }?: any): Promise<any>;
+    getAttachment(documentId: any, uid: any, { folder = 'INBOX', part, mimePart }?: any): Promise<any>;
+    listUnseen(documentId: any, { folders = ['INBOX'] }?: any): Promise<any>;
     setFlags(documentId: any, uid: any, { folder = 'INBOX', add = [], remove = [] }?: any): Promise<any>;
     removeMessage(documentId: any, uid: any, { folder = 'INBOX' }?: any): Promise<any>;
     transferMessage(documentId: any, uid: any, { folder = 'INBOX', toFolder }?: any): Promise<any>;
-    createDraft(documentId: any, { to, cc, bcc, subject, html, text }?: any): Promise<any>;
+    createDraft(documentId: any, { to, cc, bcc, subject, html, text, replaceUid }?: any): Promise<any>;
     createImport(documentId: any, uid: any, { folder = 'INBOX', links, triage }?: any): Promise<any>;
     createProvision({ localPart, domain, name, kind, quotaMb, serverId, access_roles }?: any): Promise<any>;
     setBulkFlags(documentId: any, { folder, uids, add, remove }?: any): Promise<any>;

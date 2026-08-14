@@ -96,15 +96,28 @@ listMessages(account, folder, {page=1, pageSize=50, search})
                                   // → {total, uidvalidity, messages:[{uid, messageId,
                                   //   from, to, subject, date, seen, flagged,
                                   //   answered, hasAttachments, size}]}
-getMessage(account, folder, uid)  // BODY[] download (sets \Seen), mailparser,
-                                  // sanitizeEmailHtml → {uid, messageId, envelope,
-                                  //   flags, bodyHtml, bodyText, hasRemoteImages,
-                                  //   attachments:[{partId, filename, contentType,
-                                  //   size, cid, inline}], headers}
-getAttachment(account, folder, uid, partId)
+getMessage(account, folder, uid, {markSeen, forEdit})
+                                  // BODY.PEEK[] download — reading NEVER changes
+                                  // flags. markSeen issues a separate STORE
+                                  // +FLAGS \Seen, and only when the message was
+                                  // unread, so "mark as read" is the client's
+                                  // decision and preview-without-marking-read
+                                  // is possible. forEdit swaps the reader
+                                  // sanitizer for the outbound one (draft resume).
+                                  // mailparser + sanitizeEmailHtml →
+                                  //   {uid, messageId, envelope (incl. bcc),
+                                  //   flags {seen, flagged, answered, draft},
+                                  //   bodyHtml, bodyText, hasRemoteImages,
+                                  //   attachments:[{partId, part, filename,
+                                  //   contentType, size, cid, inline}], headers}
+                                  // `part` is the BODYSTRUCTURE part number.
+getAttachment(account, folder, uid, partId, {mimePart})
                                   // → {filename, contentType, base64};
                                   // rejects parts over MAIL_ATTACH_MAX_MB.
-                                  // (Streaming upgrade path: M1.)
+                                  // With mimePart this is ONE BODY.PEEK[<part>]
+                                  // fetch; without it, the whole RFC822 is
+                                  // downloaded and parsed (the fallback for
+                                  // messages whose structure could not be walked).
 setFlags(account, folder, uid, {add, remove})
                                   // whitelist: \Seen, \Flagged, \Answered only
 removeMessage(account, folder, uid)
@@ -121,7 +134,17 @@ sendMessage(account, {to, cc, bcc, subject, html, text, attachments,
 M1/M2 additions: `transferMessage` (arbitrary move — 'transfer' passes the
 api-pro verb whitelist), `importMessage(account, folder, uid, links, {triage})`
 (fetch full → parse → create mail-message/attachments/links idempotently),
-`getUnseenCounts(account)` (STATUS poll for the cron).
+`saveDraft(account, {…, replaceUid})` (APPEND the new copy, expunge the old
+one only after — a failed append must never cost the draft; Bcc is kept in
+drafts and stripped only at send), `getUnseenCounts(account, folders)` (STATUS
+sweep, capped at `UNSEEN_POLL_MAX_FOLDERS` = 12 per call).
+
+<!-- verify-docs: external lib/commands/fetch.js -->
+> **`\Seen` is never a side effect.** imapflow builds every body item as
+> `BODY.PEEK` (its own `lib/commands/fetch.js`), so downloading a message does not mark
+> it read. The gateway used to assume the opposite and report `seen: true`
+> unconditionally, which made the UI show messages as read while the server
+> still had them unread. Reading peeks; `markSeen` decides.
 
 ## IMAP identity subtleties (the ones that bite)
 
