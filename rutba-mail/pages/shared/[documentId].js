@@ -41,7 +41,7 @@ export default function SharedQueuePage() {
                 pageSize: 100,
                 accountDocumentId: documentId,
                 ...(statusFilter ? { triageStatus: statusFilter } : { filters: { triage_status: { $ne: "none" } } }),
-                populate: { links: true },
+                populate: { links: true, assigned_to: true },
             }),
             MailAccountsEndpoints.listAssignees().catch(() => ({ data: [] })),
         ])
@@ -93,8 +93,8 @@ export default function SharedQueuePage() {
                     </div>
                 </div>
                 <p className="text-muted small">
-                    New mail is triaged from the <Link href="/">live inbox</Link> — assigning a
-                    message imports it into this queue.
+                    New mail is triaged from the <Link href="/">live inbox</Link> — “Add to queue”,
+                    or assigning a message, imports it into this queue.
                 </p>
 
                 {notice && (

@@ -59,7 +59,7 @@ function Row({ m, activeUid, selected, tags, indent, onOpen, onToggleSelect }) {
 }
 
 export default function MessageList({
-    listing, activeUid, loading, error, page, tags = [], folders = [],
+    listing, activeUid, loading, error, page, tags = [], folders = [], sharedInbox = false,
     onOpen, onPage, onRefresh, onBulk,
 }) {
     const total = listing?.total || 0;
@@ -133,6 +133,12 @@ export default function MessageList({
                     <button className="btn btn-sm btn-outline-secondary" onClick={() => bulk("read")}>Read</button>
                     <button className="btn btn-sm btn-outline-secondary" onClick={() => bulk("unread")}>Unread</button>
                     <button className="btn btn-sm btn-outline-danger" onClick={() => bulk("delete")}>Delete</button>
+                    {sharedInbox && (
+                        <button className="btn btn-sm btn-outline-primary" title="Import these into the shared triage queue"
+                            onClick={() => bulk("queue")}>
+                            <i className="fa-solid fa-inbox me-1"></i>Add to queue
+                        </button>
+                    )}
                     <select className="form-select form-select-sm" style={{ width: "9rem" }} value={moveTo}
                         onChange={(e) => { if (e.target.value) bulk("move", { targetFolder: e.target.value }); }}>
                         <option value="">Move to…</option>
