@@ -74,6 +74,48 @@ function structureHasAttachments(node) {
   return Array.isArray(node.childNodes) && node.childNodes.some(structureHasAttachments);
 }
 
+/**
+ * Walk BODYSTRUCTURE into the attachment list.
+ *
+ * The point of doing this from the structure rather than from the parsed
+ * message is `part` — the IMAP part number — which lets getAttachment issue
+ * ONE `BODY.PEEK[<part>]` fetch instead of re-downloading the entire RFC822
+ * per attachment (three attachments used to cost three full message
+ * downloads, on a connection every other agent is queued behind).
+ */
+function collectAttachmentParts(node, out = []) {
+  if (!node) return out;
+
+  const type = String(node.type || '').toLowerCase();
+  const filename = node.dispositionParameters?.filename || node.parameters?.name || null;
+  const disposition = String(node.disposition || '').toLowerCase();
+
+  // An attached .eml is a leaf even though the server describes its innards.
+  const isAttachedMessage = type === 'message/rfc822' && (disposition === 'attachment' || filename);
+  if (Array.isArray(node.childNodes) && node.childNodes.length && !isAttachedMessage) {
+    for (const child of node.childNodes) collectAttachmentParts(child, out);
+    return out;
+  }
+
+  // Bare text/plain + text/html leaves are the body itself, never attachments.
+  if (!disposition && !filename && (type === 'text/plain' || type === 'text/html')) return out;
+  if (disposition !== 'attachment' && disposition !== 'inline' && !filename) return out;
+  if (!node.part) return out; // the root node of a single-part message has no part number
+
+  const encoded = Number(node.size) || 0;
+  out.push({
+    partId: out.length,
+    part: String(node.part),
+    filename: filename || `attachment-${out.length + 1}`,
+    contentType: type || 'application/octet-stream',
+    // BODYSTRUCTURE reports ENCODED octets; base64 inflates by 4/3.
+    size: String(node.encoding || '').toLowerCase() === 'base64' ? Math.round(encoded * 0.75) : encoded,
+    cid: node.id ? String(node.id).replace(/[<>]/g, '') : null,
+    inline: disposition === 'inline' && Boolean(node.id),
+  });
+  return out;
+}
+
 // Tags are IMAP custom keywords with this prefix — stored ON the mail
 // server, so they survive without import and show in any client. The slug
 // charset keeps them valid IMAP atoms.
@@ -142,7 +184,16 @@ function readStream(stream, maxBytes, label) {
   });
 }
 
-/** Download BODY[] for one uid and parse it. Caller must hold the mailbox lock. */
+/**
+ * Download the full message for one uid and parse it. Caller must hold the
+ * mailbox lock.
+ *
+ * imapflow issues this as `BODY.PEEK[]<start.len>` (lib/commands/fetch.js —
+ * every body item it builds is a PEEK), so reading a message does NOT set
+ * \Seen. That is deliberate here: \Seen is applied by an explicit
+ * messageFlagsAdd in getMessage when the caller asks for it, so "mark as
+ * read" is a decision and preview-without-marking-read is possible.
+ */
 async function downloadParsed(client, uid) {
   const dl = await client.download(String(uid), undefined, { uid: true });
   if (!dl?.content) {
@@ -289,15 +340,28 @@ async function listMessages(strapi, account, folder, { page = 1, pageSize = 50, 
 }
 
 /**
- * Full read of one message: download BODY[] (marks \Seen), parse, sanitize.
- * Attachments are returned as metadata only; `partId` is the index into the
- * parsed attachment list, fetched individually via getAttachment.
+ * Full read of one message: peek the body, parse, sanitize.
+ *
+ * Reading never changes flags on its own. Pass `markSeen` to set \Seen — one
+ * extra command, and only when the message was actually unread.
+ *
+ * Attachments carry both `part` (IMAP part number, from BODYSTRUCTURE — the
+ * cheap fetch path) and `partId` (its index, the fallback for servers whose
+ * structure we could not walk).
+ *
+ * `forEdit` returns the body under the OUTBOUND sanitizer instead of the
+ * reader one, so a draft can be loaded straight back into the composer
+ * without the reader's remote-image defusing being baked into what gets sent.
  */
-async function getMessage(strapi, account, folder, uid) {
+async function getMessage(strapi, account, folder, uid, { markSeen = false, forEdit = false } = {}) {
   return withAccount(strapi, account, async (client) => {
     const lock = await client.getMailboxLock(folder);
     try {
-      const meta = await client.fetchOne(String(uid), { uid: true, flags: true, envelope: true }, { uid: true });
+      const meta = await client.fetchOne(
+        String(uid),
+        { uid: true, flags: true, envelope: true, bodyStructure: true },
+        { uid: true },
+      );
       if (!meta) {
         throw new MailError('Message not found in this folder (it may have moved).', {
           status: 404,
@@ -306,14 +370,21 @@ async function getMessage(strapi, account, folder, uid) {
       }
 
       const parsed = await downloadParsed(client, uid);
-      const attachments = (parsed.attachments || []).map((a, i) => ({
-        partId: i,
-        filename: a.filename || `attachment-${i + 1}`,
-        contentType: a.contentType || 'application/octet-stream',
-        size: a.size || a.content?.length || 0,
-        cid: a.cid || null,
-        inline: Boolean(a.cid) && a.contentDisposition !== 'attachment',
-      }));
+      const structured = collectAttachmentParts(meta.bodyStructure);
+      // Fall back to the parsed list only when the structure walk found
+      // nothing — mixing the two would make `partId` mean different things in
+      // the same response.
+      const attachments = structured.length || !(parsed.attachments || []).length
+        ? structured
+        : (parsed.attachments || []).map((a, i) => ({
+          partId: i,
+          part: null,
+          filename: a.filename || `attachment-${i + 1}`,
+          contentType: a.contentType || 'application/octet-stream',
+          size: a.size || a.content?.length || 0,
+          cid: a.cid ? String(a.cid).replace(/[<>]/g, '') : null,
+          inline: Boolean(a.cid) && a.contentDisposition !== 'attachment',
+        }));
 
       // Inline cid images become data URIs within a fixed budget; anything
       // over budget stays a listed attachment.
@@ -330,9 +401,16 @@ async function getMessage(strapi, account, folder, uid) {
       const sourceHtml = typeof parsed.html === 'string' && parsed.html
         ? parsed.html
         : parsed.textAsHtml || '';
-      const { html: bodyHtml, hasRemoteImages } = sanitizeEmailHtml(sourceHtml, { cidResolver });
+      const { html: bodyHtml, hasRemoteImages } = forEdit
+        ? { html: sanitizeOutboundHtml(sourceHtml), hasRemoteImages: false }
+        : sanitizeEmailHtml(sourceHtml, { cidResolver });
 
       const flags = meta.flags || new Set();
+      let seen = flags.has('\\Seen');
+      if (markSeen && !seen) {
+        await client.messageFlagsAdd(String(uid), ['\\Seen'], { uid: true });
+        seen = true;
+      }
       const pickHeader = (name) => {
         const v = parsed.headers?.get?.(name);
         if (v == null) return undefined;
@@ -346,14 +424,18 @@ async function getMessage(strapi, account, folder, uid) {
           from: addr(meta.envelope?.from?.[0]),
           to: addrList(meta.envelope?.to),
           cc: addrList(meta.envelope?.cc),
+          // Bcc survives only on a message we wrote ourselves (drafts, Sent),
+          // which is exactly where draft resume needs it.
+          bcc: addrList(meta.envelope?.bcc || parsed.bcc?.value),
           replyTo: addrList(meta.envelope?.replyTo),
           subject: meta.envelope?.subject || parsed.subject || '',
           date: meta.envelope?.date || parsed.date || null,
         },
         flags: {
-          seen: true, // BODY[] download just set \Seen
+          seen,
           flagged: flags.has('\\Flagged'),
           answered: flags.has('\\Answered'),
+          draft: flags.has('\\Draft'),
         },
         tags: [...flags].filter((f) => TAG_KEYWORD_RE.test(f)),
         bodyHtml,
@@ -374,11 +456,31 @@ async function getMessage(strapi, account, folder, uid) {
   }, { label: 'IMAP fetch message', timeoutMs: DOWNLOAD_TIMEOUT_MS });
 }
 
-/** One attachment by parse-index, base64-bounded. */
-async function getAttachment(strapi, account, folder, uid, partId) {
+/**
+ * One attachment, base64-bounded.
+ *
+ * With `mimePart` (the BODYSTRUCTURE part number getMessage handed out) this
+ * is a single `BODY.PEEK[<part>]` fetch of that part alone. Without it — a
+ * message whose structure we could not walk — it falls back to the old
+ * download-and-parse, which costs the whole RFC822.
+ */
+async function getAttachment(strapi, account, folder, uid, partId, { mimePart = null } = {}) {
   return withAccount(strapi, account, async (client) => {
     const lock = await client.getMailboxLock(folder);
     try {
+      if (mimePart) {
+        const dl = await client.download(String(uid), String(mimePart), { uid: true });
+        if (dl?.content) {
+          const content = await readStream(dl.content, attachMaxBytes(), 'This attachment');
+          return {
+            filename: dl.meta?.filename || `attachment-${Number(partId) + 1 || 1}`,
+            contentType: dl.meta?.contentType || 'application/octet-stream',
+            size: content.length,
+            base64: content.toString('base64'),
+          };
+        }
+        // The server declined the part fetch — fall through rather than fail.
+      }
       const parsed = await downloadParsed(client, uid);
       const part = (parsed.attachments || [])[Number(partId)];
       if (!part?.content) {
@@ -419,8 +521,23 @@ async function transferMessage(strapi, account, folder, uid, toFolder) {
   }, { label: 'IMAP move message' });
 }
 
-/** APPEND a draft to the Drafts folder (M1). Recipients may be empty. */
-async function saveDraft(strapi, account, { to, cc, bcc, subject, html, text } = {}) {
+/** Message-ID as it was written into a freshly built RFC822 buffer. */
+const messageIdOf = (raw) =>
+  raw.toString('utf8', 0, Math.min(raw.length, 16_384)).match(/^Message-ID:\s*(<[^>]+>)/im)?.[1] || null;
+
+/**
+ * APPEND a draft to the Drafts folder (M1). Recipients may be empty.
+ *
+ * `replaceUid` makes editing a draft an actual edit: the new copy is appended
+ * FIRST, and only then is the old uid expunged — an APPEND that fails must
+ * never cost the user the draft they already had. That ordering is also what
+ * makes periodic auto-save safe to leave running.
+ *
+ * Unlike sendMessage, the Bcc header is KEPT here: a draft that forgets who
+ * it was going to be blind-copied to is a lost draft. It is stripped again
+ * when the draft is actually sent.
+ */
+async function saveDraft(strapi, account, { to, cc, bcc, subject, html, text, replaceUid } = {}) {
   const safeHtml = html ? sanitizeOutboundHtml(html) : '';
   const composer = new MailComposer({
     from: account.from_name ? { name: account.from_name, address: account.email } : account.email,
@@ -431,9 +548,13 @@ async function saveDraft(strapi, account, { to, cc, bcc, subject, html, text } =
     ...(safeHtml ? { html: safeHtml } : {}),
     text: text || ' ',
   });
+  const node = composer.compile();
+  node.keepBcc = true;
   const raw = await new Promise((resolve, reject) => {
-    composer.compile().build((err, message) => (err ? reject(err) : resolve(message)));
+    node.build((err, message) => (err ? reject(err) : resolve(message)));
   });
+  const messageId = messageIdOf(raw);
+
   return withAccount(strapi, account, async (client) => {
     let drafts = account.special_folders?.drafts || null;
     if (!drafts) {
@@ -441,15 +562,56 @@ async function saveDraft(strapi, account, { to, cc, bcc, subject, html, text } =
       drafts = detectSpecialFolders(folders).drafts || 'Drafts';
     }
     const res = await client.append(drafts, raw, ['\\Draft', '\\Seen']);
-    return { savedTo: drafts, uid: res?.uid ?? null };
-  }, { label: 'APPEND draft' });
+
+    let uid = res?.uid ?? null;
+    let replaced = false;
+    // The old copy and the new uid both need the Drafts mailbox selected;
+    // one lock covers both so nothing interleaves between them.
+    if (replaceUid || (!uid && messageId)) {
+      const lock = await client.getMailboxLock(drafts);
+      try {
+        // No UIDPLUS → APPEND returns no uid. Find it by Message-ID so the
+        // NEXT auto-save can still replace this copy instead of stacking one
+        // draft per tick.
+        if (!uid && messageId) {
+          const found = await client.search({ header: { 'message-id': messageId } }, { uid: true });
+          uid = found?.length ? Math.max(...found) : null;
+        }
+        if (replaceUid) {
+          await client.messageDelete(uidSet(replaceUid), { uid: true });
+          replaced = true;
+        }
+      } catch {
+        // A stale extra draft beats a lost one — never fail the save here.
+      } finally {
+        lock.release();
+      }
+    }
+    return { savedTo: drafts, uid, messageId, replaced };
+  }, { label: 'APPEND draft', timeoutMs: 30_000 });
 }
 
-/** STATUS (UNSEEN) per folder — the cron badge poll (M1). */
+// STATUS is cheap, but it is still one command per folder on a connection
+// every other request for this account queues behind. Cap the sweep so a
+// mailbox with fifty folders can't monopolise it.
+const UNSEEN_POLL_MAX_FOLDERS = 12;
+
+/**
+ * STATUS (UNSEEN) per folder — the badge poll, used by both the cron sweep
+ * and the client's own refresh while the page is open. One pooled trip,
+ * however many folders are asked for.
+ */
 async function getUnseenCounts(strapi, account, folders = ['INBOX']) {
+  const wanted = [...new Set(
+    (Array.isArray(folders) ? folders : [folders])
+      .map((f) => String(f || '').trim())
+      .filter(Boolean),
+  )].slice(0, UNSEEN_POLL_MAX_FOLDERS);
+  if (!wanted.length) wanted.push('INBOX');
+
   return withAccount(strapi, account, async (client) => {
     const out = {};
-    for (const f of folders) {
+    for (const f of wanted) {
       try {
         const st = await client.status(f, { unseen: true });
         out[f] = st?.unseen ?? 0;
@@ -458,7 +620,7 @@ async function getUnseenCounts(strapi, account, folders = ['INBOX']) {
       }
     }
     return out;
-  }, { label: 'IMAP STATUS' });
+  }, { label: 'IMAP STATUS', timeoutMs: Math.max(opTimeoutMs(), 3_000 * wanted.length) });
 }
 
 /**
@@ -643,7 +805,7 @@ async function sendMessage(strapi, account, {
   const raw = await new Promise((resolve, reject) => {
     composer.compile().build((err, message) => (err ? reject(err) : resolve(message)));
   });
-  const messageId = raw.toString('utf8', 0, Math.min(raw.length, 16_384)).match(/^Message-ID:\s*(<[^>]+>)/im)?.[1] || null;
+  const messageId = messageIdOf(raw);
 
   const transport = nodemailer.createTransport({
     host: account.smtp_host,
@@ -711,7 +873,9 @@ module.exports = {
   getUnseenCounts,
   fetchFullMessage,
   TAG_KEYWORD_RE,
+  UNSEEN_POLL_MAX_FOLDERS,
   // exported for direct verification — pure, no IMAP needed
   buildSearch,
   uidSet,
+  collectAttachmentParts,
 };

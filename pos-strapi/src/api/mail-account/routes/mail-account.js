@@ -46,6 +46,11 @@ const customRoutes = [
     handler: 'api::mail-account.mail-account.listFolders',
   },
   {
+    method: 'GET',
+    path: '/mail-accounts/:documentId/unseen',
+    handler: 'api::mail-account.mail-account.listUnseen',
+  },
+  {
     // Literal /messages/* paths precede /messages/:uid — koa-router order.
     method: 'POST',
     path: '/mail-accounts/:documentId/messages/bulk-flags',
