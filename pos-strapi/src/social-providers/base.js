@@ -45,22 +45,136 @@ function redirectUri(strapi) {
   return `${publicUrl(strapi)}/api/social-accounts/oauth/callback`;
 }
 
+/** Origins only this machine can resolve — useless to an outside fetcher. */
+const LOOPBACK_RE = /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(:\d+)?(?=$|\/)/i;
+
+/**
+ * Public origin the media BYTES are served from — not the same thing as
+ * publicUrl(). Uploads go to the standalone media file server whenever one is
+ * configured (config/plugins.js → upload.providerOptions.baseUrl), and that is
+ * the origin an outside platform has to be handed; Strapi's own origin is
+ * routinely an internal address and, once files have been migrated off local
+ * disk, does not serve /uploads at all. Falls back to the app origin for a bare
+ * checkout that really does still store files in public/uploads.
+ */
+function mediaOrigin(strapi) {
+  const fromProvider = strapi.config.get('plugin::upload.providerOptions.baseUrl');
+  const fromEnv = process.env.MEDIA_BASE_URL;
+  return String(fromProvider || fromEnv || publicUrl(strapi) || '').replace(/\/+$/, '');
+}
+
+/** Make one url absolute against `origin`, re-homing loopback hosts onto it. */
+function resolveAgainstOrigin(u, origin) {
+  if (!u) return null;
+  if (/^https?:\/\//i.test(u)) {
+    // A loopback host baked into files.url is a silent delivery failure: the
+    // upload succeeded, the row looks absolute and fine, and every platform
+    // that tries to fetch it gets nothing. The media server answers the same
+    // pathname, so re-home rather than give up.
+    if (LOOPBACK_RE.test(u) && origin && !LOOPBACK_RE.test(origin)) {
+      try {
+        const p = new URL(u);
+        return `${origin}${p.pathname}${p.search}`;
+      } catch {
+        return u;
+      }
+    }
+    return u;
+  }
+  // Keep the WHOLE path, not just the basename — uploads made through the older
+  // local provider sit in dated subdirectories, and flattening those 404s.
+  return `${origin}${u.startsWith('/') ? '' : '/'}${u}`;
+}
+
 /**
  * Resolve a Strapi media entity to an absolute, publicly-fetchable URL.
- * IG/FB/TikTok ingest media by URL, so a relative `/uploads/..` must be made
- * absolute against the public origin. `preferFormat` picks a derived size for
- * images (e.g. 'large') when available.
+ * IG/FB/TikTok and every relay ingest media by URL, so the result has to be
+ * reachable from the open internet — a relative `/uploads/..` is made absolute
+ * against the media origin, and an absolute URL that points back at this box is
+ * re-homed onto it (the media server serves the same pathname). `preferFormat`
+ * picks a derived size for images (e.g. 'large') when available.
+ *
+ * This is the pure builder — it cannot know whether the bytes are really there.
+ * Publishing paths should call resolveMediaUrl() instead, which probes.
  */
 function absoluteMediaUrl(strapi, file, { preferFormat } = {}) {
   if (!file) return null;
-  let url = file.url;
-  if (preferFormat && file.formats && file.formats[preferFormat] && file.formats[preferFormat].url) {
-    url = file.formats[preferFormat].url;
+  const origin = mediaOrigin(strapi);
+  const resolve = (u) => resolveAgainstOrigin(u, origin);
+
+  // A derived size is only safe to hand out when its bytes actually exist at
+  // the media origin. The file server runs skipVariants, so a row whose formats
+  // were generated back when uploads were local advertises a /uploads/large_…
+  // path that was never uploaded — sending it 404s the platform's fetch and the
+  // post lands with no image. Trust the variant only when the provider itself
+  // produced an absolute URL for it (its own transform link), or when media is
+  // still served from this app's own origin.
+  const derived = preferFormat && file.formats && file.formats[preferFormat] && file.formats[preferFormat].url;
+  const variantUsable = derived && (/^https?:\/\//i.test(derived) || origin === publicUrl(strapi));
+  return resolve(variantUsable ? derived : file.url);
+}
+
+/**
+ * Every public URL this file might answer to, best first.
+ *
+ * One rule does not cover the whole library: uploads migrated off local disk
+ * are not all mirrored under the path they were stored at, so some rows answer
+ * only at their full /uploads/<path> and others only at the bare filename on
+ * the media origin. Both are offered so the probe below can pick.
+ */
+function mediaUrlCandidates(strapi, file, { preferFormat } = {}) {
+  const origin = mediaOrigin(strapi);
+  const out = [];
+  const add = (u) => {
+    const r = resolveAgainstOrigin(u, origin);
+    if (r && !out.includes(r)) out.push(r);
+  };
+
+  const derived = preferFormat && file && file.formats && file.formats[preferFormat] && file.formats[preferFormat].url;
+  if (derived) add(derived);
+  if (file) add(file.url);
+
+  for (const u of [...out]) {
+    try {
+      const name = new URL(u).pathname.split('/').filter(Boolean).pop();
+      if (name) add(`${origin}/${name}`);
+    } catch { /* not parseable — the path form is all we have */ }
   }
-  if (!url) return null;
-  if (/^https?:\/\//i.test(url)) return url;
-  const base = publicUrl(strapi);
-  return `${base}${url.startsWith('/') ? '' : '/'}${url}`;
+  return out;
+}
+
+/** Ranged GET — cheap, and answered by static hosts that reject HEAD. */
+async function urlReachable(url, timeoutMs = 6000) {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { headers: { Range: 'bytes=0-32' }, signal: ctl.signal });
+    return res.ok;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * The URL to actually hand a platform: the first candidate that answers.
+ *
+ * Providers and relays fetch media themselves, and they report a bad URL as
+ * nothing at all — the post simply lands without its image, hours after anyone
+ * could have caught it. A couple of ranged GETs at publish time turns that
+ * silent loss into the right URL. When nothing answers (media host down, probe
+ * blocked) the best-guess candidate is returned rather than null, so a probe
+ * failure can never be the thing that strips a post of its media.
+ */
+async function resolveMediaUrl(strapi, file, opts = {}) {
+  if (!file) return null;
+  const candidates = mediaUrlCandidates(strapi, file, opts);
+  if (candidates.length <= 1) return candidates[0] || null;
+  for (const c of candidates) {
+    if (await urlReachable(c)) return c;
+  }
+  return candidates[0];
 }
 
 /** Pull a human-readable message out of the various provider error envelopes. */
@@ -188,8 +302,12 @@ module.exports = {
   getSocialConfig,
   getProviderConfig,
   publicUrl,
+  mediaOrigin,
   redirectUri,
   absoluteMediaUrl,
+  mediaUrlCandidates,
+  resolveMediaUrl,
+  urlReachable,
   extractError,
   httpRequest,
   tokenExpired,
