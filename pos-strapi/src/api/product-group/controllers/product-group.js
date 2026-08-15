@@ -144,7 +144,12 @@ module.exports = createCoreController('api::product-group.product-group', ({ str
             variants: { populate: { terms: { populate: { term_types: true } } } },
           },
           sort: [sort],
-          pagination: { page, pageSize },
+          // start/limit, not `pagination:{...}` — the document service drops the
+          // nested form, so this query was returning every product in the group
+          // on every page while meta.pagination advertised a page size that was
+          // never applied. See findPublicList in the product service.
+          start: (page - 1) * pageSize,
+          limit: pageSize,
         }),
         strapi.documents('api::product.product').count({ filters, status: 'published' }),
       ]);

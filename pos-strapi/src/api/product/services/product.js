@@ -451,11 +451,22 @@ module.exports = createCoreService('api::product.product', ({ strapi }) => ({
         filters,
         sort,
         populate: PUBLIC_POPULATE,
-        // Flat page/pageSize: the nested `pagination:{...}` form is stripped by
-        // the document service, which is why this list used to return every
-        // product on every page.
-        page,
-        pageSize,
+        // start/limit — NOT page/pageSize, and NOT nested `pagination:{...}`.
+        //
+        // Three shapes, only one of which actually pages a documents() read:
+        //   pagination:{...}  allow-listed at the root, then dropped outright
+        //                     (SHARED_QUERY_PARAM_KEYS has no `pagination`)
+        //   page/pageSize     survive validation and reach the query as
+        //                     `query.page`/`query.pageSize`, but convert-query-
+        //                     params only maps start→offset and limit→limit, and
+        //                     the DB query builder applies nothing else. They are
+        //                     understood solely by db.query().findPage(), which
+        //                     the document service never calls.
+        //   start/limit       become offset/limit and actually page.
+        // Both of the first two fail silently — the read returns the WHOLE table
+        // while meta.pagination reports a page size that never happened.
+        start: (page - 1) * pageSize,
+        limit: pageSize,
       }),
       strapi.documents('api::product.product').count({
         status: 'published',

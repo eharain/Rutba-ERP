@@ -1,7 +1,7 @@
 import Link from "next/link";
 import NextImage from "../next-image";
 import { CategoryInterface } from "@/types/api/category";
-import { IMAGE_URL } from "@/static/const";
+import { resolveMediaUrl } from "@/lib/media-url";
 import { BrandInterface } from "@/types/api/brand";
 import { currencyFormat } from "@/lib/use-currency";
 import { VariantTermSummary } from "@/types/api/product";
@@ -23,6 +23,7 @@ export interface ProductCardInterface {
 }
 
 const FOURTEEN_DAYS = 14 * 24 * 60 * 60 * 1000;
+const FALLBACK_IMAGE = "/images/fallback-image.png";
 
 export default function ProductCard({
   name,
@@ -53,6 +54,17 @@ export default function ProductCard({
   const isNew =
     !!createdAt && Date.now() - new Date(createdAt).getTime() < FOURTEEN_DAYS;
 
+  // Media rows are not uniform: most hold a relative "/uploads/x.png", but some
+  // (uploaded through the standalone media file server) already hold a full
+  // absolute URL. Concatenating IMAGE_URL onto an absolute one produced
+  // "http://host…http://other…", which next/image feeds to `new URL()` — it
+  // throws "Invalid URL" and takes the whole page down with it, not just the
+  // card. resolveMediaUrl prefixes only what needs prefixing.
+  // A product with no image at all resolves to "", which next/image rejects the
+  // same way, so it falls back to the placeholder rather than an empty src.
+  const primarySrc = resolveMediaUrl(thumbnail) || FALLBACK_IMAGE;
+  const secondarySrc = resolveMediaUrl(secondaryThumbnail);
+
   // groupId alone is enough — the server resolves the offer for this product
   // within that group. offerId is kept for explicit offer attribution when a
   // caller has one (e.g. an offer-pinned card), but it's no longer required.
@@ -73,7 +85,7 @@ export default function ProductCard({
       <div className="relative overflow-hidden rounded-xl bg-secondary/40 aspect-square">
         {/* Primary image */}
         <NextImage
-          src={IMAGE_URL + (thumbnail ?? "")}
+          src={primarySrc}
           height={600}
           width={600}
           classNames={{
@@ -90,7 +102,7 @@ export default function ProductCard({
         {/* Hover swap image (only if a second gallery image exists) */}
         {secondaryThumbnail && (
           <NextImage
-            src={IMAGE_URL + secondaryThumbnail}
+            src={secondarySrc}
             height={600}
             width={600}
             classNames={{
