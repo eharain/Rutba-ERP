@@ -16,6 +16,7 @@ import { createWebProductGroupsService } from "@/services";
 import { CmsProductGroupInterface } from "@/types/api/cms-page";
 import { MetaInterface } from "@/types/api/meta";
 import { sortProducts, getProductCardProps } from "@/components/cms/layouts/sort-products";
+import { findLiveOffer, findUpcomingOffer, useOfferClock } from "@/lib/offer-live";
 import type { SortOption } from "@/components/cms/layouts/GroupHeader";
 
 interface ProductGroupDetailResponse {
@@ -68,8 +69,13 @@ export default function ProductGroupPage({
   const page = parseInt(router.query.page as string, 10) || 1;
   const pageSize = parseInt(router.query.pageSize as string, 10) || 24;
   const [sort, setSort] = useState<SortOption>("default");
+  // Above the early returns below — hooks can't run conditionally.
+  const now = useOfferClock();
 
-  const { data, isLoading, isError, error } = useQuery({
+  // Typed explicitly: the service is untyped JS, so without this `data` widens
+  // to `any` and every downstream generic (findLiveOffer) silently collapses to
+  // its constraint instead of inferring OfferInterface.
+  const { data, isLoading, isError, error } = useQuery<ProductGroupDetailResponse>({
     queryKey: ["product-group", slug, page, pageSize],
     queryFn: () => productGroupsService.getProductGroupBySlug(slug, page, pageSize),
     enabled: !!slug,
@@ -131,19 +137,10 @@ export default function ProductGroupPage({
 
   const products = sortProducts(group.products ?? [], sort);
 
-  // Resolve active offer from offers relation
-  const now = Date.now();
-  const activeOffer = (group.offers ?? []).find(o => {
-    if (!o.active) return false;
-    if (o.start_date && new Date(o.start_date).getTime() > now) return false;
-    if (o.end_date && new Date(o.end_date).getTime() < now) return false;
-    return true;
-  });
-  const upcomingOffer = !activeOffer
-    ? (group.offers ?? []).find(o =>
-        o.active && !!o.start_date && new Date(o.start_date).getTime() > now
-      )
-    : undefined;
+  // Resolve active offer from offers relation — same shared rule as the
+  // homepage sections and the product detail page.
+  const activeOffer = findLiveOffer(group.offers, now);
+  const upcomingOffer = !activeOffer ? findUpcomingOffer(group.offers, now) : undefined;
   const offerActive = !!activeOffer;
 
   const formatOfferDate = (iso?: string) => {

@@ -8,6 +8,12 @@ interface RecentlyViewedProps {
   title?: string;
   eyebrow?: string;
   className?: string;
+  /**
+   * How many cards to render. The store keeps more than this (MAX_ITEMS) so
+   * the rail refills as entries are excluded; without an explicit cap the
+   * rendered count was whatever happened to be in localStorage.
+   */
+  limit?: number;
 }
 
 export default function RecentlyViewed({
@@ -15,6 +21,7 @@ export default function RecentlyViewed({
   title = "Recently viewed",
   eyebrow = "Pick up where you left off",
   className,
+  limit = 8,
 }: RecentlyViewedProps) {
   // Avoid SSR / hydration mismatch — Zustand-persist hydrates after mount.
   const [hydrated, setHydrated] = useState(false);
@@ -23,7 +30,9 @@ export default function RecentlyViewed({
   const items = useRecentlyViewed((s) => s.items);
   if (!hydrated) return null;
 
-  const visible = items.filter((i) => i.documentId !== excludeDocumentId);
+  const visible = items
+    .filter((i) => i.documentId !== excludeDocumentId)
+    .slice(0, limit);
   if (visible.length < 2) return null;
 
   return (

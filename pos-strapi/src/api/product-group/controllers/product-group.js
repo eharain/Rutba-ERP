@@ -81,23 +81,37 @@ module.exports = createCoreController('api::product-group.product-group', ({ str
     const pageSize = Math.min(Math.max(1, parseInt(ctx.query.pageSize, 10) || 24), 100);
     const sort = parseSort(ctx.query.sort);
 
-    // Find the published product group by slug
+    // Find the published product group by slug.
+    const populate = {
+      cover_image: true,
+      gallery: true,
+      offers: true,
+      seo_meta: { populate: { og_image: true } },
+    };
     const groups = await strapi.documents('api::product-group.product-group').findMany({
       filters: { slug: { $eq: slug } },
       status: 'published',
-      populate: {
-        cover_image: true,
-        gallery: true,
-        offers: true,
-        seo_meta: { populate: { og_image: true } },
-      },
+      populate,
     });
 
-    if (!groups || groups.length === 0) {
-      return ctx.notFound('Product group not found');
+    // Slug is the canonical key, but storefront callers forward
+    // `group.slug || group.documentId` (see rutba-web product-href), so the
+    // param can legitimately carry a documentId for a group that has no slug.
+    // Falling back keeps this endpoint accepting the same key space that
+    // findPublicDetail and resolveOfferForProductInGroup already accept —
+    // otherwise a documentId-keyed caller gets a 404 for a group that exists.
+    let group = groups && groups.length > 0 ? groups[0] : null;
+    if (!group) {
+      group = await strapi.documents('api::product-group.product-group').findOne({
+        documentId: slug,
+        status: 'published',
+        populate,
+      });
     }
 
-    const group = groups[0];
+    if (!group) {
+      return ctx.notFound('Product group not found');
+    }
 
     // Every product linked to this group. Pagination is applied to the product
     // query rather than to these link rows: the link table knows nothing about
