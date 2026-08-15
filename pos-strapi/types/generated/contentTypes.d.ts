@@ -1431,6 +1431,10 @@ export interface ApiCmpAudienceCmpAudience extends Struct.CollectionTypeSchema {
       'plugin::users-permissions.user'
     >;
     publishedAt: Schema.Attribute.DateTime;
+    segment: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-segment.crm-segment'
+    >;
     source: Schema.Attribute.Enumeration<['static', 'filter', 'segment']> &
       Schema.Attribute.Required &
       Schema.Attribute.DefaultTo<'filter'>;
@@ -2212,7 +2216,7 @@ export interface ApiContactTicketContactTicket
 export interface ApiCrmActivityCrmActivity extends Struct.CollectionTypeSchema {
   collectionName: 'crm_activities';
   info: {
-    description: 'Interaction logs \u2014 calls, emails, meetings, notes';
+    description: 'Typed customer-touch timeline \u2014 calls, emails, meetings, notes, site visits. One row per touch, carrying direction, outcome, duration, follow-up reminder and attachments. Distinct from work-item-activity, which is the system-generated audit trail for workflow transitions.';
     displayName: 'CRM Activity';
     pluralName: 'crm-activities';
     singularName: 'crm-activity';
@@ -2221,6 +2225,12 @@ export interface ApiCrmActivityCrmActivity extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    actor: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    actor_label: Schema.Attribute.String;
+    attachments: Schema.Attribute.Media<undefined, true>;
     contact: Schema.Attribute.Relation<
       'manyToOne',
       'api::crm-contact.crm-contact'
@@ -2230,20 +2240,49 @@ export interface ApiCrmActivityCrmActivity extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     date: Schema.Attribute.DateTime & Schema.Attribute.Required;
     description: Schema.Attribute.Text;
+    direction: Schema.Attribute.Enumeration<
+      ['Inbound', 'Outbound', 'Internal']
+    > &
+      Schema.Attribute.DefaultTo<'Internal'>;
+    duration_minutes: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+    followup_at: Schema.Attribute.DateTime;
+    followup_done_at: Schema.Attribute.DateTime;
+    followup_note: Schema.Attribute.String;
+    lead: Schema.Attribute.Relation<'manyToOne', 'api::crm-lead.crm-lead'>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
       'api::crm-activity.crm-activity'
     > &
       Schema.Attribute.Private;
+    outcome: Schema.Attribute.Enumeration<
+      [
+        'Connected',
+        'No Answer',
+        'Busy',
+        'Voicemail',
+        'Wrong Number',
+        'Callback Requested',
+        'Not Interested',
+        'Completed',
+        'Cancelled',
+      ]
+    >;
     owners: Schema.Attribute.Relation<
       'manyToMany',
       'plugin::users-permissions.user'
     >;
+    person: Schema.Attribute.Relation<'manyToOne', 'api::person.person'>;
     publishedAt: Schema.Attribute.DateTime;
     subject: Schema.Attribute.String & Schema.Attribute.Required;
     type: Schema.Attribute.Enumeration<
-      ['Call', 'Email', 'Meeting', 'Note', 'Follow-up']
+      ['Call', 'Email', 'Meeting', 'Note', 'Follow-up', 'WhatsApp', 'Site']
     > &
       Schema.Attribute.DefaultTo<'Note'>;
     updatedAt: Schema.Attribute.DateTime;
@@ -2287,6 +2326,7 @@ export interface ApiCrmContactCrmContact extends Struct.CollectionTypeSchema {
       'manyToMany',
       'plugin::users-permissions.user'
     >;
+    person: Schema.Attribute.Relation<'manyToOne', 'api::person.person'>;
     phone: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
     updatedAt: Schema.Attribute.DateTime;
@@ -2307,6 +2347,10 @@ export interface ApiCrmLeadCrmLead extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    activities: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-activity.crm-activity'
+    >;
     assigned_to: Schema.Attribute.Relation<
       'manyToOne',
       'plugin::users-permissions.user'
@@ -2353,6 +2397,51 @@ export interface ApiCrmLeadCrmLead extends Struct.CollectionTypeSchema {
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     value: Schema.Attribute.Decimal;
+  };
+}
+
+export interface ApiCrmSegmentCrmSegment extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_segments';
+  info: {
+    description: 'A saved, re-runnable audience definition over people / CRM contacts / leads. Filters compile through the whitelisted field catalog in src/utils/crm-segment-engine.js; results resolve to canonical person identity so a segment can drive a campaign audience. `owners` records the creator only \u2014 segments are deliberately team-visible and carry no owner scope; it is stamped server-side and never accepted from the client.';
+    displayName: 'CRM Segment';
+    pluralName: 'crm-segments';
+    singularName: 'crm-segment';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    columns: Schema.Attribute.JSON;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    definition: Schema.Attribute.JSON;
+    description: Schema.Attribute.Text;
+    entity: Schema.Attribute.Enumeration<
+      ['person', 'crm-contact', 'crm-lead']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'person'>;
+    folder: Schema.Attribute.String;
+    last_run_at: Schema.Attribute.DateTime;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-segment.crm-segment'
+    > &
+      Schema.Attribute.Private;
+    member_count: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    sort: Schema.Attribute.JSON;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
   };
 }
 
@@ -5577,6 +5666,7 @@ export interface ApiMarketplaceSyncLogMarketplaceSyncLog
     draftAndPublish: false;
   };
   attributes: {
+    attention: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
     created: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -7544,6 +7634,10 @@ export interface ApiPersonPerson extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    crm_contacts: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-contact.crm-contact'
+    >;
     email: Schema.Attribute.String;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
@@ -8891,6 +8985,8 @@ export interface ApiSiteSettingSiteSetting extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    custom_body_end_html: Schema.Attribute.Text;
+    custom_head_html: Schema.Attribute.Text;
     default_footer: Schema.Attribute.Relation<
       'oneToOne',
       'api::cms-footer.cms-footer'
@@ -8900,6 +8996,8 @@ export interface ApiSiteSettingSiteSetting extends Struct.CollectionTypeSchema {
     default_meta_title: Schema.Attribute.String;
     default_og_image: Schema.Attribute.Media<'images'>;
     favicon: Schema.Attribute.Media<'images'>;
+    ga_measurement_id: Schema.Attribute.String;
+    gtm_container_id: Schema.Attribute.String;
     header_promo_cta_text: Schema.Attribute.String;
     header_promo_cta_url: Schema.Attribute.String;
     header_promo_enabled: Schema.Attribute.Boolean &
@@ -8912,6 +9010,7 @@ export interface ApiSiteSettingSiteSetting extends Struct.CollectionTypeSchema {
       'api::site-setting.site-setting'
     > &
       Schema.Attribute.Private;
+    meta_pixel_id: Schema.Attribute.String;
     nav_explore_brands_label: Schema.Attribute.String &
       Schema.Attribute.DefaultTo<'Explore Brands'>;
     nav_explore_products_label: Schema.Attribute.String &
@@ -9021,6 +9120,7 @@ export interface ApiSocialAudioTrackSocialAudioTrack
     name: Schema.Attribute.String & Schema.Attribute.Required;
     notes: Schema.Attribute.Text;
     publishedAt: Schema.Attribute.DateTime;
+    start_offset: Schema.Attribute.Decimal;
     tags: Schema.Attribute.JSON;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -9086,6 +9186,49 @@ export interface ApiSocialPostSocialPost extends Struct.CollectionTypeSchema {
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     video: Schema.Attribute.Media<'videos', true>;
+    video_settings: Schema.Attribute.JSON;
+  };
+}
+
+export interface ApiSocialRelayProviderSocialRelayProvider
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'social_relay_providers';
+  info: {
+    description: 'Third-party aggregator APIs (Ayrshare, Postiz, Zernio, ...) that relay a post to multiple platforms through one key';
+    displayName: 'Social Relay Provider';
+    pluralName: 'social-relay-providers';
+    singularName: 'social-relay-provider';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    api_key: Schema.Attribute.Text & Schema.Attribute.Private;
+    api_url: Schema.Attribute.String;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    extra_config: Schema.Attribute.JSON & Schema.Attribute.Private;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    last_error: Schema.Attribute.Text;
+    last_validated_at: Schema.Attribute.DateTime;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::social-relay-provider.social-relay-provider'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    platforms: Schema.Attribute.JSON;
+    provider: Schema.Attribute.Enumeration<
+      ['ayrshare', 'postiz', 'zernio', 'post_bridge', 'bundle_social', 'custom']
+    > &
+      Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    target_id: Schema.Attribute.String;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
   };
 }
 
@@ -9139,6 +9282,43 @@ export interface ApiSocialReplySocialReply extends Struct.CollectionTypeSchema {
       'manyToOne',
       'api::social-post.social-post'
     >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiSocialVideoTemplateSocialVideoTemplate
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'social_video_templates';
+  info: {
+    description: 'A named look for generated social videos: a layer stack plus renderer options. Read by the Video Studio and the Social Poster so both produce the same picture from the same recipe.';
+    displayName: 'Social Video Template';
+    pluralName: 'social-video-templates';
+    singularName: 'social-video-template';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    aspect: Schema.Attribute.String;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text;
+    is_default: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    layers: Schema.Attribute.JSON;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::social-video-template.social-video-template'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    options: Schema.Attribute.JSON;
+    preview_image: Schema.Attribute.Media<'images'>;
+    publishedAt: Schema.Attribute.DateTime;
+    tags: Schema.Attribute.JSON;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -11082,6 +11262,7 @@ declare module '@strapi/strapi' {
       'api::crm-activity.crm-activity': ApiCrmActivityCrmActivity;
       'api::crm-contact.crm-contact': ApiCrmContactCrmContact;
       'api::crm-lead.crm-lead': ApiCrmLeadCrmLead;
+      'api::crm-segment.crm-segment': ApiCrmSegmentCrmSegment;
       'api::currency.currency': ApiCurrencyCurrency;
       'api::customer.customer': ApiCustomerCustomer;
       'api::delivery-method.delivery-method': ApiDeliveryMethodDeliveryMethod;
@@ -11209,7 +11390,9 @@ declare module '@strapi/strapi' {
       'api::social-account.social-account': ApiSocialAccountSocialAccount;
       'api::social-audio-track.social-audio-track': ApiSocialAudioTrackSocialAudioTrack;
       'api::social-post.social-post': ApiSocialPostSocialPost;
+      'api::social-relay-provider.social-relay-provider': ApiSocialRelayProviderSocialRelayProvider;
       'api::social-reply.social-reply': ApiSocialReplySocialReply;
+      'api::social-video-template.social-video-template': ApiSocialVideoTemplateSocialVideoTemplate;
       'api::stock-adjustment.stock-adjustment': ApiStockAdjustmentStockAdjustment;
       'api::stock-alert.stock-alert': ApiStockAlertStockAlert;
       'api::stock-batch.stock-batch': ApiStockBatchStockBatch;
