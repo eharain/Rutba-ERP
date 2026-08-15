@@ -281,13 +281,22 @@ export default function SiteSettingDetail() {
                                         <i className="fas fa-triangle-exclamation me-1"></i>
                                         <strong>These only affect the storefront when set on the right row.</strong>{" "}
                                         The storefront identifies itself as <code>web</code>, so it reads the row whose
-                                        app slug is <code>web</code> — or the default row when no <code>web</code> row
-                                        exists. Ids set on the <code>admin</code> row have no effect on the storefront;
-                                        this is the usual reason someone concludes tracking is broken.
-                                        {appSlug && appSlug !== "web" && !isDefault && (
+                                        app slug is <code>web</code> — falling back to the default row only when no
+                                        <code className="mx-1">web</code> row exists. Ids set on any other row have no
+                                        effect on the storefront; this is the usual reason someone concludes tracking
+                                        is broken.
+                                        {appSlug !== "web" && (
                                             <div className="mt-2 mb-0">
-                                                This row is <code>{appSlug}</code> and is not the default, so nothing
-                                                entered here will reach the storefront.
+                                                {/* Deliberately warns on the default row too. `is_default` is NOT a
+                                                    substitute for app_slug: the resolver matches the slug first, so a
+                                                    separate `web` row wins over the default and the ids entered here
+                                                    would go nowhere. This editor can't see the other rows, so it warns
+                                                    on anything that isn't literally the web row. */}
+                                                This row is{" "}
+                                                {appSlug ? <><code>{appSlug}</code></> : "unkeyed"}
+                                                {isDefault ? " and is the default" : ""}. It only reaches the storefront
+                                                if no row with app slug <code>web</code> exists — check the{" "}
+                                                <a href="/site-settings">Site Settings list</a> before relying on this.
                                             </div>
                                         )}
                                     </div>
