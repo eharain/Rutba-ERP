@@ -139,7 +139,9 @@ export default function Products() {
             toast("Published!", "success");
         } catch (err) {
             console.error("Failed to publish", err);
-            toast("Failed to publish.", "danger");
+            // The publish gate refuses an image-less product and says why —
+            // pass that through rather than a generic failure.
+            toast(err?.response?.data?.error?.message || "Failed to publish.", "danger");
         } finally {
             setPublishing(prev => ({ ...prev, [docId]: false }));
         }

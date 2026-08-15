@@ -40,6 +40,7 @@
 
 const path = require('path');
 const { posRequire, instantiateController } = require('../compat/strapi');
+const { useDocumentMiddleware } = require('../documents');
 const { registerLifecycles } = require('./lifecycles');
 const { registerCron } = require('../platform/cron');
 const { get: envGet } = require('../config/env');
@@ -55,6 +56,14 @@ function registerCmsSocialModule() {
   const strapi = global.strapi;
 
   // ── Document middlewares (lifecycles) ───────────────────────────────────
+
+  // "A product with no image does not go out", social end — same registration
+  // as pos-strapi src/index.js. It must live at the document layer here too:
+  // plain social-post CRUD is served by core's generic handler (http/rest.js),
+  // not by the ported controller, and that handler writes through documents().
+  posRequire('api/social-post/product-post-image-guard.js')
+    .registerProductPostImageGuard({ use: useDocumentMiddleware }, strapi);
+
   registerLifecycles(
     'api::cms-page.cms-page',
     posRequire('api/cms-page/content-types/cms-page/lifecycles.js')

@@ -102,6 +102,9 @@ export async function fetchProducts(filters, page, rowsPerPage, sort) {
         publishState: filters.publishState,
         // "Without social posts" (rutba-social) — see ProductsEndpoints.list.
         noSocialPosts: filters.noSocialPosts,
+        // "Has an image" (rutba-social) — see ProductsEndpoints.list. Opt-in:
+        // omitting it leaves every other product list unfiltered.
+        hasImage: filters.hasImage,
         sort,
     });
 }

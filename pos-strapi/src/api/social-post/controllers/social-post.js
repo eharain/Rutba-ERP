@@ -14,6 +14,12 @@ const POST_UID = 'api::social-post.social-post';
 const requireSocialMember = (ctx, strapi) => requireAppMember(ctx, strapi, 'social');
 
 module.exports = createCoreController(POST_UID, ({ strapi }) => ({
+  // NOTE: the "a product post must have something to show" gate is NOT here.
+  // It is a document middleware (../product-post-image-guard.js), registered in
+  // src/index.js and in rutba-core's cms-social module, so it also covers the
+  // admin panel and core's generic CRUD handler — neither of which comes
+  // through this controller.
+
   // ── CMS draft/publish (unchanged) ──────────────────────────────────────────
   async publish(ctx) {
     if (!await ensureUser(ctx, strapi)) return;

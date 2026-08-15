@@ -3,6 +3,8 @@
 const { resolveHrRolesForUser } = require('./utils/hr-role-provider');
 const { resolveEssRolesForUser } = require('./utils/ess-role-provider');
 const { validateBomWrite, BOM_UID: MFG_BOM_UID } = require('./api/mfg-bom/bom-typing-validator');
+const { registerPublishImageGuard } = require('./api/product/publish-image-guard');
+const { registerProductPostImageGuard } = require('./api/social-post/product-post-image-guard');
 const { runPhase2: runWarehouseBranchPhase2 } = require('./utils/warehouse-branch-migration');
 
 // ─── Seeding is decoupled from server startup ────────────────────────────
@@ -32,6 +34,17 @@ module.exports = {
             }
             return next();
         });
+
+        // "A product with no image does not go out" — block publishing an
+        // image-less product. At the document layer because the Strapi admin's
+        // Publish button never touches our controllers. See
+        // src/api/product/publish-image-guard.js.
+        registerPublishImageGuard(strapi.documents, strapi);
+
+        // The social end of the same rule: a post promoting products must have
+        // something to show — its own creative, or a photo on one of them.
+        // See src/api/social-post/product-post-image-guard.js.
+        registerProductPostImageGuard(strapi.documents, strapi);
     },
 
     async bootstrap({ strapi }) {

@@ -152,6 +152,13 @@ export const ProductsEndpoints = {
             // resolved by the product controller's find() via a `noSocialPosts`
             // query hint (like publishState / low stock).
             noSocialPosts,
+            // "Has an image" (rutba-social only): products with a photo of
+            // their own or on any variant, so the post builder never offers a
+            // product that can't be shown. Media live in a morph table Strapi
+            // filters can't reach, so it's a query hint the product
+            // controller's find() resolves. OPT-IN — every other product list
+            // (POS, stock, CMS) must keep seeing image-less products to fix them.
+            hasImage,
         } = filters;
 
         const filterObj = {};
@@ -296,6 +303,7 @@ export const ProductsEndpoints = {
             ...(publishStateParam ? { publishState: publishStateParam } : {}),
             ...(stockStatusParam ? { stockStatus: stockStatusParam } : {}),
             ...(noSocialPosts ? { noSocialPosts: 1 } : {}),
+            ...(hasImage ? { hasImage: 1 } : {}),
             // Server-side stock-item barcode/SKU resolution — see search() below
             // for why this can't be a client-side filter on the `items` relation.
             ...(trimmedSearch ? { stockSearch: trimmedSearch } : {}),

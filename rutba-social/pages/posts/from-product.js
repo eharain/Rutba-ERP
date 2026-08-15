@@ -130,7 +130,17 @@ export default function FromProductPage() {
             try {
                 const loaded = await Promise.all(
                     ids.map((id) =>
-                        ProductsEndpoints.byId(id, { populate: { logo: true } })
+                        // gallery + variants as well as logo: the image rule
+                        // counts any of them (a parent is often photographed
+                        // only through its colour variants), and the pre-flight
+                        // check below is only accurate if it can see them.
+                        ProductsEndpoints.byId(id, {
+                            populate: {
+                                logo: true,
+                                gallery: true,
+                                variants: { populate: { logo: true, gallery: true } },
+                            },
+                        })
                             .then((r) => r.data)
                             .catch(() => null)
                     )
@@ -177,6 +187,26 @@ export default function FromProductPage() {
 
     const coverProduct = selected.find((p) => p.documentId === coverProductId) || null;
 
+    // Pre-flight mirror of the server gate (pos-strapi
+    // src/api/social-post/product-post-image-guard.js): a post promoting
+    // products needs SOMETHING to show — its own creative, or a photo on one of
+    // the products.
+    //
+    // Permissive where it is blind. Products picked from the search box are
+    // loaded without their variants, and a parent is often photographed only
+    // through its colour variants; treating "variants not loaded" as "no image"
+    // would block a perfectly good post. So an unknown counts as imaged and the
+    // server has the final say.
+    const productLooksImaged = (p) => {
+        if (!p) return true;
+        if (p.logo || (p.gallery?.length ?? 0) > 0) return true;
+        if (!Array.isArray(p.variants)) return true; // not loaded — don't guess
+        return p.variants.some((v) => v?.logo || (v?.gallery?.length ?? 0) > 0);
+    };
+    const postHasOwnMedia = !!coverFile || mediaFiles.length > 0;
+    const nothingToShow =
+        selected.length > 0 && !postHasOwnMedia && !selected.some(productLooksImaged);
+
     // Keep the cover synced to the starred product's image until the user
     // overrides it (uploads/browses a different cover in the FileView below).
     useEffect(() => {
@@ -188,6 +218,13 @@ export default function FromProductPage() {
         if (selected.length === 0) { toast("Pick at least one product.", "warning"); return; }
         if (platforms.length === 0) { toast("Select at least one platform.", "warning"); return; }
         if (!caption.trim()) { toast("Caption is empty.", "warning"); return; }
+        if (nothingToShow) {
+            toast(
+                "This post has no image. Attach a cover or media, or pick a product that has a photo.",
+                "warning"
+            );
+            return;
+        }
         setSaving(true);
         try {
             const payload = {
@@ -347,8 +384,15 @@ export default function FromProductPage() {
                                     <div className="form-text">Embed extra images/videos, or Browse Gallery to attach existing media to the post.</div>
                                 </div>
                             </div>
+                            {nothingToShow && (
+                                <div className="alert alert-warning py-2 px-3 mb-0 mx-3 small">
+                                    <i className="fas fa-image me-1"></i>
+                                    No image to post. Attach a cover or media above, or pick a
+                                    product that has a photo.
+                                </div>
+                            )}
                             <div className="card-footer d-flex gap-2">
-                                <button className="btn btn-success" onClick={handleCreate} disabled={saving}>
+                                <button className="btn btn-success" onClick={handleCreate} disabled={saving || nothingToShow}>
                                     {saving ? "Creating…" : <><i className="fas fa-pen-to-square me-1"></i>Create Draft &amp; Edit</>}
                                 </button>
                                 <button className="btn btn-secondary" type="button" onClick={() => router.push("/posts")}>Cancel</button>

@@ -277,7 +277,11 @@ export default function ProductDetail() {
             }
         } catch (err) {
             console.error("Failed to publish product", err);
-            toast("Failed to publish.", "danger");
+            // Surface the server's reason. The publish gate rejects an
+            // image-less product with a message that says what to do about it
+            // ("Add at least one image before publishing…"); swallowing that
+            // into a generic "Failed to publish." leaves the operator guessing.
+            toast(err?.response?.data?.error?.message || "Failed to publish.", "danger");
         } finally {
             setSaving(false);
         }
@@ -411,6 +415,22 @@ export default function ProductDetail() {
     const variantCount = product?.variants?.length || 0;
     const galleryCount = (product?.gallery || []).length;
 
+    // Client-side mirror of the server publish gate (pos-strapi
+    // src/api/product/publish-image-guard.js), so "no image" is visible before
+    // the click instead of arriving as a failed request.
+    //
+    // It warns; it does NOT disable. `parent` is not populated on this page, so
+    // for a VARIANT the client cannot see the parent photo that legitimately
+    // covers it — disabling would block a publish the server would allow. Hence
+    // the variant opt-out below: only judge what we can actually see. Reads the
+    // live editor state so picking an image clears the warning immediately.
+    const hasOwnImage = !!logoFile || galleryFiles.length > 0;
+    const anyVariantHasImage = (product?.variants || []).some(
+        (v) => !!v?.logo || (v?.gallery?.length ?? 0) > 0
+    );
+    const imageMissing =
+        !isNew && !product?.is_variant && !hasOwnImage && !anyVariantHasImage;
+
     const statusPill = isNew
         ? null
         : isPublished
@@ -455,7 +475,20 @@ export default function ProductDetail() {
                     {seedingStock ? "Seeding stock…" : saving ? "Saving…" : isNew ? "Create Draft" : "Save Draft"}
                 </button>
             )}
-            <button className="btn btn-sm btn-success" onClick={handlePublish} disabled={saving || seedingStock}>
+            {imageMissing && (
+                <span
+                    className="badge bg-warning text-dark align-self-center"
+                    title="A product with no image is not shown to customers, so publishing is refused. Add a logo or gallery image — one on any colour variant counts too."
+                >
+                    <i className="fas fa-image me-1"></i>No image — can&apos;t publish
+                </span>
+            )}
+            <button
+                className="btn btn-sm btn-success"
+                onClick={handlePublish}
+                disabled={saving || seedingStock}
+                title={imageMissing ? "Add at least one image first — publishing will be refused without one." : undefined}
+            >
                 <i className="fas fa-upload me-1"></i>
                 {seedingStock ? "Seeding stock…" : saving ? "Publishing…" : isNew ? "Create & Publish" : "Save & Publish"}
             </button>
