@@ -151,4 +151,3 @@ export { TermTypesEndpoints } from './term-types.js';
 export { TermsEndpoints } from './terms.js';
 export { UploadEndpoints } from './upload.js';
 export { UsersEndpoints } from './users.js';
-export { WebOrdersEndpoints } from './web-orders.js';

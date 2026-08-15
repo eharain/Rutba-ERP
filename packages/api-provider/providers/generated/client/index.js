@@ -173,7 +173,6 @@ export * from './term-types.js';
 export * from './terms.js';
 export * from './upload.js';
 export * from './users.js';
-export * from './web-orders.js';
 export * from './work-item-activities.js';
 export * from './work-item-comments.js';
 export * from './work-item-watches.js';

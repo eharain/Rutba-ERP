@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { WebOrdersEndpoints, ReturnRequestsEndpoints } from "@rutba/api-provider/endpoints";
+import { SaleOrdersEndpoints, ReturnRequestsEndpoints } from "@rutba/api-provider/endpoints";
 
 export default function Returns() {
     const router = useRouter();
@@ -18,7 +18,7 @@ export default function Returns() {
 
     useEffect(() => {
         if (!jwt || !orderId) return;
-        WebOrdersEndpoints.fetchById(orderId, { populate: '*' }, jwt)
+        SaleOrdersEndpoints.byId(orderId, { populate: '*' })
             .then((res) => setOrder(res.data || res))
             .catch((err) => console.error("Failed to load order", err));
     }, [jwt, orderId]);

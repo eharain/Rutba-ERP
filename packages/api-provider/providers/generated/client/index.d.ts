@@ -173,7 +173,6 @@ export * from './term-types';
 export * from './terms';
 export * from './upload';
 export * from './users';
-export * from './web-orders';
 export * from './work-item-activities';
 export * from './work-item-comments';
 export * from './work-item-watches';

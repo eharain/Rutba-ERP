@@ -246,10 +246,6 @@
     {
       "path": "api/upload.js",
       "sha256": "5475ec124b86bf0fb0e8b8cf3fa1de15c6e3c0c47c88e1c70542f1c7f771a181"
-    },
-    {
-      "path": "api/web-orders.js",
-      "sha256": "1de49895a88b349717765fa27b5c1eb3a171b9fe093d30c355bc94842c69e65a"
     }
   ]
 }

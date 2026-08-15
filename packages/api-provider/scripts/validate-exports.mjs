@@ -96,6 +96,117 @@ function validateIndexExportSurface() {
     }
 }
 
+// ── star-export collision detection ────────────────────────
+//
+// `export * from A; export * from B;` where A and B both export the same name
+// is not an error for Node's ESM loader — it silently drops the ambiguous name
+// — but webpack fails the production build outright:
+//
+//   The requested module './web/index.js' contains conflicting star exports for
+//   the name 'WebOrdersEndpoints' with the previous requested module './web-orders.js'
+//
+// That is exactly what a stale flat descriptor (api/<name>.js) left alongside
+// its api/web/<name>.js replacement produces, since the scaffolder emits a
+// client for every descriptor and star-exports every client from the barrel.
+// Catch it here instead of in each app's `next build`.
+
+const EXPORT_SURFACE_CACHE = new Map();
+
+function resolveModulePath(fromDir, spec) {
+    const absolute = path.resolve(fromDir, spec);
+    const candidates = [absolute, `${absolute}.js`, `${absolute}.mjs`, path.join(absolute, 'index.js')];
+
+    for (const candidate of candidates) {
+        if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) return candidate;
+    }
+    return null;
+}
+
+function parseModuleExports(absolutePath) {
+    const source = fs.readFileSync(absolutePath, 'utf8');
+    const own = new Set();
+    const starTargets = [];
+
+    for (const match of source.matchAll(/export\s+(?:const|let|var|function\*?|class)\s+([A-Za-z_$][\w$]*)/g)) {
+        own.add(match[1]);
+    }
+
+    for (const match of source.matchAll(/export\s*\{([^}]*)\}(?:\s*from\s*['"][^'"]+['"])?/g)) {
+        for (const part of (match[1] ?? '').split(',')) {
+            const name = part.trim().split(/\s+as\s+/i).pop()?.trim();
+            if (name && name !== 'default') own.add(name);
+        }
+    }
+
+    for (const match of source.matchAll(/export\s*\*\s*from\s*['"]([^'"]+)['"]/g)) {
+        starTargets.push(match[1]);
+    }
+
+    return { own, starTargets };
+}
+
+// Every name a module contributes to `export *` consumers — its own named
+// exports plus, transitively, those of anything it stars in itself.
+function collectExportSurface(absolutePath, stack = new Set()) {
+    if (EXPORT_SURFACE_CACHE.has(absolutePath)) return EXPORT_SURFACE_CACHE.get(absolutePath);
+    if (stack.has(absolutePath)) return new Set();
+
+    stack.add(absolutePath);
+    const { own, starTargets } = parseModuleExports(absolutePath);
+    const surface = new Set(own);
+    const dir = path.dirname(absolutePath);
+
+    for (const spec of starTargets) {
+        if (!spec.startsWith('.')) continue;
+        const target = resolveModulePath(dir, spec);
+        if (!target) continue;
+        for (const name of collectExportSurface(target, stack)) surface.add(name);
+    }
+
+    stack.delete(absolutePath);
+    EXPORT_SURFACE_CACHE.set(absolutePath, surface);
+    return surface;
+}
+
+function assertNoConflictingStarExports(absolutePath, label) {
+    const { own, starTargets } = parseModuleExports(absolutePath);
+    const dir = path.dirname(absolutePath);
+    const sourcesByName = new Map();
+
+    for (const spec of starTargets) {
+        if (!spec.startsWith('.')) continue;
+        const target = resolveModulePath(dir, spec);
+        if (!target) continue;
+
+        for (const name of collectExportSurface(target)) {
+            // An explicit `export { X } from ...` in this same index shadows the
+            // star exports, so it is a deliberate override, not a collision.
+            if (own.has(name)) continue;
+            if (!sourcesByName.has(name)) sourcesByName.set(name, []);
+            sourcesByName.get(name).push(spec);
+        }
+    }
+
+    const conflicts = [...sourcesByName.entries()].filter(([, specs]) => specs.length > 1);
+
+    assert(
+        conflicts.length === 0,
+        `${label} has conflicting star exports (webpack fails production builds on this):\n`
+        + conflicts.map(([name, specs]) => `  - "${name}" exported by ${specs.join(' and ')}`).join('\n')
+        + '\nDelete the stale descriptor (and its generated client) or rename one of the exports.',
+    );
+}
+
+function validateStarExportCollisions() {
+    const roots = [...INDEX_FILES, './providers/generated/client/index.js'];
+
+    for (const relativeFile of roots) {
+        const absolutePath = path.join(packageRoot, relativeFile.replace(/^\.\//, ''));
+        if (!fs.existsSync(absolutePath)) continue;
+        assertNoConflictingStarExports(absolutePath, relativeFile);
+    }
+}
+
 function normalizeExportTargets(target) {
     if (Array.isArray(target)) return target;
     return [target];
@@ -172,8 +283,9 @@ async function main() {
     await validateCoreLoaders();
     validateIndexSyntax();
     validateIndexExportSurface();
+    validateStarExportCollisions();
 
-    console.log(`Validated ${exportEntries.length} export entries, core module loading, and index export surfaces (${INDEX_FILES.join(', ')}). Missing targets: ${missingTargets}.`);
+    console.log(`Validated ${exportEntries.length} export entries, core module loading, index export surfaces, and star-export collisions (${INDEX_FILES.join(', ')}). Missing targets: ${missingTargets}.`);
 }
 
 main().catch((error) => {
