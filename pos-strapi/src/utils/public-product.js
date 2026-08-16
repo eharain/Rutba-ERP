@@ -19,7 +19,18 @@
 
 // A bare variant card named "Black" in a grid is never right, even if someone
 // pins one into a product-group by mistake.
-const NOT_A_VARIANT = { is_variant: { $ne: true } };
+//
+// Explicit false-or-null, for the same reason ACTIVE_PRODUCT_FILTER is
+// true-or-null: `$ne` compiles to a bare `is_variant <> true`, which is UNKNOWN
+// — not true — for NULL, so a `$ne: true` test silently drops every row that
+// predates the field. The schema default of `false` only fires for rows created
+// through Strapi after it was added; legacy and bulk-imported products carry
+// NULL. That is what emptied whole product-group pages (miss-rose, j.perfumes)
+// and hid their products from the shop grid while the JS-side twin below, which
+// reads `!p.is_variant`, kept treating those same rows as non-variants.
+const NOT_A_VARIANT = {
+  $or: [{ is_variant: { $eq: false } }, { is_variant: { $null: true } }],
+};
 
 /**
  * Of `candidateIds` (product row ids), return the Set that has at least one
