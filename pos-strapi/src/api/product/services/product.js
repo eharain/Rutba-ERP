@@ -451,11 +451,16 @@ module.exports = createCoreService('api::product.product', ({ strapi }) => ({
         filters,
         sort,
         populate: PUBLIC_POPULATE,
-        // Flat page/pageSize: the nested `pagination:{...}` form is stripped by
-        // the document service, which is why this list used to return every
-        // product on every page.
-        page,
-        pageSize,
+        // start/limit, not page/pageSize and not a nested `pagination:{...}`.
+        // Both of the other forms are accepted and then dropped: `pagination`
+        // never reaches the query transformer (pickAllowedQueryParams), and
+        // flat page/pageSize survive it only to be discarded by the db query
+        // builder, which reads `offset`/`limit` and nothing else — page/pageSize
+        // are translated exclusively by `findPage`, which documents() never
+        // calls. Either way no LIMIT was emitted and every page returned the
+        // whole catalogue.
+        start: (page - 1) * pageSize,
+        limit: pageSize,
       }),
       strapi.documents('api::product.product').count({
         status: 'published',

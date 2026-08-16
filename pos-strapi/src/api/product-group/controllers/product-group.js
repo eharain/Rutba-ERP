@@ -130,7 +130,16 @@ module.exports = createCoreController('api::product-group.product-group', ({ str
             variants: { populate: { terms: { populate: { term_types: true } } } },
           },
           sort: [sort],
-          pagination: { page, pageSize },
+          // Offset window, not a `pagination` object: the document service
+          // accepts a REST-shaped `pagination` at the root and then strips it
+          // before the query builder (only filters/sort/fields/populate/
+          // status/locale/page/pageSize/start/limit are forwarded), and the db
+          // query builder underneath reads only `offset`/`limit` — flat
+          // page/pageSize are dropped there too. Passing `pagination` emitted
+          // no LIMIT at all, so every page returned the whole set while
+          // meta.pagination below still reported a correct pageCount.
+          start: (page - 1) * pageSize,
+          limit: pageSize,
         }),
         strapi.documents('api::product.product').count({ filters, status: 'published' }),
       ]);
