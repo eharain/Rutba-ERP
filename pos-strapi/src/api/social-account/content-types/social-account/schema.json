@@ -21,7 +21,8 @@
         "linkedin",
         "tiktok",
         "youtube",
-        "whatsapp"
+        "whatsapp",
+        "pinterest"
       ],
       "required": true
     },

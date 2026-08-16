@@ -6,6 +6,7 @@ const PLATFORMS = {
     tiktok:    { label: 'TikTok',    icon: 'fa-brands fa-tiktok',    color: '#010101' },
     youtube:   { label: 'YouTube',   icon: 'fa-brands fa-youtube',   color: '#FF0000' },
     whatsapp:  { label: 'WhatsApp',  icon: 'fa-brands fa-whatsapp',  color: '#25D366' },
+    pinterest: { label: 'Pinterest', icon: 'fa-brands fa-pinterest', color: '#E60023' },
 };
 
 export default PLATFORMS;
