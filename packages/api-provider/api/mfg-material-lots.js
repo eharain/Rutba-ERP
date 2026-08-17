@@ -83,6 +83,10 @@ export const MfgMaterialLotsEndpoints = {
         method: 'post',
         apps: ['manufacturing'],
         approle: ['admin', 'manager'],
+        // Serial per lot, replaying each one's issue ledger to rebuild its
+        // remaining balance. Grows with production history, not with today's
+        // activity.
+        timeoutMs: 300_000,
         data: {},
     }),
 };

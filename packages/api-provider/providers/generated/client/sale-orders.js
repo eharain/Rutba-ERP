@@ -1,90 +1,90 @@
 import { authApi } from '../../../lib/api.js';
-import { withQuery, wrapData, strictEndpointGuard } from './___core__.js';
+import { withQuery, wrapData, epCtx, strictEndpointGuard } from './___core__.js';
 import { SaleOrdersEndpoints as SaleOrdersEndpointsApi } from '../../../api/sale-orders.js';
 
 async function list(arg1 = {}) {
     const ep = SaleOrdersEndpointsApi.list(arg1);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 async function byId(documentId, arg2 = {}) {
     const ep = SaleOrdersEndpointsApi.byId(documentId, arg2);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 async function create(data) {
     const ep = SaleOrdersEndpointsApi.create(data);
-    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 async function update(documentId, data) {
     const ep = SaleOrdersEndpointsApi.update(documentId, data);
-    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 async function updateItems(documentId, data) {
     const ep = SaleOrdersEndpointsApi.updateItems(documentId, data);
-    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 async function updateStatus(documentId, data) {
     const ep = SaleOrdersEndpointsApi.updateStatus(documentId, data);
-    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 async function assignRider(documentId, data) {
     const ep = SaleOrdersEndpointsApi.assignRider(documentId, data);
-    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 async function attachStockItem(documentId, data) {
     const ep = SaleOrdersEndpointsApi.attachStockItem(documentId, data);
-    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 async function attachDivisible(documentId, data) {
     const ep = SaleOrdersEndpointsApi.attachDivisible(documentId, data);
-    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 async function messages(documentId) {
     const ep = SaleOrdersEndpointsApi.messages(documentId);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 async function sendMessage(documentId, data) {
     const ep = SaleOrdersEndpointsApi.sendMessage(documentId, data);
-    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 async function recordPayment(documentId, data) {
     const ep = SaleOrdersEndpointsApi.recordPayment(documentId, data);
-    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 async function verifyPayment(documentId, data) {
     const ep = SaleOrdersEndpointsApi.verifyPayment(documentId, data);
-    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 async function requestCostChangeAck(documentId, data) {
     const ep = SaleOrdersEndpointsApi.requestCostChangeAck(documentId, data);
-    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 async function overrideCostChangeAck(documentId, data) {
     const ep = SaleOrdersEndpointsApi.overrideCostChangeAck(documentId, data);
-    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 async function getLabel(documentId, arg2 = {}) {
     const ep = SaleOrdersEndpointsApi.getLabel(documentId, arg2);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 async function getReturnLabel(documentId, arg2 = {}) {
     const ep = SaleOrdersEndpointsApi.getReturnLabel(documentId, arg2);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 const endpoints = strictEndpointGuard(

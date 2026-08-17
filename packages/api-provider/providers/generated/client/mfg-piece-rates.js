@@ -1,35 +1,35 @@
 import { authApi } from '../../../lib/api.js';
-import { withQuery, wrapData, strictEndpointGuard } from './___core__.js';
+import { withQuery, wrapData, epCtx, strictEndpointGuard } from './___core__.js';
 import { MfgPieceRatesEndpoints as MfgPieceRatesEndpointsApi } from '../../../api/mfg-piece-rates.js';
 
 async function list(page = 1, pageSize = 20, arg3 = {}) {
     const ep = MfgPieceRatesEndpointsApi.list(page, pageSize, arg3);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 async function byId(documentId) {
     const ep = MfgPieceRatesEndpointsApi.byId(documentId);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 async function byOperation(operationDocId, arg2 = {}) {
     const ep = MfgPieceRatesEndpointsApi.byOperation(operationDocId, arg2);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 async function create(data) {
     const ep = MfgPieceRatesEndpointsApi.create(data);
-    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 async function update(documentId, data) {
     const ep = MfgPieceRatesEndpointsApi.update(documentId, data);
-    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 async function del(documentId) {
     const ep = MfgPieceRatesEndpointsApi.del(documentId);
-    return authApi.del(withQuery(ep.path, ep.params));
+    return authApi.del(withQuery(ep.path, ep.params), epCtx(ep));
 }
 
 const endpoints = strictEndpointGuard(

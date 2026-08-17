@@ -183,6 +183,11 @@ export const StockItemsEndpoints = {
         method: 'post',
         apps: ['inventory', 'stock'],
         approle: ['admin', 'manager', 'staff'],
+        // Read-only, but not cheap: it loads the entire product catalogue as a
+        // name-match cache and then counts existing stock per planned row. A
+        // spreadsheet of a few hundred rows against a large catalogue is
+        // working, not wedged, past the default minute.
+        timeoutMs: 180_000,
         data: { rows },
     }),
 
@@ -201,6 +206,12 @@ export const StockItemsEndpoints = {
         method: 'post',
         apps: ['inventory', 'stock'],
         approle: ['admin', 'manager'],
+        // The commit half, and the slowest endpoint in the import path: rows are
+        // processed serially and a row writes one stock-item per unit, so a
+        // sheet whose quantities total a few thousand units is a few thousand
+        // serial document creates inside one request. Ten minutes is sized for
+        // that, not for a hung backend.
+        timeoutMs: 600_000,
         data: { rows },
     }),
 
@@ -278,6 +289,10 @@ export const StockItemsEndpoints = {
         method: 'post',
         apps: ['inventory', 'stock', 'cms'],
         approle: ['admin'],
+        // Walks every product serially, one count-and-write per product. The
+        // work scales with the catalogue, and this is the reconciliation job an
+        // operator reaches for precisely when the catalogue is large.
+        timeoutMs: 600_000,
         data: {},
     }),
 
@@ -294,6 +309,10 @@ export const StockItemsEndpoints = {
         method: 'post',
         apps: ['inventory', 'stock'],
         approle: ['admin'],
+        // Flips every expired serialized unit and bulk batch in one pass. Bounded
+        // by how much stock is past expiry, which after a long gap between
+        // sweeps is the whole backlog at once.
+        timeoutMs: 300_000,
         data: {},
     }),
 
@@ -304,6 +323,10 @@ export const StockItemsEndpoints = {
     valuation: ({ branchDocId } = {}) => ({
         path: `/stock-items/valuation${branchDocId ? `?branch=${branchDocId}` : ''}`,
         params: {},
+        // Two effectively unbounded table reads (every stock-item, every
+        // stock-batch) aggregated in memory. One query each rather than a
+        // fan-out, but the row count is the whole inventory.
+        timeoutMs: 180_000,
     }),
 
     /**
@@ -340,6 +363,10 @@ export const StockItemsEndpoints = {
             page,
             pageSize,
         },
+        // Cohort report: the page size bounds the response, not the scan — every
+        // stock-item and stock-batch created in range is still walked to build
+        // the per-product cohort before the page is cut.
+        timeoutMs: 180_000,
     }),
 
     /**
@@ -355,6 +382,10 @@ export const StockItemsEndpoints = {
         method: 'post',
         apps: ['inventory', 'stock'],
         approle: ['admin'],
+        // Migration backfill: places every unplaced stock-item and then rebuilds
+        // the stock-level cache. Run once over the entire existing inventory, so
+        // its worst case is the whole table.
+        timeoutMs: 600_000,
         data: {},
     }),
 

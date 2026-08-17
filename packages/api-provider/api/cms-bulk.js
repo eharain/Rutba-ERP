@@ -26,6 +26,11 @@ export const CmsBulkEndpoints = {
         method: 'post',
         apps: ['cms'],
         approle: ['admin'],
+        // Chunked at 50 rows per request server-side, but a row is an upsert plus
+        // a separate seo-meta upsert, and product rows carry schema coercion and
+        // relation resolution on top. Five minutes covers a slow chunk without
+        // pretending the whole spreadsheet arrives in one call.
+        timeoutMs: 300_000,
         data: { contentType, items },
     }),
 };

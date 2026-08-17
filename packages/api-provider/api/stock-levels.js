@@ -57,6 +57,10 @@ export const StockLevelsEndpoints = {
         method: 'post',
         apps: ['inventory', 'stock'],
         approle: ['admin'],
+        // Full-DB cache rebuild: scans the product join tables for every
+        // referenced edition, then recomputes per product/location. Explicitly a
+        // whole-database job.
+        timeoutMs: 600_000,
         data: {},
     }),
 };

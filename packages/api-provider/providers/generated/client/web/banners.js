@@ -1,10 +1,10 @@
 import { webApi } from '../../../../lib/api.js';
-import { strictEndpointGuard } from '../___core__.js';
+import { epCtx, strictEndpointGuard } from '../___core__.js';
 import { WebBannersEndpoints as WebBannersEndpointsApi } from '../../../../api/web/banners.js';
 
 async function homeBanner() {
     const ep = WebBannersEndpointsApi.homeBanner();
-    return webApi.fetch(ep.path, ep.params);
+    return webApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 const endpoints = strictEndpointGuard(

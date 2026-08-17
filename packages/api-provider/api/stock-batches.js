@@ -84,6 +84,10 @@ export const StockBatchesEndpoints = {
         method: 'post',
         apps: ['inventory', 'stock'],
         approle: ['admin'],
+        // Serial walk of every product, summing its Active batches and writing
+        // back — the bulk-quantity twin of recomputeProductStock, and the same
+        // shape of work.
+        timeoutMs: 600_000,
         data: {},
     }),
 };

@@ -70,6 +70,10 @@ export const PayPayrollRunsEndpoints = {
         method: 'post',
         apps: ['payroll'],
         approle: ['admin', 'manager'],
+        // Same per-employee gather as `process` (attendance, adjustments, loans,
+        // statutory) minus the writes — slow for the same reason, cheaper by a
+        // constant factor.
+        timeoutMs: 300_000,
     }),
 
     /** Process the run: persist payslips, lock tasks, post the accrual JE. */
@@ -79,6 +83,11 @@ export const PayPayrollRunsEndpoints = {
         method: 'post',
         apps: ['payroll'],
         approle: ['admin', 'manager'],
+        // Serial per employee: several gather queries, a payslip create, then one
+        // accrual journal entry for the run. Payroll is also the request an
+        // operator least wants to see fail halfway, and a timeout here abandons
+        // the caller while the server keeps writing payslips.
+        timeoutMs: 600_000,
         data: { ...extra },
     }),
 

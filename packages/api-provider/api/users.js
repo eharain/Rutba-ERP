@@ -86,6 +86,10 @@ export const UsersEndpoints = {
         method: 'post',
         apps: ['admin', 'users'],
         approle: ['admin'],
+        // The access matrix saves every edited user in one request, and each user
+        // is a role reconcile plus a claim-cache invalidation. A whole-department
+        // re-grant is the case that outgrows the default.
+        timeoutMs: 180_000,
         data: { changes },
     }),
 

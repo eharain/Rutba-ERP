@@ -1,25 +1,25 @@
 import { authApi } from '../../../lib/api.js';
-import { withQuery, wrapData, strictEndpointGuard } from './___core__.js';
+import { withQuery, wrapData, epCtx, strictEndpointGuard } from './___core__.js';
 import { HrAssetAssignmentsEndpoints as HrAssetAssignmentsEndpointsApi } from '../../../api/hr-asset-assignments.js';
 
 async function listMine() {
     const ep = HrAssetAssignmentsEndpointsApi.listMine();
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 async function returnAsset(documentId, data) {
     const ep = HrAssetAssignmentsEndpointsApi.returnAsset(documentId, data);
-    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 async function list(arg1 = {}) {
     const ep = HrAssetAssignmentsEndpointsApi.list(arg1);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 async function byId(documentId, arg2 = {}) {
     const ep = HrAssetAssignmentsEndpointsApi.byId(documentId, arg2);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 const endpoints = strictEndpointGuard(

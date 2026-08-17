@@ -1,10 +1,10 @@
 import { authApi } from '../../../lib/api.js';
-import { withQuery, wrapData, strictEndpointGuard } from './___core__.js';
+import { withQuery, wrapData, epCtx, strictEndpointGuard } from './___core__.js';
 import { CmsBulkEndpoints as CmsBulkEndpointsApi } from '../../../api/cms-bulk.js';
 
 async function runImport(contentType, items) {
     const ep = CmsBulkEndpointsApi.runImport(contentType, items);
-    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 const endpoints = strictEndpointGuard(

@@ -1,30 +1,30 @@
 import { authApi } from '../../../lib/api.js';
-import { withQuery, wrapData, strictEndpointGuard } from './___core__.js';
+import { withQuery, wrapData, epCtx, strictEndpointGuard } from './___core__.js';
 import { WorkflowsEndpoints as WorkflowsEndpointsApi } from '../../../api/workflows.js';
 
 async function list(page = 1, pageSize = 50, arg3 = {}) {
     const ep = WorkflowsEndpointsApi.list(page, pageSize, arg3);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 async function byId(documentId) {
     const ep = WorkflowsEndpointsApi.byId(documentId);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 async function create(data) {
     const ep = WorkflowsEndpointsApi.create(data);
-    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 async function update(documentId, data) {
     const ep = WorkflowsEndpointsApi.update(documentId, data);
-    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 async function del(documentId) {
     const ep = WorkflowsEndpointsApi.del(documentId);
-    return authApi.del(withQuery(ep.path, ep.params));
+    return authApi.del(withQuery(ep.path, ep.params), epCtx(ep));
 }
 
 const endpoints = strictEndpointGuard(

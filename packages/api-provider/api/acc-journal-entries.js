@@ -7,6 +7,16 @@ import { listParams, byIdParams } from './__param_builders.js';
  * whitelisted verb prefix (`get*`) so the api-pro seeder mints a policy; the
  * `action` is the controller handler the report route resolves to.
  */
+
+/**
+ * Every report below funnels through the same `_lines()` read: one query for all
+ * Posted journal lines in range, capped at 100_000 rows, each populated with its
+ * account and parent entry, then aggregated in memory. It is a single query
+ * rather than a fan-out, but a full-year trial balance on a busy ledger is a
+ * large one, and the reports an accountant runs at close are exactly the widest
+ * ranges. The default minute is a latency budget these do not fit.
+ */
+const LEDGER_REPORT_TIMEOUT_MS = 180_000;
 export const AccJournalEntriesEndpoints = {
     meta: {
         uid: 'api::acc-journal-entry.acc-journal-entry',
@@ -42,6 +52,7 @@ export const AccJournalEntriesEndpoints = {
         apps: ['accounts'],
         approle: ['admin', 'accountant'],
         params: { ...(from ? { from } : {}), ...(to ? { to } : {}), ...(branch ? { branch } : {}) },
+        timeoutMs: LEDGER_REPORT_TIMEOUT_MS,
     }),
 
     getIncomeStatement: ({ from, to, branch } = {}) => ({
@@ -51,6 +62,7 @@ export const AccJournalEntriesEndpoints = {
         apps: ['accounts'],
         approle: ['admin', 'accountant'],
         params: { ...(from ? { from } : {}), ...(to ? { to } : {}), ...(branch ? { branch } : {}) },
+        timeoutMs: LEDGER_REPORT_TIMEOUT_MS,
     }),
 
     getBalanceSheet: ({ asOf, branch } = {}) => ({
@@ -60,6 +72,7 @@ export const AccJournalEntriesEndpoints = {
         apps: ['accounts'],
         approle: ['admin', 'accountant'],
         params: { ...(asOf ? { asOf } : {}), ...(branch ? { branch } : {}) },
+        timeoutMs: LEDGER_REPORT_TIMEOUT_MS,
     }),
 
     getCashFlow: ({ from, to, branch } = {}) => ({
@@ -69,6 +82,7 @@ export const AccJournalEntriesEndpoints = {
         apps: ['accounts'],
         approle: ['admin', 'accountant'],
         params: { ...(from ? { from } : {}), ...(to ? { to } : {}), ...(branch ? { branch } : {}) },
+        timeoutMs: LEDGER_REPORT_TIMEOUT_MS,
     }),
 
     getArAging: ({ asOf } = {}) => ({
@@ -78,6 +92,7 @@ export const AccJournalEntriesEndpoints = {
         apps: ['accounts'],
         approle: ['admin', 'accountant'],
         params: { ...(asOf ? { asOf } : {}) },
+        timeoutMs: LEDGER_REPORT_TIMEOUT_MS,
     }),
 
     getApAging: ({ asOf } = {}) => ({
@@ -87,5 +102,6 @@ export const AccJournalEntriesEndpoints = {
         apps: ['accounts'],
         approle: ['admin', 'accountant'],
         params: { ...(asOf ? { asOf } : {}) },
+        timeoutMs: LEDGER_REPORT_TIMEOUT_MS,
     }),
 };

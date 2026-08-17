@@ -1,15 +1,15 @@
 import { authApi } from '../../../lib/api.js';
-import { withQuery, wrapData, strictEndpointGuard } from './___core__.js';
+import { withQuery, wrapData, epCtx, strictEndpointGuard } from './___core__.js';
 import { SaleReturnItemsEndpoints as SaleReturnItemsEndpointsApi } from '../../../api/sale-return-items.js';
 
 async function create(data) {
     const ep = SaleReturnItemsEndpointsApi.create(data);
-    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 async function update(documentId, data) {
     const ep = SaleReturnItemsEndpointsApi.update(documentId, data);
-    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 const endpoints = strictEndpointGuard(

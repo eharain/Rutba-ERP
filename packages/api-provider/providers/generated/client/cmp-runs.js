@@ -1,20 +1,20 @@
 import { authApi } from '../../../lib/api.js';
-import { withQuery, wrapData, strictEndpointGuard } from './___core__.js';
+import { withQuery, wrapData, epCtx, strictEndpointGuard } from './___core__.js';
 import { CmpRunsEndpoints as CmpRunsEndpointsApi } from '../../../api/cmp-runs.js';
 
 async function list(arg1 = {}) {
     const ep = CmpRunsEndpointsApi.list(arg1);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 async function byId(documentId, arg2 = {}) {
     const ep = CmpRunsEndpointsApi.byId(documentId, arg2);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 async function syncRun(documentId) {
     const ep = CmpRunsEndpointsApi.syncRun(documentId);
-    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 const endpoints = strictEndpointGuard(

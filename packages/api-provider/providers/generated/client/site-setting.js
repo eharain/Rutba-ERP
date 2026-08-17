@@ -1,70 +1,70 @@
 import { authApi } from '../../../lib/api.js';
-import { withQuery, wrapData, strictEndpointGuard } from './___core__.js';
+import { withQuery, wrapData, epCtx, strictEndpointGuard } from './___core__.js';
 import { SiteSettingEndpoints as SiteSettingEndpointsApi } from '../../../api/site-setting.js';
 
 async function getDraft(arg1 = {}) {
     const ep = SiteSettingEndpointsApi.getDraft(arg1);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 async function fetchDraft(arg1 = {}) {
     const ep = SiteSettingEndpointsApi.fetchDraft(arg1);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 async function getPublished(arg1 = {}) {
     const ep = SiteSettingEndpointsApi.getPublished(arg1);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 async function publishResolved(arg1 = {}) {
     const ep = SiteSettingEndpointsApi.publishResolved(arg1);
-    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 async function unpublishResolved(arg1 = {}) {
     const ep = SiteSettingEndpointsApi.unpublishResolved(arg1);
-    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 async function discardResolved(arg1 = {}) {
     const ep = SiteSettingEndpointsApi.discardResolved(arg1);
-    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 async function list(arg1 = {}) {
     const ep = SiteSettingEndpointsApi.list(arg1);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 async function findOne(documentId, arg2 = {}) {
     const ep = SiteSettingEndpointsApi.findOne(documentId, arg2);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 async function updateDraft(documentId, data) {
     const ep = SiteSettingEndpointsApi.updateDraft(documentId, data);
-    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 async function publish(documentId) {
     const ep = SiteSettingEndpointsApi.publish(documentId);
-    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 async function unpublish(documentId) {
     const ep = SiteSettingEndpointsApi.unpublish(documentId);
-    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 async function create(data) {
     const ep = SiteSettingEndpointsApi.create(data);
-    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 async function del(documentId) {
     const ep = SiteSettingEndpointsApi.del(documentId);
-    return authApi.del(withQuery(ep.path, ep.params));
+    return authApi.del(withQuery(ep.path, ep.params), epCtx(ep));
 }
 
 const endpoints = strictEndpointGuard(

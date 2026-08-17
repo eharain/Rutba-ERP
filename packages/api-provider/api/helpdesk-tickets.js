@@ -95,6 +95,10 @@ export const HelpdeskTicketsEndpoints = {
         apps: ['helpdesk'],
         approle: ['admin', 'manager'],
         scope: ROLE_SCOPES,
+        // Capped at 100 tickets server-side, but each one is a full transition —
+        // entitlement re-check, workflow side effects, notifications, audit trail
+        // — run serially. A hundred of those is minutes, not seconds.
+        timeoutMs: 300_000,
         data,
     }),
 

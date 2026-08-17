@@ -12,6 +12,28 @@ export function withQuery(path, params) {
     return `${path}?${qs.stringify(params, { encodeValuesOnly: true })}`;
 }
 
+/**
+ * Per-call transport context carried from the descriptor to the verb.
+ *
+ * Generated actions resolve their HTTP verb at scaffold time and call
+ * `authApi.<verb>` directly, so anything the descriptor declares beyond
+ * path/params/data has to be forwarded explicitly or it is simply dropped.
+ * `timeoutMs` is that case: `/stock-items/bulk-process` and `/seed/run` are
+ * working, not wedged, well past the default backstop, and a descriptor that
+ * says so has to reach `withTimeout`.
+ *
+ * Emitted on every generated action, not only the ones that currently declare
+ * a bound. The alternative — emitting it conditionally — means the next
+ * descriptor to add `timeoutMs` silently does nothing until someone
+ * regenerates, which is exactly the failure this closes.
+ *
+ * Returns undefined when there is nothing to carry, so the common path stays
+ * a plain two-argument call with no allocation.
+ */
+export function epCtx(ep) {
+    return ep?.timeoutMs ? { timeoutMs: ep.timeoutMs } : undefined;
+}
+
 export function wrapData(data) {
     if (data && typeof data === 'object' && 'data' in data) {
         return data;

@@ -1,15 +1,15 @@
 import { authApi } from '../../../lib/api.js';
-import { withQuery, strictEndpointGuard } from './___core__.js';
+import { withQuery, epCtx, strictEndpointGuard } from './___core__.js';
 import { UploadEndpoints as UploadEndpointsApi } from '../../../api/upload.js';
 
 async function uploadFiles(files, ref, field, refId, info) {
     const ep = UploadEndpointsApi.uploadFiles(files, ref, field, refId, info);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 async function deleteFile(fileId) {
     const ep = UploadEndpointsApi.deleteFile(fileId);
-    return authApi.del(withQuery(ep.path, ep.params));
+    return authApi.del(withQuery(ep.path, ep.params), epCtx(ep));
 }
 
 const endpoints = strictEndpointGuard(

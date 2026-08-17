@@ -1,15 +1,15 @@
 import { webApi } from '../../../../lib/api.js';
-import { strictEndpointGuard } from '../___core__.js';
+import { epCtx, strictEndpointGuard } from '../___core__.js';
 import { WebReviewsEndpoints as WebReviewsEndpointsApi } from '../../../../api/web/reviews.js';
 
 async function bySlug(slug) {
     const ep = WebReviewsEndpointsApi.bySlug(slug);
-    return webApi.fetch(ep.path, ep.params);
+    return webApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 async function countBySlug(slug) {
     const ep = WebReviewsEndpointsApi.countBySlug(slug);
-    return webApi.fetch(ep.path, ep.params);
+    return webApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 const endpoints = strictEndpointGuard(

@@ -1,10 +1,10 @@
 import { webApi } from '../../../../lib/api.js';
-import { strictEndpointGuard } from '../___core__.js';
+import { epCtx, strictEndpointGuard } from '../___core__.js';
 import { WebCategoriesEndpoints as WebCategoriesEndpointsApi } from '../../../../api/web/categories.js';
 
 async function list() {
     const ep = WebCategoriesEndpointsApi.list();
-    return webApi.fetch(ep.path, ep.params);
+    return webApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 const endpoints = strictEndpointGuard(

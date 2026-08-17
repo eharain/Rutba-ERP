@@ -1,55 +1,55 @@
 import { authApi } from '../../../lib/api.js';
-import { withQuery, wrapData, strictEndpointGuard } from './___core__.js';
+import { withQuery, wrapData, epCtx, strictEndpointGuard } from './___core__.js';
 import { PaymentsEndpoints as PaymentsEndpointsApi } from '../../../api/payments.js';
 
 async function byRegister(registerId, arg2 = {}) {
     const ep = PaymentsEndpointsApi.byRegister(registerId, arg2);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 async function fetchByRegister(registerId, opts = {}) {
     const ep = PaymentsEndpointsApi.fetchByRegister(registerId, opts);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 async function create(data) {
     const ep = PaymentsEndpointsApi.create(data);
-    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 async function postCreate(data) {
     const ep = PaymentsEndpointsApi.postCreate(data);
-    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 async function byId(documentId, arg2 = {}) {
     const ep = PaymentsEndpointsApi.byId(documentId, arg2);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 async function fetchById(documentId, arg2 = {}) {
     const ep = PaymentsEndpointsApi.fetchById(documentId, arg2);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
 async function update(documentId, data) {
     const ep = PaymentsEndpointsApi.update(documentId, data);
-    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 async function putUpdate(documentId, data) {
     const ep = PaymentsEndpointsApi.putUpdate(documentId, data);
-    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 async function createRefund() {
     const ep = PaymentsEndpointsApi.createRefund();
-    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 async function postRefund(data) {
     const ep = PaymentsEndpointsApi.postRefund(data);
-    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
 }
 
 const endpoints = strictEndpointGuard(
