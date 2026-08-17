@@ -43,9 +43,12 @@ understate their own progress (fixing them is a P0 task).
   scripts, `.env.*`, [roles.js](../../../packages/pos-shared/lib/roles.js) `APP_URLS`/`VALID_APP_KEYS`,
   [domains.json](../../../packages/api-provider/config/domains.json), `Dockerfile` targets,
   `docker-compose.yml`, `dev-start.bat`) and today five of them disagree in small ways.
-- **Dead weight:** `rutba-users/` (stale `.next/` only), [src/hooks/useErrorHandler.ts](../../../src/hooks/useErrorHandler.ts)
-  (orphaned at repo root), dead `RUTBA_USERS__PORT` / `NEXT_PUBLIC_USERS_URL` env entries, plus
-  the open items in [tech-debt-cleanup.md](../tech-debt-cleanup.md).
+- **Dead weight — purged 2026-08-17:** `rutba-users/` (stale `.next/` only),
+  `src/hooks/useErrorHandler.ts` (orphaned at repo root; rutba-web has its own copy), dead
+  `RUTBA_USERS__PORT` / `NEXT_PUBLIC_USERS_URL` env entries, and the
+  `packages/api-provider/temp/` scratch files are gone. Still open in
+  [tech-debt-cleanup.md](../tech-debt-cleanup.md): §3 swiper (needs component migration first).
+  <!-- verify-docs: removed rutba-users/ -->
 
 ### 1.2 The strangler is nearly done building — and not started flipping
 
@@ -253,8 +256,10 @@ Cheap, unblocking, and mostly overdue.
       [verify-app-wiring.js](../../../scripts/js/verify-app-wiring.js) to hard-fail on any
       disagreement with the 8 derived surfaces. Ship the drift report first (the five known
       mismatches), per the admin-console program's own recommendation.
-- [ ] **Dead-code purge**: delete `rutba-users/`, root `src/hooks/useErrorHandler.ts`, dead
-      env keys; close [tech-debt-cleanup.md](../tech-debt-cleanup.md) §3/§5.
+- [x] **Dead-code purge** (2026-08-17): deleted `rutba-users/`, the root
+      `src/hooks/useErrorHandler.ts` stray, dead env keys, and the api-provider `temp/`
+      scratch files; [tech-debt-cleanup.md](../tech-debt-cleanup.md) §5 closed. §3 (swiper)
+      deferred — three rutba-web components still import it.
 
 **Exit gate:** `npm run verify:wiring` and `npm run verify:docs` green with the manifest live;
 baseline numbers committed to the program folder.

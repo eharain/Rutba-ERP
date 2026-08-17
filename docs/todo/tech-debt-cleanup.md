@@ -31,19 +31,26 @@ The shop redesign replaced Swiper with a custom `ScrollSlider`, but `rutba-web/p
 
 ## 4. Finish wiring `rutba-manufacturing` into config surfaces
 
-`rutba-manufacturing` (port 4014) was added after the other apps and is still missing from several config surfaces that enumerate apps (the `rutba-ess` build-infra pass mirrored these for ess but left manufacturing as a pre-existing gap):
+`rutba-manufacturing` (port 4014) was added after the other apps and was missing from several
+config surfaces. **Re-measured 2026-08-17** (see the fuller
+[registry drift report](erp2-program/01-registry-drift-report.md)): three of the five gaps have
+since been fixed — `scripts/js/env-config.js` has `NEXT_PUBLIC_MANUFACTURING_URL`,
+`packages/pos-shared/lib/roles.js` carries `manufacturing` in `APP_URLS`/`VALID_APP_KEYS`/`APP_META`,
+and `scripts/rutba_log_rotate.sh` now reads `RUTBA_SERVICES` from the registry. Still open:
 
-- `scripts/js/env-config.js` — no `NEXT_PUBLIC_MANUFACTURING_URL` in `GLOBAL_VARS`.
-- `packages/pos-shared/lib/roles.js` — `manufacturing` missing from `APP_URLS`, `VALID_APP_KEYS`, `APP_META` (so it won't appear in the cross-app switcher).
+- `packages/api-provider/scripts/discover-descriptor-meta.mjs` — `APP_FOLDERS` is missing
+  `rutba-manufacturing` **and seven other late apps** (marketplace, inventory, seed, campaigns,
+  mail, admin, helpdesk).
 - `rutba-web-user/scripts/hostinger/hostinger.config.js` — no `manufacturing` app entry.
-- `packages/api-provider/scripts/discover-descriptor-meta.mjs` — `rutba-manufacturing` not in `APP_FOLDERS`.
-- `scripts/rutba_log_rotate.sh` — `rutba_manufacturing` not in the `SERVICES` list (also missing rider/order-management/social).
 
-- **Action:** mirror the `rutba-hr` / `rutba-ess` entries for `manufacturing` across those files (pick the existing 4014 port).
+- **Action:** both are subsumed by the P0 app manifest (drift report, "What this feeds") —
+  fix by generation, or hand-add if the manifest slips.
 
-## 5. Review/remove stray scratch docs
+## 5. Review/remove stray scratch docs — ✅ done (2026-08-17)
 
-`packages/api-provider/temp/` holds `COMBINED_ENDPOINTS_README.md`, `IMPLEMENTATION_SUMMARY.md`, and `README.md` — these look like scratch/obsolete artifacts.
+`packages/api-provider/temp/` held `COMBINED_ENDPOINTS_README.md`, `IMPLEMENTATION_SUMMARY.md`,
+`README.md` and three `combined-endpoints*` files — scratch from an abandoned combined-endpoints
+experiment, all untracked. Deleted; the directory's `.gitignore`/`.gitkeep` remain.
 
 - **Action:** confirm dead and delete, or move under `docs/` if any are worth keeping.
 
