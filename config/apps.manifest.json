@@ -1,0 +1,113 @@
+{
+  "$comment": [
+    "SINGLE SOURCE OF TRUTH for app/service identity and wiring.",
+    "",
+    "Adding an app to this monorepo used to mean touching eight unrelated files, with",
+    "nothing cross-validating them; five of them had quietly drifted apart by",
+    "2026-08-17 (see docs/todo/erp2-program/01-registry-drift-report.md). Every one of",
+    "those surfaces is now checked against this file by scripts/js/verify-app-wiring.js,",
+    "which fails the build on any disagreement.",
+    "",
+    "WHAT LIVES HERE: identity and wiring — key, systemd unit, workspace directory,",
+    "port, api-pro domains, launcher category, and the flags that record a DELIBERATE",
+    "divergence so it can never be mistaken for drift again.",
+    "",
+    "WHAT DOES NOT: presentation (label, icon, description). Those stay in",
+    "packages/pos-shared/lib/roles.js APP_META until the admin console's app-catalogue",
+    "work (docs/todo/admin-console-program/01-app-catalogue-entitlements.md) moves the",
+    "catalogue server-side per tenant. Baking titles in here now would be work undone",
+    "the moment a tenant can enable its own app set.",
+    "",
+    "DERIVED, NOT STORED (the validator computes and checks these):",
+    "  envPrefix  workspace uppercased, '-' -> '_'   pos-auth      -> POS_AUTH__PORT",
+    "  urlVar     workspace minus pos-/rutba- prefix rutba-web-user -> NEXT_PUBLIC_WEB_USER_URL",
+    "An entry only carries `urlVar` when it deliberately breaks that rule.",
+    "",
+    "FLAGS (absent = the common case):",
+    "  public        no access grant needed; always in the catalogue, never in VALID_APP_KEYS",
+    "  npmWorkspace  false = installs standalone via `npm --prefix` (the two backends)",
+    "  build         false = has no build step, so no root build:* script is expected",
+    "  launcher      false = not a launchable app, so no roles.js APP_URLS entry",
+    "  descriptorScan false = excluded from APP_FOLDERS in discover-descriptor-meta.mjs"
+  ],
+
+  "categories": ["sales", "inventory", "people", "finance", "content", "admin"],
+
+  "services": [
+    {
+      "key": "strapi",
+      "unit": "rutba_pos_strapi",
+      "workspace": "pos-strapi",
+      "kind": "backend",
+      "port": 4010,
+      "domains": [],
+      "urlVar": "NEXT_PUBLIC_API_URL",
+      "npmWorkspace": false,
+      "launcher": false,
+      "descriptorScan": false,
+      "note": "Legacy Strapi backend. Retires in ERP 2.0 phase P2; every frontend reaches it via NEXT_PUBLIC_API_URL, not a per-app URL var."
+    },
+    {
+      "key": "core",
+      "unit": "rutba_core",
+      "workspace": "rutba-core",
+      "kind": "backend",
+      "port": 4020,
+      "domains": [],
+      "urlVar": "NEXT_PUBLIC_API_URL",
+      "npmWorkspace": false,
+      "build": false,
+      "launcher": false,
+      "descriptorScan": false,
+      "note": "Koa/Knex backend serving the same descriptor contract. Plain Node — no bundling step, hence build:false. Shares NEXT_PUBLIC_API_URL with strapi because RUTBA_BACKEND picks which one listens."
+    },
+
+    { "key": "web", "unit": "rutba_web", "workspace": "rutba-web", "kind": "app", "port": 4000, "category": "content", "domains": ["web"], "public": true, "descriptorScan": true },
+    { "key": "stock", "unit": "rutba_pos_stock", "workspace": "pos-stock", "kind": "app", "port": 4001, "category": "inventory", "domains": ["stock"], "descriptorScan": true },
+    { "key": "sale", "unit": "rutba_pos_sale", "workspace": "pos-sale", "kind": "app", "port": 4002, "category": "sales", "domains": ["sale"], "descriptorScan": true },
+    { "key": "auth", "unit": "rutba_pos_auth", "workspace": "pos-auth", "kind": "app", "port": 4003, "category": "admin", "domains": ["auth"], "descriptorScan": true },
+    { "key": "web-user", "unit": "rutba_web_user", "workspace": "rutba-web-user", "kind": "app", "port": 4004, "category": "sales", "domains": ["web-user"], "descriptorScan": true },
+    { "key": "crm", "unit": "rutba_crm", "workspace": "rutba-crm", "kind": "app", "port": 4005, "category": "sales", "domains": ["crm"], "descriptorScan": true },
+    { "key": "hr", "unit": "rutba_hr", "workspace": "rutba-hr", "kind": "app", "port": 4006, "category": "people", "domains": ["hr"], "descriptorScan": true },
+    { "key": "accounts", "unit": "rutba_accounts", "workspace": "rutba-accounts", "kind": "app", "port": 4007, "category": "finance", "domains": ["accounts", "accounts-ap", "accounts-ar", "accounts-viewer"], "descriptorScan": true },
+    { "key": "payroll", "unit": "rutba_payroll", "workspace": "rutba-payroll", "kind": "app", "port": 4008, "category": "finance", "domains": ["payroll"], "descriptorScan": true },
+    { "key": "cms", "unit": "rutba_cms", "workspace": "rutba-cms", "kind": "app", "port": 4009, "category": "content", "domains": ["cms"], "descriptorScan": true },
+    { "key": "social", "unit": "rutba_social", "workspace": "rutba-social", "kind": "app", "port": 4011, "category": "content", "domains": ["social"], "descriptorScan": true },
+    { "key": "rider", "unit": "rutba_rider", "workspace": "rutba-rider", "kind": "app", "port": 4012, "category": "sales", "domains": ["rider"], "descriptorScan": true },
+    { "key": "order-management", "unit": "rutba_order_management", "workspace": "rutba-order-management", "kind": "app", "port": 4013, "category": "sales", "domains": ["order-management"], "descriptorScan": true },
+    { "key": "manufacturing", "unit": "rutba_manufacturing", "workspace": "rutba-manufacturing", "kind": "app", "port": 4014, "category": "inventory", "domains": ["manufacturing"], "descriptorScan": true },
+    { "key": "ess", "unit": "rutba_ess", "workspace": "rutba-ess", "kind": "app", "port": 4015, "category": "people", "domains": ["ess"], "descriptorScan": true },
+    { "key": "marketplace", "unit": "rutba_marketplace", "workspace": "rutba-marketplace", "kind": "app", "port": 4016, "category": "sales", "domains": ["marketplace"], "descriptorScan": true },
+    { "key": "inventory", "unit": "rutba_inventory", "workspace": "rutba-inventory", "kind": "app", "port": 4017, "category": "inventory", "domains": ["inventory"], "descriptorScan": true },
+    { "key": "seed", "unit": "rutba_seed", "workspace": "rutba-seed", "kind": "app", "port": 4018, "category": "admin", "domains": ["seed"], "descriptorScan": true },
+    { "key": "campaigns", "unit": "rutba_campaigns", "workspace": "rutba-campaigns", "kind": "app", "port": 4019, "category": "content", "domains": ["campaigns"], "descriptorScan": true },
+    { "key": "mail", "unit": "rutba_mail", "workspace": "rutba-mail", "kind": "app", "port": 4021, "category": "content", "domains": ["mail"], "descriptorScan": true },
+    { "key": "admin", "unit": "rutba_admin", "workspace": "rutba-admin", "kind": "app", "port": 4022, "category": "admin", "domains": ["admin", "users"], "descriptorScan": true },
+    { "key": "helpdesk", "unit": "rutba_helpdesk", "workspace": "rutba-helpdesk", "kind": "app", "port": 4023, "category": "sales", "domains": ["helpdesk"], "descriptorScan": true },
+
+    {
+      "key": "marketplace-worker",
+      "unit": "rutba_marketplace_worker",
+      "workspace": "rutba-marketplace",
+      "kind": "worker",
+      "port": null,
+      "domains": [],
+      "launcher": false,
+      "descriptorScan": false,
+      "note": "Background sync worker sharing the rutba-marketplace workspace. No HTTP surface, so no port and no URL var; the registry records its port as '-'."
+    }
+  ],
+
+  "domainsWithoutApps": [
+    {
+      "domain": "users",
+      "status": "deprecated",
+      "why": "rutba-users was replaced by rutba-admin, which inherited port 4022. The domain stays alive as an alias so existing users_* grants keep resolving. Retires in ERP 2.0 phase P3 with the alias sweep."
+    },
+    {
+      "domain": "delivery",
+      "status": "undecided",
+      "why": "Present in domains.json with no app, no workspace and no catalogue entry. Either a planned domain or vestigial — flagged in the registry drift report (A3) as a decision that is still owed."
+    }
+  ]
+}

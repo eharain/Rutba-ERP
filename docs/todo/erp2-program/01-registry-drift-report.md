@@ -1,11 +1,13 @@
 # Registry drift report — P0
 
-Status: **measured 2026-08-17.** The first deliverable of [P0](README.md): every surface that
-enumerates apps, compared, with each disagreement classified as *accidental drift* (fix it) or
-*deliberate divergence* (the manifest must encode it as a flag, not "fix" it). This report is
-the ground truth the `config/apps.manifest.json` build (P0's next item) starts from.
+Status: **measured 2026-08-17; resolved the same day.** The first deliverable of [P0](README.md):
+every surface that enumerates apps, compared, with each disagreement classified as *accidental
+drift* (fix it) or *deliberate divergence* (the manifest must encode it as a flag, not "fix" it).
 
-<!-- verify-docs: planned config/apps.manifest.json -->
+**Outcome:** [config/apps.manifest.json](../../../config/apps.manifest.json) is now the single
+source of truth and [verify-app-wiring.js](../../../scripts/js/verify-app-wiring.js) hard-fails
+on any surface that disagrees with it. `npm run verify:wiring` went from **9 errors to
+25/25 wired**; the gate was checked by injecting a port change and confirming it fails.
 
 ## The surfaces and their counts
 
@@ -21,32 +23,41 @@ the ground truth the `config/apps.manifest.json` build (P0's next item) starts f
 | [domains.json](../../../packages/api-provider/config/domains.json) | 27 domains | 22 app domains + `users` + `delivery` + 3 `accounts-*` sub-domains |
 | [.env.development](../../../.env.development) | 22 `*__PORT` + 2 dead | see A2 |
 
-## Accidental drift — fix
+## Accidental drift — status
 
-- **A1 — `APP_FOLDERS` in [discover-descriptor-meta.mjs](../../../packages/api-provider/scripts/discover-descriptor-meta.mjs)
-  is missing 8 of 22 apps**: `rutba-manufacturing`, `rutba-marketplace`, `rutba-inventory`,
-  `rutba-seed`, `rutba-campaigns`, `rutba-mail`, `rutba-admin`, `rutba-helpdesk`. Descriptor
-  usage in those apps is invisible to the meta-discovery pass. Worse than
-  [tech-debt-cleanup.md](../tech-debt-cleanup.md) §4 records (it names only manufacturing).
-  Fix: hand-add now, or generate from the manifest when it lands.
-- **A2 — dead env keys** in [.env.development](../../../.env.development):
+- **A1 — ✅ fixed. `APP_FOLDERS` in [discover-descriptor-meta.mjs](../../../packages/api-provider/scripts/discover-descriptor-meta.mjs)
+  was missing 8 of 22 apps**: `rutba-manufacturing`, `rutba-marketplace`, `rutba-inventory`,
+  `rutba-seed`, `rutba-campaigns`, `rutba-mail`, `rutba-admin`, `rutba-helpdesk` — every app
+  added after rutba-web, so descriptor usage in all of them was invisible to the meta-discovery
+  pass. Worse than [tech-debt-cleanup.md](../tech-debt-cleanup.md) §4 recorded (it named only
+  manufacturing). All 22 now listed, and `descriptorScan` in the manifest keeps it that way.
+- **A2 — ✅ fixed. Dead env keys** in `.env.development`:
   `NEXT_PUBLIC_USERS_URL` and `RUTBA_USERS__PORT` (both point at 4022, which belongs to
   `rutba-admin`). Leftovers of the users→admin rekey. Delete.
-- **A3 — `delivery` domain** in [domains.json](../../../packages/api-provider/config/domains.json)
-  has no app, no workspace, no catalogue presence anywhere. Either it is a planned domain
-  (then it needs a comment saying so, like `users` has) or it is vestigial (then retire it).
-  Decision owed; nothing enforces either reading today.
-- **A4 — [hostinger.config.js](../../../rutba-web-user/scripts/hostinger/hostinger.config.js)**
-  has no `manufacturing` entry (nor the later apps). Scope: the Hostinger deploy path only.
-- **A5 — [tech-debt-cleanup.md](../tech-debt-cleanup.md) §4 is itself stale**: of its five
+- **A3 — ⚠️ still owed, but now visible. `delivery` domain** in
+  [domains.json](../../../packages/api-provider/config/domains.json) has no app, no workspace and
+  no catalogue presence. Recorded in the manifest's `domainsWithoutApps` as `status: "undecided"`
+  so it can no longer hide — the validator demands every domain be either claimed by an app or
+  declared here with a reason. The decision (planned vs vestigial) is still yours.
+- **A4 — ⚠️ still open. [hostinger.config.js](../../../rutba-web-user/scripts/hostinger/hostinger.config.js)**
+  has no `manufacturing` entry (nor the later apps). Scope: the Hostinger deploy path only, which
+  is why it is not yet a manifest-checked surface.
+- **A5 — ✅ fixed. [tech-debt-cleanup.md](../tech-debt-cleanup.md) §4 was itself stale**: of its five
   claims, three are already fixed — `scripts/js/env-config.js` has `NEXT_PUBLIC_MANUFACTURING_URL`,
   [roles.js](../../../packages/pos-shared/lib/roles.js) carries manufacturing in all three maps,
   and [rutba_log_rotate.sh](../../../scripts/rutba_log_rotate.sh) now reads
   `RUTBA_SERVICES` from the registry instead of a hand list. Only A1 and A4 remain. Updated in
   this commit.
-- **A6 — `rutba-rider` hardcodes `-p 4012`** in its package.json scripts; every other app takes
-  `PORT` from [load-env.js](../../../scripts/js/load-env.js). One divergent app, invisible until
-  a port move. Normalize when the manifest lands.
+- **A6 — ⚠️ still open. `rutba-rider` hardcodes `-p 4012`** in its package.json scripts; every
+  other app takes `PORT` from [load-env.js](../../../scripts/js/load-env.js). One divergent app,
+  invisible until a port move. Low risk while 4012 agrees with the manifest, so it is left for
+  the P3 sweep rather than churned now.
+
+**Also fixed in passing** (both surfaced by the manifest, neither in the original list):
+`RUTBA_CORE__PORT` was missing from the tracked
+[sample.env.enviromentname.txt](../../../sample.env.enviromentname.txt) — a first-time deploy
+seeds `.env.production` from that file, so rutba-core would have fallen back to port 3000 — and
+`NEXT_PUBLIC_ADMIN_URL` was missing from `.env.production`.
 
 ## Deliberate divergences — the manifest must encode these, not "fix" them
 
@@ -67,9 +78,20 @@ the ground truth the `config/apps.manifest.json` build (P0's next item) starts f
 - **D5 — `marketplace-worker`** is a portless service (registry records `-`). Manifest:
   services may have no port.
 
-## What this feeds
+## What shipped
 
-The manifest (`config/apps.manifest.json`, planned) gets one entry per app/service with:
-`key`, `workspacePath`, `port` (nullable), `domain(s)`, `category`, `public`, `deprecated`.
-`verify:wiring` then hard-fails on any surface disagreeing with it. A1/A2/A6 get fixed by
-generation; D1–D5 become explicit flags instead of tribal knowledge.
+[config/apps.manifest.json](../../../config/apps.manifest.json) carries one entry per
+app/service — `key`, `unit`, `workspace`, `kind`, `port` (nullable), `domains`, `category` — plus
+the five flags that turn D1–D5 from tribal knowledge into declarations: `public`, `npmWorkspace`,
+`build`, `launcher`, `descriptorScan`. Domains with no app live in `domainsWithoutApps` with a
+stated reason.
+
+[verify-app-wiring.js](../../../scripts/js/verify-app-wiring.js) now checks the manifest against
+the systemd registry (command, port, kind), the workspace list, the root script families, both env
+files plus the tracked sample, `roles.js` (`APP_URLS` var + fallback port, `VALID_APP_KEYS`,
+`APP_META` presence and category), `domains.json`, the descriptor scan list, the Dockerfile and
+compose, and `dev-start.bat`.
+
+Presentation deliberately stayed out: `label`/`icon`/`description` remain in `APP_META` until the
+admin console serves the catalogue per tenant, because baking titles into a build-time file is
+work undone the moment a tenant can choose its own app set.

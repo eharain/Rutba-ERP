@@ -16,11 +16,18 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..');
 const API_DIR = path.resolve(__dirname, '..', 'api');
 
+// Every app whose `descriptorScan` is true in config/apps.manifest.json must
+// appear here; `npm run verify:wiring` fails otherwise. Eight of these were
+// missing until 2026-08-17 — every app added after rutba-web — so descriptor
+// usage across manufacturing, marketplace, inventory, seed, campaigns, mail,
+// admin and helpdesk was silently invisible to this pass.
 const APP_FOLDERS = [
     'pos-auth', 'pos-sale', 'pos-stock',
-    'rutba-accounts', 'rutba-cms', 'rutba-crm', 'rutba-hr', 'rutba-ess',
-    'rutba-order-management', 'rutba-payroll', 'rutba-rider',
-    'rutba-social', 'rutba-web-user', 'rutba-web',
+    'rutba-accounts', 'rutba-admin', 'rutba-campaigns', 'rutba-cms', 'rutba-crm',
+    'rutba-ess', 'rutba-helpdesk', 'rutba-hr', 'rutba-inventory', 'rutba-mail',
+    'rutba-manufacturing', 'rutba-marketplace', 'rutba-order-management',
+    'rutba-payroll', 'rutba-rider', 'rutba-seed', 'rutba-social',
+    'rutba-web-user', 'rutba-web',
 ];
 
 // Shared packages that fan into multiple apps. We scan these too and attribute

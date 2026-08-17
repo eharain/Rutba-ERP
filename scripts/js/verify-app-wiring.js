@@ -12,8 +12,17 @@
  * rutba-marketplace sat dead on the deploy box for months while `systemctl`
  * cheerfully reported "activating".
  *
- * Source of truth is scripts/rutba_apps.sh (the systemd service registry).
- * Everything else is checked against it.
+ * Source of truth is config/apps.manifest.json. Everything else — the systemd
+ * registry, the workspace list, the env files, roles.js, domains.json, the
+ * Dockerfile, compose, the descriptor scan — is checked against it.
+ *
+ * Why the manifest rather than rutba_apps.sh (which was the authority until
+ * 2026-08-17): the shell registry knows units, commands and ports, and nothing
+ * else. It cannot express that `web` is public, that the two backends install
+ * standalone, that rutba-core has no build step, or that `users` is a domain
+ * with no app — so each of those read as drift on every run, and five surfaces
+ * had genuinely drifted apart underneath the noise. Recording a deliberate
+ * divergence as a flag is what lets the rest be a hard failure.
  *
  * Usage:
  *   node scripts/js/verify-app-wiring.js            # human-readable report
@@ -37,7 +46,25 @@ const warnings = [];
 const fail = (app, msg) => errors.push(`${app}: ${msg}`);
 const warn = (app, msg) => warnings.push(`${app}: ${msg}`);
 
-// ── 1. Parse the shell registry ────────────────────────────
+// ── 1. The manifest — the authority ────────────────────────
+
+const manifestRaw = read('config/apps.manifest.json');
+if (!manifestRaw) {
+  console.error('[verify] config/apps.manifest.json not found — cannot verify.');
+  process.exit(1);
+}
+let MANIFEST;
+try { MANIFEST = JSON.parse(manifestRaw); } catch (e) {
+  console.error(`[verify] config/apps.manifest.json is not valid JSON: ${e.message}`);
+  process.exit(1);
+}
+const ENTRIES = MANIFEST.services || [];
+if (!ENTRIES.length) {
+  console.error('[verify] config/apps.manifest.json declares no services.');
+  process.exit(1);
+}
+
+// ── 2. Parse the shell registry ────────────────────────────
 
 const appsSh = read('scripts/rutba_apps.sh');
 if (!appsSh) {
@@ -70,7 +97,7 @@ if (!SERVICES.length) {
   process.exit(1);
 }
 
-// ── 2. Load the other sources ──────────────────────────────
+// ── 3. Load the other sources ──────────────────────────────
 
 const pkg = JSON.parse(read('package.json'));
 const envConfig = read('scripts/js/env-config.js') || '';
@@ -81,6 +108,10 @@ const sampleEnv = read('sample.env.enviromentname.txt') || '';
 const envDev = read('.env.development');          // gitignored — may be absent
 const envProd = read('.env.production');          // gitignored — may be absent
 const rolesJs = read('packages/pos-shared/lib/roles.js') || '';
+const descriptorScan = read('packages/api-provider/scripts/discover-descriptor-meta.mjs') || '';
+
+let DOMAINS = {};
+try { DOMAINS = JSON.parse(read('packages/api-provider/config/domains.json') || '{}'); } catch { /* reported below */ }
 
 // packages/pos-shared/lib/roles.js APP_URLS carries a hard-coded localhost
 // fallback per app. It only bites when the NEXT_PUBLIC_*_URL is absent, which
@@ -93,47 +124,119 @@ for (const m of rolesJs.matchAll(
   rolesUrlPorts.set(m[1], { envKey: m[2], port: m[3] });
 }
 
+/** VALID_APP_KEYS is a single-line array literal; APP_META is a block of keys. */
+const validAppKeys = new Set(
+  (rolesJs.match(/const VALID_APP_KEYS = \[([^\]]*)\]/m)?.[1] || '')
+    .split(',').map((s) => s.trim().replace(/^['"]|['"]$/g, '')).filter(Boolean)
+);
+const appMetaBlock = rolesJs.match(/export const APP_META = \{([\s\S]*?)\n\};/m)?.[1] || '';
+const appMetaKeys = new Set(
+  [...appMetaBlock.matchAll(/^\s*'?([\w-]+)'?\s*:\s*\{/gm)].map((m) => m[1])
+);
+const appMetaGroup = new Map(
+  [...appMetaBlock.matchAll(/^\s*'?([\w-]+)'?\s*:\s*\{\s*group:\s*'([\w-]+)'/gm)]
+    .map((m) => [m[1], m[2]])
+);
+
 const dockerStages = new Set(
   [...dockerfile.matchAll(/^FROM\s+\S+\s+AS\s+([\w-]+)/gm)].map((m) => m[1])
 );
 const composeServices = new Set(
   [...compose.matchAll(/^ {2}([a-z][\w-]*):$/gm)].map((m) => m[1])
 );
+const scanFolders = new Set(
+  (descriptorScan.match(/const APP_FOLDERS = \[([\s\S]*?)\]/m)?.[1] || '')
+    .split(',').map((s) => s.trim().replace(/^['"]|['"]$/g, '')).filter(Boolean)
+);
 
-/** pos-auth -> AUTH, rutba-web-user -> WEB_USER; pos-strapi is special (API). */
-function urlToken(dir) {
-  if (dir === 'pos-strapi') return 'API';
-  return dir.replace(/^(pos|rutba)-/, '').toUpperCase().replace(/-/g, '_');
-}
+/** pos-auth -> AUTH, rutba-web-user -> WEB_USER. */
+const urlToken = (dir) => dir.replace(/^(pos|rutba)-/, '').toUpperCase().replace(/-/g, '_');
 /** pos-auth -> POS_AUTH */
 const envPrefix = (dir) => dir.toUpperCase().replace(/-/g, '_');
 
-// ── 3. Per-service checks ──────────────────────────────────
+// ── 4. Manifest ↔ registry reconciliation ──────────────────
+// Neither may carry a service the other does not know about. This is the check
+// that makes the manifest authoritative rather than decorative.
+
+const byUnit = new Map(ENTRIES.map((e) => [e.unit, e]));
+for (const svc of SERVICES) {
+  if (!byUnit.has(svc)) {
+    fail(svc, 'in scripts/rutba_apps.sh RUTBA_SERVICES but absent from config/apps.manifest.json');
+  }
+}
+const registrySet = new Set(SERVICES);
+for (const e of ENTRIES) {
+  if (!registrySet.has(e.unit)) {
+    fail(e.key, `manifest declares unit "${e.unit}" but it is not in rutba_apps.sh RUTBA_SERVICES`);
+  }
+}
+
+// Duplicate keys / units / ports inside the manifest itself.
+const seenKey = new Set();
+const seenUnit = new Set();
+const seenPort = new Map();
+for (const e of ENTRIES) {
+  if (seenKey.has(e.key)) fail(e.key, 'duplicate key in config/apps.manifest.json');
+  seenKey.add(e.key);
+  if (seenUnit.has(e.unit)) fail(e.key, `duplicate unit "${e.unit}" in config/apps.manifest.json`);
+  seenUnit.add(e.unit);
+  if (e.port != null) {
+    if (seenPort.has(e.port)) fail(e.key, `port ${e.port} already claimed by ${seenPort.get(e.port)}`);
+    else seenPort.set(e.port, e.key);
+  }
+}
+
+// ── 5. Per-service checks ──────────────────────────────────
 
 const rows = [];
-const seenPorts = new Map();
 
-for (const svc of SERVICES) {
-  const cmd = SVC_CMD[svc] || '';
-  const port = SVC_PORT[svc] || '-';
+for (const entry of ENTRIES) {
+  const {
+    key, unit, workspace: dir, kind, port,
+    public: isPublic = false,
+    npmWorkspace = true,
+    build: needsBuild = true,
+    launcher = true,
+    descriptorScan: inScan = false,
+    urlVar: urlVarOverride,
+    category,
+    domains = [],
+  } = entry;
 
+  const isWorker = kind === 'worker';
+  const isBackend = kind === 'backend';
+  const isApp = kind === 'app';
+
+  const row = { key, dir, port: port ?? '-', ok: [], bad: [] };
+  const check = (cond, label) => { cond ? row.ok.push(label) : row.bad.push(label); return cond; };
+
+  // -- the registry agrees on command + port ----------------
+  const cmd = SVC_CMD[unit] || '';
   const wsMatch = cmd.match(/--workspace=(\S+)/);
   const pfMatch = cmd.match(/--prefix\s+(\S+)/);
-  const dir = wsMatch ? wsMatch[1] : pfMatch ? pfMatch[1] : null;
-  const isWorker = / run worker /.test(` ${cmd} `);
-
-  if (!dir) { fail(svc, `cannot determine workspace dir from RUTBA_SVC_CMD "${cmd}"`); continue; }
-
-  const row = { svc, dir, port, ok: [], bad: [] };
-  const check = (cond, label) => { cond ? row.ok.push(label) : row.bad.push(label); return cond; };
+  const cmdDir = wsMatch ? wsMatch[1] : pfMatch ? pfMatch[1] : null;
+  if (cmd && !check(cmdDir === dir, 'registry:dir')) {
+    fail(key, `manifest says workspace "${dir}" but rutba_apps.sh runs "${cmdDir}" (RUTBA_SVC_CMD)`);
+  }
+  const registryPort = SVC_PORT[unit];
+  const expectPort = port == null ? '-' : String(port);
+  if (registryPort !== undefined && !check(registryPort === expectPort, 'registry:port')) {
+    fail(key, `manifest says port ${expectPort} but rutba_apps.sh RUTBA_SVC_PORT says ${registryPort}`);
+  }
+  if (cmd && !check(isWorker === / run worker /.test(` ${cmd} `), 'registry:kind')) {
+    fail(key, `manifest kind "${kind}" disagrees with the registry command \`npm ${cmd}\``);
+  }
 
   // -- workspace exists and is declared --------------------
   if (!check(fs.existsSync(path.join(ROOT, dir, 'package.json')), 'workspace-dir')) {
-    fail(svc, `workspace directory ${dir}/ has no package.json`);
+    fail(key, `workspace directory ${dir}/ has no package.json`);
   }
-  const declared = (pkg.workspaces || []).includes(dir) || dir === 'pos-strapi';
-  if (!check(declared, 'in-workspaces')) {
-    fail(svc, `${dir} is not listed in package.json "workspaces" (and is not pos-strapi)`);
+  if (npmWorkspace) {
+    if (!check((pkg.workspaces || []).includes(dir), 'in-workspaces')) {
+      fail(key, `${dir} is not listed in package.json "workspaces" (set "npmWorkspace": false if that is deliberate)`);
+    }
+  } else if (!check(!(pkg.workspaces || []).includes(dir), 'not-in-workspaces')) {
+    fail(key, `manifest says "npmWorkspace": false but ${dir} IS listed in package.json "workspaces"`);
   }
 
   // -- npm scripts the systemd unit will invoke -------------
@@ -143,7 +246,7 @@ for (const svc of SERVICES) {
   try { wsPkg = JSON.parse(read(`${dir}/package.json`)); } catch { /* reported above */ }
   const wantScript = isWorker ? 'worker' : 'start';
   if (wsPkg && !check(!!(wsPkg.scripts || {})[wantScript], `ws:${wantScript}`)) {
-    fail(svc, `${dir}/package.json has no "${wantScript}" script, but the unit runs \`npm ${cmd}\``);
+    fail(key, `${dir}/package.json has no "${wantScript}" script, but the unit runs \`npm ${cmd}\``);
   }
 
   // -- root convenience scripts (dev/start/build) -----------
@@ -154,92 +257,142 @@ for (const svc of SERVICES) {
   const short = shortNames[0] || null;
 
   if (!isWorker) {
-    if (!check(!!short, 'root:start')) fail(svc, `no root "start:*" script targets ${dir}`);
+    if (!check(!!short, 'root:start')) fail(key, `no root "start:*" script targets ${dir}`);
     if (short) {
       check(!!pkg.scripts[`dev:${short}`], 'root:dev') ||
-        warn(svc, `no root "dev:${short}" script — dev-start.bat cannot launch it`);
-      check(!!pkg.scripts[`build:${short}`], 'root:build') ||
-        fail(svc, `no root "build:${short}" script — build:all will skip it on deploy`);
+        warn(key, `no root "dev:${short}" script — dev-start.bat cannot launch it`);
+      if (needsBuild) {
+        check(!!pkg.scripts[`build:${short}`], 'root:build') ||
+          fail(key, `no root "build:${short}" script — build:all will skip it on deploy ` +
+            `(set "build": false if this service genuinely has no build step)`);
+      }
     }
   }
 
   // -- ports ------------------------------------------------
-  if (port !== '-') {
-    if (seenPorts.has(port)) fail(svc, `port ${port} already claimed by ${seenPorts.get(port)}`);
-    else seenPorts.set(port, svc);
-
-    const prefix = envPrefix(dir);
-    const portKey = `${prefix}__PORT`;
-    const inSample = new RegExp(`^\\s*${portKey}\\s*=`, 'm').test(sampleEnv);
-    if (!check(inSample, 'sample:PORT')) {
-      fail(svc, `${portKey} missing from sample.env.enviromentname.txt — a first-time deploy seeds .env.production from this file, so the app would fall back to port 3000`);
+  if (port != null) {
+    const portKey = `${envPrefix(dir)}__PORT`;
+    if (!check(new RegExp(`^\\s*${portKey}\\s*=`, 'm').test(sampleEnv), 'sample:PORT')) {
+      fail(key, `${portKey} missing from sample.env.enviromentname.txt — a first-time deploy seeds .env.production from this file, so the app would fall back to port 3000`);
     }
     for (const [label, body] of [['.env.development', envDev], ['.env.production', envProd]]) {
       if (body === null) continue;                       // gitignored / not present
       if (!new RegExp(`^\\s*${portKey}\\s*=`, 'm').test(body)) {
-        fail(svc, `${portKey} missing from ${label}`);
+        fail(key, `${portKey} missing from ${label}`);
       }
     }
   }
 
   // -- public URL variable ----------------------------------
+  // Backends share NEXT_PUBLIC_API_URL (RUTBA_BACKEND decides which one is
+  // listening), so they declare it explicitly rather than deriving a
+  // per-service var nothing would ever read.
   if (!isWorker) {
-    const urlKey = `NEXT_PUBLIC_${urlToken(dir)}_URL`;
+    const urlKey = urlVarOverride || `NEXT_PUBLIC_${urlToken(dir)}_URL`;
     if (!check(envConfig.includes(urlKey), 'env-config:URL')) {
-      fail(svc, `${urlKey} not declared in scripts/js/env-config.js GLOBAL_VARS — a missing value would never be reported`);
+      fail(key, `${urlKey} not declared in scripts/js/env-config.js GLOBAL_VARS — a missing value would never be reported`);
     }
     if (!check(new RegExp(`^\\s*${urlKey}\\s*=`, 'm').test(sampleEnv), 'sample:URL')) {
-      fail(svc, `${urlKey} missing from sample.env.enviromentname.txt`);
+      fail(key, `${urlKey} missing from sample.env.enviromentname.txt`);
     }
     for (const [label, body] of [['.env.development', envDev], ['.env.production', envProd]]) {
       if (body === null) continue;
-      if (!new RegExp(`^\\s*${urlKey}\\s*=`, 'm').test(body)) fail(svc, `${urlKey} missing from ${label}`);
+      if (!new RegExp(`^\\s*${urlKey}\\s*=`, 'm').test(body)) fail(key, `${urlKey} missing from ${label}`);
     }
 
     // -- roles.js APP_URLS fallback port ----------------------
-    const entry = [...rolesUrlPorts].find(([, v]) => v.envKey === urlKey);
-    const isBackend = dir === 'pos-strapi' || dir === 'rutba-core';
-    if (entry) {
-      const [appKey, { port: fallbackPort }] = entry;
-      if (!check(port === '-' || fallbackPort === port, 'roles.js:port')) {
-        fail(svc, `roles.js APP_URLS.${appKey} falls back to localhost:${fallbackPort}, but the ` +
-          `registry says ${port}. Cross-app links land on the wrong app whenever ${urlKey} is unset.`);
+    if (launcher) {
+      const rolesEntry = rolesUrlPorts.get(key);
+      if (!check(!!rolesEntry, 'roles.js:entry')) {
+        fail(key, `no APP_URLS['${key}'] entry in packages/pos-shared/lib/roles.js — the app launcher cannot link to it`);
+      } else {
+        if (!check(rolesEntry.envKey === urlKey, 'roles.js:urlVar')) {
+          fail(key, `roles.js APP_URLS.${key} reads ${rolesEntry.envKey}, but the manifest says ${urlKey}`);
+        }
+        if (!check(port == null || rolesEntry.port === String(port), 'roles.js:port')) {
+          fail(key, `roles.js APP_URLS.${key} falls back to localhost:${rolesEntry.port}, but the ` +
+            `manifest says ${port}. Cross-app links land on the wrong app whenever ${urlKey} is unset.`);
+        }
       }
-    } else if (!isBackend && !check(false, 'roles.js:entry')) {
-      warn(svc, `no APP_URLS entry in packages/pos-shared/lib/roles.js keyed on ${urlKey} — ` +
-        `the app launcher cannot link to it`);
+
+      // VALID_APP_KEYS gates access; a public app is deliberately absent from
+      // it (it needs no grant) while still appearing in the catalogue.
+      if (isPublic) {
+        if (!check(!validAppKeys.has(key), 'roles.js:public')) {
+          fail(key, `manifest marks "${key}" public, but it is in VALID_APP_KEYS — a public app needs no access grant`);
+        }
+      } else if (!check(validAppKeys.has(key), 'roles.js:VALID_APP_KEYS')) {
+        fail(key, `"${key}" missing from VALID_APP_KEYS in roles.js — every access grant for it would be filtered out`);
+      }
+
+      if (!check(appMetaKeys.has(key), 'roles.js:APP_META')) {
+        fail(key, `"${key}" has no APP_META entry in roles.js — it renders as a generic cube with no label`);
+      } else if (category && !check(appMetaGroup.get(key) === category, 'roles.js:category')) {
+        fail(key, `APP_META.${key}.group is "${appMetaGroup.get(key)}" but the manifest category is "${category}"`);
+      }
     }
+  }
+
+  // -- api-pro domains --------------------------------------
+  for (const d of domains) {
+    if (!check(Object.prototype.hasOwnProperty.call(DOMAINS, d), `domain:${d}`)) {
+      fail(key, `domain "${d}" is not in packages/api-provider/config/domains.json — descriptors naming it cannot seed`);
+    }
+  }
+
+  // -- descriptor meta scan ---------------------------------
+  if (inScan && !check(scanFolders.has(dir), 'descriptor-scan')) {
+    fail(key, `"${dir}" missing from APP_FOLDERS in packages/api-provider/scripts/discover-descriptor-meta.mjs — ` +
+      `descriptor usage in this app is invisible to the meta-discovery pass`);
   }
 
   // -- docker ------------------------------------------------
   const dockerName = isWorker ? 'marketplace-worker' : (short || dir);
   if (!check(dockerStages.has(dockerName), 'docker:stage')) {
-    warn(svc, `no Dockerfile stage "${dockerName}" — the Docker path cannot build it`);
+    warn(key, `no Dockerfile stage "${dockerName}" — the Docker path cannot build it`);
   }
   if (!check(composeServices.has(dockerName), 'docker:compose')) {
-    warn(svc, `no docker-compose service "${dockerName}"`);
+    warn(key, `no docker-compose service "${dockerName}"`);
   }
 
   // -- dev launcher ------------------------------------------
   if (short) {
     const devCmd = isWorker ? `worker:${short}` : `dev:${short}`;
     if (!check(devStart.includes(devCmd), 'dev-start.bat')) {
-      warn(svc, `dev-start.bat never runs "npm run ${devCmd}"`);
+      warn(key, `dev-start.bat never runs "npm run ${devCmd}"`);
     }
   }
 
   rows.push(row);
 }
 
-// ── 4. Report ──────────────────────────────────────────────
+// ── 6. Every domain is accounted for ───────────────────────
+// A domain with no app is legitimate (an authorization-only sub-domain, or a
+// deprecated alias) but it has to be declared as such, so a genuinely orphaned
+// one cannot hide among them.
+
+const claimedDomains = new Set(ENTRIES.flatMap((e) => e.domains || []));
+const declaredOrphans = new Map((MANIFEST.domainsWithoutApps || []).map((d) => [d.domain, d]));
+for (const d of Object.keys(DOMAINS)) {
+  if (claimedDomains.has(d) || declaredOrphans.has(d)) continue;
+  fail('domains.json', `domain "${d}" belongs to no app and is not listed in the manifest's ` +
+    `"domainsWithoutApps" — add it there with a reason, or remove it from domains.json`);
+}
+for (const d of declaredOrphans.keys()) {
+  if (!Object.prototype.hasOwnProperty.call(DOMAINS, d)) {
+    warn('domains.json', `manifest lists "${d}" under domainsWithoutApps, but it is no longer in domains.json — drop the entry`);
+  }
+}
+
+// ── 7. Report ──────────────────────────────────────────────
 
 if (!QUIET) {
   console.log('');
-  console.log(`[verify] ${SERVICES.length} services in scripts/rutba_apps.sh\n`);
-  const w = Math.max(...rows.map((r) => r.svc.length));
+  console.log(`[verify] ${ENTRIES.length} services in config/apps.manifest.json\n`);
+  const w = Math.max(...rows.map((r) => r.key.length));
   for (const r of rows) {
     const mark = r.bad.length === 0 ? 'OK  ' : 'GAP ';
-    console.log(`  [${mark}] ${r.svc.padEnd(w)}  ${String(r.port).padStart(5)}  ${r.dir}` +
+    console.log(`  [${mark}] ${r.key.padEnd(w)}  ${String(r.port).padStart(5)}  ${r.dir}` +
       (r.bad.length ? `\n           missing: ${r.bad.join(', ')}` : ''));
   }
   console.log('');
@@ -253,5 +406,5 @@ if (errors.length) {
   console.error(`\n[verify] ${errors.length} problem(s), ${warnings.length} warning(s).\n`);
   process.exit(1);
 }
-console.log(`[verify] All ${SERVICES.length} services fully wired` +
+console.log(`[verify] All ${ENTRIES.length} services fully wired` +
   (warnings.length ? ` (${warnings.length} warning(s)).` : '.') + '\n');

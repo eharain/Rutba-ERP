@@ -4,7 +4,7 @@ Status: **program plan — v1, 2026-08-17.** Umbrella program. Detailed specs st
 own program folders; this document decides the decomposition model, resolves the recorded
 contradictions between programs, and sequences everything into one launchable release.
 
-<!-- verify-docs: planned rutba-core/src/policy/ rutba-core/src/modules/campaigns.js rutba-core/src/modules/mail.js rutba-core/migrations/000-baseline-schema.js apps/** infra/** config/apps.manifest.json scripts/contract-tests/** docs/contracts/** -->
+<!-- verify-docs: planned rutba-core/src/policy/ rutba-core/src/modules/campaigns.js rutba-core/src/modules/mail.js rutba-core/migrations/000-baseline-schema.js apps/** infra/** scripts/contract-tests/** docs/contracts/** -->
 
 **What "2.0" means, in one sentence per axis:**
 
@@ -251,11 +251,13 @@ Cheap, unblocking, and mostly overdue.
       official Phase-0 mechanism (supersede the unbuilt `docs/contracts/` +
       `scripts/contract-tests/` corpus in place), and add a fixture-DB golden run per tranche
       to close playbook step 2.
-- [ ] **One app manifest**: create `config/apps.manifest.json` (planned) as the single source
-      for app key, title, port, domain, category, workspace path; extend
-      [verify-app-wiring.js](../../../scripts/js/verify-app-wiring.js) to hard-fail on any
-      disagreement with the 8 derived surfaces. Ship the drift report first (the five known
-      mismatches), per the admin-console program's own recommendation.
+- [x] **One app manifest** (2026-08-17): [config/apps.manifest.json](../../../config/apps.manifest.json)
+      is the single source for key, unit, port, domains, category and workspace path, and
+      [verify-app-wiring.js](../../../scripts/js/verify-app-wiring.js) hard-fails on any surface
+      that disagrees. `verify:wiring` went from 9 errors to 25/25 wired; the
+      [drift report](01-registry-drift-report.md) records what was accidental (fixed) versus
+      deliberate (now declared as flags). Presentation stays in `APP_META` until the admin console
+      serves the catalogue per tenant.
 - [x] **Dead-code purge** (2026-08-17): deleted `rutba-users/`, the root
       `src/hooks/useErrorHandler.ts` stray, dead env keys, and the api-provider `temp/`
       scratch files; [tech-debt-cleanup.md](../tech-debt-cleanup.md) §5 closed. §3 (swiper)
