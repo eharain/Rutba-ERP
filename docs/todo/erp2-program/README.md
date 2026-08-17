@@ -366,18 +366,18 @@ single red-to-green sweeps.
 Restructuring under a live migration multiplies every conflict — so the house move waits until
 Strapi is out.
 
-- [ ] **Regroup the tree**, manifest-driven, `git mv` preserving history:
-      - `apps/` — the 22 Next.js apps, directory names matching app keys
-        (renames: `pos-auth`→`rutba-auth`, `pos-stock`→`rutba-stock`, `pos-sale`→`rutba-sale`
-        (planned), burning down the pos-/rutba- naming split; the admin-console A0 rekey is
-        the cost precedent);
-      - `services/` — `rutba-core`, `rutba-console` (when built), the marketplace worker
-        (extracted from the app), `sync-bridge`;
-      - `packages/` — as today (`api-provider`, `pos-shared`, `sync-core`, `video-maker`;
-        `strapi-api-pro` retired in P2);
-      - `infra/` — `deploy/`, `docker/`, `scripts/`, compose files.
-      All 8 derived surfaces regenerate from the manifest in the same sweep; one surface per
-      commit, red-to-green, per the strict-rollout rule.
+- [ ] **Regroup the tree**, manifest-driven, `git mv` preserving history — **target declared and
+      tooled 2026-08-18, execution pending a quiet tree**:
+      [03-repo-restructure.md](03-repo-restructure.md) has the full 27-row mapping,
+      [config/apps.manifest.json](../../../config/apps.manifest.json) carries it under `rename`,
+      and [scripts/js/restructure.js](../../../scripts/js/restructure.js) executes it in four
+      phases. Apps land in `apps/<category>/`, backends in `services/`, and six app keys change
+      with them (`sale`→`pos`, `inventory`→`control`, `admin`→`console`, `web`→`storefront`,
+      `web-user`→`portal`, `order-management`→`orders`) alongside 17 role keys, which
+      [rutba-core/migrations/022-rename-app-keys.js](../../../rutba-core/migrations/022-rename-app-keys.js)
+      applies to the api-pro rows in the same release. Measured: 27 directory moves, 3,835
+      path/package occurrences across 806 files, 1,070 identity occurrences across 253.
+      One phase per commit, red-to-green, per the strict-rollout rule.
 - [ ] **Enforce the module boundary** (the §2.3 domain axis): each core module declares its
       owned tables; a new validator (extending the `validate-schema.js` /
       [route-audit.js](../../../rutba-core/scripts/route-audit.js) family) fails on any
