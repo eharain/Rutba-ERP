@@ -69,7 +69,13 @@ function compileModel(uid, source, schema) {
     } else if (def.type === 'dynamiczone') {
       throw new Error(`${uid}: dynamiczone is not supported (none expected in this schema)`);
     } else if (SCALAR_TYPES.has(def.type)) {
-      model.scalars.push({ attr, column: snakeCase(attr), type: def.type, private: isPrivate });
+      // `enum` and `default` build no SQL here, but ported code introspects
+      // them through the compat contentTypes view: /enums/:name/:field answers
+      // straight out of attr.enum, so dropping them empties every EnumSelect.
+      const scalar = { attr, column: snakeCase(attr), type: def.type, private: isPrivate };
+      if (def.type === 'enumeration' && Array.isArray(def.enum)) scalar.enum = def.enum;
+      if (def.default !== undefined) scalar.default = def.default;
+      model.scalars.push(scalar);
     } else {
       throw new Error(`${uid}: unknown attribute type "${def.type}" on "${attr}"`);
     }

@@ -422,12 +422,31 @@ function instantiateController(mod, strapi) {
   return mod; // plain-object controllers (mfg style)
 }
 
+// Attribute metadata for one registry model, in Strapi's schema shape. Scalars
+// carry `enum`/`default` when the schema declared them — the /enums/:name/:field
+// route returns attr.enum verbatim, and pos-shared's EnumSelect is empty without
+// it.
+function compatAttributes(model) {
+  const attributes = {};
+  for (const s of model.scalars) {
+    const attr = { type: s.type };
+    if (s.enum) attr.enum = s.enum;
+    if (s.default !== undefined) attr.default = s.default;
+    attributes[s.attr] = attr;
+  }
+  for (const r of model.relations) attributes[r.attr] = { type: 'relation', relation: r.relation, target: r.target };
+  for (const m of model.media) attributes[m.attr] = { type: 'media', multiple: m.multiple };
+  for (const c of model.components) attributes[c.attr] = { type: 'component', component: c.component, repeatable: c.repeatable };
+  return attributes;
+}
+
 function buildCompatStrapi(overrides = {}) {
   installStrapiFactoryStub();
   const config = { ...pluginConfig.default, ...(overrides.apiProConfig || {}) };
   let socialConfig; // lazy — evaluated from pos-strapi's own config factory
   let uploadConfig; // ditto, from config/plugins.js's `upload` block
   let contentTypesCache = null;
+  let componentsCache = null;
   const strapi = {
     config: {
       get(key, fallback) {
@@ -471,15 +490,31 @@ function buildCompatStrapi(overrides = {}) {
         contentTypesCache = {};
         for (const [uid, model] of getRegistry().models) {
           if (model.isComponent) continue;
-          const attributes = {};
-          for (const s of model.scalars) attributes[s.attr] = { type: s.type };
-          for (const r of model.relations) attributes[r.attr] = { type: 'relation', relation: r.relation, target: r.target };
-          for (const m of model.media) attributes[m.attr] = { type: 'media', multiple: m.multiple };
-          for (const c of model.components) attributes[c.attr] = { type: 'component', component: c.component, repeatable: c.repeatable };
-          contentTypesCache[uid] = { uid, attributes, options: { draftAndPublish: model.draftAndPublish } };
+          contentTypesCache[uid] = {
+            uid,
+            // `info` carries the names ported lookups fall back on when a caller
+            // passes a short name whose uid isn't api::<name>.<name> (plugin
+            // content-types, any api where uid !== singularName).
+            info: { singularName: model.singularName, pluralName: model.pluralName },
+            attributes: compatAttributes(model),
+            options: { draftAndPublish: model.draftAndPublish },
+          };
         }
       }
       return contentTypesCache;
+    },
+    // Component schemas keyed by `category.name`, as Strapi keys them. Ported
+    // schema lookups fall through to this map when a name is not a content type
+    // (enums, validator); without it that tail read threw instead of 404ing.
+    get components() {
+      if (!componentsCache) {
+        componentsCache = {};
+        for (const [uid, model] of getRegistry().models) {
+          if (!model.isComponent) continue;
+          componentsCache[uid] = { uid, attributes: compatAttributes(model) };
+        }
+      }
+      return componentsCache;
     },
     db: {
       query: dbQueryAdapter,
