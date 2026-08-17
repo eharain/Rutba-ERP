@@ -544,7 +544,7 @@ function buildCompatStrapi(overrides = {}) {
                 name: jt.table,
                 joinColumn: { name: jt.sourceColumn },
                 inverseJoinColumn: { name: jt.targetColumn },
-                orderColumnName: jt.columns.find((c) => c.endsWith('_ord') && c.startsWith(jt.targetColumn.replace(/_id$/, ''))) || null,
+                orderColumnName: jt.ownerOrdColumn,
               };
             } else if (r.mappedBy) {
               // Inverse side: the owner's join table viewed from this end.
@@ -554,7 +554,7 @@ function buildCompatStrapi(overrides = {}) {
                   name: jt.table,
                   joinColumn: { name: jt.targetColumn },
                   inverseJoinColumn: { name: jt.sourceColumn },
-                  orderColumnName: jt.columns.find((c) => c.endsWith('_ord') && c.startsWith(jt.sourceColumn.replace(/_id$/, ''))) || null,
+                  orderColumnName: jt.inverseOrdColumn,
                 };
               }
             }

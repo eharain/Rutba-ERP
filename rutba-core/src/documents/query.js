@@ -8,8 +8,6 @@
  * (see docs/todo/core-server-multitenancy-program/01-contracts-freeze.md).
  */
 
-const { snakeCase } = require('../schema/naming');
-
 const OPERATORS = new Set([
   '$eq', '$eqi', '$ne', '$nei', '$in', '$notIn', '$null', '$notNull',
   '$contains', '$notContains', '$containsi', '$notContainsi',
@@ -103,7 +101,7 @@ function resolveEdge(registry, model, rel) {
       table: jt.table,
       thisColumn: jt.sourceColumn,
       otherColumn: jt.targetColumn,
-      orderColumn: jt.columns.find((c) => c === `${snakeCase(target.singularName)}_ord`) || null,
+      orderColumn: jt.ownerOrdColumn,
     };
   }
   // Inverse side: the owning attribute lives on the target model (mappedBy).
@@ -116,7 +114,7 @@ function resolveEdge(registry, model, rel) {
     table: owningJt.table,
     thisColumn: owningJt.targetColumn,
     otherColumn: owningJt.sourceColumn,
-    orderColumn: owningJt.columns.find((c) => c === `${snakeCase(target.singularName)}_ord`) || null,
+    orderColumn: owningJt.inverseOrdColumn,
   };
 }
 

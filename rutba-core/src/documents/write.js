@@ -17,15 +17,17 @@
  *
  * Every operation runs in its own transaction.
  *
- * Known v0 limits (documented, revisit per-module during ports):
- *  - Writing through the inverse side of a relation throws — write via the
- *    owning side (matches how the codebase's controllers are written).
- *  - Bidirectional inverse order columns (source_ord) are left NULL on insert;
- *    only the owner list's order column is maintained.
+ * Relations write the one link row from either end: an inverse (mappedBy)
+ * attribute writes the owning side's link table with the id and order columns
+ * swapped, so the CMS-style "set my groups from the page editor" payloads work.
+ *
+ * Known v0 limit (documented, revisit per-module during ports):
+ *  - Publish/discard rebuild a version from its own graph: inverse links added
+ *    on the draft reach the published version only once the OWNING document is
+ *    published (its clone remaps targets to their published counterparts).
  */
 
 const crypto = require('crypto');
-const { snakeCase } = require('../schema/naming');
 const { withTransaction } = require('../db/connection');
 
 const DOC_ID_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -91,43 +93,94 @@ async function resolveTargetId(trx, target, item) {
   return row.id;
 }
 
-async function writeRelation(trx, reg, model, rowId, rel, value) {
-  if (!rel.owner) {
-    throw new Error(
-      `${model.uid}.${rel.attr}: writing through the inverse side is not supported — ` +
-      `set the relation on ${rel.target}.${rel.mappedBy} instead`
-    );
-  }
-  const jt = reg.joinTablesByOwner.get(`${model.uid}.${rel.attr}`);
+/**
+ * Resolve how to write relation `rel` of `model` into its link table: which
+ * table, which column holds this row's id, which holds the target's, which
+ * order column ranks THIS row's list, and which ranks the far row's.
+ * An inverse (mappedBy) attribute is the owning side's edge, reversed.
+ */
+function resolveWriteEdge(reg, model, rel) {
   const target = reg.models.get(rel.target);
-  const ordColumn = jt.columns.find((c) => c === `${snakeCase(target.singularName)}_ord`) || null;
+  if (!target) throw new Error(`${model.uid}.${rel.attr}: unknown relation target ${rel.target}`);
+  const owningKey = rel.owner ? `${model.uid}.${rel.attr}` : `${rel.target}.${rel.mappedBy}`;
+  const jt = reg.joinTablesByOwner.get(owningKey);
+  if (!jt) throw new Error(`${model.uid}.${rel.attr}: cannot resolve owning side ${owningKey}`);
+
+  const edge = rel.owner
+    ? {
+      thisColumn: jt.sourceColumn,
+      otherColumn: jt.targetColumn,
+      myOrdColumn: jt.ownerOrdColumn,
+      farOrdColumn: jt.inverseOrdColumn,
+    }
+    : {
+      thisColumn: jt.targetColumn,
+      otherColumn: jt.sourceColumn,
+      myOrdColumn: jt.inverseOrdColumn,
+      farOrdColumn: jt.ownerOrdColumn,
+    };
+  // Bidirectional self-relation: both lists share one order column.
+  if (edge.farOrdColumn === edge.myOrdColumn) edge.farOrdColumn = null;
+  // Writing the inverse side of a to-one owner (its `seo_meta`, its `footer`)
+  // hands the far row a value it can only hold once, so connecting steals it
+  // from whoever held it. The owning side keeps its historical laxness: two
+  // order lines legitimately point their oneToOne `product` at the same row.
+  edge.exclusiveTarget = !rel.owner
+    && (jt.relation === 'oneToOne' || jt.relation === 'manyToOne');
+  return { ...edge, jt, target };
+}
+
+async function writeRelation(trx, reg, model, rowId, rel, value) {
+  const { jt, target, thisColumn, otherColumn, myOrdColumn, farOrdColumn, exclusiveTarget } =
+    resolveWriteEdge(reg, model, rel);
   const input = normalizeRelationInput(value);
+
+  // Where this row sits in the FAR row's list: keep the rank a pair already had
+  // (a replace must not shuffle the other side's list), else append.
+  const keptFarOrd = new Map();
+  const farOrdFor = async (targetId) => {
+    if (keptFarOrd.has(targetId)) return keptFarOrd.get(targetId);
+    const rows = await trx(jt.table).where(otherColumn, targetId).max(`${farOrdColumn} as m`);
+    return (Number(rows[0] && rows[0].m) || 0) + 1;
+  };
 
   const insertRows = async (items, startOrd) => {
     let ord = startOrd;
     for (const item of items) {
       const targetId = await resolveTargetId(trx, target, item);
-      const row = { [jt.sourceColumn]: rowId, [jt.targetColumn]: targetId };
-      if (ordColumn) row[ordColumn] = ord++;
+      if (exclusiveTarget) {
+        await trx(jt.table).where(otherColumn, targetId).whereNot(thisColumn, rowId).del();
+      }
+      const row = { [thisColumn]: rowId, [otherColumn]: targetId };
+      if (myOrdColumn) row[myOrdColumn] = ord++;
+      if (farOrdColumn) row[farOrdColumn] = await farOrdFor(targetId);
       await trx(jt.table).insert(row);
     }
   };
 
   if (input.mode === 'replace' || input.set) {
-    await trx(jt.table).where(jt.sourceColumn, rowId).del();
+    const existing = await trx(jt.table).where(thisColumn, rowId);
+    if (farOrdColumn) {
+      for (const r of existing) {
+        if (r[farOrdColumn] !== null && r[farOrdColumn] !== undefined) {
+          keptFarOrd.set(r[otherColumn], r[farOrdColumn]);
+        }
+      }
+    }
+    await trx(jt.table).where(thisColumn, rowId).del();
     await insertRows(input.set || input.items, 1);
     return;
   }
   if (input.disconnect.length) {
     const ids = [];
     for (const item of input.disconnect) ids.push(await resolveTargetId(trx, target, item));
-    await trx(jt.table).where(jt.sourceColumn, rowId).whereIn(jt.targetColumn, ids).del();
+    await trx(jt.table).where(thisColumn, rowId).whereIn(otherColumn, ids).del();
   }
   if (input.connect.length) {
-    const existing = await trx(jt.table).where(jt.sourceColumn, rowId);
-    const existingTargets = new Set(existing.map((r) => r[jt.targetColumn]));
+    const existing = await trx(jt.table).where(thisColumn, rowId);
+    const existingTargets = new Set(existing.map((r) => r[otherColumn]));
     let maxOrd = 0;
-    if (ordColumn) for (const r of existing) maxOrd = Math.max(maxOrd, r[ordColumn] || 0);
+    if (myOrdColumn) for (const r of existing) maxOrd = Math.max(maxOrd, r[myOrdColumn] || 0);
     const fresh = [];
     for (const item of input.connect) {
       const targetId = await resolveTargetId(trx, target, item);

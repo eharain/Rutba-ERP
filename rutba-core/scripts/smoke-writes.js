@@ -22,6 +22,9 @@ async function cleanup(db) {
   for (const [uid, table, nameCol] of [
     ['api::sale-order.sale-order', 'orders', 'order_id'],
     ['api::product.product', 'products', 'name'],
+    ['api::seo-meta.seo-meta', 'seo_metas', 'entity_title'],
+    ['api::cms-page.cms-page', 'cms_pages', 'title'],
+    ['api::cms-page-group.cms-page-group', 'cms_page_groups', 'name'],
   ]) {
     const rows = await db(table).where(nameCol, 'like', `${MARKER}%`).select('document_id').groupBy('document_id');
     for (const r of rows) await documents(uid).delete({ documentId: r.document_id });
@@ -133,6 +136,119 @@ async function main() {
       .join('products as p', 'p.id', 'l.product_id').where('p.document_id', docId).count('l.id as c');
     check('product versions gone', Number(prodRows.c) === 0);
     check('product link rows gone (cascade)', Number(linkRows.c) === 0);
+
+    // ── inverse (mappedBy) relations: written from the far end ─
+    // cms-page.member_page_groups is the inverse of cms-page-group.pages, and
+    // the CMS page editor sets it from the page — the same link row, reversed.
+    const pages = documents('api::cms-page.cms-page');
+    const pageGroups = documents('api::cms-page-group.cms-page-group');
+    const gA = await pageGroups.create({ data: { name: `${MARKER} gA`, slug: `${MARKER}-ga` } });
+    const gB = await pageGroups.create({ data: { name: `${MARKER} gB`, slug: `${MARKER}-gb` } });
+
+    const p1 = await pages.create({ data: { title: `${MARKER} p1`, slug: `${MARKER}-p1` } });
+    const p2 = await pages.create({
+      data: {
+        title: `${MARKER} p2`,
+        slug: `${MARKER}-p2`,
+        member_page_groups: [gB.documentId, gA.id], // mixed documentId + id
+      },
+      populate: { member_page_groups: true },
+    });
+    check('inverse m2m written from the mappedBy side (order kept)',
+      JSON.stringify((p2.member_page_groups || []).map((g) => g.id)) === JSON.stringify([gB.id, gA.id]),
+      JSON.stringify((p2.member_page_groups || []).map((g) => g.id)));
+
+    const p2Links = await db('cms_page_groups_pages_lnk').where('cms_page_id', p2.id).orderBy('cms_page_group_ord');
+    check('inverse write fills BOTH order columns',
+      p2Links.length === 2 &&
+      JSON.stringify(p2Links.map((r) => r.cms_page_group_ord)) === JSON.stringify([1, 2]) &&
+      p2Links.every((r) => r.cms_page_ord !== null),
+      JSON.stringify(p2Links));
+
+    const gAFull = await pageGroups.findOne({ documentId: gA.documentId, populate: { pages: true } });
+    check('owning side sees the inverse-written link',
+      (gAFull.pages || []).some((pg) => pg.id === p2.id));
+
+    // owner side writes the same table: p1 first, so p2 keeps rank 2 below
+    const gAOrdered = await pageGroups.update({
+      documentId: gA.documentId,
+      data: { pages: [p1.id, p2.id] },
+      populate: { pages: true },
+    });
+    check('owner-side replace orders its own list',
+      JSON.stringify((gAOrdered.pages || []).map((p) => p.id)) === JSON.stringify([p1.id, p2.id]));
+    const p1InA = await db('cms_page_groups_pages_lnk')
+      .where({ cms_page_group_id: gA.id, cms_page_id: p1.id }).first();
+    check('owner-side write fills the far list order column too', p1InA && p1InA.cms_page_group_ord !== null,
+      JSON.stringify(p1InA));
+
+    // a replace from the page side must not shuffle the group's page list
+    await pages.update({ documentId: p2.documentId, data: { member_page_groups: [gA.documentId] } });
+    const p2InA = await db('cms_page_groups_pages_lnk')
+      .where({ cms_page_group_id: gA.id, cms_page_id: p2.id }).first();
+    check('inverse replace keeps the pair\'s rank in the far list', p2InA && p2InA.cms_page_ord === 2,
+      JSON.stringify(p2InA));
+    const [gBLinks] = await db('cms_page_groups_pages_lnk')
+      .where({ cms_page_group_id: gB.id, cms_page_id: p2.id }).count('id as c');
+    check('inverse replace dropped the group left out', Number(gBLinks.c) === 0);
+
+    // connect/disconnect through the inverse side
+    const p2Connected = await pages.update({
+      documentId: p2.documentId,
+      data: { member_page_groups: { connect: [gB.documentId] } },
+      populate: { member_page_groups: true },
+    });
+    check('inverse connect appends', (p2Connected.member_page_groups || []).length === 2);
+    const p2Disconnected = await pages.update({
+      documentId: p2.documentId,
+      data: { member_page_groups: { disconnect: [gA.id] } },
+      populate: { member_page_groups: true },
+    });
+    check('inverse disconnect removes just that one',
+      (p2Disconnected.member_page_groups || []).length === 1 &&
+      p2Disconnected.member_page_groups[0].id === gB.id);
+
+    // the literal payload the CMS page editor PUTs (toOrderedRelation)
+    const p2Reset = await pages.update({
+      documentId: p2.documentId,
+      data: {
+        member_page_groups: {
+          set: [
+            { documentId: gA.documentId, position: { start: true } },
+            { documentId: gB.documentId, position: { after: gA.documentId } },
+          ],
+        },
+      },
+      populate: { member_page_groups: true },
+    });
+    check('inverse set:[{documentId,position}] payload (CMS editor shape)',
+      JSON.stringify((p2Reset.member_page_groups || []).map((g) => g.id)) === JSON.stringify([gA.id, gB.id]),
+      JSON.stringify((p2Reset.member_page_groups || []).map((g) => g.id)));
+
+    // to-one inverse (cms-page.seo_meta ← seo-meta.cms_page): connecting steals
+    const seo = documents('api::seo-meta.seo-meta');
+    const sm = await seo.create({ data: { entity_title: `${MARKER} seo`, cms_page: p1.id } });
+    const p2WithSeo = await pages.update({
+      documentId: p2.documentId,
+      data: { seo_meta: sm.id },
+      populate: { seo_meta: true },
+    });
+    check('inverse oneToOne write links the sidecar', p2WithSeo.seo_meta && p2WithSeo.seo_meta.id === sm.id);
+    const smLinks = await db('seo_metas_cms_page_lnk').where('seo_meta_id', sm.id);
+    check('inverse oneToOne steals instead of duplicating',
+      smLinks.length === 1 && smLinks[0].cms_page_id === p2.id, JSON.stringify(smLinks));
+
+    // Publish rebuilds a version from its own graph, and an inverse link lives
+    // on the OWNING side — so the published page picks the group up when the
+    // GROUP is published (its clone remaps targets to published counterparts).
+    await pages.publish({ documentId: p2.documentId });
+    await pageGroups.publish({ documentId: gB.documentId });
+    const p2Published = await pages.findOne({
+      documentId: p2.documentId, status: 'published', populate: { member_page_groups: true },
+    });
+    check('published page shows the group after the group is published',
+      (p2Published.member_page_groups || []).some((g) => g.documentId === gB.documentId),
+      JSON.stringify((p2Published.member_page_groups || []).map((g) => g.documentId)));
 
     // ── caller-scoped transaction: rollback undoes shim writes ──
     const { withTransaction } = require('../src/db/connection');

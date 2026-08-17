@@ -148,15 +148,22 @@ function buildRegistry() {
       const sourceCol = `${snakeCase(model.singularName)}_id`;
       let targetCol = `${snakeCase(target.singularName)}_id`;
       if (targetCol === sourceCol) targetCol = `inv_${targetCol}`;
-      const columns = ['id', sourceCol, targetCol];
-      if (rel.relation === 'manyToMany') {
-        columns.push(`${snakeCase(target.singularName)}_ord`);
-        if (rel.inversedBy) columns.push(`${snakeCase(model.singularName)}_ord`);
-      } else if (rel.relation === 'oneToMany') {
-        columns.push(`${snakeCase(target.singularName)}_ord`);
-      } else if (rel.relation === 'manyToOne' && rel.inversedBy) {
-        columns.push(`${snakeCase(model.singularName)}_ord`);
+      // ownerOrd ranks the owner's list (where a target sits in source.attr);
+      // inverseOrd ranks the mappedBy list on the far side (where the source
+      // sits in target.<inversedBy>). Both directions write the same link row,
+      // so each side's writer needs to know which column is whose.
+      let ownerOrdColumn = null;
+      let inverseOrdColumn = null;
+      if (rel.relation === 'manyToMany' || rel.relation === 'oneToMany') {
+        ownerOrdColumn = `${snakeCase(target.singularName)}_ord`;
       }
+      if (rel.inversedBy && (rel.relation === 'manyToMany' || rel.relation === 'manyToOne')) {
+        inverseOrdColumn = `${snakeCase(model.singularName)}_ord`;
+      }
+      const columns = ['id', sourceCol, targetCol];
+      if (ownerOrdColumn) columns.push(ownerOrdColumn);
+      // On a bidirectional self-relation both names collapse to one column.
+      if (inverseOrdColumn && inverseOrdColumn !== ownerOrdColumn) columns.push(inverseOrdColumn);
       joinTables.push({
         table,
         ownerUid: model.uid,
@@ -165,6 +172,8 @@ function buildRegistry() {
         targetUid: rel.target,
         sourceColumn: sourceCol,
         targetColumn: targetCol,
+        ownerOrdColumn,
+        inverseOrdColumn,
         columns,
       });
     }
