@@ -54,6 +54,16 @@
       ]
     },
     {
+      "table": "core_policy_checkpoints",
+      "columns": [
+        "name",
+        "fingerprint",
+        "counts",
+        "summary",
+        "seeded_at"
+      ]
+    },
+    {
       "table": "helpdesk_business_calendars",
       "columns": [
         "id",

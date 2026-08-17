@@ -59,6 +59,15 @@ dependency tree stays isolated from the frontend workspaces.
   tranches (`src/modules/` — 12 modules, ~505 routes), email sender
   (`src/platform/email.js`), uploads (`src/platform/upload.js` +
   `src/modules/uploads.js`).
+- **Policy layer** (`src/policy/`, 2026-08-17): core seeds the `api_pro_*`
+  tables from the descriptor contract itself and mints API tokens, so a
+  descriptor edit → seed → serve cycle needs no Strapi process. The seeder
+  diffs rather than upserts (writes only what differs, and can print the plan
+  first), reports rows no descriptor declares any more, and preserves
+  admin-tuned policies. Boot reseeds automatically when the contract changed,
+  skipping in ~40ms when it did not. Proven against the Strapi-seeded database:
+  a from-scratch core seed reproduces all 6,359 rows and their 6,163 links
+  exactly (`scripts/smoke-policy.js`).
 - Not yet started: content-sync engine.
 
 ## Commands
@@ -81,7 +90,23 @@ node rutba-core/scripts/validate-schema.js   # diff derived schema vs live DB (m
 node rutba-core/scripts/smoke-documents.js   # read-path smoke, cross-checked against raw SQL
 node rutba-core/scripts/smoke-writes.js      # write-path smoke, marker rows, self-cleaning
 node rutba-core/scripts/smoke-http.js        # boots the server; auth + policy matrix + envelope
+node rutba-core/scripts/smoke-policy.js      # seeder + token minting, inside a rolled-back txn
 ```
+
+Policy tables and API tokens, without Strapi (`src/policy/`):
+
+```bash
+npm --prefix rutba-core run seed:policy -- --dry-run    # print the plan, write nothing
+npm --prefix rutba-core run seed:policy                 # write what differs
+npm --prefix rutba-core run seed:policy -- --prune      # also drop rows no descriptor declares
+npm --prefix rutba-core run token -- list
+npm --prefix rutba-core run token -- mint "<name>" --days=90
+```
+
+`--dry-run` exits 2 when the plan is non-empty, so CI can gate "the committed
+descriptors match the seeded tables" without a second tool. `seed:policy` also
+runs at boot when the contract's hash or the row counts moved
+(`RUTBA_CORE_POLICY_SEED=auto|off|force`).
 
 Both read env the same way the dev stack does: repo-root `.env` /
 `.env.<ENVIRONMENT>`, honoring `RUTBA_CORE__*` > `POS_STRAPI__*` > bare names

@@ -26,6 +26,8 @@
 
 const { get, loadVars } = require('./config/env');
 const { start } = require('./http/server');
+const { getRegistry } = require('./documents');
+const { ensurePolicySeed } = require('./policy');
 const { startCrons, stopCrons, tasks } = require('./platform/cron');
 const { closeDb } = require('./db/connection');
 const { flushLogs } = require('./http/logger');
@@ -72,12 +74,20 @@ async function main() {
   const { environment } = loadVars();
   const port = parseInt(get('PORT', '4020'), 10);
 
+  // Before the server, not after: buildServer() reads the route table out of
+  // the api_pro_* tables, so a descriptor added since the last boot only gets
+  // a mounted route if the seed has already run. This is what makes core
+  // Strapi-free in the daily loop — edit a descriptor, restart, it serves.
+  // Skips itself in ~10ms when nothing changed (src/policy/checkpoint.js).
+  const policy = await ensurePolicySeed({ registry: getRegistry() });
+
   server = await start(port);
 
   const started = startCrons();
   console.log(
     `[core] ready — env=${environment} db=${get('DATABASE_NAME')}@${get('DATABASE_HOST')} `
-    + `port=${port} crons=${started}/${tasks.size} mail=${get('RUTBA_CORE_EMAIL', 'send')}`
+    + `port=${port} crons=${started}/${tasks.size} mail=${get('RUTBA_CORE_EMAIL', 'send')} `
+    + `policy=${policy.skipped ? 'unchanged' : 'seeded'}`
   );
 
   for (const signal of ['SIGTERM', 'SIGINT']) {

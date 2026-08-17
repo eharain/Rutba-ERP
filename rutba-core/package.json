@@ -14,7 +14,10 @@
     "migrate:status": "node scripts/migrate.js status",
     "migrate:down": "node scripts/migrate.js down",
     "grant:full-access": "node scripts/grant-full-access.js",
-    "social:shorten-urls": "node scripts/shorten-social-post-urls.js"
+    "social:shorten-urls": "node scripts/shorten-social-post-urls.js",
+    "seed:policy": "node scripts/seed-policy.js",
+    "smoke:policy": "node scripts/smoke-policy.js",
+    "token": "node scripts/api-token.js"
   },
   "dependencies": {
     "@koa/router": "^15.7.0",

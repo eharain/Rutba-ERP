@@ -4,7 +4,7 @@ Status: **program plan — v1, 2026-08-17.** Umbrella program. Detailed specs st
 own program folders; this document decides the decomposition model, resolves the recorded
 contradictions between programs, and sequences everything into one launchable release.
 
-<!-- verify-docs: planned rutba-core/src/policy/ rutba-core/src/modules/campaigns.js rutba-core/src/modules/mail.js rutba-core/migrations/000-baseline-schema.js apps/** infra/** scripts/contract-tests/** docs/contracts/** -->
+<!-- verify-docs: planned rutba-core/src/modules/campaigns.js rutba-core/src/modules/mail.js rutba-core/migrations/000-baseline-schema.js apps/** infra/** scripts/contract-tests/** docs/contracts/** -->
 
 **What "2.0" means, in one sentence per axis:**
 
@@ -66,10 +66,12 @@ is much further along than its README's phase table implies:
   `mail-message`/`mail-link` actions, the `media` api dir, and `/api/content-sync/*`
   (calls `strapi-content-sync-pro`, which core's compat layer cannot load). Mail and campaigns
   crons have no core home.
-- **The hardest residual dependency:** the api-pro **descriptor seeder runs only inside
-  Strapi** — core's whole route table is read from `api_pro_interfaces`/`api_pro_interface_methods`,
-  which only `pos-strapi/src/seed/api-provider-seed.js` writes. A descriptor change today
-  requires booting Strapi.
+- ~~**The hardest residual dependency:** the api-pro descriptor seeder runs only inside
+  Strapi~~ — **closed 2026-08-17.** Core's route table is still read from
+  `api_pro_interfaces`/`api_pro_interface_methods`, but
+  [rutba-core/src/policy/](../../../rutba-core/src/policy/) now writes those tables itself
+  (and mints API tokens), so a descriptor change no longer needs a Strapi process. See
+  [02-policy-seeder-port.md](02-policy-seeder-port.md).
 - **Runtime coupling:** 9 core files `require()` from `pos-strapi/node_modules`
   (auth validators, `@strapi/utils`, nodemailer, `@strapi/upload` image manipulation), and the
   schema loader reads `schema.json` from the pos-strapi tree. Even at `RUTBA_BACKEND=core`,
@@ -270,11 +272,16 @@ baseline numbers committed to the program folder.
 
 Everything that still *requires* a running Strapi, enumerated and killed.
 
-- [ ] **Port the api-pro seeder** into core (`rutba-core/src/policy/seeder`, planned) so a
-      descriptor change seeds `api_pro_*` tables without booting Strapi. This is the single
-      hardest residual dependency and unblocks everything else. Include api-token **minting**
-      (verification already works) and begin the `rutba-core/src/policy/` decomposition so
-      `packages/strapi-api-pro`'s plugin wrapper can retire in P2.
+- [x] **Port the api-pro seeder** (2026-08-17): [rutba-core/src/policy/](../../../rutba-core/src/policy/)
+      seeds the `api_pro_*` tables straight from the descriptor contract, so a descriptor edit
+      reaches the route table with no Strapi process alive. It diffs instead of upserting
+      (`--dry-run` prints the plan; the steady state writes nothing), reports rows no descriptor
+      declares any more, and preserves admin-tuned policies. API-token **minting** ships with it.
+      Proven by seeding a from-scratch copy of the live tables inside a rolled-back transaction
+      and comparing: 6,359 rows and 6,163 links reproduced exactly, 40/40 checks
+      ([scripts/smoke-policy.js](../../../rutba-core/scripts/smoke-policy.js)). It also surfaced
+      54 stale rows — including 4 grants the contract had already revoked. Full write-up:
+      [02-policy-seeder-port.md](02-policy-seeder-port.md).
 - [ ] **Port the remaining custom actions**: campaigns cluster + campaign cron
       (`rutba-core/src/modules/campaigns.js`, planned), `mail-message`/`mail-link` actions +
       mail cron (`rutba-core/src/modules/mail.js`, planned), the `media` api dir routes.
