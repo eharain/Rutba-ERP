@@ -101,6 +101,8 @@ RightApp's RORGAD + RUSRPL-billing + RIDNTY-as-IdP only matter if Rutba is sold 
 - Promote pos-auth toward a real OIDC provider for external RPs.
 - Requires a tenancy model in pos-strapi (org scoping) — significant architecture decision, **defer until the SaaS question is answered**.
 
+_(Update 2026-08-17: the SaaS question is answered — yes. Multi-tenant SaaS is [ROADMAP](../ROADMAP.md) H2, and the tenancy model is decided as database-per-tenant — [core-server-multitenancy-program README](../core-server-multitenancy-program/README.md) ground rule 4.)_
+
 ### 4a. Storage: two distinct lineages (`Rutba-Media-FileServer` ≠ RSTORAGE port)
 These started from **different problems** and are only now converging — don't treat the media server as an RSTORAGE port:
 
@@ -167,3 +169,5 @@ Per-contact files with generate-share-link-with-PIN. Nice-to-have; depends on wh
 7. **SaaS platform layer** (Priority 6) — only if/when Rutba pivots to multi-tenant SaaS; decide the tenancy model first.
 
 _Open decision for the user: is multi-tenant SaaS a goal (drives Priority 6), and is the softphone/telephony piece (§5.6) in scope for this round?_
+
+_(Update 2026-08-17: the SaaS question is answered — yes, per [ROADMAP](../ROADMAP.md) H2. The softphone/telephony question remains open.)_

@@ -11,11 +11,9 @@ REM Thin wrapper so this stays one script: dev-start.bat takes the backend as
 REM its first argument and everything else is shared.
 REM
 REM Known gaps while Strapi is down:
-REM   - UPLOADS. Reading images works (core 302s /uploads/* to MEDIA_BASE_URL),
-REM     but POSTING a new file still needs Strapi's upload plugin. Anything that
-REM     uploads - product images, CMS media - has to run on the default backend
-REM     until core grows an upload path to the media file server.
 REM   - Seeding. `npm run seed` drives the engine inside Strapi.
 REM   - The Strapi admin panel, obviously.
+REM (Uploads used to be listed here; core now accepts POSTed files itself via
+REM  src/platform/upload.js + src/modules/uploads.js - status updated 2026-08-17.)
 REM ============================================================
 call "%~dp0dev-start.bat" core

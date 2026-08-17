@@ -16,6 +16,9 @@ API" — it must never assume Strapi.
 
 ## Measured scope (2026-07, dev branch)
 
+_The figures below are the 2026-07 migration-scoping snapshot and are not
+maintained as current counts (noted 2026-08-17)._
+
 | Surface | Count |
 |---|---|
 | Content-types (`pos-strapi/src/api`) | 118 |
@@ -40,16 +43,21 @@ database and one wire contract during migration.
 
 ## Phases
 
-| Phase | Workstream | Deliverable | Doc |
-|---|---|---|---|
-| 0 | B (enables A too) | Contracts freeze + golden contract test suite | [01-contracts-freeze.md](01-contracts-freeze.md) |
-| 1 | A | Control plane MVP: tenant registry + provisioning + Caddy routing | [02-control-plane.md](02-control-plane.md) |
-| 2 | A | Tenant-aware frontend fleet (hostname → tenant → API origin) | [03-tenant-aware-frontends.md](03-tenant-aware-frontends.md) |
-| 3 | B | `rutba-core` skeleton: Koa + data shim + api-pro port | [04-core-server-and-shim.md](04-core-server-and-shim.md) |
-| 4 | B | First module migrated end-to-end (mfg) + playbook validated | [05-module-migration-playbook.md](05-module-migration-playbook.md) |
-| 5 | A | Fleet ops: upgrade rings, backups, monitoring, suspension | [02-control-plane.md](02-control-plane.md) |
-| 6 | B | Remaining modules in tranches; sale/stock/accounting cluster last | [05-module-migration-playbook.md](05-module-migration-playbook.md) |
-| 7 | B | Auth issuer cutover, Strapi retirement, multi-DB core process | [04-core-server-and-shim.md](04-core-server-and-shim.md), [05](05-module-migration-playbook.md) |
+| Phase | Workstream | Deliverable | Doc | Status (updated 2026-08-17) |
+|---|---|---|---|---|
+| 0 | B (enables A too) | Contracts freeze + golden contract test suite | [01-contracts-freeze.md](01-contracts-freeze.md) | not started |
+| 1 | A | Control plane MVP: tenant registry + provisioning + Caddy routing | [02-control-plane.md](02-control-plane.md) | not started |
+| 2 | A | Tenant-aware frontend fleet (hostname → tenant → API origin) | [03-tenant-aware-frontends.md](03-tenant-aware-frontends.md) | not started |
+| 3 | B | `rutba-core` skeleton: Koa + data shim + api-pro port | [04-core-server-and-shim.md](04-core-server-and-shim.md) | **built** |
+| 4 | B | First module migrated end-to-end (mfg) + playbook validated | [05-module-migration-playbook.md](05-module-migration-playbook.md) | **built** — [tranche-1-mfg.md](tranche-1-mfg.md): ported + smoke-verified |
+| 5 | A | Fleet ops: upgrade rings, backups, monitoring, suspension | [02-control-plane.md](02-control-plane.md) | not started |
+| 6 | B | Remaining modules in tranches; sale/stock/accounting cluster last | [05-module-migration-playbook.md](05-module-migration-playbook.md) | **built** — all 8 tranche sheets say ported + smoke-verified |
+| 7 | B | Auth issuer cutover, Strapi retirement, multi-DB core process | [04-core-server-and-shim.md](04-core-server-and-shim.md), [05](05-module-migration-playbook.md) | partial — auth tranche built ([tranche-8-auth.md](tranche-8-auth.md): cross-server-verified); Strapi retirement + multi-DB core not started |
+
+_Status column added 2026-08-17. Workstream B has outrun the tranche sheets:
+`rutba-core/src/modules/index.js` registers 12 modules, four of which (catalog,
+helpdesk — core-native, uploads, user-mgmt) have no tranche sheet. Workstream A
+(phases 0/1/2/5) has not started._
 
 Phases 1–2 (ship SaaS on Strapi) and 3–4 (prove the core) can run in parallel.
 

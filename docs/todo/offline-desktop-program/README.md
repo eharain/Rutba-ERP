@@ -5,6 +5,13 @@
 > of every `package.json` outside `node_modules` returns zero matches. This is a
 > greenfield container around code that already exists.
 >
+> **Status update (2026-08-17): no longer specification-only.** The phase-1
+> pass-through bridge is built — [`packages/sync-core`](../../../packages/sync-core/README.md),
+> per [`offline-pos-options.md` §13.7](../offline-pos-options.md#137-what-this-replaces);
+> [05](05-sqlite-viability.md) is a completed investigation (2026-08-14) and
+> [06](06-sync-back-granularity.md) is decided. The Electron shell itself is
+> still unbuilt, and the zero-Electron-dependency search result above still holds.
+>
 > This program **does not reopen** [`offline-pos-options.md`](../offline-pos-options.md).
 > That document's §§1–5 and §10 are the working design and are treated here as
 > settled. These four documents generalize it from one app to a framework and
@@ -95,7 +102,7 @@ Recorded here so no document below reopens them.
 | 1 | **One "Rutba Desktop" container hosting many apps**, not one installer per product. One install, one updater, one bridge, one replica, one signed-in session. | This program |
 | 2 | **The desktop IS the launcher.** Reuse `getAppCatalogGroups` / `rankByUsage` / `appUsage.js` from `pos-shared`; the app list comes from the server-owned catalogue. | [admin-console 01](../admin-console-program/01-app-catalogue-entitlements.md) |
 | 3 | **v1 bundles POS, Mail and Studio only.** | [offline-pos-options §12](../offline-pos-options.md#12-amendment-2026-08-13--one-engine-three-apps) |
-| 4 | **The Electron main process hosts the bridge** — no separate Windows service. | [offline-pos-options §11](../offline-pos-options.md#11-amendment-2026-08-13--electron-hosts-the-bridge) |
+| 4 | **The Electron main process hosts the bridge** — no separate Windows service. _(Superseded 2026-08-17: the bridge runs in a `UtilityProcess` inside the Electron app, not the main process — [§13.1](../offline-pos-options.md#131-the-engine-runs-in-a-utilityprocess-not-the-main-process); the installer/lifecycle argument stands.)_ | [offline-pos-options §11](../offline-pos-options.md#11-amendment-2026-08-13--electron-hosts-the-bridge) |
 | 5 | **Local reads come from `rutba-core` against SQLite**, never a second implementation of the domain. | [offline-pos-options §10.1](../offline-pos-options.md#101-shape), §6 |
 | 6 | **The replayer replays the captured stock-unit references**, falling back to allocation only when one cannot be honoured. Divisible lines stay product+qty. **The outbox payload carries both shapes.** | [06](06-sync-back-granularity.md) — settles [§10.5.1](../offline-pos-options.md#105-still-open) |
 

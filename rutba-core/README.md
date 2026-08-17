@@ -30,8 +30,10 @@ dependency tree stays isolated from the frontend workspaces.
   (inverse-side writes throw; inverse order columns left NULL).
 - **HTTP layer + api-pro port** (`src/http/`, `src/compat/`): Koa server
   mounting 362 descriptor routes from the api-pro DB mirror
-  (`api_pro_interfaces`/`_methods`; 89 custom actions answer 501 until their
-  module is ported). Auth = users-permissions JWT (verify-only; pos-strapi
+  (`api_pro_interfaces`/`_methods`; unported custom actions answer 501 — as of
+  2026-08-17 the remaining 501s are the campaigns cluster (cmp-*),
+  mail-message/mail-link and the media api dir; every other module's custom
+  actions are served from `src/modules/`). Auth = users-permissions JWT (verify-only; pos-strapi
   stays issuer) + admin API tokens (no-user requests skip policy, parity with
   pos-strapi). Policy enforcement runs the api-pro plugin's OWN service
   modules (context / permission-engine / policy-resolver / request-interceptor
@@ -51,8 +53,13 @@ dependency tree stays isolated from the frontend workspaces.
 - **Caller-scoped transactions**: `withTransaction()` (AsyncLocalStorage) —
   every shim query joins the ambient transaction automatically; compat exposes
   it as `strapi.db.transaction(cb)`. Rollback verified in the write smoke.
-- Not yet started: cron scheduler, document-middleware hook seam, custom-action
-  handlers (per-module tranches), email sender, content-sync engine.
+- Since built (status updated 2026-08-17): cron scheduler
+  (`src/platform/cron.js`), document-middleware hook seam (`src/documents/` +
+  `src/modules/lifecycles.js`), custom-action handlers for all migration
+  tranches (`src/modules/` — 12 modules, ~505 routes), email sender
+  (`src/platform/email.js`), uploads (`src/platform/upload.js` +
+  `src/modules/uploads.js`).
+- Not yet started: content-sync engine.
 
 ## Commands
 

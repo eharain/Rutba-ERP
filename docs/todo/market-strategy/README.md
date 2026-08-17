@@ -76,6 +76,7 @@ These are _screening criteria_ Pakistani buyers select on before they look at fe
 rutba.pk works single-tenant; selling requires the platform layer. This is the gate between "internal tool" and "product."
 
 9. **Multi-tenancy** — org/tenant model with data isolation in pos-strapi (the biggest architectural lift; decide row-level scoping vs schema/db-per-tenant early). Reuses api-pro's claim/role machinery.
+   _(Superseded 2026-08-17: the tenancy model is decided — database-per-tenant, forever; see [core-server-multitenancy-program README](../core-server-multitenancy-program/README.md) ground rule 4 and [ROADMAP](../ROADMAP.md) 2.1.)_
 10. **Self-serve onboarding** — signup → guided setup wizard (business type, branches, tax config, import products/customers via the existing bulk-import pattern) → live in minutes. Time-to-value is where Rutba beats the $40K-implementation incumbents.
 11. **Subscription billing + metering** — plans, seats/branches, usage limits, invoicing, dunning. (RightApp's RUSRPL billing concept, done properly.)
 12. **Tenant admin console** — org profile, users↔app entitlements, branches, tax/locale, branding. (RightApp's RORGAD concept.)
