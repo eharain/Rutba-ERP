@@ -20,6 +20,9 @@ contradictions between programs, and sequences everything into one launchable re
 Reading order for the impatient: **P0–P1 finish the engine, P2 kills Strapi, P3 cleans the
 house, P4 opens the throttle, P5 sells it.** Phases overlap where §4 says they can.
 
+Drawn version of §2's decisions — repo layout, core internals, the request path, and the
+anti-monolith mechanisms: **[00-architecture-diagrams.md](00-architecture-diagrams.md)**.
+
 ---
 
 ## 1. Ground truth (measured 2026-08-17)
