@@ -55,6 +55,7 @@ function printPlan(plan, { verbose }) {
       `~${s.updates.length}`,
       `stale ${s.stale.length}`,
     ];
+    if (s.protectedStale.length) bits.push(`kept ${s.protectedStale.length}`);
     if (link) bits.push(`links +${link.adds.length}/-${link.removes.length}`);
     console.log(`  ${name.padEnd(11)} ${bits.join('  ')}`);
 
@@ -64,10 +65,15 @@ function printPlan(plan, { verbose }) {
       console.log(`      ~ ${u.key}  [${Object.keys(u.changed).join(', ')}]`);
     }
     for (const r of s.stale) console.log(`      ? ${r.key} (stale)`);
+    for (const r of s.protectedStale) console.log(`      = ${r.key} (stale, admin-tuned — kept)`);
   }
 }
 
 function printStaleHint(plan) {
+  if (plan.totals.protectedStale) {
+    console.log(`[policy] ${plan.totals.protectedStale} stale row(s) are admin-tuned `
+      + '(templateVersion > 1) and are never pruned — remove them by hand if they are dead.');
+  }
   if (!plan.totals.stale) return;
   console.log(`[policy] ${plan.totals.stale} row(s) no descriptor declares any more.`);
   console.log('[policy] Core builds its route table from these rows, so a stale row mounts a');

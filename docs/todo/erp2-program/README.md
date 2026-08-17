@@ -278,7 +278,7 @@ Everything that still *requires* a running Strapi, enumerated and killed.
       (`--dry-run` prints the plan; the steady state writes nothing), reports rows no descriptor
       declares any more, and preserves admin-tuned policies. API-token **minting** ships with it.
       Proven by seeding a from-scratch copy of the live tables inside a rolled-back transaction
-      and comparing: 6,359 rows and 6,163 links reproduced exactly, 40/40 checks
+      and comparing: 6,359 rows and 6,163 links reproduced exactly, 44/44 checks
       ([scripts/smoke-policy.js](../../../rutba-core/scripts/smoke-policy.js)). It also surfaced
       54 stale rows — including 4 grants the contract had already revoked. Full write-up:
       [02-policy-seeder-port.md](02-policy-seeder-port.md).

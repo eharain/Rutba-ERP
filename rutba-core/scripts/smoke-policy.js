@@ -260,17 +260,43 @@ async function main() {
       await trx(LINKS.methods.table).insert({
         [LINKS.methods.source]: orphanId, [LINKS.methods.target]: orphanIface.id,
       });
+      // Two orphan policies: one the seeder produced, one a human tuned. Only
+      // the first may be pruned — the Policy Editor can author a policy for a
+      // method no descriptor declares, and deleting that is data loss.
+      const anyMethod = await trx(TABLES.methods).first('id');
+      for (const [key, version] of [['smoke--orphan:list:x_admin', 1], ['smoke--orphan:tuned:x_admin', 2]]) {
+        const [pid] = await trx(TABLES.policies).insert({
+          key, name: key, role_key: 'x_admin', resolver_mode: 'strict',
+          filters_template: '{}', populate_template: '{}', body_template: '{}', query_template: '{}',
+          template_version: version, document_id: `smokeorphanpolicy${version}00000`.slice(0, 24),
+          created_at: new Date(), updated_at: new Date(), published_at: new Date(),
+        });
+        await trx(LINKS.policies.table).insert({
+          [LINKS.policies.source]: pid, [LINKS.policies.target]: anyMethod.id,
+        });
+      }
+
       const prunePlan = await planSeed({ registry, contract: livePlan.contract });
       check(prunePlan.sections.methods.stale.length === 1
         && prunePlan.sections.methods.stale[0].key === 'smoke--orphan:list',
         'the orphan method is reported as stale');
+      check(prunePlan.sections.policies.stale.length === 1
+        && prunePlan.sections.policies.stale[0].key === 'smoke--orphan:list:x_admin',
+        'the seeder-authored orphan policy is prunable');
+      check(prunePlan.sections.policies.protectedStale.length === 1
+        && prunePlan.sections.policies.protectedStale[0].key === 'smoke--orphan:tuned:x_admin',
+        'the admin-tuned orphan policy is reported separately, not as prunable');
       check(!prunePlan.dirty, 'a stale row alone does not make the plan dirty (prune is opt-in)');
       const countBefore = Number((await trx(TABLES.methods).count({ n: '*' }))[0].n);
       await applySeed(prunePlan, { prune: true, log: { info: () => {} } });
       const countAfter = Number((await trx(TABLES.methods).count({ n: '*' }))[0].n);
-      check(countAfter === countBefore - 1, `prune deleted exactly one row (${countBefore} → ${countAfter})`);
+      check(countAfter === countBefore - 1, `prune deleted exactly one method (${countBefore} → ${countAfter})`);
       check(!(await trx(TABLES.methods).where('key', 'smoke--orphan:list').first()),
-        'the orphan row is gone');
+        'the orphan method row is gone');
+      check(!(await trx(TABLES.policies).where('key', 'smoke--orphan:list:x_admin').first()),
+        'the prunable orphan policy is gone');
+      check(Boolean(await trx(TABLES.policies).where('key', 'smoke--orphan:tuned:x_admin').first()),
+        'the admin-tuned orphan policy survived the prune');
 
       console.log('\n[5] core mints an API token the rest of core accepts');
       const { token, accessKey } = await tokens.mint({

@@ -241,8 +241,15 @@ async function readCurrent(db, schema) {
  *
  * `preserve` is how an admin-tuned policy survives a reseed: it returns the
  * subset of attributes the seeder is still allowed to own for that row.
+ *
+ * `protectStale` is the same idea for deletion. A row the descriptors no
+ * longer declare is normally the seeder's to remove — but not if a human
+ * authored it. The Policy Editor can write a policy for a method no descriptor
+ * produces, and the DB has historically had a second writer (the plugin's
+ * file-store sync). Those rows are reported and left alone; `prune` never
+ * touches them.
  */
-function diffSection(schema, desired, currentByKey, { preserve } = {}) {
+function diffSection(schema, desired, currentByKey, { preserve, protectStale } = {}) {
   const inserts = [];
   const updates = [];
 
@@ -259,11 +266,15 @@ function diffSection(schema, desired, currentByKey, { preserve } = {}) {
   }
 
   const desiredKeys = new Set(desired.map((r) => r.key));
-  const stale = [...currentByKey.values()]
-    .filter((r) => !desiredKeys.has(r[schema.col('key')]))
-    .map((r) => ({ id: r.id, key: r[schema.col('key')] }));
+  const stale = [];
+  const protectedStale = [];
+  for (const r of currentByKey.values()) {
+    if (desiredKeys.has(r[schema.col('key')])) continue;
+    const entry = { id: r.id, key: r[schema.col('key')] };
+    (protectStale && protectStale(r) ? protectedStale : stale).push(entry);
+  }
 
-  return { inserts, updates, stale };
+  return { inserts, updates, stale, protectedStale };
 }
 
 /**
@@ -369,6 +380,11 @@ async function applyLinks(trx, link, { adds, removes }) {
 
 // ─── plan ───────────────────────────────────────────────────────────────────
 
+/** Was this policy row edited by a human rather than produced by a seed? */
+function isTunedPolicy(row) {
+  return Number(row.template_version) > 1;
+}
+
 /** An admin-tuned policy keeps its templates, its name and its resolver mode. */
 function preservePolicy(attrs, existing) {
   const kept = { ...attrs, name: existing.name ?? attrs.name, resolverMode: existing.resolver_mode ?? attrs.resolverMode };
@@ -415,7 +431,10 @@ async function planSeed({ registry, contract, log = console } = {}) {
     roles: diffSection(schemas.roles, desired.roles, current.roles),
     interfaces: diffSection(schemas.interfaces, desired.interfaces, current.interfaces),
     methods: diffSection(schemas.methods, desired.methods, current.methods),
-    policies: diffSection(schemas.policies, desired.policies, current.policies, { preserve: preservePolicy }),
+    policies: diffSection(schemas.policies, desired.policies, current.policies, {
+      preserve: preservePolicy,
+      protectStale: isTunedPolicy,
+    }),
   };
 
   // Link diffs cover rows that already exist; inserts carry their own links.
@@ -434,11 +453,12 @@ async function planSeed({ registry, contract, log = console } = {}) {
     policies: await diffLinks(db, links.policies, withIds(desired.policies, 'policies'), existingIds.policies, existingIds.methods),
   };
 
-  const totals = { inserts: 0, updates: 0, stale: 0, linkAdds: 0, linkRemoves: 0 };
+  const totals = { inserts: 0, updates: 0, stale: 0, protectedStale: 0, linkAdds: 0, linkRemoves: 0 };
   for (const s of Object.values(sections)) {
     totals.inserts += s.inserts.length;
     totals.updates += s.updates.length;
     totals.stale += s.stale.length;
+    totals.protectedStale += s.protectedStale.length;
   }
   for (const l of Object.values(linkDiffs)) {
     totals.linkAdds += l.adds.length;

@@ -61,7 +61,11 @@ which route, so a "cleaner" rule that disagrees by one endpoint is a silent 403.
    router is built from those rows, so a stale row mounts a route the contract
    does not define, and a stale policy row is a grant the contract already
    revoked. See "What it found" below. Removal is opt-in (`--prune`), matching
-   the standing rule that narrowing a descriptor never silently revokes.
+   the standing rule that narrowing a descriptor never silently revokes, and
+   `--prune` **never touches an admin-tuned row** (`templateVersion > 1`) even
+   when no descriptor declares it: the Policy Editor can author a policy for a
+   method the contract does not produce, and the DB has historically had a
+   second writer in the plugin's file-store sync. Those are reported and kept.
 
 3. **Table and column names come from the schema registry**, not string
    literals, so the seeder cannot drift from the schema the `documents()` shim
@@ -91,14 +95,15 @@ rollback: it snapshots Strapi's rows, empties the five tables and their link
 tables, seeds from scratch with core, and compares column by column and link by
 link.
 
-**40/40 checks pass** against `pos_db` (2026-08-17):
+**44/44 checks pass** against `pos_db` (2026-08-17):
 
 - all 27 domains, 79 roles, 169 interfaces, 1,080 methods and 5,004 policies
   re-created — **6,359 rows and 6,163 link rows, every compared column
   identical**, no row the contract did not ask for;
 - re-planning immediately after a seed finds nothing to do (idempotent);
 - an admin-tuned policy survives a reseed;
-- `--prune` removes exactly the stale rows and nothing else;
+- `--prune` removes exactly the stale rows and nothing else, and an
+  admin-tuned orphan is reported separately and survives it;
 - a minted API token is accepted by core's own auth middleware, and reveals
   back to the same plaintext key;
 - every row count is unchanged after the rollback.
