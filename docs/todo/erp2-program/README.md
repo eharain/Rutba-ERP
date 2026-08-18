@@ -481,6 +481,26 @@ and P2's tranche flips are one long identity-plumbing exercise. Finding them now
 rehearsal instead of a live cutover, is a real de-risking of P2. The gates that came out of it
 (`verify:wiring`'s announced-identity check, manifest-derived env resolution) now guard the flips.
 
+### What 2026-08-18 added to Item 0
+
+Starting Strapi on this machine, a day after the move, **dropped 13 `api_pro_*` tables and the
+user→role grants** — a dangling `file:` symlink npm wrote mid-move meant the plugin never loaded,
+and Strapi's schema sync deletes tables no plugin claims (finding 9 in
+[03-repo-restructure.md](03-repo-restructure.md)). The contract rows came back exactly from
+`seed:policy`; the grants did not come back at all.
+
+Two consequences for the sequence below, both now folded into the runbook as its **§0**:
+
+- **`npm ci` and `verify:wiring` run on each box before the first `systemctl start`.**
+  `verify:wiring` now fails on a dangling `file:` dep for exactly this reason.
+- **Dump the database before the first Strapi start on each box.** Local grants were a dev
+  inconvenience; on the LAN box or the VPS they are real, and no seeder can regenerate them.
+
+It also settles a question the plan had left open. P1's seeder was justified as *"a descriptor
+edit reaches the route table with no Strapi process alive"*. Its first real use was disaster
+recovery — rebuilding 6,347 rows an accident had deleted, verifiably, in seconds. That is a
+stronger argument for finishing P1 than the one originally written down.
+
 ### Item 0 — Operationalize the rename. Blocks everything.
 
 **The estate is currently split.** `dev` carries a whole-tree rename; the LAN box and the VPS do

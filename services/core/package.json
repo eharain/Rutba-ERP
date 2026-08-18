@@ -17,7 +17,8 @@
     "social:shorten-urls": "node scripts/shorten-social-post-urls.js",
     "seed:policy": "node scripts/seed-policy.js",
     "smoke:policy": "node scripts/smoke-policy.js",
-    "token": "node scripts/api-token.js"
+    "token": "node scripts/api-token.js",
+    "baseline": "node scripts/baseline-metrics.js"
   },
   "dependencies": {
     "@koa/router": "^15.7.0",

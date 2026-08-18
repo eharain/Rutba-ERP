@@ -13,6 +13,30 @@ master env **off-git**, so it cannot be replaced wholesale — it must be rewrit
 > Do the env half and the unit half in the **same window**. An app whose unit was renamed but
 > whose env was not will start and then fail every authenticated request.
 
+## 0. Before starting Strapi — check the plugin links. Do not skip this.
+
+On 2026-08-18 this exact restructure left `services/strapi`’s three `file:` dependencies
+installed as links pointing one directory too shallow. `npm` wrote them while the tree was
+mid-move; the `package.json` declarations were correct throughout. Strapi discovers plugins
+from `node_modules` and then **drops any table no loaded plugin claims** — so it booted
+without complaint and deleted all 13 `api_pro_*` tables plus `up_users_app_roles_lnk`.
+
+The contract tables were rebuilt exactly by `seed:policy`. The **grants were not recoverable** —
+which user holds which role is data, and no descriptor knows it. Binary logging was on and
+still could not rebuild them.
+
+So on each box, after pulling and installing, and **before the first `systemctl start`**:
+
+```bash
+npm ci                      # or npm install — resolve the file: deps against the NEW paths
+npm run verify:wiring       # fails on any file: dep that resolves to a dangling link
+```
+
+`verify:wiring` gained that check as a direct result. If it reports a DANGLING link, delete the
+link and reinstall — do not start Strapi first. And take a database dump before the first
+Strapi start regardless; it costs a minute and it is the only thing that would have saved the
+grants.
+
 ## 1. Env prefixes and URL variables
 
 23 env prefixes and 7 URL variables changed. Do **not** hand-write seds for this —
@@ -118,7 +142,7 @@ sudo systemctl enable --now rutba_console
 ```bash
 node scripts/js/rename-env-prefixes.js .env.production   # must print "already current"
 systemctl list-units "rutba_*" --no-pager                # all NEW names, all active
-curl -sf localhost:4020/api/health || echo FAIL          # core answers
+curl -sf localhost:4020/_health || echo FAIL             # core answers
 ```
 
 An app that starts but 500s on every authenticated route almost always means its env block did

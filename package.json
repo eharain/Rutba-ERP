@@ -117,6 +117,7 @@
 
     "verify:wiring": "node scripts/js/verify-app-wiring.js",
     "verify:docs": "node scripts/js/verify-docs.js",
+    "baseline": "node services/core/scripts/baseline-metrics.js",
 
     "build": "node scripts/js/run-app.js build",
     "start": "node scripts/js/run-app.js start",

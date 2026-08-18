@@ -242,6 +242,73 @@ for (const e of ENTRIES) {
   }
 }
 
+// ── 4c. `file:` dependencies must actually resolve ─────────
+//
+// This is not a tidiness check. `services/strapi` pulls three workspace
+// packages in as `file:` deps, and one of them is the api-pro PLUGIN. Strapi
+// discovers plugins from node_modules and then runs a schema sync that DROPS
+// any table no loaded plugin claims. So a dangling symlink does not fail the
+// boot — it silently deletes the plugin's tables.
+//
+// That is not hypothetical. The P3 move left all three links pointing one
+// directory too shallow (`services/packages/...` instead of `packages/...`,
+// created by npm while the tree was mid-move). Strapi booted "fine" and took
+// all 13 `api_pro_*` tables with it, plus `up_users_app_roles_lnk` — the
+// user→role grants, which are data and not reproducible from any descriptor.
+//
+// The declaration in package.json was correct the whole time; only the
+// installed link was wrong, which is exactly why this checks the INSTALL and
+// not the manifest.
+{
+  const manifest = MANIFEST;
+  const targets = (manifest.services || [])
+    .concat(manifest.packages || [])
+    .map((e) => e.workspace || e.path)
+    .filter(Boolean);
+
+  for (const ws of targets) {
+    const pkgPath = path.join(ROOT, ws, 'package.json');
+    if (!fs.existsSync(pkgPath)) continue;
+    let deps;
+    try {
+      const parsed = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+      deps = Object.assign({}, parsed.dependencies, parsed.devDependencies);
+    } catch { continue; }
+
+    for (const [name, spec] of Object.entries(deps)) {
+      if (!/^file:/.test(String(spec))) continue;
+
+      // npm workspaces HOIST, so the package legitimately lives in either the
+      // workspace's own node_modules or the root one. Check both before
+      // concluding anything — an earlier draft of this check only looked in the
+      // workspace and cried wolf over every hoisted dependency.
+      const candidates = [
+        path.join(ROOT, ws, 'node_modules', ...name.split('/')),
+        path.join(ROOT, 'node_modules', ...name.split('/')),
+      ];
+      const usable = candidates.find((p) => fs.existsSync(path.join(p, 'package.json')));
+      if (usable) continue;
+
+      // existsSync FOLLOWS symlinks, so a dangling link reads as absent. lstat
+      // is what tells the two apart, and they need different fixes: a dangling
+      // link must be removed before reinstalling, a missing one just installed.
+      const dangling = candidates.find((p) => {
+        try { fs.lstatSync(p); return true; } catch { return false; }
+      });
+
+      if (!dangling) {
+        fail(ws, `${name} is a file: dep and is not installed anywhere — run npm install`);
+        continue;
+      }
+      let points = '';
+      try { points = ` -> ${fs.readlinkSync(dangling)}`; } catch { /* not a link */ }
+      fail(ws,
+        `${name} is installed as a DANGLING link${points} — delete it and reinstall. ` +
+        `A dangling plugin link makes Strapi drop that plugin's tables on boot`);
+    }
+  }
+}
+
 // ── 5. Per-service checks ──────────────────────────────────
 
 const rows = [];

@@ -310,6 +310,38 @@ broken". Migration `023-site-settings-app-slug.js` carries those rows across.
 actually matters, since `rider` legitimately announces `delivery`. Proven non-vacuous by
 restoring the pre-fix value and confirming the gate fails.
 
+**9. A dangling `file:` symlink made Strapi silently drop its own tables — and 13 users' grants.**
+Found 2026-08-18, a day after the move, by a harness that simply started Strapi. `npm` had
+resolved `services/strapi`'s three `file:` dependencies while the tree was mid-move and written
+links one directory too shallow — `services/packages/strapi-api-pro` instead of
+`packages/strapi-api-pro` — for the api-pro **plugin**, the upload provider, and api-provider.
+The declarations in `package.json` were correct the whole time; only the install was wrong.
+
+Strapi discovers plugins from `node_modules` and then runs a schema sync that **drops any table
+no loaded plugin claims**. It booted without complaint and took all 13 `api_pro_*` tables with
+it, plus `up_users_app_roles_lnk`.
+
+The damage split cleanly along a line worth internalising. The 6,347 contract rows came back
+**exactly** — `seed:policy` rebuilt them from the descriptors, `smoke-policy` passed 44/44 and
+the follow-up dry run reported zero drift. That is precisely the property P1's seeder was built
+for, and this is the first time it earned its keep. But `up_users_app_roles_lnk` is *data*, not
+contract: no descriptor knows which user holds which role. Binary logging was on in `ROW` format
+with 30-day retention, and it still could not rebuild the table — the auto-increment ids showed
+the grants were inserted long before the retention window, so only a handful of recent mutations
+survived. **A contract can be regenerated; an assignment cannot.**
+
+`verify:wiring` now fails on any `file:` dep that does not resolve, distinguishing a *dangling
+link* (delete it, then reinstall) from a *missing* one (just install) — `fs.existsSync` follows
+symlinks, so a dangling link reads as absent and an earlier draft of the check reported the wrong
+fix. It also checks the root `node_modules`, because npm workspaces hoist and the first draft
+cried wolf over every hoisted dependency. Proven non-vacuous by recreating the exact broken link
+and watching the gate name it.
+
+Two things make this the worst of the nine. It is the only one that **destroyed data**, and it is
+the only one where *every gate was green* — the tree was correct, the build passed, the manifest
+agreed with itself. Nothing in the repo was wrong; the failure lived entirely in an install
+artifact that no version-controlled file describes.
+
 Four of these — the corrupted mapping table, the skipped env rules, the broken env target, and the
 stale announcements — produced a **green-looking run that had done nothing**, which is the failure
 mode worth remembering: the sweep's own output said `763 occurrence(s) rewritten` while the half
@@ -331,9 +363,13 @@ system of record — so check identity against the DB, not against its own mirro
 | `migrate status` | seven applied migrations edited in place |
 | `seed-policy --dry-run` | 1,328 superseded policy rows after the role rename |
 | `smoke-policy` | the whole policy layer still correct under the new keys |
+| `seed:policy` (as a *repair*) | rebuilt all 6,347 contract rows after finding 9 dropped them |
 
-Note what is *missing* from that table: nothing caught findings 7 or 8 — both were found by
-reading a build log and a database, not by a gate. `verify:wiring` now covers 8.
+Note what is *missing* from that table: **nothing caught findings 7, 8 or 9.** Each was found by
+reading a build log, a database, and a crash — not by a gate. All three are now covered by
+`verify:wiring`, which is the honest summary of this restructure: the gates that existed caught
+the textual mistakes, and every mistake that survived was about *state the repo does not
+describe* — the env the boxes hold, the identity the apps announce, the links npm installed.
 
 **Correction to an earlier draft of this section**, which claimed `build:all` exits 0 even when an
 app fails and filed "make the runner propagate exit codes" as a follow-up. It does propagate —
