@@ -1,8 +1,13 @@
 # Rutba ERP 2.0 — Execution Program
 
-Status: **program plan — v1, 2026-08-17.** Umbrella program. Detailed specs stay in their
+Status: **program plan — v2, 2026-08-18.** Umbrella program. Detailed specs stay in their
 own program folders; this document decides the decomposition model, resolves the recorded
 contradictions between programs, and sequences everything into one launchable release.
+
+> **v2 changed the sequence.** P3's tree-move ran early by owner decision, and the estate is
+> now split — `dev` carries the rename, the deploy boxes do not. **[§3a](#3a-where-the-program-actually-stands--reworked-sequence-2026-08-18)
+> has the current standing and the reworked order; read it before the phase list below**, which
+> still reads in the original P0→P5 sequence.
 
 <!-- verify-docs: planned services/core/src/modules/campaigns.js services/core/src/modules/mail.js services/core/migrations/000-baseline-schema.js infra/** scripts/contract-tests/** docs/contracts/** -->
 
@@ -361,10 +366,12 @@ rollback drill) executed on the core-only stack.
 production traffic flips are external coordination. Everything else in this program lands as
 single red-to-green sweeps.
 
-### P3 — Repo restructure (~3–4 weeks; starts after P2's retirement, not before)
+### P3 — Repo restructure (~3–4 weeks)
 
-Restructuring under a live migration multiplies every conflict — so the house move waits until
-Strapi is out.
+> **Sequencing note (2026-08-18):** this section originally read "starts after P2's retirement,
+> not before" — restructuring under a live migration multiplies every conflict. The tree-move
+> ran early anyway, by owner decision, as a rehearsal; see [§3a](#3a-where-the-program-actually-stands--reworked-sequence-2026-08-18)
+> for what that cost and bought. The remaining items below still sit after P2.
 
 - [x] **Regroup the tree** (2026-08-18), manifest-driven, `git mv` preserving history — **done**:
       [03-repo-restructure.md](03-repo-restructure.md) has the full 27-row mapping,
@@ -452,6 +459,68 @@ Workstream A, the admin console program, and the launch itself.
 
 ---
 
+## 3a. Where the program actually stands — reworked sequence (2026-08-18)
+
+P3's tree-move **ran early, out of order, and deliberately** — as a rehearsal, at the owner's
+direction, while Strapi is still live. D8 said the restructure waits for retirement; that
+decision was consciously overridden rather than forgotten, and D8 below is amended with what
+the override cost and bought. The rest of P3 (module boundary, core-native convention, deferred
+cleanups) is untouched and still sits after P2.
+
+**What it cost.** P2's checklist is now written against paths that no longer exist — the
+per-tranche `git mv` of zero-copy sources, the `schema.json` handover and the archive step all
+name `pos-strapi`/`rutba-core`. Re-path P2 before executing it. Three in-flight branches had to
+be rename-merged, which turned out cheap: git's directory-rename detection placed modified files
+correctly and flagged every added file with the exact relocation.
+
+**What it bought, and this is the part that changes the sequencing.** The rehearsal surfaced
+eight execution findings (§8 of [03-repo-restructure.md](03-repo-restructure.md)), two of which
+would have broken production silently — every app announcing a dead `X-Rutba-App` identity, and
+every app losing its env block behind a fully green build. Those are *identity-plumbing* failures,
+and P2's tranche flips are one long identity-plumbing exercise. Finding them now, against a
+rehearsal instead of a live cutover, is a real de-risking of P2. The gates that came out of it
+(`verify:wiring`'s announced-identity check, manifest-derived env resolution) now guard the flips.
+
+### Item 0 — Operationalize the rename. Blocks everything.
+
+**The estate is currently split.** `dev` carries a whole-tree rename; the LAN box and the VPS do
+not. Neither can deploy from `dev` until its env and units are converted — apps would come up
+with no env block. `main` is 21 commits behind and deliberately held there for the same reason.
+
+This is the same failure this session kept finding, one level up: *the repo half moved and the
+other half did not.* It is item zero, ahead of all phase work, because every phase below is
+unshippable until it closes.
+
+- [ ] LAN box (`rutba-nvr@192.168.0.46`): [03a-deploy-runbook.md](03a-deploy-runbook.md) §1 (env,
+      via `scripts/js/rename-env-prefixes.js --write`) and §2 (nine systemd units), then a deploy.
+- [ ] VPS (rutba.pk): same, in a scheduled window.
+- [ ] Level `main` to `dev` once both boxes serve from the new tree.
+
+**Gate:** `rename-env-prefixes.js <master env>` prints `already current` on both boxes;
+`systemctl list-units "rutba_*"` shows only new names, all active; one deploy **and one rollback
+drill** completed on each.
+
+### Then, in this order
+
+1. **Close P0** — baseline metrics (the last open item, and now overdue twice over). Measure on
+   the new tree, both backends. Nothing else makes P2's "core win" provable, and it is the only
+   defence against fleet regressions in P5. Then adopt the contract harness formally: P2's
+   per-tranche goldens depend on it, so it is a P2 prerequisite, not P0 housekeeping.
+2. **P1, resequenced smallest-blocker-first** so the long pole starts in parallel:
+   vendor the 9 runtime couplings (hard blocker for deleting `services/strapi`) → parity
+   punch-list → remaining custom actions (campaigns, mail, media) → re-home the Strapi-admin
+   screens (cheap decide-by-list triage first). **Start the sync engine immediately and in
+   parallel** — it is the long pole and gates four consumers, not just this program.
+3. **P2**, re-pathed, and keep *runtime API origin* as its first item: it converts every
+   subsequent flip from a 22-app rebuild into config + restart, and it is a hard prerequisite for
+   both P5 and the desktop shell. Then tranche flips, then retirement.
+
+P3's remaining items fold into P2's per-tranche ownership moves, where the module-boundary
+validator has something real to enforce. One of them is already done: the deprecated `users`
+app-domain alias was removed during the restructure.
+
+---
+
 ## 4. What runs in parallel
 
 ```mermaid
@@ -492,7 +561,7 @@ continuing throughout on the same trunk.
 | D5 | **New domains are core-native** (helpdesk pattern); the documents() shim is for ported code and stops growing | Ends the Strapi-shaped data model without rewriting what works |
 | D6 | **Wire codec sequenced after Strapi retirement** | Resolves the recorded conflict with strangler ground rule 1 — one program mutates the descriptor layer at a time |
 | D7 | **Bake windows are the strict-rollout exception, invoked explicitly**; everything else is red-to-green sweeps | Resolves the playbook-vs-strict-rollout contradiction on the record |
-| D8 | **Repo restructure waits for Strapi retirement and rides the manifest** | Never restructure under a live migration; renames/moves become regeneration, not hand-syncing 8 surfaces |
+| D8 | ~~**Repo restructure waits for Strapi retirement**~~ — **overridden 2026-08-18**; the move ran early as a rehearsal, by owner decision. The "rides the manifest" half stands and proved itself | Amended, not deleted: see §3a. The feared cost (merging in-flight work across the rename) was real but cheap — git's directory-rename detection handled three branches. The unforeseen cost was identity drift: eight findings, two of which would have failed silently in production. Finding those against a rehearsal rather than a live cutover de-risks P2, whose flips are the same class of work |
 
 ## 6. Anti-goals
 
