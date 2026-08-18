@@ -26,6 +26,7 @@ const {
 } = require('./dev-runtime');
 
 const { startGateway, STATUS_PORT } = require('./dev-gateway');
+const errors = require('./dev-errors');
 
 // ── output ─────────────────────────────────────────────────
 
@@ -43,9 +44,16 @@ function tag(key) {
 
 function say(msg) { console.log(`${C(36, '▸'.padEnd(width))} ${msg}`); }
 
-/** Prefix every line of a child's output so one window stays readable. */
+/**
+ * Prefix every line of a child's output so one window stays readable, and pass
+ * it to the collector on the way past — eager apps and the backend land in the
+ * same error store as the gateway's on-demand ones.
+ */
 function pipeOutput(key, child) {
-  const onData = lineBuffer((line) => process.stdout.write(`${tag(key)} ${line}\n`));
+  const onData = lineBuffer((line) => {
+    errors.feed(key, line);
+    process.stdout.write(`${tag(key)} ${line}\n`);
+  });
   child.stdout.on('data', onData);
   child.stderr.on('data', onData);
 }
@@ -93,6 +101,13 @@ Flags
   --eager             start the named apps only, no on-demand gateway
   --idle <minutes>    idle shutdown for gateway apps (default: 15)
   --worker            also start the marketplace sync worker
+
+Errors
+  Every app's output and every request the gateway proxies is recorded and
+  grouped, so repeats of one fault collapse into a single counted row.
+    http://localhost:${STATUS_PORT}/errors   live fix-list (json at /errors.json)
+    npm run dev:errors             the same list, any time after the fact
+  A digest also prints on Ctrl-C, and the store survives in .dev/dev-errors.json.
 
 Categories  ${[...new Set(apps().map((a) => a.category).filter(Boolean))].join(', ')}
 Apps        ${list}
@@ -156,9 +171,15 @@ function main() {
     children.push({ key, child });
     pipeOutput(key, child);
     child.on('exit', (code) => {
-      if (!shuttingDown && code) say(`${C(31, key)} exited with code ${code}`);
+      if (!shuttingDown && code) {
+        errors.lifecycle(key, `exited with code ${code}`);
+        say(`${C(31, key)} exited with code ${code}`);
+      }
     });
-    child.on('error', (err) => say(`${C(31, key)} failed to start: ${err.message}`));
+    child.on('error', (err) => {
+      errors.lifecycle(key, `failed to start: ${err.message}`);
+      say(`${C(31, key)} failed to start: ${err.message}`);
+    });
   }
 
   // ── backend ──
@@ -172,10 +193,11 @@ function main() {
   // ── eager apps ──
   for (const key of eager) {
     const service = findService(key);
-    const { child, port, errors } = spawnApp(service);
-    if (errors.length) {
-      for (const e of errors) say(`${C(33, key)} env warning: ${e}`);
-    }
+    // Named envErrors, not errors: the bare name is the collector module in
+    // this file's scope, and shadowing it here would silently disable
+    // error recording for everything below.
+    const { child, port, errors: envErrors } = spawnApp(service);
+    for (const e of envErrors) say(`${C(33, key)} env warning: ${e}`);
     say(`starting ${key} ${DIM(`:${port}`)}`);
     track(key, child);
   }
@@ -207,9 +229,20 @@ function main() {
   console.log('');
 
   // ── shutdown ──
+  // Persist periodically as well as on exit, so a session that is killed
+  // outright (or that takes the machine down with it) still leaves its findings
+  // behind for `npm run dev:errors`.
+  const saver = setInterval(() => errors.save(), 30_000);
+  saver.unref();
+
   function shutdown() {
     if (shuttingDown) return;
     shuttingDown = true;
+    clearInterval(saver);
+    errors.save();
+    if (errors.counts().groups) {
+      console.log(errors.text({ limit: 12 }));
+    }
     console.log('');
     say('shutting down…');
     if (gateway) gateway.stopAll();

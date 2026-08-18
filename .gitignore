@@ -57,3 +57,6 @@ node_modules
 
 # Strapi CLI update-check cache
 .strapi-updater.json
+
+# dev-time error store (scripts/js/dev-errors.js)
+.dev/

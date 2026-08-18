@@ -34,6 +34,7 @@ const http = require('http');
 const net = require('net');
 
 const { apps, findService, spawnApp, killTree, lineBuffer } = require('./dev-runtime');
+const errors = require('./dev-errors');
 
 const SHADOW_OFFSET = 1000;          // 4002 (public) → 5002 (real next dev)
 const STATUS_PORT = 4100;
@@ -71,6 +72,7 @@ function ensureStarted(entry) {
   const capture = lineBuffer((line) => {
     entry.log.push(line);
     if (entry.log.length > 200) entry.log.shift();
+    errors.feed(entry.service.key, line);
     process.stdout.write(
       `\x1b[2m[${entry.service.key}]\x1b[0m ${line.replace(shadowRe, `:${entry.service.port}`)}\n`
     );
@@ -83,6 +85,7 @@ function ensureStarted(entry) {
     // so by the time this fires the state has already been reset. Without the
     // explicit flag a deliberate idle shutdown reports itself as a crash.
     if (!entry.stopping) {
+      errors.lifecycle(entry.service.key, `exited with code ${code}`);
       notify(`${entry.service.key} exited (code ${code}) — will retry on next request`);
     }
     entry.stopping = false;
@@ -165,12 +168,16 @@ function proxy(entry, req, res) {
       headers: req.headers,
     },
     (up) => {
+      // Every request for every app crosses this line, which makes it the one
+      // place that sees the whole environment's HTTP failures.
+      errors.httpFailure(entry.service.key, req.method, req.url, up.statusCode);
       res.writeHead(up.statusCode, up.headers);
       up.pipe(res);
     }
   );
 
   upstream.on('error', (err) => {
+    errors.lifecycle(entry.service.key, `upstream ${err.code || err.message} proxying ${req.url}`);
     if (res.headersSent) return res.destroy();
     res.writeHead(502, { 'content-type': 'text/html; charset=utf-8' });
     res.end(page(entry, `Upstream error: ${escapeHtml(err.message)}`, false));
@@ -282,6 +289,69 @@ function page(entry, title, starting) {
   ${starting ? '<script>setTimeout(() => location.reload(), 3000)</script>' : ''}`);
 }
 
+/**
+ * The fix-list. Ordered by severity then frequency, because the useful question
+ * at the end of a session is "what is firing most", not "what fired last".
+ */
+function errorsPage() {
+  const c = errors.counts();
+  const list = errors.all();
+
+  if (!list.length) {
+    return SHELL('Dev errors', `
+      <h1>No errors recorded</h1>
+      <p>Nothing has failed since the dev environment started.</p>
+      <p><a href="/">← app status</a></p>
+      <script>setTimeout(() => location.reload(), 10000)</script>`);
+  }
+
+  const rows = list.map((g) => {
+    const tone = g.severity === 'error' ? '#e5484d' : '#f5a524';
+    const detail = g.detail?.length
+      ? `<pre>${escapeHtml(g.detail.join('\n'))}</pre>` : '';
+    const samples = g.samples?.length
+      ? `<p class="muted">e.g. ${g.samples.map(escapeHtml).join(' · ')}</p>` : '';
+    return `<article>
+      <p class="head">
+        <span class="count" style="background:${tone}">${g.count}×</span>
+        <strong>${escapeHtml(g.source)}</strong>
+        <span class="muted">${escapeHtml(g.kind)}</span>
+        <span class="muted right">first ${errors.ago(g.first)} ago · last ${errors.ago(g.last)} ago</span>
+      </p>
+      <p class="msg">${escapeHtml(g.message)}</p>
+      ${detail}${samples}
+    </article>`;
+  }).join('');
+
+  return SHELL('Dev errors', `
+    <style>
+      .card { max-width: 62rem; }
+      article { border-top: 1px solid color-mix(in srgb, CanvasText 12%, transparent);
+                padding: .85rem 0; }
+      .head { display: flex; gap: .6rem; align-items: baseline; margin: 0 0 .2rem; opacity: 1; }
+      .right { margin-left: auto; font-size: .82em; }
+      .count { color: #fff; border-radius: .35em; padding: .05em .45em;
+               font-size: .8em; font-weight: 600; }
+      .muted { opacity: .6; }
+      .msg { margin: .1rem 0; font-family: ui-monospace, monospace; font-size: .88em; }
+      pre { margin: .35rem 0 0; padding: .5rem .7rem; overflow-x: auto; font-size: .8em;
+            background: color-mix(in srgb, CanvasText 7%, transparent);
+            border-radius: .35em; opacity: .8; }
+      .bar { display: flex; gap: 1rem; align-items: baseline; margin-bottom: .5rem; }
+    </style>
+    <div class="bar">
+      <h1>${c.errors} error${c.errors === 1 ? '' : 's'}${c.warns ? `, ${c.warns} warning${c.warns === 1 ? '' : 's'}` : ''}</h1>
+      <span class="muted">${c.occurrences} occurrences</span>
+      <span class="right muted" style="margin-left:auto">
+        <a href="/">status</a> · <a href="/errors.json">json</a> · <a href="/errors/clear">clear</a>
+      </span>
+    </div>
+    <p class="muted">Grouped by normalised signature — repeats of one fault collapse
+       into a single row, so this is a fix-list, not a log.</p>
+    ${rows}
+    <script>setTimeout(() => location.reload(), 10000)</script>`);
+}
+
 function statusPage() {
   const rows = [...registry.values()]
     .sort((a, b) => a.service.port - b.service.port)
@@ -296,10 +366,18 @@ function statusPage() {
     .join('');
 
   const live = [...registry.values()].filter((e) => e.state === 'ready').length;
+  const c = errors.counts();
+  const errLine = c.groups
+    ? `<p><a href="/errors"><strong>${c.errors} error${c.errors === 1 ? '' : 's'}</strong>` +
+      `${c.warns ? ` and ${c.warns} warning${c.warns === 1 ? '' : 's'}` : ''} recorded</a>` +
+      ` <span style="opacity:.6">(${c.occurrences} occurrences)</span></p>`
+    : '<p><a href="/errors">No errors recorded</a></p>';
+
   return SHELL('Rutba dev gateway', `
     <h1>Dev gateway</h1>
     <p>${live} of ${registry.size} apps running. Apps boot on first request and
        stop after ${idleLabel()} idle.</p>
+    ${errLine}
     <table><tr><th></th><th>App</th><th>Port</th><th>State</th><th>Last hit</th></tr>
     ${rows}</table>
     <script>setTimeout(() => location.reload(), 5000)</script>`);
@@ -340,10 +418,36 @@ function startGateway({ keys, log = console.log, idleMinutes } = {}) {
   }
 
   const status = http.createServer((req, res) => {
+    const route = req.url.split('?')[0];
+
+    if (route === '/errors.json') {
+      res.writeHead(200, { 'content-type': 'application/json' });
+      return res.end(JSON.stringify({ counts: errors.counts(), groups: errors.all() }, null, 2));
+    }
+    if (route === '/errors/clear') {
+      errors.reset();
+      errors.save();
+      res.writeHead(302, { location: '/errors' });
+      return res.end();
+    }
+    if (route === '/errors') {
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+      return res.end(errorsPage());
+    }
+
     res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
     res.end(statusPage());
   });
-  status.on('error', () => {});
+  // Never swallow this. A silently unbound status server means /errors and the
+  // app table answer from whatever already owns the port — in practice a stale
+  // gateway from an earlier session — and you read someone else's state while
+  // believing it is this run's.
+  status.on('error', (err) => {
+    log(err.code === 'EADDRINUSE'
+      ? `status port :${STATUS_PORT} is already in use — another dev session is ` +
+        'probably still running. Run `npm run dev:stop`, then start again.'
+      : `status server error: ${err.message}`);
+  });
   status.listen(STATUS_PORT, '0.0.0.0');
   servers.push(status);
 
