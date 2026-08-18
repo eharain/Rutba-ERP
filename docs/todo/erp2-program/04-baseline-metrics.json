@@ -1,0 +1,499 @@
+{
+  "startedAt": "2026-08-18T17:13:10.762Z",
+  "config": {
+    "TOP_N": 12,
+    "SAMPLES": 40,
+    "WARMUP": 20,
+    "CONCURRENCY": 20,
+    "CONC_BATCHES": 8
+  },
+  "backends": {
+    "strapi": {
+      "port": 4010,
+      "bootMs": 148914,
+      "bootNote": null,
+      "rssMb": 2558
+    },
+    "core": {
+      "port": 4020,
+      "bootMs": 9832,
+      "bootNote": null,
+      "rssMb": 151
+    }
+  },
+  "routes": [
+    {
+      "label": "Products.list",
+      "uid": "api::product.product",
+      "callSites": 16,
+      "urlPath": "/api/products",
+      "grants": [
+        "control_admin",
+        "control_manager",
+        "control_staff",
+        "stock_admin",
+        "stock_manager",
+        "stock_staff",
+        "cms_admin",
+        "cms_manager",
+        "cms_staff",
+        "social_admin",
+        "social_manager",
+        "social_staff",
+        "orders_admin",
+        "orders_manager",
+        "orders_staff",
+        "manufacturing_admin",
+        "manufacturing_manager",
+        "manufacturing_staff"
+      ],
+      "byBackend": {
+        "strapi": {
+          "status": 200,
+          "p50": 94,
+          "p95": 131.7,
+          "p99": 135.1,
+          "rps": 8
+        },
+        "core": {
+          "status": 200,
+          "p50": 16,
+          "p95": 21,
+          "p99": 23,
+          "rps": 102
+        }
+      }
+    },
+    {
+      "label": "CmsPages.listDraft",
+      "uid": "api::cms-page.cms-page",
+      "callSites": 11,
+      "urlPath": "/api/cms-pages",
+      "grants": [
+        "cms_admin",
+        "cms_manager",
+        "cms_staff",
+        "auth_admin",
+        "auth_manager",
+        "auth_staff",
+        "stock_admin",
+        "stock_manager",
+        "stock_staff"
+      ],
+      "byBackend": {
+        "strapi": {
+          "status": 200,
+          "p50": 140.7,
+          "p95": 196.9,
+          "p99": 200.1,
+          "rps": 11
+        },
+        "core": {
+          "status": 200,
+          "p50": 8.3,
+          "p95": 10,
+          "p99": 10.7,
+          "rps": 161
+        }
+      }
+    },
+    {
+      "label": "MarketplaceAccounts.list",
+      "uid": "api::marketplace-account.marketplace-account",
+      "callSites": 11,
+      "urlPath": "/api/marketplace-accounts",
+      "grants": [
+        "marketplace_admin",
+        "marketplace_manager",
+        "marketplace_staff"
+      ],
+      "byBackend": {
+        "strapi": {
+          "status": 200,
+          "p50": 87.4,
+          "p95": 112,
+          "p99": 127.2,
+          "rps": 14
+        },
+        "core": {
+          "status": 200,
+          "p50": 7.2,
+          "p95": 9.1,
+          "p99": 10,
+          "rps": 152
+        }
+      }
+    },
+    {
+      "label": "Branches.list",
+      "uid": "api::branch.branch",
+      "callSites": 9,
+      "urlPath": "/api/branches",
+      "grants": [
+        "accounts_admin",
+        "accounts_manager",
+        "accounts_staff",
+        "ap_admin",
+        "ap_manager",
+        "ap_staff",
+        "ar_admin",
+        "ar_manager",
+        "ar_staff",
+        "accounts_viewer_admin",
+        "accounts_viewer_manager",
+        "accounts_viewer_staff",
+        "hr_admin",
+        "hr_manager",
+        "hr_staff",
+        "pos_admin",
+        "pos_manager",
+        "pos_staff",
+        "social_admin",
+        "social_manager",
+        "social_staff",
+        "stock_admin",
+        "stock_manager",
+        "stock_staff",
+        "control_admin",
+        "control_manager",
+        "control_staff",
+        "manufacturing_admin",
+        "manufacturing_manager",
+        "manufacturing_staff"
+      ],
+      "byBackend": {
+        "strapi": {
+          "status": 200,
+          "p50": 87.2,
+          "p95": 104.8,
+          "p99": 120.8,
+          "rps": 15
+        },
+        "core": {
+          "status": 200,
+          "p50": 6.9,
+          "p95": 8.3,
+          "p99": 8.4,
+          "rps": 202
+        }
+      }
+    },
+    {
+      "label": "ProductGroups.listDraft",
+      "uid": "api::product-group.product-group",
+      "callSites": 9,
+      "urlPath": "/api/product-groups",
+      "grants": [
+        "stock_admin",
+        "stock_manager",
+        "stock_staff",
+        "cms_admin",
+        "cms_manager",
+        "cms_staff"
+      ],
+      "byBackend": {
+        "strapi": {
+          "status": 200,
+          "p50": 88.7,
+          "p95": 114.9,
+          "p99": 122.5,
+          "rps": 12
+        },
+        "core": {
+          "status": 200,
+          "p50": 6.3,
+          "p95": 8.1,
+          "p99": 8.4,
+          "rps": 193
+        }
+      }
+    },
+    {
+      "label": "HrEmployees.list",
+      "uid": "api::hr-employee.hr-employee",
+      "callSites": 8,
+      "urlPath": "/api/hr-employees",
+      "grants": [
+        "hr_admin",
+        "hr_manager",
+        "hr_staff",
+        "manufacturing_admin",
+        "manufacturing_manager",
+        "manufacturing_staff",
+        "orders_admin",
+        "orders_manager",
+        "orders_staff"
+      ],
+      "byBackend": {
+        "strapi": {
+          "status": 200,
+          "p50": 97.4,
+          "p95": 133.5,
+          "p99": 135.7,
+          "rps": 11
+        },
+        "core": {
+          "status": 200,
+          "p50": 10.3,
+          "p95": 12.4,
+          "p99": 12.7,
+          "rps": 140
+        }
+      }
+    },
+    {
+      "label": "Products.search",
+      "uid": "api::product.product",
+      "callSites": 7,
+      "urlPath": "/api/products",
+      "grants": [
+        "control_admin",
+        "control_manager",
+        "control_staff",
+        "stock_admin",
+        "stock_manager",
+        "stock_staff",
+        "cms_admin",
+        "cms_manager",
+        "cms_staff",
+        "social_admin",
+        "social_manager",
+        "social_staff",
+        "orders_admin",
+        "orders_manager",
+        "orders_staff",
+        "manufacturing_admin",
+        "manufacturing_manager",
+        "manufacturing_staff"
+      ],
+      "byBackend": {
+        "strapi": {
+          "status": 200,
+          "p50": 133.7,
+          "p95": 160.4,
+          "p99": 162.5,
+          "rps": 10
+        },
+        "core": {
+          "status": 200,
+          "p50": 12,
+          "p95": 13.1,
+          "p99": 13.7,
+          "rps": 140
+        }
+      }
+    },
+    {
+      "label": "Suppliers.listAll",
+      "uid": "api::supplier.supplier",
+      "callSites": 7,
+      "urlPath": "/api/suppliers",
+      "grants": [
+        "stock_admin",
+        "stock_manager",
+        "stock_staff",
+        "cms_admin",
+        "cms_manager",
+        "cms_staff",
+        "orders_admin",
+        "orders_manager",
+        "orders_staff",
+        "control_admin",
+        "control_manager",
+        "control_staff",
+        "social_admin",
+        "social_manager",
+        "social_staff"
+      ],
+      "byBackend": {
+        "strapi": {
+          "status": 200,
+          "p50": 99.3,
+          "p95": 128.2,
+          "p99": 129.7,
+          "rps": 14
+        },
+        "core": {
+          "status": 200,
+          "p50": 6.1,
+          "p95": 8.1,
+          "p99": 8.3,
+          "rps": 167
+        }
+      }
+    },
+    {
+      "label": "Workflows.list",
+      "uid": "api::workflow.workflow",
+      "callSites": 7,
+      "urlPath": "/api/workflows",
+      "grants": [
+        "manufacturing_admin",
+        "manufacturing_manager",
+        "manufacturing_staff",
+        "orders_admin",
+        "orders_manager",
+        "orders_staff"
+      ],
+      "byBackend": {
+        "strapi": {
+          "status": 200,
+          "p50": 109.5,
+          "p95": 159.7,
+          "p99": 162.8,
+          "rps": 13
+        },
+        "core": {
+          "status": 200,
+          "p50": 7.1,
+          "p95": 9.1,
+          "p99": 10.2,
+          "rps": 216
+        }
+      }
+    },
+    {
+      "label": "Brands.listAll",
+      "uid": "api::brand.brand",
+      "callSites": 6,
+      "urlPath": "/api/brands",
+      "grants": [
+        "stock_admin",
+        "stock_manager",
+        "stock_staff",
+        "cms_admin",
+        "cms_manager",
+        "cms_staff",
+        "orders_admin",
+        "orders_manager",
+        "orders_staff",
+        "control_admin",
+        "control_manager",
+        "control_staff",
+        "social_admin",
+        "social_manager",
+        "social_staff"
+      ],
+      "byBackend": {
+        "strapi": {
+          "status": 200,
+          "p50": 97,
+          "p95": 129.9,
+          "p99": 143.7,
+          "rps": 11
+        },
+        "core": {
+          "status": 200,
+          "p50": 8.4,
+          "p95": 9.5,
+          "p99": 9.8,
+          "rps": 169
+        }
+      }
+    },
+    {
+      "label": "Categories.listAll",
+      "uid": "api::category.category",
+      "callSites": 6,
+      "urlPath": "/api/categories",
+      "grants": [
+        "stock_admin",
+        "stock_manager",
+        "stock_staff",
+        "pos_admin",
+        "pos_manager",
+        "pos_staff",
+        "cms_admin",
+        "cms_manager",
+        "cms_staff",
+        "control_admin",
+        "control_manager",
+        "control_staff",
+        "social_admin",
+        "social_manager",
+        "social_staff"
+      ],
+      "byBackend": {
+        "strapi": {
+          "status": 200,
+          "p50": 111.2,
+          "p95": 165.2,
+          "p99": 253.3,
+          "rps": 12
+        },
+        "core": {
+          "status": 200,
+          "p50": 7.6,
+          "p95": 9.7,
+          "p99": 9.8,
+          "rps": 177
+        }
+      }
+    },
+    {
+      "label": "HelpdeskDesks.list",
+      "uid": "api::helpdesk-desk.helpdesk-desk",
+      "callSites": 6,
+      "urlPath": "/api/helpdesk/desks",
+      "grants": [
+        "helpdesk_admin",
+        "helpdesk_manager",
+        "helpdesk_staff"
+      ],
+      "byBackend": {
+        "strapi": {
+          "status": 404,
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "rps": null
+        },
+        "core": {
+          "status": 200,
+          "p50": 12.6,
+          "p95": 15.7,
+          "p99": 16.3,
+          "rps": 130
+        }
+      }
+    }
+  ],
+  "dropped": [
+    {
+      "route": "PUT /products/undefined",
+      "callSites": 22,
+      "why": "not a read — benchmarking it would mutate the database"
+    },
+    {
+      "route": "PUT /stock-items/undefined",
+      "callSites": 19,
+      "why": "not a read — benchmarking it would mutate the database"
+    },
+    {
+      "route": "POST /sale-orders/undefined/update-status",
+      "callSites": 15,
+      "why": "not a read — benchmarking it would mutate the database"
+    },
+    {
+      "route": "POST /media-library/files/move",
+      "callSites": 8,
+      "why": "not a read — benchmarking it would mutate the database"
+    },
+    {
+      "route": "PUT /social-posts/undefined",
+      "callSites": 8,
+      "why": "not a read — benchmarking it would mutate the database"
+    },
+    {
+      "route": "PUT /products/undefined",
+      "callSites": 7,
+      "why": "not a read — benchmarking it would mutate the database"
+    }
+  ],
+  "crons": {
+    "measured": false,
+    "why": "cron bodies write to the database; re-run with --crons to time them",
+    "registeredCount": 11,
+    "countSource": "core boot line"
+  }
+}

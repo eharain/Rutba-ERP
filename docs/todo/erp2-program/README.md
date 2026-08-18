@@ -253,10 +253,23 @@ Cheap, unblocking, and mostly overdue.
       offline-desktop README ("nothing is built" vs shipped `packages/sync`; bridge host
       is a UtilityProcess), `services/core/README.md` status block, superseded tenancy language in
       [market-strategy](../market-strategy/README.md) / [rightapp-gap-analysis](../rightapp-gap-analysis/README.md).
-- [ ] **Record baseline metrics** (the never-done item from
+- [x] **Record baseline metrics** (2026-08-18, the never-done item from
       [01-contracts-freeze.md](../core-server-multitenancy-program/01-contracts-freeze.md)):
-      boot time, RSS, p95 on the top-20 routes, cron runtimes — for both backends. Without
-      this, neither the core win nor future fleet regressions are provable.
+      [04-baseline-metrics.md](04-baseline-metrics.md) + a `.json` twin to diff future runs
+      against, produced by [baseline-metrics.js](../../../services/core/scripts/baseline-metrics.js)
+      (`npm run baseline`). Boot, RSS, p50/p95/p99 and rps per route for **both** backends over the
+      same database. **Core wins every route measured** — roughly an order of magnitude on p95 and
+      throughput, and ~11× on boot. That is the number P2's cutover never had.
+
+      It supersedes `benchmark.js` (deleted), which measured four hand-picked routes, folded the
+      harness into core's RSS, and printed Strapi's boot time as a prose guess. Here the route list
+      is *derived* — every descriptor endpoint ranked by real call-site count across the consumer
+      apps, narrowed to reads that resolve to a real URL — both servers are spawned as children so
+      the process figures are theirs alone, and the per-route auth header is picked from that
+      descriptor's own grants (one fixed header pair 403s on every route granted to another role).
+      Anything unmeasured is recorded as null with a reason. **Cron runtimes are the one piece
+      still open**: 11 tasks are registered, and timing them means running sweeps that write, so it
+      is behind `--crons`.
 - [ ] **Adopt the contract harness formally**: declare `contract-diff.js` + `smoke-*.js` the
       official Phase-0 mechanism (supersede the unbuilt `docs/contracts/` +
       `scripts/contract-tests/` corpus in place), and add a fixture-DB golden run per tranche
@@ -522,10 +535,10 @@ drill** completed on each.
 
 ### Then, in this order
 
-1. **Close P0** — baseline metrics (the last open item, and now overdue twice over). Measure on
-   the new tree, both backends. Nothing else makes P2's "core win" provable, and it is the only
-   defence against fleet regressions in P5. Then adopt the contract harness formally: P2's
-   per-tranche goldens depend on it, so it is a P2 prerequisite, not P0 housekeeping.
+1. **Close P0** — baseline metrics **done 2026-08-18** ([04-baseline-metrics.md](04-baseline-metrics.md));
+   core wins every route, ~11× on boot. Only cron *runtimes* remain, behind `--crons` because they
+   write. What is left of P0 is adopting the contract harness formally: P2's per-tranche goldens
+   depend on it, so it is a P2 prerequisite, not P0 housekeeping.
 2. **P1, resequenced smallest-blocker-first** so the long pole starts in parallel:
    vendor the 9 runtime couplings (hard blocker for deleting `services/strapi`) → parity
    punch-list → remaining custom actions (campaigns, mail, media) → re-home the Strapi-admin

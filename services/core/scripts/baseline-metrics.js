@@ -53,7 +53,12 @@ const SAMPLES = parseInt(arg('samples', '120'), 10);
 const WARMUP = parseInt(arg('warmup', '20'), 10);
 const CONCURRENCY = 20;
 const CONC_BATCHES = 8;
-const BOOT_TIMEOUT_MS = 180000;
+// Strapi took 78s, 104s and 111s on three clean runs here and blew past 180s on
+// a fourth while the machine was busy — at which point the harness gave up,
+// killed the npm wrapper, and left the real server to finish booting as an
+// orphan holding the port. Budget for the slow case rather than lose the
+// comparison that is the entire point of the report.
+const BOOT_TIMEOUT_MS = 360000;
 
 const BACKENDS = [
   { name: 'strapi', port: 4010, script: 'start:strapi', health: '/_health' },
@@ -82,10 +87,28 @@ function pidOnPort(port) {
 function rssMbOfPid(pid) {
   if (!pid) return null;
   try {
-    const out = execSync(`tasklist /FI "PID eq ${pid}" /FO CSV /NH`, { encoding: 'utf8' });
-    const kb = parseInt(out.split(',').pop().replace(/[^0-9]/g, ''), 10);
+    const out = execSync(`tasklist /FI "PID eq ${pid}" /FO CSV /NH`, { encoding: 'utf8' }).trim();
+    // tasklist's mem column is itself comma-formatted ("345,678 K"), so
+    // splitting the CSV on commas and taking the last piece yields "678 K" —
+    // which is how the predecessor script reported a 300 MB Strapi as 0 MB.
+    // Take the last QUOTED field instead, then strip the formatting.
+    const lastField = out.match(/"([^"]*)"\s*$/);
+    if (!lastField) return null;
+    const kb = parseInt(lastField[1].replace(/[^0-9]/g, ''), 10);
     return Number.isFinite(kb) ? Math.round(kb / 1024) : null;
   } catch { return null; }
+}
+
+/**
+ * Kills whatever is listening on a port. `npm run start:x` spawns the server as
+ * a grandchild, so killing the returned child handle stops the wrapper and
+ * leaves the server running — an orphan that then blocks the next run.
+ */
+function killWhateverHoldsPort(port) {
+  const pid = pidOnPort(port);
+  if (!pid) return false;
+  try { execSync(`taskkill /PID ${pid} /F`, { stdio: 'ignore' }); return true; }
+  catch { return false; }
 }
 
 async function isHealthy(port, healthPath) {
@@ -216,8 +239,16 @@ async function bootBackend(be) {
   }
   const t0 = process.hrtime.bigint();
   const child = spawn('npm', ['run', be.script], {
-    cwd: ROOT, shell: true, stdio: 'ignore',
+    cwd: ROOT, shell: true, stdio: ['ignore', 'pipe', 'pipe'],
   });
+  // Core prints "crons=<started>/<registered>" on its ready line. Reading it
+  // from the real process is the only honest count: requiring the modules
+  // in-harness registers a SUBSET (6 of 11 here), because some register on
+  // paths a bare initModules() never touches.
+  child.bootLog = '';
+  const capture = (buf) => { child.bootLog += String(buf); };
+  child.stdout.on('data', capture);
+  child.stderr.on('data', capture);
   const deadline = Date.now() + BOOT_TIMEOUT_MS;
   while (Date.now() < deadline) {
     if (await isHealthy(be.port, be.health)) {
@@ -230,7 +261,18 @@ async function bootBackend(be) {
     }
     await sleep(500);
   }
+  // Surface what the child actually said. Capturing its output and then
+  // discarding it on the one path where it matters is how a boot failure turns
+  // into a shrug.
+  const tail = (child.bootLog || '').split(/\r?\n/).filter(Boolean).slice(-8);
+  if (tail.length) {
+    console.log(`\n[baseline] ${be.name} boot output (last ${tail.length} lines):`);
+    for (const line of tail) console.log(`    ${line}`);
+  }
   try { child.kill(); } catch (e) { /* already gone */ }
+  // The npm wrapper is not the server. Killing it leaves the real process to
+  // finish booting and hold the port — which is exactly what happened.
+  killWhateverHoldsPort(be.port);
   return { pid: null, bootMs: null, bootNote: `did not become healthy within ${BOOT_TIMEOUT_MS / 1000}s`, child: null };
 }
 
@@ -281,7 +323,12 @@ function writeReport(r, backends) {
   p();
   p('Selected by ranking every descriptor endpoint by its real call-site count across the consumer');
   p('apps, then keeping the most-called **GET** routes that resolve to a real URL — not a');
-  p('hand-picked list. `calls` is that count.');
+  p('hand-picked list. `calls` is that count. The auth header is chosen per route from the roles');
+  p('that route grants, intersected with what the calling user holds; one fixed header pair 403s');
+  p('on every route granted to some other role.');
+  p();
+  p('A `404` under **strapi** is not a failure — it marks a route that only core serves, which is');
+  p('the case for every core-native module (helpdesk). Those rows are the shape P2 is heading for.');
   p();
   p(`| Route | calls | ${backends.map((b) => `${b.name} p50 | ${b.name} p95 | ${b.name} rps`).join(' | ')} |`);
   p(`|---|---:|${backends.map(() => '---:|---:|---:').join('|')}|`);
@@ -315,9 +362,10 @@ function writeReport(r, backends) {
       p(`| \`${c.name}\` | \`${c.rule}\` | ${c.error ? `ERROR: ${c.error}` : `${c.ms} ms`} |`);
     }
   } else {
-    p(`${r.crons.registered.length} crons are registered but **not timed** — ${r.crons.why}`);
+    p(`**${r.crons.registeredCount ?? 'an unknown number of'}** crons are registered but **not timed** — ${r.crons.why}`);
     p();
-    for (const n of r.crons.registered) p(`- \`${n}\``);
+    p(`Count read from the ${r.crons.countSource}. This is the one P0 metric still outstanding:`);
+    p('cron *runtimes* need `--crons`, which runs the sweeps and therefore writes.');
   }
   p();
   fs.writeFileSync(OUT_MD, L.join('\n'));
@@ -439,28 +487,40 @@ async function main() {
         console.log(`  ${c.name.padEnd(38)} ${String(c.ms).padStart(7)}ms${c.error ? `  ERROR ${c.error}` : ''}`);
       }
     } else {
-      // Crons register as a side effect of loading the modules, so reading the
-      // task map without initModules() reports a confident, wrong "0".
-      try { require('../src/modules').initModules(); } catch (e) { /* reported below */ }
-      const { tasks } = require('../src/platform/cron');
+      // Take the count from the real core process, not from requiring modules
+      // here: a bare initModules() registers only a subset.
+      const coreChild = spawned.find((c) => c && /start:core/.test(String(c.spawnargs || '')));
+      const fromBoot = (coreChild?.bootLog || '').match(/crons=\d+\/(\d+)/);
       results.crons = {
         measured: false,
         why: 'cron bodies write to the database; re-run with --crons to time them',
-        registered: Array.from(tasks.keys()),
+        registeredCount: fromBoot ? Number(fromBoot[1]) : null,
+        countSource: fromBoot ? 'core boot line' : 'not observed — core was already running',
       };
-      console.log(`\n[baseline] ${tasks.size} crons registered, not timed (pass --crons)`);
+      console.log(`\n[baseline] ${results.crons.registeredCount ?? '?'} crons registered, not timed (pass --crons)`);
     }
 
     writeReport(results, backends);
     console.log(`\n[baseline] wrote ${path.relative(ROOT, OUT_MD)} and ${path.relative(ROOT, OUT_JSON)}`);
   } finally {
-    for (const c of spawned) { try { process.kill(c.pid); } catch (e) { /* gone */ } }
+    // Kill the npm wrapper AND detach its pipes. Leaving the captured stdout /
+    // stderr streams attached made node exit non-zero on a fully successful run
+    // — which would have made this script useless as a gate, in the same week
+    // its own report told people to trust exit codes.
+    for (const c of spawned) {
+      try { c.stdout?.destroy(); c.stderr?.destroy(); } catch (e) { /* already closed */ }
+      try { process.kill(c.pid); } catch (e) { /* gone */ }
+    }
+    // Then the servers themselves, which are grandchildren of those wrappers.
+    for (const be of backends) killWhateverHoldsPort(be.port);
     await closeDb();
   }
 }
 
-main().catch(async (e) => {
-  console.error('[baseline] failed:', e.stack || e.message);
-  try { await closeDb(); } catch (e2) { /* ignore */ }
-  process.exit(1);
-});
+main()
+  .then(() => process.exit(0))
+  .catch(async (e) => {
+    console.error('[baseline] failed:', e.stack || e.message);
+    try { await closeDb(); } catch (e2) { /* ignore */ }
+    process.exit(1);
+  });
