@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Layout from "../components/Layout";
-import ProtectedRoute from "@rutba/packages/shared/components/ProtectedRoute";
-import { useAuth } from "@rutba/packages/shared/context/AuthContext";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import { HrEmployeesEndpoints, HrReportingLinesEndpoints } from "@rutba/api-provider/endpoints";
 
 /**

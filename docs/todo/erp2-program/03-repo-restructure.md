@@ -283,6 +283,13 @@ as `SERVICES/STRAPI`. The signal was 125 `WARN: Missing …` lines inside a run 
 Both functions now resolve `envPrefix` through `config/apps.manifest.json`, accepting a package
 name, a workspace path or a bare key; the 24 known prefixes match `.env.development` exactly.
 
+**1b. Finding 1 recurred during the merges, in the tool written to clean up after them.** The
+three branches merged after the sweep were authored against the old paths, so their content was
+swept with a small mapping script — which mapped `pos-shared → packages/shared` and duly rewrote
+the npm specifier `@rutba/pos-shared` into `@rutba/packages/shared`, breaking `build:hr`. The
+correct package name is `@rutba/shared`. Same lesson as finding 1, one layer up: **the cleanup
+tool needs the same name/path separation the sweep needed.** Caught by `build:all`.
+
 **8. The rename had a third half nobody listed: the identity on the wire.** §4a moved the app
 keys in the repo and migration 022 moved them in `api_pro_app_domains`. Both were verified. But
 each frontend also *announces* its identity — one bare `setAppName('<key>')` call in `_app.js`
@@ -326,19 +333,32 @@ system of record — so check identity against the DB, not against its own mirro
 | `smoke-policy` | the whole policy layer still correct under the new keys |
 
 Note what is *missing* from that table: nothing caught findings 7 or 8 — both were found by
-reading a build log and a database, not by a gate. `verify:wiring` now covers 8. `build:all` deserves its own
-note — **the runner exits 0 even when an app fails to build**, so the first green run was hiding
-`build:marketplace failed`; checking the exit code is not enough, grep the log for
-`[run-app] … failed`. And a missing env variable is only a `WARN`, which is how 125 of them rode
-through a green run unnoticed. Two follow-ups fall out of that: the runner should propagate exit
-codes, and a missing `PREFIX__PORT` for a service that declares a port should be an error, not a
-warning. Until both land, *read the build log* — do not trust its exit code.
+reading a build log and a database, not by a gate. `verify:wiring` now covers 8.
+
+**Correction to an earlier draft of this section**, which claimed `build:all` exits 0 even when an
+app fails and filed "make the runner propagate exit codes" as a follow-up. It does propagate —
+`scripts/js/run-app.js` ends with `process.exit(failed ? 1 : 0)`. The zero came from *how it was
+invoked*: `npm run build:all | tail` reports **tail's** exit status, not the build's, so a
+pipeline always looks green. Redirect instead (`> build.log 2>&1`) and check `$?`. The commit
+message on the phase-2 commit repeats the wrong version; this paragraph supersedes it.
+
+The one real gap is that a missing env variable is only a `WARN` — which is how 125 of them rode
+through a green run unnoticed. A missing `PREFIX__PORT` for a service that declares a port should
+be an error. Until that lands, read the log as well as the exit code.
 
 ## 9. Still owed
 
-- **Deploy boxes.** `.env.development` and `.env.production` were rewritten locally, but the
-  VPS and the LAN box's off-git master env still carry the old `PREFIX__` names, and nine
-  systemd units changed name and must be `disable`d before the new ones will bind.
+- **Deploy boxes — steps written, not run.** `.env.development` and `.env.production` were
+  rewritten locally, but the VPS and the LAN box's off-git master env still carry the old
+  `PREFIX__` names (23 changed), and nine systemd units changed name and must be `disable`d
+  before the new ones will bind. The exact commands are generated from the manifest into
+  [03a-deploy-runbook.md](./03a-deploy-runbook.md) by `scripts/js/gen-deploy-runbook.js`, so they
+  cannot drift from the tree — re-run the generator rather than editing the runbook.
+
+  The generator derives the *old* names rather than tabulating them, having first repeated
+  finding 3's mistake: its initial hand-written table got four unit names wrong (`rutba_sale` for
+  what is really `rutba_pos_sale`, likewise auth, stock and strapi). It now asserts its
+  derivation against the unit list recorded at `1684f226~1` and exits non-zero on a mismatch.
 - **The compose variable convention** (`PORT_WEB`, `WEB_NEXTAUTH_SECRET`) was deliberately left
   alone: renaming it means editing the compose env file in lockstep, and `INVENTORY` also
   appears inside `RUTBA_MARKETPLACE__CRON_INVENTORY_RULE`, so a prefix sweep would corrupt an
