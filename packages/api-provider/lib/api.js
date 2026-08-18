@@ -91,7 +91,21 @@ export const UPLOAD_TIMEOUT_MS = timeoutFromEnv(process.env.NEXT_PUBLIC_API_UPLO
 export function withTimeout(config = {}, ms) {
     const requested = typeof ms === 'number' ? ms : Number(ms);
     const bound = Number.isFinite(requested) && requested > 0 ? requested : DEFAULT_TIMEOUT_MS;
-    return { ...config, timeout: bound };
+    const out = { ...config, timeout: bound };
+
+    // Capture WHO is making this call, while the caller is still on the stack.
+    //
+    // It cannot be recovered later: by the time axios rejects, the error's
+    // stack was built inside the adapter and the originating component is gone
+    // across the async boundary — reading it there yields Node's own
+    // `RedirectableRequest.emit` rather than anything in this codebase. Every
+    // transport function calls withTimeout synchronously, so this is the last
+    // point where the real caller is still visible, and the only one that
+    // covers authenticated and public clients alike.
+    if (process.env.NODE_ENV !== 'production') {
+        try { out.__rutbaFrom = callerFrame(new Error()); } catch (_) {}
+    }
+    return out;
 }
 
 // Transport-level failure codes. axios reports its own timeout as
@@ -599,11 +613,111 @@ export const webApi = {
 // error stack so devtools/Next overlay land on the caller (e.g.
 // `NotificationTemplatesPage.load`) instead of api.js:135.
 function stripLibFrames(err) {
-    if (!err || typeof err !== 'object' || typeof err.stack !== 'string') return err;
+    if (!err || typeof err !== 'object' || typeof err.stack !== 'string') return annotateError(err);
     err.stack = err.stack
         .split('\n')
         .filter((line) => !/api-provider[\\/]lib[\\/]api\.js/.test(line))
         .join('\n');
+    return annotateError(err);
+}
+
+// stripLibFrames only sits on the authenticated path (authCall). The public
+// descriptor clients call get/post/patch directly, so a single rejection
+// interceptor is what actually covers every request the app makes.
+if (process.env.NODE_ENV !== 'production') {
+    // Stamp the start so the failure can report how long it waited. "Refused
+    // after 2ms" and "gave up after 15000ms" are different diagnoses — the
+    // first is nothing listening, the second is a hung or overloaded upstream —
+    // and axios reports both as the same bare string.
+    axios.interceptors.request.use((cfg) => {
+        try { cfg.__rutbaT0 = Date.now(); } catch (_) {}
+        return cfg;
+    });
+    axios.interceptors.response.use(null, (err) => Promise.reject(annotateError(err)));
+}
+
+/**
+ * The first stack frame that is not this library — i.e. whoever made the call.
+ *
+ * stripLibFrames already drops api.js frames for the devtools overlay, so the
+ * caller is the top of what remains. Naming it turns "Failed to load
+ * notifications" into a line that says which component and file to open,
+ * without every call site having to pass its own identity in.
+ */
+function callerFrame(err) {
+    const stack = typeof err?.stack === 'string' ? err.stack : '';
+    for (const line of stack.split('\n').slice(1)) {
+        // `node:` covers events/internal/stream alike — an axios rejection
+        // stack is almost entirely those, and reporting one as the caller is
+        // worse than reporting nothing, because it looks like an answer.
+        if (/api-provider[\\/]lib[\\/]|node_modules|\bnode:/.test(line)) continue;
+        const m = line.match(/at\s+([\w.<>$]+)\s*\(([^)]+)\)/) || line.match(/at\s+(.+)/);
+        if (!m) continue;
+        const where = (m[2] || m[1] || '').split(/[\\/]/).slice(-2).join('/');
+        return m[2] ? `${m[1]} (${where})` : where;
+    }
+    return null;
+}
+
+/**
+ * Fold the request's identity into the error's own message, in development.
+ *
+ * axios reports a refused connection as the bare string "Network Error". Every
+ * call site logs it the obvious way —
+ * `console.warn('Failed to load notifications', err)` — and the result is a
+ * terminal full of lines that name a symptom and nothing else: not the URL,
+ * not the method, not which app or role asked. Forty of them look like forty
+ * problems when they are one wrong port.
+ *
+ * Annotating the message rather than the call sites is what makes this worth
+ * doing: it costs nothing at each of the ~200 places that already log the
+ * error, and it upgrades all of them at once. The message becomes
+ *
+ *   Network Error [GET http://localhost:4020/api/notifications · app=pos · role=sale-manager]
+ *
+ * which names the failing URL — usually the whole diagnosis — and the role,
+ * which is the first thing you need for a 401/403.
+ *
+ * Development only: production error text is untouched, so nothing that
+ * reaches a user or a log aggregator changes shape. Annotation is applied at
+ * most once, since a 401 passes back through here after the refresh retry.
+ */
+function annotateError(err) {
+    if (process.env.NODE_ENV === 'production') return err;
+    if (!err || typeof err !== 'object' || err.__rutbaAnnotated) return err;
+
+    const cfg = err.config;
+    if (!cfg || typeof err.message !== 'string') return err;
+
+    try {
+        const method = String(cfg.method || 'GET').toUpperCase();
+        const url = cfg.baseURL ? `${cfg.baseURL}${cfg.url || ''}` : (cfg.url || '');
+        if (!url) return err;
+
+        const bits = [`${method} ${url}`];
+        const app = getAppName();
+        if (app) bits.push(`app=${app}`);
+        const role = getActiveRole();
+        if (role) bits.push(`role=${role}`);
+        const status = err.response?.status;
+        if (status) bits.push(`status=${status}`);
+        else if (err.code) bits.push(`code=${err.code}`);
+
+        if (cfg.__rutbaT0) bits.push(`after=${Date.now() - cfg.__rutbaT0}ms`);
+        // Recorded at call time by withTimeout; the error's own stack no longer
+        // contains the caller. Fall back to it only if that capture is missing.
+        const from = cfg.__rutbaFrom || callerFrame(err);
+        if (from) bits.push(`from=${from}`);
+
+        // A refused connection resolved over both ::1 and 127.0.0.1 arrives as
+        // an AggregateError, whose own message is the empty string — annotating
+        // that verbatim yields a line that opens with a bracket and never says
+        // what went wrong. Fall back to the code, which is the actual finding.
+        const base = err.message || err.code || 'Request failed';
+        err.message = `${base} [${bits.join(' · ')}]`;
+        Object.defineProperty(err, '__rutbaAnnotated', { value: true, enumerable: false });
+    } catch (_) { /* diagnostics must never replace the error being reported */ }
+
     return err;
 }
 

@@ -78,12 +78,29 @@ export function PermissionCheck({ required, has, showIf, adminOnly, appKey, chil
     if (required) {
         const miss = missingDomains(required);
         if (miss.length > 0) {
+            // The old message read "no role in domain: {required}" followed
+            // immediately by the missing-domain badges, so a single missing
+            // domain rendered as "domain: salesale" once the CSS margin was
+            // gone (copied text, a screenshot description, a bug report). It
+            // also never said what the user DOES hold, which is the one fact
+            // needed to decide whether to grant a role or fix the required
+            // prop. Both are stated explicitly now.
+            const held = Array.isArray(appAccess) ? appAccess : [];
             return (
                 <p style={{ color: "crimson", fontWeight: 600 }}>
-                    Access Denied — no role in domain: {required}
+                    Access Denied — <strong>{effectiveAppKey}</strong> needs a role in{' '}
+                    {miss.length === 1 ? 'domain' : 'domains'}{' '}
                     {miss.map((d, i) => (
                         <span key={i} className="badge bg-danger ms-1">{d}</span>
                     ))}
+                    <br />
+                    <span style={{ fontWeight: 400, opacity: 0.85 }}>
+                        This page requires: <code>{required}</code>.{' '}
+                        {held.length
+                            ? <>You currently have access to: <code>{held.join(', ')}</code>.</>
+                            : <>You currently have no domain access at all.</>}
+                        {activeRoleKey ? <> Active role: <code>{activeRoleKey}</code>.</> : null}
+                    </span>
                     <button style={{ marginLeft: 10 }} onClick={() => window.history.back()}>Back</button>
                 </p>
             );

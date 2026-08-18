@@ -47,6 +47,19 @@ const strip = (s) => s.replace(ANSI, '');
  * decides whether it counts as a problem or just noise worth keeping.
  */
 const RULES = [
+  // Transport failures come first and get their own kind. They are the single
+  // most common thing in this environment and they are NOT generic runtime
+  // errors: they mean the API was not reachable, which has one cause and one
+  // fix, however many different call sites report it.
+  //
+  // The generic /Error:\s/ rule below cannot catch these — in "AxiosError:
+  // Network Error" the colon-bearing token is preceded by "Axios", not
+  // whitespace — so without this rule the commonest failure in the log was
+  // silently unclassified and never appeared in the digest at all.
+  { kind: 'api-unreachable', severity: 'error',
+    re: /AxiosError|Network Error|ERR_NETWORK|ECONNREFUSED|ECONNRESET|ETIMEDOUT|ENOTFOUND|fetch failed/i },
+  { kind: 'api-status', severity: 'error',
+    re: /Request failed with status code \d+|\bstatus=(4|5)\d\d\b/ },
   { kind: 'module-not-found', severity: 'error',
     re: /Module not found|Can't resolve ['"]|Cannot find module ['"]/ },
   { kind: 'compile', severity: 'error',
@@ -58,7 +71,10 @@ const RULES = [
   { kind: 'unhandled-rejection', severity: 'error',
     re: /UnhandledPromiseRejection|Unhandled Runtime Error|unhandledRejection/ },
   { kind: 'react-warning', severity: 'warn',
-    re: /Warning: |validateDOMNesting|Each child in a list should have a unique/ },
+    re: /Warning: |validateDOMNesting|Each child in a list should have a unique|two children with the same key|Encountered two children/ },
+  // Next's own advisory notices — real, but a config nudge rather than a fault.
+  { kind: 'next-advisory', severity: 'warn',
+    re: /Detected `scroll-behavior|nextjs\.org\/docs\/messages\// },
   { kind: 'deprecation', severity: 'warn', re: /DeprecationWarning|is deprecated/ },
   // Next prints a bare ⨯ for request-level failures; Strapi/Koa use [ERROR].
   { kind: 'runtime', severity: 'error',
@@ -97,7 +113,13 @@ function signature(source, kind, text) {
     .replace(/[A-Za-z]:[\\/][^\s:)'"]+/g, '<path>')   // absolute Windows paths
     .replace(/(?:\.\.?[\\/])?[\w.-]+[\\/][\w./\\-]+/g, '<path>')
     .replace(/:\d+:\d+/g, ':<line>')
-    .replace(/\bin \d+(?:\.\d+)?\s*m?s\b/g, 'in <time>')
+    // Durations must be collapsed explicitly. The generic \b\d{2,}\b below
+    // cannot do it: in "after=39ms" there is no word boundary between the 9
+    // and the m, so two runs of the same fault that differed only by a
+    // millisecond were landing in two separate groups — which is exactly the
+    // duplication this function exists to prevent.
+    .replace(/\b(after|in|took)\s*[=:]?\s*\d+(?:\.\d+)?\s*(?:ms|s)\b/gi, '$1=<t>')
+    .replace(/\b\d+(?:\.\d+)?\s*ms\b/gi, '<t>ms')
     .replace(/\b\d{2,}\b/g, '<n>')
     .replace(/0x[0-9a-f]+/gi, '<hex>')
     .replace(/\s+/g, ' ')
@@ -113,6 +135,86 @@ const groups = new Map();
 let httpTotal = 0;
 let started = Date.now();
 
+// ── backend reachability ───────────────────────────────────
+// Half the confusing errors in this environment are downstream of one fact:
+// was the API answering at the time? Strapi takes ~50s to boot, and every
+// browser call made in that window fails identically to a call made against a
+// wrong port an hour later. Sampling it turns "Network Error ×40" into either
+// "all during startup, ignore" or "still failing after the API came up, fix".
+
+let backendUp = null;              // null = never probed
+let backendUrl = null;
+const transitions = [];            // [{ at, up }]
+
+/**
+ * @param {string} url  the API base the apps are configured to call
+ */
+function watchBackend(url, intervalMs = 5000) {
+  if (!url) return null;
+  backendUrl = url;
+
+  let origin;
+  try { origin = new URL(url).origin; } catch { return null; }
+
+  const probe = () => {
+    const req = require('http').request(origin, { method: 'HEAD', timeout: 3000 }, (res) => {
+      res.resume();
+      setUp(true);
+    });
+    // Any answer at all means something is listening — a 404 or a 302 from the
+    // API root still proves reachability, which is the only thing being asked.
+    req.on('error', () => setUp(false));
+    req.on('timeout', () => { req.destroy(); setUp(false); });
+    req.end();
+  };
+
+  const setUp = (up) => {
+    if (backendUp === up) return;
+    backendUp = up;
+    transitions.push({ at: Date.now(), up });
+  };
+
+  probe();
+  const timer = setInterval(probe, intervalMs);
+  timer.unref();
+  return timer;
+}
+
+function backendState() {
+  return { url: backendUrl, up: backendUp, transitions };
+}
+
+/**
+ * Pull the structured facts out of a message so the digest can show them as
+ * fields rather than leaving them buried in prose.
+ *
+ * `api.js annotateError` appends `[GET <url> · app=pos · role=x · status=403]`
+ * to every failed request in development, and Next's browser-log forwarding
+ * appends `(path/to/file.js:62:25)` to anything logged from the client. Both
+ * are the parts you actually navigate by.
+ */
+function extractFields(text) {
+  const out = {};
+  const t = strip(text);
+
+  const url = t.match(/\b(GET|POST|PUT|PATCH|DELETE|HEAD)\s+(https?:\/\/\S+?)(?=[\s·\])]|$)/i);
+  if (url) { out.method = url[1].toUpperCase(); out.url = url[2]; }
+
+  const app = t.match(/\bapp=([\w-]+)/);        if (app) out.app = app[1];
+  const role = t.match(/\brole=([\w:.-]+)/);    if (role) out.role = role[1];
+  const status = t.match(/\bstatus=(\d{3})\b/); if (status) out.status = Number(status[1]);
+  const code = t.match(/\bcode=([A-Z_]+)/);     if (code) out.code = code[1];
+  const from = t.match(/\bfrom=([^·\]]+)/);     if (from) out.from = from[1].trim();
+  const after = t.match(/\bafter=(\d+)ms/);     if (after) out.afterMs = Number(after[1]);
+
+  // Next appends the originating module to forwarded browser logs.
+  const at = t.match(/\(([^()\s]+\.[jt]sx?):(\d+):(\d+)\)\s*$/);
+  if (at) out.at = `${at[1]}:${at[2]}`;
+
+  if (/^\[browser\]|\s\[browser\]\s/.test(t)) out.origin = 'browser';
+  return out;
+}
+
 function bump(source, kind, severity, text, extra) {
   const sig = signature(source, kind, text);
   let g = groups.get(sig);
@@ -121,15 +223,28 @@ function bump(source, kind, severity, text, extra) {
     if (groups.size >= MAX_GROUPS) return null;   // runaway guard
     g = {
       source, kind, severity,
-      message: strip(text).trim().slice(0, 400),
+      // The trailing [GET … · app=… · role=…] block is lifted into structured
+      // fields and rendered separately, so keeping it inline as well would
+      // print every fact twice and push the actual sentence off the line.
+      message: strip(text).replace(/\s*\[(?:GET|POST|PUT|PATCH|DELETE|HEAD)\s[^\]]*\]\s*$/i, '')
+        .trim().slice(0, 400),
       count: 0, first: Date.now(), last: 0,
-      samples: [], detail: null, ...extra,
+      // Whether the API was reachable when this first fired. A wall of
+      // "Network Error" raised while the backend was still booting is noise;
+      // the same wall raised after it came up is a real defect, and the two
+      // are indistinguishable without recording which side of the line it fell.
+      backendUpAtFirst: backendUp,
+      backendUpAtLast: backendUp,
+      origin: 'server',
+      samples: [], detail: null,
+      ...extractFields(text), ...extra,
     };
     groups.set(sig, g);
   }
 
   g.count += 1;
   g.last = Date.now();
+  g.backendUpAtLast = backendUp;
   return g;
 }
 
@@ -201,7 +316,8 @@ function save() {
   try {
     fs.mkdirSync(STORE_DIR, { recursive: true });
     fs.writeFileSync(STORE, JSON.stringify({
-      started, saved: Date.now(), counts: counts(), groups: all(),
+      started, saved: Date.now(), counts: counts(),
+      backend: backendState(), groups: all(),
     }, null, 2));
   } catch { /* never let bookkeeping take the dev server down */ }
 }
@@ -223,28 +339,113 @@ const ago = (t) => {
   return `${(s / 3600).toFixed(1)}h`;
 };
 
-/** Terminal digest — what to print on Ctrl-C, and what `dev:errors` shows. */
-function text({ limit = 20, color = true } = {}) {
-  const C = (n, s) => (color ? `\x1b[${n}m${s}\x1b[0m` : s);
-  const list = all();
-  if (!list.length) return C(32, 'No errors recorded.');
+/** Wall-clock, to the second — the form you compare against "when I fixed it". */
+const clock = (t) => new Date(t).toTimeString().slice(0, 8);
+const stamp = (t) => `${new Date(t).toISOString().slice(0, 10)} ${clock(t)}`;
 
-  const c = counts();
+/**
+ * The one-line verdict for a group: is this still happening, and was the API
+ * even up when it did? Written out rather than left for the reader to infer,
+ * because the whole point is to decide what to fix without re-deriving context.
+ */
+function verdict(g) {
+  const netish = g.kind === 'runtime' || g.code === 'ECONNREFUSED' ||
+                 /network error/i.test(g.message);
+  if (netish && g.backendUpAtFirst === false && g.backendUpAtLast === false) {
+    return 'API was unreachable throughout — likely a wrong API URL or a backend that never started';
+  }
+  if (netish && g.backendUpAtFirst === false && g.backendUpAtLast === true) {
+    return 'started while the API was still booting, and has not recurred since it came up';
+  }
+  if (netish && g.backendUpAtLast === true) {
+    return 'the API is up and this is still failing — a real fault, not startup noise';
+  }
+  if (g.status === 401) return 'unauthenticated — token missing or expired';
+  if (g.status === 403) return `forbidden${g.role ? ` for role ${g.role}` : ''} — a grant is missing for this route`;
+  return null;
+}
+
+/**
+ * Parse a --since value: a clock time ("14:05", "14:05:30"), an ISO instant,
+ * or a relative window ("10m", "2h"). Anything after that moment is "since the
+ * fix"; anything before it is history.
+ */
+function parseSince(raw) {
+  if (!raw) return null;
+  const rel = String(raw).match(/^(\d+(?:\.\d+)?)\s*([smh])$/i);
+  if (rel) {
+    const mult = { s: 1000, m: 60_000, h: 3_600_000 }[rel[2].toLowerCase()];
+    return Date.now() - Number(rel[1]) * mult;
+  }
+  const hhmm = String(raw).match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (hhmm) {
+    const d = new Date();
+    d.setHours(Number(hhmm[1]), Number(hhmm[2]), Number(hhmm[3] || 0), 0);
+    return d.getTime();
+  }
+  const t = Date.parse(raw);
+  return Number.isFinite(t) ? t : null;
+}
+
+/** Terminal digest — what to print on Ctrl-C, and what `dev:errors` shows. */
+function text({ limit = 20, color = true, since = null } = {}) {
+  const C = (n, s) => (color ? `\x1b[${n}m${s}\x1b[0m` : s);
+  // Filter on `last`, not `first`: a fault that started before the fix but is
+  // still firing after it is exactly what you want to see, and filtering on
+  // first-seen would hide it.
+  const list = since ? all().filter((g) => g.last >= since) : all();
+  if (!list.length) {
+    return C(32, since ? `No errors since ${stamp(since)}.` : 'No errors recorded.');
+  }
+
+  // Counted from the rendered list, not the whole store — otherwise a --since
+  // view claims totals it is not showing.
+  const errs = list.filter((g) => g.severity === 'error').length;
+  const warns = list.length - errs;
+  const occ = list.reduce((n, g) => n + g.count, 0);
+
   const out = [
     '',
-    C(1, `${c.errors} distinct error${c.errors === 1 ? '' : 's'}` +
-         `${c.warns ? ` and ${c.warns} warning${c.warns === 1 ? '' : 's'}` : ''}` +
-         ` across ${c.occurrences} occurrence${c.occurrences === 1 ? '' : 's'}`),
-    '',
+    C(1, `${errs} distinct error${errs === 1 ? '' : 's'}` +
+         `${warns ? ` and ${warns} warning${warns === 1 ? '' : 's'}` : ''}` +
+         ` across ${occ} occurrence${occ === 1 ? '' : 's'}` +
+         (since ? ` since ${stamp(since)}` : '')),
   ];
+
+  const be = backendState();
+  if (be.url) {
+    out.push(C(2, `  API ${be.url} — ` +
+      (be.up === null ? 'not probed' : be.up ? 'reachable' : C(31, 'UNREACHABLE'))));
+  }
+  out.push('');
 
   for (const g of list.slice(0, limit)) {
     const sev = g.severity === 'error' ? C(31, '●') : C(33, '●');
-    out.push(`${sev} ${C(1, `${g.count}×`)} ${C(36, g.source)} ${C(2, g.kind)}`);
+    const where = g.origin === 'browser' ? C(2, ' browser') : '';
+    out.push(`${sev} ${C(1, `${g.count}×`)} ${C(36, g.source)}${where} ${C(2, g.kind)}`);
     out.push(`    ${g.message}`);
+
+    // The facts you navigate by, on their own line rather than inside prose.
+    const facts = [];
+    if (g.method && g.url) facts.push(`${g.method} ${g.url}`);
+    if (g.status) facts.push(`status ${g.status}`);
+    if (g.code) facts.push(g.code);
+    if (g.role) facts.push(`role ${g.role}`);
+    if (facts.length) out.push(C(36, `    ${facts.join('  ·  ')}`));
+
+    // Where the call came from, on its own line: this is the thing you open.
+    const origin = g.from || g.at;
+    if (origin) out.push(C(2, `    from ${origin}`));
+
     if (g.detail?.length) out.push(C(2, `    ${g.detail[0].trim()}`));
     if (g.samples?.length) out.push(C(2, `    e.g. ${g.samples[0]}`));
-    out.push(C(2, `    first ${ago(g.first)} ago, last ${ago(g.last)} ago`));
+
+    const v = verdict(g);
+    if (v) out.push(C(33, `    → ${v}`));
+
+    // Absolute timestamps, not just "3m ago": the question after a change is
+    // "did this happen before or after my fix", and only a clock answers it.
+    out.push(C(2, `    first ${stamp(g.first)}   last ${stamp(g.last)}   (${ago(g.last)} ago)`));
     out.push('');
   }
 
@@ -255,7 +456,8 @@ function text({ limit = 20, color = true } = {}) {
 
 module.exports = {
   feed, ingest, httpFailure, lifecycle,
-  all, counts, save, load, reset, text, ago, STORE,
+  all, counts, save, load, reset, text, ago, stamp, clock, verdict, parseSince,
+  watchBackend, backendState, STORE,
 };
 
 // ── CLI ────────────────────────────────────────────────────
@@ -270,10 +472,31 @@ if (require.main === module) {
     console.log(JSON.stringify(saved, null, 2));
     process.exit(0);
   }
+  if (process.argv.includes('--clear')) {
+    reset();
+    save();
+    console.log('Error store cleared. Re-run the failing flow, then `npm run dev:errors`.');
+    process.exit(0);
+  }
+
   // Rehydrate so the shared renderer can be reused verbatim.
   for (const g of saved.groups) groups.set(`${g.source}|${g.kind}|${g.message}`, g);
   started = saved.started;
-  const limitArg = process.argv.indexOf('--limit');
-  console.log(text({ limit: limitArg > -1 ? Number(process.argv[limitArg + 1]) : 40 }));
-  console.log(`  recorded ${new Date(saved.saved).toLocaleString()}\n`);
+  if (saved.backend) { backendUrl = saved.backend.url; backendUp = saved.backend.up; }
+
+  const arg = (name, fallback) => {
+    const i = process.argv.indexOf(name);
+    return i > -1 ? process.argv[i + 1] : fallback;
+  };
+
+  const sinceRaw = arg('--since');
+  const since = parseSince(sinceRaw);
+  if (sinceRaw && since === null) {
+    console.error(`Could not read --since "${sinceRaw}". Use 14:05, 30m, 2h, or an ISO time.`);
+    process.exit(1);
+  }
+
+  console.log(text({ limit: Number(arg('--limit', 40)), since }));
+  console.log(`  recorded ${stamp(saved.saved)}` +
+    '   ·   --since 10m | --since 14:05 | --clear\n');
 }

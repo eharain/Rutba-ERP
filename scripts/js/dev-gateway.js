@@ -311,17 +311,42 @@ function errorsPage() {
       ? `<pre>${escapeHtml(g.detail.join('\n'))}</pre>` : '';
     const samples = g.samples?.length
       ? `<p class="muted">e.g. ${g.samples.map(escapeHtml).join(' · ')}</p>` : '';
+
+    const facts = [];
+    if (g.method && g.url) facts.push(`${g.method} ${g.url}`);
+    if (g.status) facts.push(`status ${g.status}`);
+    if (g.code) facts.push(g.code);
+    if (g.role) facts.push(`role ${g.role}`);
+    const factLine = facts.length
+      ? `<p class="facts">${facts.map(escapeHtml).join('  ·  ')}</p>` : '';
+
+    const where = g.from || g.at;
+    const fromLine = where ? `<p class="muted">from ${escapeHtml(where)}</p>` : '';
+
+    const v = errors.verdict(g);
+    const verdictLine = v ? `<p class="verdict">→ ${escapeHtml(v)}</p>` : '';
+
     return `<article>
       <p class="head">
         <span class="count" style="background:${tone}">${g.count}×</span>
         <strong>${escapeHtml(g.source)}</strong>
+        ${g.origin === 'browser' ? '<span class="muted">browser</span>' : ''}
         <span class="muted">${escapeHtml(g.kind)}</span>
-        <span class="muted right">first ${errors.ago(g.first)} ago · last ${errors.ago(g.last)} ago</span>
+        <span class="muted right" title="first seen ${escapeHtml(errors.stamp(g.first))}">
+          ${escapeHtml(errors.stamp(g.first))} → ${escapeHtml(errors.stamp(g.last))}
+          (${errors.ago(g.last)} ago)
+        </span>
       </p>
       <p class="msg">${escapeHtml(g.message)}</p>
-      ${detail}${samples}
+      ${factLine}${fromLine}${verdictLine}${detail}${samples}
     </article>`;
   }).join('');
+
+  const be = errors.backendState();
+  const beLine = be.url
+    ? `<p class="${be.up === false ? 'verdict' : 'muted'}">API <code>${escapeHtml(be.url)}</code> — ${
+        be.up === null ? 'not probed' : be.up ? 'reachable' : '<strong>UNREACHABLE</strong>'}</p>`
+    : '';
 
   return SHELL('Dev errors', `
     <style>
@@ -334,6 +359,9 @@ function errorsPage() {
                font-size: .8em; font-weight: 600; }
       .muted { opacity: .6; }
       .msg { margin: .1rem 0; font-family: ui-monospace, monospace; font-size: .88em; }
+      .facts { margin: .15rem 0; font-family: ui-monospace, monospace; font-size: .82em;
+               color: #3b82f6; }
+      .verdict { margin: .15rem 0; font-size: .85em; color: #d97706; }
       pre { margin: .35rem 0 0; padding: .5rem .7rem; overflow-x: auto; font-size: .8em;
             background: color-mix(in srgb, CanvasText 7%, transparent);
             border-radius: .35em; opacity: .8; }
@@ -346,6 +374,7 @@ function errorsPage() {
         <a href="/">status</a> · <a href="/errors.json">json</a> · <a href="/errors/clear">clear</a>
       </span>
     </div>
+    ${beLine}
     <p class="muted">Grouped by normalised signature — repeats of one fault collapse
        into a single row, so this is a fix-list, not a log.</p>
     ${rows}

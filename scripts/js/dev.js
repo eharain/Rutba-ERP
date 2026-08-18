@@ -21,7 +21,7 @@
  */
 
 const {
-  ROOT, apps, findService, prepareEnv, scaffoldOnce,
+  ROOT, apps, services, findService, prepareEnv, envForService, scaffoldOnce,
   spawnApp, spawnBackend, killTree, lineBuffer,
 } = require('./dev-runtime');
 
@@ -114,6 +114,42 @@ Apps        ${list}
 `);
 }
 
+/**
+ * Warn when NEXT_PUBLIC_API_URL does not point at the backend being started.
+ *
+ * The two backends listen on different ports (strapi 4010, core 4020) and the
+ * apps reach whichever NEXT_PUBLIC_API_URL names — a file value, so it cannot
+ * be switched from the command line. Start the other one and every browser
+ * call is refused at the socket, which axios reports as a bare "Network Error"
+ * with no URL attached. That reads like the app is broken, and it costs an
+ * afternoon to discover that the app is fine and the port is simply wrong.
+ *
+ * Cheap to detect here, and impossible to misread once stated.
+ */
+function checkBackendUrl(backendKey) {
+  const svc = findService(backendKey);
+  const { env } = envForService(svc);
+  const url = env.NEXT_PUBLIC_API_URL;
+  if (!url || !svc?.port) return;
+
+  let port;
+  try { port = Number(new URL(url).port); } catch { return; }
+  if (!port || port === svc.port) return;
+
+  const other = apps().concat(services().filter((s) => s.kind === 'backend'))
+    .find((s) => s.kind === 'backend' && s.port === port);
+
+  console.log('');
+  say(C(33, `NEXT_PUBLIC_API_URL points at :${port}, but you are starting ${backendKey} on :${svc.port}.`));
+  say(C(33, `  ${url}`));
+  say(C(33, '  Every API call from the browser will fail with "Network Error" (nothing is'));
+  say(C(33, `  listening on :${port}). Either start the matching backend:`));
+  say(C(33, `      npm run dev -- --${other ? other.key : 'core'}`));
+  say(C(33, '  or point NEXT_PUBLIC_API_URL in .env.development at ' +
+            `:${svc.port}.`));
+  console.log('');
+}
+
 // ── main ───────────────────────────────────────────────────
 
 function main() {
@@ -163,6 +199,15 @@ function main() {
   console.log('');
 
   scaffoldOnce(say);
+
+  if (opts.useBackend) checkBackendUrl(opts.backend);
+
+  // Sample the API the apps are configured to call, so each recorded error
+  // knows whether the backend was reachable when it fired.
+  try {
+    const { env } = envForService(findService(opts.backend));
+    errors.watchBackend(env.NEXT_PUBLIC_API_URL);
+  } catch { /* diagnostics are optional; never block startup on them */ }
 
   const children = [];
   let shuttingDown = false;
