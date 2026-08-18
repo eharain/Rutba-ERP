@@ -1,7 +1,9 @@
 @echo off
-title Rutba POS - Stop All
-echo Stopping all Node.js processes...
-taskkill /f /im node.exe >nul 2>&1
-echo Done. All dev servers stopped.
-timeout /t 2 /nobreak >nul
-exit
+REM Stops only the processes holding Rutba's own dev ports.
+REM
+REM This used to be `taskkill /f /im node.exe`, which also killed editor
+REM language servers, agents and in-flight npm installs. See scripts/js/dev-stop.js.
+REM
+REM You rarely need this: `dev` runs in one window and Ctrl-C cleans up.
+cd /d "%~dp0"
+node scripts/js/dev-stop.js

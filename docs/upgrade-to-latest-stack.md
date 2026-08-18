@@ -9,9 +9,11 @@ was just brought to, plus what to watch for based on what actually broke there.
 Rutba ERP is *ahead* of where TrustList started — already on Next 16.2.1 +
 React 19.2.4 — so most of this is patch bumps, one Tailwind 4 migration (only
 `apps/content/storefront` uses Tailwind), and a Strapi minor bump. **No `middleware.ts` →
-`proxy.ts` rename needed** — `apps/content/storefront/src/proxy.ts` already exists. **No
-`webpack:` config to remove** — all 16 Next apps already opt out of Turbopack
-via `next dev --webpack`.
+`proxy.ts` rename needed** — `apps/content/storefront/src/proxy.ts` already exists.
+
+> **Superseded 2026-08-19.** This document used to note that every Next app
+> opted out of Turbopack via `next dev --webpack`. That is no longer true: all
+> 22 apps now run `next dev --turbopack`. See the note in §3.
 
 ## 1. Current state vs. target
 
@@ -196,10 +198,19 @@ the Node 22 LTS runtime the workspace targets. No code changes expected.
   15→16 changes and either no-op or introduce noise. Only reach for it
   if a specific breaking change (async request APIs, middleware rename)
   actually applies — and neither does here.
-- **Don't remove `--webpack` from the dev/build scripts** unless you're
-  ready to also validate every app boots under Turbopack. Rutba explicitly
-  opted out of Turbopack in every Next app's scripts, presumably for a
-  reason (custom webpack plugin? loader?). Verify before switching.
+- ~~**Don't remove `--webpack` from the dev/build scripts**~~ — **done, 2026-08-19.**
+  The suspected "custom webpack plugin? loader?" did not exist. `--webpack` was
+  introduced by commit `a62ca6c7` with no stated rationale, and the only
+  `webpack()` block in the tree is `apps/admin/auth/next.config.js`, which sets
+  `topLevelAwait` — supported natively by Turbopack, and that file already
+  declared `turbopack: {}`. `apps/content/storefront` had run Turbopack all
+  along. All 22 dev scripts are now `next dev --turbopack`; measured on
+  `apps/sales/pos`, time-to-usable-page went from 111.6s to 30.2s.
+  - **`next build` deliberately still uses webpack.** Dev and production now
+    run different bundlers, which is the one real cost of this change: a
+    bundler-specific breakage can reach a build without showing up in dev.
+    Flipping builds to `next build --turbopack` is a separate decision that
+    needs every app built and smoke-tested first.
 - **Don't `npm audit fix --force`** after any bump — it will resolve
   vulnerabilities by pinning transitive deps to old versions and can
   undo the upgrade.

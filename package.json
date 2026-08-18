@@ -29,6 +29,9 @@
     "apps/sales/helpdesk"
   ],
   "scripts": {
+    "dev": "node scripts/js/dev.js",
+    "dev:stop": "node scripts/js/dev-stop.js",
+    "dev:gateway": "node scripts/js/dev-gateway.js",
     "dev:strapi": "node scripts/js/load-env.js -- npm --prefix services/strapi run develop",
     "dev:core": "node scripts/js/load-env.js -- npm --prefix services/core run dev",
     "grant:full-access": "npm --prefix services/core run grant:full-access --",

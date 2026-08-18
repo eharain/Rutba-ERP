@@ -103,7 +103,6 @@ const pkg = JSON.parse(read('package.json'));
 const envConfig = read('scripts/js/env-config.js') || '';
 const dockerfile = read('Dockerfile') || '';
 const compose = read('docker-compose.yml') || '';
-const devStart = read('dev-start.bat') || '';
 const sampleEnv = read('sample.env.enviromentname.txt') || '';
 const envDev = read('.env.development');          // gitignored — may be absent
 const envProd = read('.env.production');          // gitignored — may be absent
@@ -387,7 +386,7 @@ for (const entry of ENTRIES) {
     if (!check(!!short, 'root:start')) fail(key, `no root "start:*" script targets ${dir}`);
     if (short) {
       check(!!pkg.scripts[`dev:${short}`], 'root:dev') ||
-        warn(key, `no root "dev:${short}" script — dev-start.bat cannot launch it`);
+        warn(key, `no root "dev:${short}" script — "npm run dev:${short}" will not work`);
       if (needsBuild) {
         check(!!pkg.scripts[`build:${short}`], 'root:build') ||
           fail(key, `no root "build:${short}" script — build:all will skip it on deploy ` +
@@ -485,11 +484,18 @@ for (const entry of ENTRIES) {
   }
 
   // -- dev launcher ------------------------------------------
-  if (short) {
-    const devCmd = isWorker ? `worker:${short}` : `dev:${short}`;
-    if (!check(devStart.includes(devCmd), 'dev-start.bat')) {
-      warn(key, `dev-start.bat never runs "npm run ${devCmd}"`);
+  // This used to grep dev-start.bat for a literal `npm run dev:<short>` per
+  // app, because that script hard-coded all 24 services by hand and an app
+  // added to the manifest could silently never launch. scripts/js/dev.js reads
+  // this same manifest instead, so that class of drift is gone by construction
+  // and what remains to verify is what the launcher actually needs: a port to
+  // bind for an app, and a root script to invoke for the worker.
+  if (isWorker) {
+    if (short && !check(!!pkg.scripts[`worker:${short}`], 'dev:worker')) {
+      warn(key, `no root "worker:${short}" script — \`dev --worker\` cannot start it`);
     }
+  } else if (isApp && !check(Number.isInteger(port), 'dev:port')) {
+    warn(key, `no manifest port — scripts/js/dev.js has nothing to bind or proxy for it`);
   }
 
   rows.push(row);
