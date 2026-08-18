@@ -8,7 +8,7 @@ module.exports = createCoreController('api::sale-offer.sale-offer', ({ strapi })
   // GET /sale-offers/for-product/:documentId
   //
   // Every live offer that reaches this product, each with the price it would
-  // give. Powers the per-line discount picker in rutba-order-management: staff
+  // give. Powers the per-line discount picker in apps/sales/orders: staff
   // have no group click-context the way a storefront shopper does, so they
   // choose an offer explicitly and the order line records which one.
   //
@@ -23,7 +23,7 @@ module.exports = createCoreController('api::sale-offer.sale-offer', ({ strapi })
   // promos held back from the storefront — which customers must not enumerate.
   async listOffersForProduct(ctx) {
     // `domains` matches app-role KEY PREFIXES, not domains.json keys — the
-    // order-management domain's roles are order_admin/order_manager/order_staff.
+    // order-management domain's roles are orders_admin/orders_manager/orders_staff.
     if (!await requireAppRole(ctx, strapi, {
       domains: ['order', 'sale', 'cms'],
       message: 'An order-management, sale or cms app role is required',

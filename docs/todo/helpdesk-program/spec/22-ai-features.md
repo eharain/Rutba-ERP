@@ -1,6 +1,6 @@
 # 22 — AI Features
 
-<!-- verify-docs: planned rutba-core/src/platform/ai.js -->
+<!-- verify-docs: planned services/core/src/platform/ai.js -->
 <!-- The AI platform seam is specified here, not yet built. -->
 
 [← 21 Reports & Analytics](21-reports-and-analytics.md) · [Index](00-index.md) · Next: [23 Approval Workflows](23-approval-workflows.md)
@@ -31,7 +31,7 @@ Use AI where it removes drudgery and keeps a human accountable — and nowhere e
 
 ## 22.3 Platform seam (P6)
 
-Core has no AI capability today. Build `rutba-core/src/platform/ai.js` as a provider-adapter
+Core has no AI capability today. Build `services/core/src/platform/ai.js` as a provider-adapter
 seam — the same pattern as digital payments and social providers:
 
 ```

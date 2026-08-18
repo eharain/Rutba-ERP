@@ -75,8 +75,8 @@ function getAppDirs() {
       dirs.push(ws);
     }
   }
-  // pos-strapi is not in workspaces but is a launchable app
-  dirs.push('pos-strapi');
+  // services/strapi is not in workspaces but is a launchable app
+  dirs.push('services/strapi');
   return dirs.map((d) => ({
     dir: d,
     prefix: d.toUpperCase().replace(/-/g, '_'),
@@ -261,11 +261,11 @@ function validateVariables(globals, appVars, allPrefixes, opts = {}) {
  *
  * PORT is only set when explicitly configured:
  *   - process.env.PORT (platform/host override — always wins)
- *   - PREFIX__PORT in config files (e.g. POS_AUTH__PORT=4003)
+ *   - PREFIX__PORT in config files (e.g. AUTH__PORT=4003)
  * No PORT is derived from URLs or invented automatically.
  *
  * @param {Object}  opts
- * @param {string}  opts.targetDir       Workspace directory name (e.g. 'pos-auth')
+ * @param {string}  opts.targetDir       Workspace directory name (e.g. 'apps/admin/auth')
  * @param {string}  opts.targetPrefix    Env prefix (e.g. 'POS_AUTH')
  * @param {Object<string,string>} opts.globals    Global variables
  * @param {Object<string,Object<string,string>>} opts.appVars  Per-prefix vars
@@ -316,7 +316,7 @@ function buildEnvForApp(opts) {
     }
   }
 
-  // ── CORS_ORIGINS for pos-strapi ─────────────────────────
+  // ── CORS_ORIGINS for services/strapi ─────────────────────────
   if (targetPrefix === 'POS_STRAPI') {
     const strapiPort = envForApp.PORT || '4010';
     const strapiOrigins = [

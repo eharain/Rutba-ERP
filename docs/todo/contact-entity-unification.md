@@ -1,8 +1,8 @@
 # Contact-entity unification
 
-<!-- verify-docs: planned pos-strapi/src/seed/person-backfill-customer-seed.js api/crm/persons.js -->
+<!-- verify-docs: planned services/strapi/src/seed/person-backfill-customer-seed.js api/crm/persons.js -->
 
-> **Status (May 2026):** Phase 1A landed before rutba-web's first launch.
+> **Status (May 2026):** Phase 1A landed before apps/content/storefront's first launch.
 > `api::person.person`, `api::address.address`, and the `sale-order` rewire
 > (`customer_person` / `delivery_address` / `delivery_snapshot`, no more
 > `customer_contact` component) are live. Web checkout writes the new shape.
@@ -260,8 +260,8 @@ Phase complete when:
 - No content-type other than `person` and `address` stores `name`/`email`/
   `phone`/`address` directly.
 - A merge in the admin UI rewires every FK and old IDs continue to resolve.
-- Tier 2 smoke flows (pos-sale, rutba-cms, rutba-crm, rutba-hr,
-  rutba-order-management, rutba-rider, rutba-web checkout) all pass against
+- Tier 2 smoke flows (apps/sales/pos, apps/content/cms, apps/sales/crm, apps/people/hr,
+  apps/sales/orders, apps/sales/rider, apps/content/storefront checkout) all pass against
   the migrated schema.
 
 ---
@@ -297,9 +297,9 @@ unblocking.
 | `notes` | text | reviewer comments |
 
 Files:
-- `pos-strapi/src/api/person-dedup-audit/content-types/person-dedup-audit/schema.json`
-- `pos-strapi/src/api/person-dedup-audit/controllers/person-dedup-audit.js` — core controller, admin-only
-- `pos-strapi/src/api/person-dedup-audit/routes/person-dedup-audit.js` — standard CRUD
+- `services/strapi/src/api/person-dedup-audit/content-types/person-dedup-audit/schema.json`
+- `services/strapi/src/api/person-dedup-audit/controllers/person-dedup-audit.js` — core controller, admin-only
+- `services/strapi/src/api/person-dedup-audit/routes/person-dedup-audit.js` — standard CRUD
 
 Effort: 1 hour.
 
@@ -311,7 +311,7 @@ row counts or is in-house data we can recreate.
 
 ### Schema change
 
-Add to `pos-strapi/src/api/customer/content-types/customer/schema.json`:
+Add to `services/strapi/src/api/customer/content-types/customer/schema.json`:
 
 ```json
 "person": {
@@ -325,7 +325,7 @@ Keep `name`, `phone`, `email`, `address`, `picture` for now — they get dropped
 
 ### Backfill seed
 
-New file: `pos-strapi/src/seed/person-backfill-customer-seed.js`
+New file: `services/strapi/src/seed/person-backfill-customer-seed.js`
 
 Algorithm (idempotent; safe to re-run):
 1. Find customers where `person` FK is null. Paginate, batch size 50.
@@ -362,7 +362,7 @@ and the count matches.
 
 ### Controller dual-write
 
-`pos-strapi/src/api/customer/controllers/customer.js` — wrap `create` and
+`services/strapi/src/api/customer/controllers/customer.js` — wrap `create` and
 `update` so writes mirror to person:
 
 - On `create`: if email or phone is set, do the same find-or-create dance as
@@ -417,7 +417,7 @@ entity, which is what unification exists to prevent.
 - ✓ `person` FK on `api::crm-contact.crm-contact`, plus the
   `person.crm_contacts` inverse (person-based segments filter through it).
 - ✓ Controller dual-write on create/update, via the new shared
-  `pos-strapi/src/utils/person-link.js`. Ambiguous matches go to
+  `services/strapi/src/utils/person-link.js`. Ambiguous matches go to
   `person-dedup-audit`; an already-linked contact whose email/phone changes is
   never silently re-pointed (that's a merge — Phase 3.1).
 - ✓ `company`, `notes`, `address` kept as planned.
@@ -509,14 +509,14 @@ Only after every Phase 1C entity has been stable for ≥1 release cycle.
 App-by-app, switch list/detail pages to consume `person`-shaped data instead
 of inline fields. Order by traffic — start with the hottest:
 
-- `rutba-web` profile/orders — already done in Phase 1A.
-- `rutba-cms` admin order list — switch from `customer_contact.name` to
+- `apps/content/storefront` profile/orders — already done in Phase 1A.
+- `apps/content/cms` admin order list — switch from `customer_contact.name` to
   `customer_person.name`.
-- `pos-sale` — customer search dropdown switches to populating `customer.person`.
-- `rutba-crm` — list pages.
-- `rutba-hr` — employee directory.
-- `rutba-rider` mobile — driver app.
-- `rutba-order-management` — dispatch console.
+- `apps/sales/pos` — customer search dropdown switches to populating `customer.person`.
+- `apps/sales/crm` — list pages.
+- `apps/people/hr` — employee directory.
+- `apps/sales/rider` mobile — driver app.
+- `apps/sales/orders` — dispatch console.
 
 Each app gets a smoke test from `docs/pre-deployment-test-plan.md` Tier 2.
 
@@ -558,9 +558,9 @@ the column. Test path: clean DB restore + re-seed + run the schema sync.
 
 Land when audit table starts piling up.
 
-### 3.1 — Merge UI (rutba-crm, not Strapi admin)
+### 3.1 — Merge UI (apps/sales/crm, not Strapi admin)
 
-The merge UI lives in **rutba-crm**, not as a Strapi admin plugin. CRM is
+The merge UI lives in **apps/sales/crm**, not as a Strapi admin plugin. CRM is
 where humans already triage "who is this person" — sales reps, account
 managers, support — and a CRM-side UI can show order history / lead
 pipeline / ticket threads next to the merge decision in a way Strapi admin
@@ -568,7 +568,7 @@ can't. See project_crm_consolidates_contact_ui memory.
 
 **Split of responsibility:**
 
-- **rutba-crm builds:**
+- **apps/sales/crm builds:**
   - Person browse + search (name / email / phone, with `provisional_at`
     and "has audit conflict" filters).
   - Person detail page with populated role profiles (customer rows, CRM
@@ -603,7 +603,7 @@ client.
 
 **Effort:**
 - Strapi side (descriptor + controller + transactional rewire): 1 day.
-- rutba-crm side (person browse, detail, merge dialog, audit inbox): 2–3 days.
+- apps/sales/crm side (person browse, detail, merge dialog, audit inbox): 2–3 days.
 
 ### 3.2 — Nightly dedup scan
 
@@ -638,17 +638,17 @@ demands it.
 
 | Phase | Entity | Files touched | Has prod data? |
 | --- | --- | --- | --- |
-| 1A ✓ | sale-order, customer-address, order-contact component | pos-strapi/api/sale-order/*, pos-strapi/api/address/* (new), api-provider/api/addresses.js, rutba-web checkout + profile | No (pre-launch) |
-| pre-1B ✓ | person-dedup-audit | pos-strapi/api/person-dedup-audit/* (new) | n/a |
-| 1B | customer | pos-strapi/api/customer/*, pos-strapi/src/seed/person-backfill-customer-seed.js | **Yes (POS)** |
-| 1C.1 ✓ | crm-contact | pos-strapi/api/crm-contact/*, pos-strapi/src/utils/person-link.js (new), pos-strapi/src/seed/seeders/crm-contact-person-backfill.js (new) | No (in-house only) |
-| 1C.2 | hr-employee | pos-strapi/api/hr-employee/*, seed | Maybe (HR dogfood) |
-| 1C.3 | rider | pos-strapi/api/rider/*, seed, notification-service | No (in-house only) |
-| 1C.4 | supplier | pos-strapi/api/supplier/*, seed | Maybe (POS supplier list) |
-| 1C.5 ✓ | contact-ticket | pos-strapi/api/contact-ticket/* | No |
-| 3.3 ✓ | provisional-promotion on UP signup | pos-strapi/api/person/services/person.js, pos-strapi/src/extensions/users-permissions/strapi-server.js | n/a |
-| 1C.6 | crm-lead | pos-strapi/api/crm-lead/* | No |
-| 2.1 | (read-path cutover, all apps) | rutba-cms, pos-sale, rutba-crm, rutba-hr, rutba-rider, rutba-order-management | n/a |
+| 1A ✓ | sale-order, customer-address, order-contact component | services/strapi/api/sale-order/*, services/strapi/api/address/* (new), api-provider/api/addresses.js, apps/content/storefront checkout + profile | No (pre-launch) |
+| pre-1B ✓ | person-dedup-audit | services/strapi/api/person-dedup-audit/* (new) | n/a |
+| 1B | customer | services/strapi/api/customer/*, services/strapi/src/seed/person-backfill-customer-seed.js | **Yes (POS)** |
+| 1C.1 ✓ | crm-contact | services/strapi/api/crm-contact/*, services/strapi/src/utils/person-link.js (new), services/strapi/src/seed/seeders/crm-contact-person-backfill.js (new) | No (in-house only) |
+| 1C.2 | hr-employee | services/strapi/api/hr-employee/*, seed | Maybe (HR dogfood) |
+| 1C.3 | rider | services/strapi/api/rider/*, seed, notification-service | No (in-house only) |
+| 1C.4 | supplier | services/strapi/api/supplier/*, seed | Maybe (POS supplier list) |
+| 1C.5 ✓ | contact-ticket | services/strapi/api/contact-ticket/* | No |
+| 3.3 ✓ | provisional-promotion on UP signup | services/strapi/api/person/services/person.js, services/strapi/src/extensions/users-permissions/strapi-server.js | n/a |
+| 1C.6 | crm-lead | services/strapi/api/crm-lead/* | No |
+| 2.1 | (read-path cutover, all apps) | apps/content/cms, apps/sales/pos, apps/sales/crm, apps/people/hr, apps/sales/rider, apps/sales/orders | n/a |
 | 2.2 | (column drops, all entities) | schema.json files + knex migrations | n/a |
-| 2.3 | sale.employee, legacy employee | pos-strapi/api/sale, delete pos-strapi/api/employee | **Yes (POS)** |
+| 2.3 | sale.employee, legacy employee | services/strapi/api/sale, delete services/strapi/api/employee | **Yes (POS)** |
 | 3 | person-dedup-audit, merge UI, cron, UP register hook | mostly new files | n/a |

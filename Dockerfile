@@ -31,7 +31,7 @@ FROM base AS deps
 
 # Copy the FULL monorepo source BEFORE installing. Some workspaces run a
 # `prepare` build during `npm install` (e.g. strapi-api-pro → `strapi-plugin
-# build`, producing dist/ that pos-strapi loads), and native deps run their
+# build`, producing dist/ that services/strapi loads), and native deps run their
 # postinstall — both need source present, so the old "package.json only first"
 # layer-cache trick breaks here. .dockerignore keeps node_modules/.next/.git/
 # .env* out of the context. .npmrc carries legacy-peer-deps=true, required by
@@ -51,44 +51,44 @@ FROM deps AS source
 #  STRAPI
 # ============================================================
 FROM source AS strapi-build
-WORKDIR /app/pos-strapi
+WORKDIR /app/services/strapi
 RUN npm install
 RUN npm run build
 
 FROM base AS strapi
 WORKDIR /app
-COPY --from=strapi-build /app/pos-strapi   ./pos-strapi
+COPY --from=strapi-build /app/services/strapi   ./services/strapi
 COPY --from=deps /app/node_modules         ./node_modules
 COPY --from=strapi-build /app/packages     ./packages
 
 ENV NODE_ENV=production
-WORKDIR /app/pos-strapi
+WORKDIR /app/services/strapi
 CMD ["npx", "strapi", "start"]
 
 # ============================================================
-#  CORE API  (rutba-core — strangler replacement for Strapi)
+#  CORE API  (services/core — strangler replacement for Strapi)
 # ============================================================
 # Two packaging facts drive this stage:
 #
-#  1. rutba-core is NOT an npm workspace. Like pos-strapi it installs on its
+#  1. services/core is NOT an npm workspace. Like services/strapi it installs on its
 #     own via --prefix, so the root `npm install` in `deps` does not cover it.
-#  2. It loads pos-strapi ZERO-COPY at runtime — controllers, services and
+#  2. It loads services/strapi ZERO-COPY at runtime — controllers, services and
 #     lifecycles through posRequire(), and bcryptjs / @strapi/utils / nodemailer
 #     / the users-permissions validators through posModule() — plus every
 #     content-type's schema.json for the table registry. So the image has to
-#     carry pos-strapi's source AND its node_modules. That is a strangler
+#     carry services/strapi's source AND its node_modules. That is a strangler
 #     artefact; it goes away with Strapi itself.
 #
-# pos-strapi deps are installed here rather than copied from `strapi-build`
+# services/strapi deps are installed here rather than copied from `strapi-build`
 # because core never serves the admin panel and should not pay for building it.
 FROM source AS core-build
-RUN npm install --prefix pos-strapi --no-audit --no-fund
-RUN npm install --prefix rutba-core --no-audit --no-fund
+RUN npm install --prefix services/strapi --no-audit --no-fund
+RUN npm install --prefix services/core --no-audit --no-fund
 
 FROM base AS core
 WORKDIR /app
-COPY --from=core-build /app/rutba-core     ./rutba-core
-COPY --from=core-build /app/pos-strapi     ./pos-strapi
+COPY --from=core-build /app/services/core     ./services/core
+COPY --from=core-build /app/services/strapi     ./services/strapi
 COPY --from=deps       /app/node_modules   ./node_modules
 COPY --from=deps       /app/packages       ./packages
 # config/env resolves REPO_ROOT three levels up from src/config, i.e. /app —
@@ -98,7 +98,7 @@ COPY --from=deps       /app/packages       ./packages
 COPY --from=deps       /app/package.json   ./package.json
 
 ENV NODE_ENV=production
-WORKDIR /app/rutba-core
+WORKDIR /app/services/core
 CMD ["node", "src/index.js"]
 
 # ============================================================
@@ -112,17 +112,17 @@ ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_IMAGE_URL
 ARG NEXT_PUBLIC_AUTH_URL
 ARG NEXT_PUBLIC_STOCK_URL
-ARG NEXT_PUBLIC_SALE_URL
-ARG NEXT_PUBLIC_WEB_URL
-ARG NEXT_PUBLIC_WEB_USER_URL
-ARG NEXT_PUBLIC_ORDER_MANAGEMENT_URL
+ARG NEXT_PUBLIC_POS_URL
+ARG NEXT_PUBLIC_STOREFRONT_URL
+ARG NEXT_PUBLIC_PORTAL_URL
+ARG NEXT_PUBLIC_ORDERS_URL
 ARG NEXT_PUBLIC_MANUFACTURING_URL
 ARG NEXT_PUBLIC_MARKETPLACE_URL
-ARG NEXT_PUBLIC_INVENTORY_URL
+ARG NEXT_PUBLIC_CONTROL_URL
 ARG NEXT_PUBLIC_SEED_URL
 ARG NEXT_PUBLIC_CAMPAIGNS_URL
 ARG NEXT_PUBLIC_MAIL_URL
-ARG NEXT_PUBLIC_ADMIN_URL
+ARG NEXT_PUBLIC_CONSOLE_URL
 ARG NEXT_PUBLIC_RIDER_URL
 ARG NEXT_PUBLIC_SOCIAL_URL
 ARG NEXT_PUBLIC_CRM_URL
@@ -143,17 +143,17 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_PUBLIC_IMAGE_URL=$NEXT_PUBLIC_IMAGE_URL \
     NEXT_PUBLIC_AUTH_URL=$NEXT_PUBLIC_AUTH_URL \
     NEXT_PUBLIC_STOCK_URL=$NEXT_PUBLIC_STOCK_URL \
-    NEXT_PUBLIC_SALE_URL=$NEXT_PUBLIC_SALE_URL \
-    NEXT_PUBLIC_WEB_URL=$NEXT_PUBLIC_WEB_URL \
-    NEXT_PUBLIC_WEB_USER_URL=$NEXT_PUBLIC_WEB_USER_URL \
-    NEXT_PUBLIC_ORDER_MANAGEMENT_URL=$NEXT_PUBLIC_ORDER_MANAGEMENT_URL \
+    NEXT_PUBLIC_POS_URL=$NEXT_PUBLIC_POS_URL \
+    NEXT_PUBLIC_STOREFRONT_URL=$NEXT_PUBLIC_STOREFRONT_URL \
+    NEXT_PUBLIC_PORTAL_URL=$NEXT_PUBLIC_PORTAL_URL \
+    NEXT_PUBLIC_ORDERS_URL=$NEXT_PUBLIC_ORDERS_URL \
     NEXT_PUBLIC_MANUFACTURING_URL=$NEXT_PUBLIC_MANUFACTURING_URL \
     NEXT_PUBLIC_MARKETPLACE_URL=$NEXT_PUBLIC_MARKETPLACE_URL \
-    NEXT_PUBLIC_INVENTORY_URL=$NEXT_PUBLIC_INVENTORY_URL \
+    NEXT_PUBLIC_CONTROL_URL=$NEXT_PUBLIC_CONTROL_URL \
     NEXT_PUBLIC_SEED_URL=$NEXT_PUBLIC_SEED_URL \
     NEXT_PUBLIC_CAMPAIGNS_URL=$NEXT_PUBLIC_CAMPAIGNS_URL \
     NEXT_PUBLIC_MAIL_URL=$NEXT_PUBLIC_MAIL_URL \
-    NEXT_PUBLIC_ADMIN_URL=$NEXT_PUBLIC_ADMIN_URL \
+    NEXT_PUBLIC_CONSOLE_URL=$NEXT_PUBLIC_CONSOLE_URL \
     NEXT_PUBLIC_RIDER_URL=$NEXT_PUBLIC_RIDER_URL \
     NEXT_PUBLIC_SOCIAL_URL=$NEXT_PUBLIC_SOCIAL_URL \
     NEXT_PUBLIC_CRM_URL=$NEXT_PUBLIC_CRM_URL \
@@ -183,242 +183,242 @@ ENV NEXT_BUILD_OUTPUT=standalone
 # PORT is set at runtime via docker-compose environment.
 
 # ----------------------------------------------------------
-#  pos-auth
+#  apps/admin/auth
 # ----------------------------------------------------------
 FROM build-env AS auth-build
-RUN mkdir -p pos-auth/public && npm run build --workspace=pos-auth
+RUN mkdir -p apps/admin/auth/public && npm run build --workspace=@rutba/auth
 
 FROM base AS auth
 WORKDIR /app
 ENV NODE_ENV=production HOSTNAME=0.0.0.0
-COPY --from=auth-build /app/pos-auth/.next/standalone ./
-COPY --from=auth-build /app/pos-auth/.next/static     ./pos-auth/.next/static
-COPY --from=auth-build /app/pos-auth/public            ./pos-auth/public
-CMD ["node", "pos-auth/server.js"]
+COPY --from=auth-build /app/apps/admin/auth/.next/standalone ./
+COPY --from=auth-build /app/apps/admin/auth/.next/static     ./apps/admin/auth/.next/static
+COPY --from=auth-build /app/apps/admin/auth/public            ./apps/admin/auth/public
+CMD ["node", "apps/admin/auth/server.js"]
 
 # ----------------------------------------------------------
-#  pos-stock
+#  apps/inventory/stock
 # ----------------------------------------------------------
 FROM build-env AS stock-build
-RUN mkdir -p pos-stock/public && npm run build --workspace=pos-stock
+RUN mkdir -p apps/inventory/stock/public && npm run build --workspace=@rutba/stock
 
 FROM base AS stock
 WORKDIR /app
 ENV NODE_ENV=production HOSTNAME=0.0.0.0
-COPY --from=stock-build /app/pos-stock/.next/standalone ./
-COPY --from=stock-build /app/pos-stock/.next/static     ./pos-stock/.next/static
-COPY --from=stock-build /app/pos-stock/public            ./pos-stock/public
-CMD ["node", "pos-stock/server.js"]
+COPY --from=stock-build /app/apps/inventory/stock/.next/standalone ./
+COPY --from=stock-build /app/apps/inventory/stock/.next/static     ./apps/inventory/stock/.next/static
+COPY --from=stock-build /app/apps/inventory/stock/public            ./apps/inventory/stock/public
+CMD ["node", "apps/inventory/stock/server.js"]
 
 # ----------------------------------------------------------
-#  pos-sale
+#  apps/sales/pos
 # ----------------------------------------------------------
-FROM build-env AS sale-build
-RUN mkdir -p pos-sale/public && npm run build --workspace=pos-sale
+FROM build-env AS pos-build
+RUN mkdir -p apps/sales/pos/public && npm run build --workspace=@rutba/pos
 
-FROM base AS sale
+FROM base AS pos
 WORKDIR /app
 ENV NODE_ENV=production HOSTNAME=0.0.0.0
-COPY --from=sale-build /app/pos-sale/.next/standalone ./
-COPY --from=sale-build /app/pos-sale/.next/static     ./pos-sale/.next/static
-COPY --from=sale-build /app/pos-sale/public            ./pos-sale/public
-CMD ["node", "pos-sale/server.js"]
+COPY --from=pos-build /app/apps/sales/pos/.next/standalone ./
+COPY --from=pos-build /app/apps/sales/pos/.next/static     ./apps/sales/pos/.next/static
+COPY --from=pos-build /app/apps/sales/pos/public            ./apps/sales/pos/public
+CMD ["node", "apps/sales/pos/server.js"]
 
 # ----------------------------------------------------------
-#  rutba-web
+#  apps/content/storefront
 # ----------------------------------------------------------
-FROM build-env AS web-build
-# rutba-web runs via `next start` (NOT standalone). Turbopack's standalone
+FROM build-env AS storefront-build
+# apps/content/storefront runs via `next start` (NOT standalone). Turbopack's standalone
 # externalization is broken in Next 16.2 — every externalized node_modules
 # package (next-auth, axios, @radix-ui/*, …) is emitted as an unresolvable
 # hashed specifier (<pkg>-<hash>) that fails at runtime. Unset standalone so a
 # normal .next build is produced (flatten-standalone then no-ops), and serve it
 # with `next start`, exactly how the systemd production path runs it.
 ENV NEXT_BUILD_OUTPUT=
-RUN mkdir -p rutba-web/public && npm run build --workspace=rutba-web
+RUN mkdir -p apps/content/storefront/public && npm run build --workspace=@rutba/storefront
 
-FROM base AS web
+FROM base AS storefront
 WORKDIR /app
 ENV NODE_ENV=production HOSTNAME=0.0.0.0
 # Full app + hoisted node_modules (workspace symlinks resolve into ./packages).
-COPY --from=web-build /app/node_modules ./node_modules
-COPY --from=web-build /app/package.json ./package.json
-COPY --from=web-build /app/packages     ./packages
-COPY --from=web-build /app/scripts      ./scripts
-COPY --from=web-build /app/rutba-web    ./rutba-web
-WORKDIR /app/rutba-web
+COPY --from=storefront-build /app/node_modules ./node_modules
+COPY --from=storefront-build /app/package.json ./package.json
+COPY --from=storefront-build /app/packages     ./packages
+COPY --from=storefront-build /app/scripts      ./scripts
+COPY --from=storefront-build /app/apps/content/storefront    ./apps/content/storefront
+WORKDIR /app/apps/content/storefront
 CMD ["sh", "-c", "node /app/node_modules/next/dist/bin/next start -H 0.0.0.0 -p ${PORT:-4000}"]
 
 # ----------------------------------------------------------
-#  rutba-web-user
+#  apps/sales/portal
 # ----------------------------------------------------------
-FROM build-env AS web-user-build
-RUN mkdir -p rutba-web-user/public && npm run build --workspace=rutba-web-user
+FROM build-env AS portal-build
+RUN mkdir -p apps/sales/portal/public && npm run build --workspace=@rutba/portal
 
-FROM base AS web-user
+FROM base AS portal
 WORKDIR /app
 ENV NODE_ENV=production HOSTNAME=0.0.0.0
-COPY --from=web-user-build /app/rutba-web-user/.next/standalone ./
-COPY --from=web-user-build /app/rutba-web-user/.next/static     ./rutba-web-user/.next/static
-COPY --from=web-user-build /app/rutba-web-user/public            ./rutba-web-user/public
-CMD ["node", "rutba-web-user/server.js"]
+COPY --from=portal-build /app/apps/sales/portal/.next/standalone ./
+COPY --from=portal-build /app/apps/sales/portal/.next/static     ./apps/sales/portal/.next/static
+COPY --from=portal-build /app/apps/sales/portal/public            ./apps/sales/portal/public
+CMD ["node", "apps/sales/portal/server.js"]
 
 # ----------------------------------------------------------
-#  rutba-order-management
+#  apps/sales/orders
 # ----------------------------------------------------------
-FROM build-env AS order-management-build
-RUN mkdir -p rutba-order-management/public && npm run build --workspace=rutba-order-management
+FROM build-env AS orders-build
+RUN mkdir -p apps/sales/orders/public && npm run build --workspace=@rutba/orders
 
-FROM base AS order-management
+FROM base AS orders
 WORKDIR /app
 ENV NODE_ENV=production HOSTNAME=0.0.0.0
-COPY --from=order-management-build /app/rutba-order-management/.next/standalone ./
-COPY --from=order-management-build /app/rutba-order-management/.next/static     ./rutba-order-management/.next/static
-COPY --from=order-management-build /app/rutba-order-management/public            ./rutba-order-management/public
-CMD ["node", "rutba-order-management/server.js"]
+COPY --from=orders-build /app/apps/sales/orders/.next/standalone ./
+COPY --from=orders-build /app/apps/sales/orders/.next/static     ./apps/sales/orders/.next/static
+COPY --from=orders-build /app/apps/sales/orders/public            ./apps/sales/orders/public
+CMD ["node", "apps/sales/orders/server.js"]
 
 # ----------------------------------------------------------
-#  rutba-rider
+#  apps/sales/rider
 # ----------------------------------------------------------
 FROM build-env AS rider-build
-RUN mkdir -p rutba-rider/public && npm run build --workspace=rutba-rider
+RUN mkdir -p apps/sales/rider/public && npm run build --workspace=@rutba/rider
 
 FROM base AS rider
 WORKDIR /app
 ENV NODE_ENV=production HOSTNAME=0.0.0.0
-COPY --from=rider-build /app/rutba-rider/.next/standalone ./
-COPY --from=rider-build /app/rutba-rider/.next/static     ./rutba-rider/.next/static
-COPY --from=rider-build /app/rutba-rider/public            ./rutba-rider/public
-CMD ["node", "rutba-rider/server.js"]
+COPY --from=rider-build /app/apps/sales/rider/.next/standalone ./
+COPY --from=rider-build /app/apps/sales/rider/.next/static     ./apps/sales/rider/.next/static
+COPY --from=rider-build /app/apps/sales/rider/public            ./apps/sales/rider/public
+CMD ["node", "apps/sales/rider/server.js"]
 
 # ----------------------------------------------------------
-#  rutba-crm
+#  apps/sales/crm
 # ----------------------------------------------------------
 FROM build-env AS crm-build
-RUN mkdir -p rutba-crm/public && npm run build --workspace=rutba-crm
+RUN mkdir -p apps/sales/crm/public && npm run build --workspace=@rutba/crm
 
 FROM base AS crm
 WORKDIR /app
 ENV NODE_ENV=production HOSTNAME=0.0.0.0
-COPY --from=crm-build /app/rutba-crm/.next/standalone ./
-COPY --from=crm-build /app/rutba-crm/.next/static     ./rutba-crm/.next/static
-COPY --from=crm-build /app/rutba-crm/public            ./rutba-crm/public
-CMD ["node", "rutba-crm/server.js"]
+COPY --from=crm-build /app/apps/sales/crm/.next/standalone ./
+COPY --from=crm-build /app/apps/sales/crm/.next/static     ./apps/sales/crm/.next/static
+COPY --from=crm-build /app/apps/sales/crm/public            ./apps/sales/crm/public
+CMD ["node", "apps/sales/crm/server.js"]
 
 # ----------------------------------------------------------
-#  rutba-hr
+#  apps/people/hr
 # ----------------------------------------------------------
 FROM build-env AS hr-build
-RUN mkdir -p rutba-hr/public && npm run build --workspace=rutba-hr
+RUN mkdir -p apps/people/hr/public && npm run build --workspace=@rutba/hr
 
 FROM base AS hr
 WORKDIR /app
 ENV NODE_ENV=production HOSTNAME=0.0.0.0
-COPY --from=hr-build /app/rutba-hr/.next/standalone ./
-COPY --from=hr-build /app/rutba-hr/.next/static     ./rutba-hr/.next/static
-COPY --from=hr-build /app/rutba-hr/public            ./rutba-hr/public
-CMD ["node", "rutba-hr/server.js"]
+COPY --from=hr-build /app/apps/people/hr/.next/standalone ./
+COPY --from=hr-build /app/apps/people/hr/.next/static     ./apps/people/hr/.next/static
+COPY --from=hr-build /app/apps/people/hr/public            ./apps/people/hr/public
+CMD ["node", "apps/people/hr/server.js"]
 
 # ----------------------------------------------------------
-#  rutba-ess
+#  apps/people/ess
 # ----------------------------------------------------------
 FROM build-env AS ess-build
-RUN mkdir -p rutba-ess/public && npm run build --workspace=rutba-ess
+RUN mkdir -p apps/people/ess/public && npm run build --workspace=@rutba/ess
 
 FROM base AS ess
 WORKDIR /app
 ENV NODE_ENV=production HOSTNAME=0.0.0.0
-COPY --from=ess-build /app/rutba-ess/.next/standalone ./
-COPY --from=ess-build /app/rutba-ess/.next/static     ./rutba-ess/.next/static
-COPY --from=ess-build /app/rutba-ess/public            ./rutba-ess/public
-CMD ["node", "rutba-ess/server.js"]
+COPY --from=ess-build /app/apps/people/ess/.next/standalone ./
+COPY --from=ess-build /app/apps/people/ess/.next/static     ./apps/people/ess/.next/static
+COPY --from=ess-build /app/apps/people/ess/public            ./apps/people/ess/public
+CMD ["node", "apps/people/ess/server.js"]
 
 # ----------------------------------------------------------
-#  rutba-accounts
+#  apps/finance/accounts
 # ----------------------------------------------------------
 FROM build-env AS accounts-build
-RUN mkdir -p rutba-accounts/public && npm run build --workspace=rutba-accounts
+RUN mkdir -p apps/finance/accounts/public && npm run build --workspace=@rutba/accounts
 
 FROM base AS accounts
 WORKDIR /app
 ENV NODE_ENV=production HOSTNAME=0.0.0.0
-COPY --from=accounts-build /app/rutba-accounts/.next/standalone ./
-COPY --from=accounts-build /app/rutba-accounts/.next/static     ./rutba-accounts/.next/static
-COPY --from=accounts-build /app/rutba-accounts/public            ./rutba-accounts/public
-CMD ["node", "rutba-accounts/server.js"]
+COPY --from=accounts-build /app/apps/finance/accounts/.next/standalone ./
+COPY --from=accounts-build /app/apps/finance/accounts/.next/static     ./apps/finance/accounts/.next/static
+COPY --from=accounts-build /app/apps/finance/accounts/public            ./apps/finance/accounts/public
+CMD ["node", "apps/finance/accounts/server.js"]
 
 # ----------------------------------------------------------
-#  rutba-payroll
+#  apps/finance/payroll
 # ----------------------------------------------------------
 FROM build-env AS payroll-build
-RUN mkdir -p rutba-payroll/public && npm run build --workspace=rutba-payroll
+RUN mkdir -p apps/finance/payroll/public && npm run build --workspace=@rutba/payroll
 
 FROM base AS payroll
 WORKDIR /app
 ENV NODE_ENV=production HOSTNAME=0.0.0.0
-COPY --from=payroll-build /app/rutba-payroll/.next/standalone ./
-COPY --from=payroll-build /app/rutba-payroll/.next/static     ./rutba-payroll/.next/static
-COPY --from=payroll-build /app/rutba-payroll/public            ./rutba-payroll/public
-CMD ["node", "rutba-payroll/server.js"]
+COPY --from=payroll-build /app/apps/finance/payroll/.next/standalone ./
+COPY --from=payroll-build /app/apps/finance/payroll/.next/static     ./apps/finance/payroll/.next/static
+COPY --from=payroll-build /app/apps/finance/payroll/public            ./apps/finance/payroll/public
+CMD ["node", "apps/finance/payroll/server.js"]
 
 # ----------------------------------------------------------
-#  rutba-cms
+#  apps/content/cms
 # ----------------------------------------------------------
 FROM build-env AS cms-build
-RUN mkdir -p rutba-cms/public && npm run build --workspace=rutba-cms
+RUN mkdir -p apps/content/cms/public && npm run build --workspace=@rutba/cms
 
 FROM base AS cms
 WORKDIR /app
 ENV NODE_ENV=production HOSTNAME=0.0.0.0
-COPY --from=cms-build /app/rutba-cms/.next/standalone ./
-COPY --from=cms-build /app/rutba-cms/.next/static     ./rutba-cms/.next/static
-COPY --from=cms-build /app/rutba-cms/public            ./rutba-cms/public
-CMD ["node", "rutba-cms/server.js"]
+COPY --from=cms-build /app/apps/content/cms/.next/standalone ./
+COPY --from=cms-build /app/apps/content/cms/.next/static     ./apps/content/cms/.next/static
+COPY --from=cms-build /app/apps/content/cms/public            ./apps/content/cms/public
+CMD ["node", "apps/content/cms/server.js"]
 
 # ----------------------------------------------------------
-#  rutba-social
+#  apps/content/social
 # ----------------------------------------------------------
 FROM build-env AS social-build
-RUN mkdir -p rutba-social/public && npm run build --workspace=rutba-social
+RUN mkdir -p apps/content/social/public && npm run build --workspace=@rutba/social
 
 FROM base AS social
 WORKDIR /app
 ENV NODE_ENV=production HOSTNAME=0.0.0.0
-COPY --from=social-build /app/rutba-social/.next/standalone ./
-COPY --from=social-build /app/rutba-social/.next/static     ./rutba-social/.next/static
-COPY --from=social-build /app/rutba-social/public            ./rutba-social/public
-CMD ["node", "rutba-social/server.js"]
+COPY --from=social-build /app/apps/content/social/.next/standalone ./
+COPY --from=social-build /app/apps/content/social/.next/static     ./apps/content/social/.next/static
+COPY --from=social-build /app/apps/content/social/public            ./apps/content/social/public
+CMD ["node", "apps/content/social/server.js"]
 
 # ----------------------------------------------------------
-#  rutba-manufacturing
+#  apps/inventory/manufacturing
 # ----------------------------------------------------------
 FROM build-env AS manufacturing-build
-RUN mkdir -p rutba-manufacturing/public && npm run build --workspace=rutba-manufacturing
+RUN mkdir -p apps/inventory/manufacturing/public && npm run build --workspace=@rutba/manufacturing
 
 FROM base AS manufacturing
 WORKDIR /app
 ENV NODE_ENV=production HOSTNAME=0.0.0.0
-COPY --from=manufacturing-build /app/rutba-manufacturing/.next/standalone ./
-COPY --from=manufacturing-build /app/rutba-manufacturing/.next/static     ./rutba-manufacturing/.next/static
-COPY --from=manufacturing-build /app/rutba-manufacturing/public            ./rutba-manufacturing/public
-CMD ["node", "rutba-manufacturing/server.js"]
+COPY --from=manufacturing-build /app/apps/inventory/manufacturing/.next/standalone ./
+COPY --from=manufacturing-build /app/apps/inventory/manufacturing/.next/static     ./apps/inventory/manufacturing/.next/static
+COPY --from=manufacturing-build /app/apps/inventory/manufacturing/public            ./apps/inventory/manufacturing/public
+CMD ["node", "apps/inventory/manufacturing/server.js"]
 
 # ----------------------------------------------------------
-#  rutba-marketplace (Daraz integration UI)
+#  apps/sales/marketplace (Daraz integration UI)
 # ----------------------------------------------------------
 FROM build-env AS marketplace-build
-RUN mkdir -p rutba-marketplace/public && npm run build --workspace=rutba-marketplace
+RUN mkdir -p apps/sales/marketplace/public && npm run build --workspace=@rutba/marketplace
 
 FROM base AS marketplace
 WORKDIR /app
 ENV NODE_ENV=production HOSTNAME=0.0.0.0
-COPY --from=marketplace-build /app/rutba-marketplace/.next/standalone ./
-COPY --from=marketplace-build /app/rutba-marketplace/.next/static     ./rutba-marketplace/.next/static
-COPY --from=marketplace-build /app/rutba-marketplace/public            ./rutba-marketplace/public
-CMD ["node", "rutba-marketplace/server.js"]
+COPY --from=marketplace-build /app/apps/sales/marketplace/.next/standalone ./
+COPY --from=marketplace-build /app/apps/sales/marketplace/.next/static     ./apps/sales/marketplace/.next/static
+COPY --from=marketplace-build /app/apps/sales/marketplace/public            ./apps/sales/marketplace/public
+CMD ["node", "apps/sales/marketplace/server.js"]
 
 # ----------------------------------------------------------
-#  rutba-marketplace worker (standalone sync process — no HTTP)
+#  apps/sales/marketplace worker (standalone sync process — no HTTP)
 #  Runs worker.js, not the Next server, so it needs the full
 #  workspace (lib/, worker.js) + hoisted node_modules — which the
 #  Next standalone stage above omits. Env (STRAPI_SERVICE_TOKEN,
@@ -430,90 +430,90 @@ ENV NODE_ENV=production
 COPY --from=marketplace-build /app/node_modules      ./node_modules
 COPY --from=marketplace-build /app/package.json      ./package.json
 COPY --from=marketplace-build /app/packages          ./packages
-COPY --from=marketplace-build /app/rutba-marketplace ./rutba-marketplace
-WORKDIR /app/rutba-marketplace
+COPY --from=marketplace-build /app/apps/sales/marketplace ./apps/sales/marketplace
+WORKDIR /app/apps/sales/marketplace
 CMD ["node", "worker.js"]
 
 # ----------------------------------------------------------
-#  rutba-inventory (Inventory Management UI)
+#  apps/inventory/control (Inventory Management UI)
 # ----------------------------------------------------------
-FROM build-env AS inventory-build
-RUN mkdir -p rutba-inventory/public && npm run build --workspace=rutba-inventory
+FROM build-env AS control-build
+RUN mkdir -p apps/inventory/control/public && npm run build --workspace=@rutba/control
 
-FROM base AS inventory
+FROM base AS control
 WORKDIR /app
 ENV NODE_ENV=production HOSTNAME=0.0.0.0
-COPY --from=inventory-build /app/rutba-inventory/.next/standalone ./
-COPY --from=inventory-build /app/rutba-inventory/.next/static     ./rutba-inventory/.next/static
-COPY --from=inventory-build /app/rutba-inventory/public            ./rutba-inventory/public
-CMD ["node", "rutba-inventory/server.js"]
+COPY --from=control-build /app/apps/inventory/control/.next/standalone ./
+COPY --from=control-build /app/apps/inventory/control/.next/static     ./apps/inventory/control/.next/static
+COPY --from=control-build /app/apps/inventory/control/public            ./apps/inventory/control/public
+CMD ["node", "apps/inventory/control/server.js"]
 
 # ----------------------------------------------------------
-#  rutba-seed (Seeding control UI)
+#  apps/admin/seed (Seeding control UI)
 # ----------------------------------------------------------
 FROM build-env AS seed-build
-RUN mkdir -p rutba-seed/public && npm run build --workspace=rutba-seed
+RUN mkdir -p apps/admin/seed/public && npm run build --workspace=@rutba/seed
 
 FROM base AS seed
 WORKDIR /app
 ENV NODE_ENV=production HOSTNAME=0.0.0.0
-COPY --from=seed-build /app/rutba-seed/.next/standalone ./
-COPY --from=seed-build /app/rutba-seed/.next/static     ./rutba-seed/.next/static
-COPY --from=seed-build /app/rutba-seed/public            ./rutba-seed/public
-CMD ["node", "rutba-seed/server.js"]
+COPY --from=seed-build /app/apps/admin/seed/.next/standalone ./
+COPY --from=seed-build /app/apps/admin/seed/.next/static     ./apps/admin/seed/.next/static
+COPY --from=seed-build /app/apps/admin/seed/public            ./apps/admin/seed/public
+CMD ["node", "apps/admin/seed/server.js"]
 
 # ----------------------------------------------------------
-#  rutba-campaigns (Email marketing UI over Rutba-MTA)
+#  apps/content/campaigns (Email marketing UI over Rutba-MTA)
 # ----------------------------------------------------------
 FROM build-env AS campaigns-build
-RUN mkdir -p rutba-campaigns/public && npm run build --workspace=rutba-campaigns
+RUN mkdir -p apps/content/campaigns/public && npm run build --workspace=@rutba/campaigns
 
 FROM base AS campaigns
 WORKDIR /app
 ENV NODE_ENV=production HOSTNAME=0.0.0.0
-COPY --from=campaigns-build /app/rutba-campaigns/.next/standalone ./
-COPY --from=campaigns-build /app/rutba-campaigns/.next/static     ./rutba-campaigns/.next/static
-COPY --from=campaigns-build /app/rutba-campaigns/public            ./rutba-campaigns/public
-CMD ["node", "rutba-campaigns/server.js"]
+COPY --from=campaigns-build /app/apps/content/campaigns/.next/standalone ./
+COPY --from=campaigns-build /app/apps/content/campaigns/.next/static     ./apps/content/campaigns/.next/static
+COPY --from=campaigns-build /app/apps/content/campaigns/public            ./apps/content/campaigns/public
+CMD ["node", "apps/content/campaigns/server.js"]
 
 # ----------------------------------------------------------
-#  rutba-mail (Personal + shared inboxes over live IMAP)
+#  apps/content/mail (Personal + shared inboxes over live IMAP)
 # ----------------------------------------------------------
 FROM build-env AS mail-build
-RUN mkdir -p rutba-mail/public && npm run build --workspace=rutba-mail
+RUN mkdir -p apps/content/mail/public && npm run build --workspace=@rutba/mail
 
 FROM base AS mail
 WORKDIR /app
 ENV NODE_ENV=production HOSTNAME=0.0.0.0
-COPY --from=mail-build /app/rutba-mail/.next/standalone ./
-COPY --from=mail-build /app/rutba-mail/.next/static     ./rutba-mail/.next/static
-COPY --from=mail-build /app/rutba-mail/public            ./rutba-mail/public
-CMD ["node", "rutba-mail/server.js"]
+COPY --from=mail-build /app/apps/content/mail/.next/standalone ./
+COPY --from=mail-build /app/apps/content/mail/.next/static     ./apps/content/mail/.next/static
+COPY --from=mail-build /app/apps/content/mail/public            ./apps/content/mail/public
+CMD ["node", "apps/content/mail/server.js"]
 
 # ----------------------------------------------------------
-#  rutba-helpdesk (Agent console: ticket queue, thread, desks, routing)
+#  apps/sales/helpdesk (Agent console: ticket queue, thread, desks, routing)
 # ----------------------------------------------------------
 FROM build-env AS helpdesk-build
-RUN mkdir -p rutba-helpdesk/public && npm run build --workspace=rutba-helpdesk
+RUN mkdir -p apps/sales/helpdesk/public && npm run build --workspace=@rutba/helpdesk
 
 FROM base AS helpdesk
 WORKDIR /app
 ENV NODE_ENV=production HOSTNAME=0.0.0.0
-COPY --from=helpdesk-build /app/rutba-helpdesk/.next/standalone ./
-COPY --from=helpdesk-build /app/rutba-helpdesk/.next/static     ./rutba-helpdesk/.next/static
-COPY --from=helpdesk-build /app/rutba-helpdesk/public            ./rutba-helpdesk/public
-CMD ["node", "rutba-helpdesk/server.js"]
+COPY --from=helpdesk-build /app/apps/sales/helpdesk/.next/standalone ./
+COPY --from=helpdesk-build /app/apps/sales/helpdesk/.next/static     ./apps/sales/helpdesk/.next/static
+COPY --from=helpdesk-build /app/apps/sales/helpdesk/public            ./apps/sales/helpdesk/public
+CMD ["node", "apps/sales/helpdesk/server.js"]
 
 # ----------------------------------------------------------
-#  rutba-admin (Admin console: users, roles, access, app domains, mail)
+#  apps/admin/console (Admin console: users, roles, access, app domains, mail)
 # ----------------------------------------------------------
-FROM build-env AS admin-build
-RUN mkdir -p rutba-admin/public && npm run build --workspace=rutba-admin
+FROM build-env AS console-build
+RUN mkdir -p apps/admin/console/public && npm run build --workspace=@rutba/console
 
-FROM base AS admin
+FROM base AS console
 WORKDIR /app
 ENV NODE_ENV=production HOSTNAME=0.0.0.0
-COPY --from=admin-build /app/rutba-admin/.next/standalone ./
-COPY --from=admin-build /app/rutba-admin/.next/static     ./rutba-admin/.next/static
-COPY --from=admin-build /app/rutba-admin/public            ./rutba-admin/public
-CMD ["node", "rutba-admin/server.js"]
+COPY --from=console-build /app/apps/admin/console/.next/standalone ./
+COPY --from=console-build /app/apps/admin/console/.next/static     ./apps/admin/console/.next/static
+COPY --from=console-build /app/apps/admin/console/public            ./apps/admin/console/public
+CMD ["node", "apps/admin/console/server.js"]

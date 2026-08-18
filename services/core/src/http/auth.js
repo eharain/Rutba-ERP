@@ -1,10 +1,10 @@
 'use strict';
 
 /**
- * Authentication middleware: users-permissions JWT (verify-only — pos-strapi
+ * Authentication middleware: users-permissions JWT (verify-only — services/strapi
  * stays the issuer until Phase 7) and Strapi admin API tokens (used by the
  * marketplace worker and inter-instance sync; api-pro skips policy
- * enforcement for token requests, matching pos-strapi behavior).
+ * enforcement for token requests, matching services/strapi behavior).
  */
 
 const crypto = require('crypto');
@@ -55,7 +55,7 @@ function createAuthMiddleware({ isBypassed, optional = false } = {}) {
     const token = header.startsWith('Bearer ') ? header.slice(7).trim() : null;
     if (!token) {
       // Bypass-listed paths (public web routes etc.) run unauthenticated —
-      // parity with pos-strapi where those routes are auth: false.
+      // parity with services/strapi where those routes are auth: false.
       if (isBypassed && isBypassed(ctx.path)) return next();
       return reject(ctx, next, 'Missing or invalid credentials');
     }

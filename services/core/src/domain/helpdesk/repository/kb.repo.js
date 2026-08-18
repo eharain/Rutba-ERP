@@ -4,7 +4,7 @@
  * Persistence for the knowledge base (migrations 018 and 019).
  *
  * knex rather than documents(): every table here is Core-owned and deliberately
- * absent from pos-strapi's schema.json, so the registry the shim is built on
+ * absent from services/strapi's schema.json, so the registry the shim is built on
  * has never heard of them. getDb() is called at the point of every statement
  * and never held in a module-level const, so each one joins the caller's
  * ambient transaction — the property that lets emit() write its outbox row in

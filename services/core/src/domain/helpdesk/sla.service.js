@@ -1308,11 +1308,11 @@ async function extend(actor, ticketDocumentId, newDueAt, reason, options = {}) {
         sla_state: state,
       },
     });
-    // The timeline projection. Unlike pos-strapi's logActivity this is NOT
+    // The timeline projection. Unlike services/strapi's logActivity this is NOT
     // best-effort: an SLA extension is a governance act, and one that could
     // silently fail to be recorded must not be allowed to happen. `kind` is
     // 'note' because the generic enum has no SLA member and widening it is a
-    // pos-strapi schema change this module does not own.
+    // services/strapi schema change this module does not own.
     await documents(ACTIVITY_UID).create({
       data: {
         entity_uid: TICKET_UID,

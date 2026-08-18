@@ -7,7 +7,7 @@ import { listParams } from './__param_builders.js';
 export const TermTypesEndpoints = {
     meta: {
         uid: 'api::term-type.term-type',
-        domains: ['cms', 'order-management', 'sale', 'stock'],
+        domains: ['cms', 'orders', 'pos', 'stock'],
         roles: ['admin', 'manager', 'staff']
     },
 
@@ -15,7 +15,7 @@ export const TermTypesEndpoints = {
         path: '/term-types',
         action: 'find',
         method: 'get',
-        apps: ['stock', 'sale'],
+        apps: ['stock', 'pos'],
         approle: ['admin', 'manager', 'staff'],
         params: listParams(
             { page, pageSize, sort, populate, filters, fields },
@@ -40,7 +40,7 @@ export const TermTypesEndpoints = {
         method: 'get',
         // 'cms' and 'inventory' render the term dropdown too; without them the
         // api-pro interceptor 403s the lookup and the dropdown comes back empty.
-        apps: ['stock', 'sale', 'cms', 'inventory', 'social'],
+        apps: ['stock', 'pos', 'cms', 'control', 'social'],
         approle: ['admin', 'manager', 'staff'],
         params: listParams(
             { page, pageSize, sort, populate, filters, fields },
@@ -52,7 +52,7 @@ export const TermTypesEndpoints = {
         path: '/term-types',
         action: 'find',
         method: 'get',
-        apps: ['stock', 'sale'],
+        apps: ['stock', 'pos'],
         approle: ['admin', 'manager', 'staff'],
         params: listParams(
             { page, pageSize, sort, populate, filters, fields },
@@ -65,7 +65,7 @@ export const TermTypesEndpoints = {
         path: '/term-types',
         action: 'create',
         method: 'post',
-        apps: ['stock', 'sale'],
+        apps: ['stock', 'pos'],
         approle: ['admin', 'manager', 'staff'],
         data,
     }),
@@ -75,7 +75,7 @@ export const TermTypesEndpoints = {
         path: `/term-types/${id}`,
         action: 'update',
         method: 'put',
-        apps: ['stock', 'sale'],
+        apps: ['stock', 'pos'],
         approle: ['admin', 'manager', 'staff'],
         data,
     }),
@@ -84,7 +84,7 @@ export const TermTypesEndpoints = {
         path: `/term-types/${id}`,
         action: 'delete',
         method: 'delete',
-        apps: ['stock', 'sale'],
+        apps: ['stock', 'pos'],
         approle: ['admin', 'manager'],
     }),
 

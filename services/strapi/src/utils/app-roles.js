@@ -4,7 +4,7 @@
  * Resolve the set of app-role LEVELS a user holds, for workflow transition
  * `approles` enforcement (see workflow-engine.transitionAllowsRoles).
  *
- * app_roles carry keys like "manufacturing_manager" / "order_admin"; the level
+ * app_roles carry keys like "manufacturing_manager" / "orders_admin"; the level
  * is the suffix after the last underscore ("manager", "admin", "staff", …).
  * A Strapi super-admin (role.type === 'admin') carries the "*" wildcard so it
  * satisfies any restriction.

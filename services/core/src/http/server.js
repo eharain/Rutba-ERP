@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * rutba-core HTTP layer: Koa server mounting descriptor-defined routes from
+ * services/core HTTP layer: Koa server mounting descriptor-defined routes from
  * the api-pro DB mirror (api_pro_interfaces / api_pro_interface_methods),
  * gated by the api-pro interceptor running through the compat layer.
  *
@@ -187,7 +187,7 @@ async function buildServer() {
     return next();
   });
 
-  router.get('/_health', (ctx) => { ctx.body = { status: 'ok', server: 'rutba-core' }; });
+  router.get('/_health', (ctx) => { ctx.body = { status: 'ok', server: 'services/core' }; });
 
   router.get(/^\/uploads\/.+/, (ctx) =>
     sendError(ctx, 404, 'NotFoundError', 'file not found on disk or on MEDIA_BASE_URL'));
@@ -275,14 +275,14 @@ async function buildServer() {
           return sendError(ctx, 403, 'PolicyError', result.reason);
         }
       }
-      // API-token requests carry no user → interceptor skipped (parity with pos-strapi).
+      // API-token requests carry no user → interceptor skipped (parity with services/strapi).
       return next();
     };
 
     const handler = route.core
       ? coreHandler(route.uid, route.action)
       : async (ctx) => sendError(ctx, 501, 'NotPortedError',
-          `${route.uid}.${route.action} is not ported to rutba-core yet`);
+          `${route.uid}.${route.action} is not ported to services/core yet`);
 
     router[route.verb](route.path, auth, gate, handler);
     mounted++;
@@ -310,7 +310,7 @@ async function start(port) {
     s.once('error', reject);
     s.once('listening', () => { s.removeListener('error', reject); resolve(s); });
   });
-  console.log(`[core] rutba-core listening on :${p}`);
+  console.log(`[core] services/core listening on :${p}`);
   return server;
 }
 

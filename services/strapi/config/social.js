@@ -8,7 +8,7 @@
 //
 // Two ways to connect an account:
 //   1. OAuth  — set the per-platform client id/secret here; the user clicks
-//      "Connect" in rutba-social and we obtain + refresh tokens automatically.
+//      "Connect" in apps/content/social and we obtain + refresh tokens automatically.
 //   2. Manual — paste a long-lived access_token (+ page_id) straight into the
 //      account form. No client id/secret needed; the adapter just uses the token.
 //
@@ -23,7 +23,7 @@ module.exports = ({ env }) => ({
 
   // Shared verify token for inbound webhook subscription handshakes
   // (Facebook/Instagram hub.verify_token, etc.).
-  webhookVerifyToken: env('SOCIAL_WEBHOOK_VERIFY_TOKEN', 'rutba-social-webhook'),
+  webhookVerifyToken: env('SOCIAL_WEBHOOK_VERIFY_TOKEN', 'apps/content/social-webhook'),
 
   // Background jobs. Disable in envs where a separate worker owns them, or to
   // avoid double-publishing across multiple app instances.

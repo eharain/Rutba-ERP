@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import * as XLSX from 'xlsx';
 import Layout from "../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import PermissionCheck from "@rutba/shared/components/PermissionCheck";
 import { TermTypesEndpoints, TermsEndpoints } from "@rutba/api-provider/endpoints/index.js";
-import ListPageLayout from "@rutba/pos-shared/components/ListPageLayout";
+import ListPageLayout from "@rutba/shared/components/ListPageLayout";
 
 export default function TermTypesPage() {
     const [termTypes, setTermTypes] = useState([]);

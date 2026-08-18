@@ -43,11 +43,11 @@ once fixed.
 ## Tier 1 — Data integrity
 
 8. **Sale order state machine**
-   ([pos-strapi/src/api/sale-order/services/sale-order-state-machine.js](../pos-strapi/src/api/sale-order/services/sale-order-state-machine.js))
+   ([services/strapi/src/api/sale-order/services/sale-order-state-machine.js](../services/strapi/src/api/sale-order/services/sale-order-state-machine.js))
    — every legal transition works; every illegal transition rejected;
    idempotent on duplicate transitions.
 9. **Stock item lifecycle hooks**
-   ([pos-strapi/src/api/stock-item/content-types/stock-item/lifecycles.js](../pos-strapi/src/api/stock-item/content-types/stock-item/lifecycles.js))
+   ([services/strapi/src/api/stock-item/content-types/stock-item/lifecycles.js](../services/strapi/src/api/stock-item/content-types/stock-item/lifecycles.js))
    — quantities update atomically on sale, return, transfer, adjustment;
    concurrent sales of the last unit do not oversell.
 10. **Cash register open / close** — opening balance, transactions, closing
@@ -60,7 +60,7 @@ once fixed.
     purchase-return-item) — stock reversal, refund accounting, no double-return
     of the same line.
 14. **Notification engine**
-    ([pos-strapi/src/api/notification/services/notification-engine.js](../pos-strapi/src/api/notification/services/notification-engine.js))
+    ([services/strapi/src/api/notification/services/notification-engine.js](../services/strapi/src/api/notification/services/notification-engine.js))
     — events fire once per trigger; dedup window honored; channels (email/sms)
     actually send.
 15. **Site-setting singleton** — published row exists on fresh DB; draft →
@@ -71,42 +71,42 @@ once fixed.
 
 For each app, walk the golden path end-to-end as the corresponding domain role
 — typically `*_staff` (e.g. `hr_staff`), but use the app's actual claim where it
-differs: `ess_employee` / `ess_manager` for rutba-ess, and exercise the `hr_*`
+differs: `ess_employee` / `ess_manager` for apps/people/ess, and exercise the `hr_*`
 manager/admin claims where approval steps require them.
 
-16. **pos-sale** — login → open register → add items → apply discount →
+16. **apps/sales/pos** — login → open register → add items → apply discount →
     checkout (cash + card) → receipt → close register.
-17. **pos-stock** — list products → edit product → manage variants →
+17. **apps/inventory/stock** — list products → edit product → manage variants →
     stock-input (purchase) → stock-item search → catalogue import.
-18. **rutba-cms** — list / edit each: products, categories, brands,
+18. **apps/content/cms** — list / edit each: products, categories, brands,
     brand-groups, category-groups, product-groups, sale-offers, cms-pages,
     cms-footers, delivery-methods, notification-templates, site-settings,
     media library.
-19. **rutba-crm** — leads → activities → contacts; convert lead.
-20. **rutba-hr** — employees, teams, departments, attendance entry, leave
+19. **apps/sales/crm** — leads → activities → contacts; convert lead.
+20. **apps/people/hr** — employees, teams, departments, attendance entry, leave
     request submit + approve.
-20a. **rutba-ess** (Employee Self-Service, `ess_employee` / `ess_manager`) —
+20a. **apps/people/ess** (Employee Self-Service, `ess_employee` / `ess_manager`) —
     view own profile + attendance, submit a leave request, view own payslips;
     `ess_manager` sees the approvals queue and approves/rejects a report's leave.
-21. **rutba-payroll** — employee profile → salary structure → configurable
+21. **apps/finance/payroll** — employee profile → salary structure → configurable
     deduction rules (statutory engine) → adjustment entry → payroll run →
     payslip generate; verify the run posts into the accounting ledger.
-21a. **rutba-manufacturing** — create BOM → release work order → split into
+21a. **apps/inventory/manufacturing** — create BOM → release work order → split into
     bundles → record piece-rate tasks/operations → material issue from lot →
     QC inspection → complete WO (finished stock-items + labor/material cost
     roll-up).
-22. **rutba-accounts** — chart of accounts, invoice, bill, expense, journal
+22. **apps/finance/accounts** — chart of accounts, invoice, bill, expense, journal
     entry; AP and AR flows; double-entry journal posting balances and lands in
     the correct fiscal period; per-branch currency resolves on posted entries.
-23. **rutba-order-management** — incoming order → assign rider → status
+23. **apps/sales/orders** — incoming order → assign rider → status
     updates → delivered.
-24. **rutba-rider** — order list, accept, status update, proof of delivery.
-25. **rutba-social** — accounts, posts, replies.
-26. **rutba-web** (storefront, anonymous) — home, category page, product page,
+24. **apps/sales/rider** — order list, accept, status update, proof of delivery.
+25. **apps/content/social** — accounts, posts, replies.
+26. **apps/content/storefront** (storefront, anonymous) — home, category page, product page,
     add-to-cart, guest checkout.
-27. **rutba-web-user** (authenticated customer portal) — login, order history,
+27. **apps/sales/portal** (authenticated customer portal) — login, order history,
     profile, return request.
-28. **pos-auth** — login, logout, password reset, role switching
+28. **apps/admin/auth** — login, logout, password reset, role switching
     (RoleSwitcher when user holds multiple roles for one app).
 
 ## Tier 3 — Cross-cutting client behavior
@@ -129,13 +129,13 @@ manager/admin claims where approval steps require them.
 ## Tier 4 — Operational
 
 35. **Fresh DB seed** — `npm run seed` (or the guarded seed control app on
-    :4018) runs the registry in `pos-strapi/src/seed/registry.js`: system and
+    :4018) runs the registry in `services/strapi/src/seed/registry.js`: system and
     reference data, the site-setting singleton, UP roles, and the api-pro
     seeder's ~1794 policies. No failed lifecycle hooks in logs.
 36. **Re-seed (warm DB)** — the seeder fingerprint short-circuit fires; a
     second run writes no duplicate rows.
 37. **Seeding stays out of boot** —
-    [pos-strapi/src/index.js](../pos-strapi/src/index.js) registers lifecycles
+    [services/strapi/src/index.js](../services/strapi/src/index.js) registers lifecycles
     and runtime wiring only. The server must serve live traffic immediately on
     boot without seeding; the old in-bootstrap background pipeline raced the
     dev-mode reload watcher and destroyed the DB pool.

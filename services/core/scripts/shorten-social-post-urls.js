@@ -18,7 +18,7 @@
  *     document_id, and the desktop poster reads the published one. Going
  *     through the API would mean updating the draft then calling publish, which
  *     also pushes any *unrelated* pending draft edit live — the exact hazard
- *     pos-strapi/src/api/social-post/services/social-post.js:247 documents and
+ *     services/strapi/src/api/social-post/services/social-post.js:247 documents and
  *     sidesteps by writing the published row directly. Updating rows by id does
  *     the same: a draft stays a draft, and a published caption is corrected
  *     without republishing anything.
@@ -31,7 +31,7 @@
  *   node scripts/shorten-social-post-urls.js --restore=<file> # undo exactly
  *   node scripts/shorten-social-post-urls.js --verbose        # show every URL
  *
- * From the repo root:  npm --prefix rutba-core run social:shorten-urls
+ * From the repo root:  npm --prefix services/core run social:shorten-urls
  * On the LAN box, the same command over SSH against that checkout.
  *
  * Idempotent: a second run finds no `/product/` URLs left to shorten.
@@ -43,11 +43,11 @@
 const fs = require('fs');
 const path = require('path');
 const { getDb, closeDb } = require('../src/db/connection');
-// By path, not by package specifier: rutba-core is not an npm workspace member
+// By path, not by package specifier: services/core is not an npm workspace member
 // and declares no @rutba/* dependency, so the bare specifier would only resolve
 // by accident of root hoisting. Reaching across the repo by path is what
-// src/compat/strapi.js already does for pos-strapi.
-const { shortLinkPath } = require('../../packages/api-provider/lib/short-code.cjs');
+// src/compat/strapi.js already does for services/strapi.
+const { shortLinkPath } = require('../../../packages/api-provider/lib/short-code.cjs');
 
 const BACKUP_DIR = path.join(__dirname, '..', '.tmp', 'social-url-backups');
 

@@ -20,7 +20,7 @@
  *
  * Without tokens only the anonymous column runs.
  *
- * PROBE_BASE defaults to pos-strapi. Pointing it at rutba-core (:4020) works —
+ * PROBE_BASE defaults to services/strapi. Pointing it at services/core (:4020) works —
  * core mounts the same controller files zero-copy — except for the three seed/*
  * rows: their 403 expectation is the users-permissions public role talking, and
  * core's own auth middleware answers 401 there instead. Everything else matches.
@@ -57,7 +57,7 @@ const ENDPOINTS = [
   ['GET', '/api/sale-offers/for-product/x', 401],
   // The cash drawer. All four were ensureUser-only, so any authenticated JWT
   // could read a desk's takings, open a register in someone else's name, or
-  // retire a live one. `active`/`open`/`close` stay open to sale_staff — a
+  // retire a live one. `active`/`open`/`close` stay open to pos_staff — a
   // cashier runs their own drawer — and `expire` narrows to manager+.
   ['GET', '/api/cash-registers/active?desk_id=1', 401],
   ['POST', '/api/cash-registers/open', 401],

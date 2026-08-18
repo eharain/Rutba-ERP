@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Layout from "../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import { MarketplaceAccountsEndpoints, MarketplacePriceRulesEndpoints } from "@rutba/api-provider/endpoints";
 import { useToast } from "../components/Toast";
 import { appGet } from "../components/appClient";

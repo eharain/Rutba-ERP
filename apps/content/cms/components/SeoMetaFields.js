@@ -1,4 +1,4 @@
-import FileView from "@rutba/pos-shared/components/FileView";
+import FileView from "@rutba/shared/components/FileView";
 import { SeoMetasEndpoints } from "@rutba/api-provider/endpoints";
 
 /**
@@ -130,7 +130,7 @@ export default function SeoMetaFields({
 }
 
 // Map entity-type slug → relation field name on seo-meta. Mirrors the Strapi
-// schema; keep in sync with pos-strapi/src/utils/seo-meta-helper.js.
+// schema; keep in sync with services/strapi/src/utils/seo-meta-helper.js.
 export const ENTITY_TYPE_TO_RELATION = {
     "cms-page": "cms_page",
     "product": "product",

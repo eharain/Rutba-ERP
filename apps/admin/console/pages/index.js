@@ -1,10 +1,10 @@
 import Link from "next/link";
 import Layout from "../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import AppHome, { AppHomeGrid, AppHomeTile, AppHomePill, AppHomeSection } from "@rutba/pos-shared/components/AppHome";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import AppHome, { AppHomeGrid, AppHomeTile, AppHomePill, AppHomeSection } from "@rutba/shared/components/AppHome";
 
 // The tenant's admin console. Grown out of the rutba-users carve-out (which was
-// itself carved out of pos-auth, still the pure SSO portal); the remaining
+// itself carved out of apps/admin/auth, still the pure SSO portal); the remaining
 // sections — app catalogue, integrations, mail administration — land per
 // docs/todo/admin-console-program/. Tiles light up as each phase lands.
 const SECTIONS = [

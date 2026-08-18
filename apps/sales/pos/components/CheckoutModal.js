@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useUtil } from '@rutba/pos-shared/context/UtilContext';
+import { useUtil } from '@rutba/shared/context/UtilContext';
 
 const round2 = (n) => Math.round(n * 100) / 100;
 

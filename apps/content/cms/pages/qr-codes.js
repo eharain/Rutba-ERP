@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Layout from "../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { printStorage } from "@rutba/pos-shared/lib/printStorage";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import { useAuth } from "@rutba/shared/context/AuthContext";
+import { printStorage } from "@rutba/shared/lib/printStorage";
 import {
     CmsPageGroupsEndpoints,
     CmsPagesEndpoints,
@@ -25,7 +25,7 @@ import {
  * products, then print them as one label sheet.
  *
  * Every code encodes `<storefront>/qr/<code>`; the storefront resolves the type
- * at scan time (pos-strapi src/api/qr), which is why one screen can mint codes
+ * at scan time (services/strapi src/api/qr), which is why one screen can mint codes
  * for four unrelated content types without knowing any of their URL shapes.
  *
  * Per-entity codes are also reachable from each detail page's QR button — this

@@ -3,7 +3,7 @@ import { listParams } from './__param_builders.js';
 export const RidersEndpoints = {
     meta: {
         uid: 'api::rider.rider',
-        domains: ['delivery', 'order-management', 'rider'],
+        domains: ['delivery', 'orders', 'rider'],
         roles: ['admin', 'manager', 'staff']
     },
 

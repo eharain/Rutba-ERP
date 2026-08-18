@@ -1,4 +1,4 @@
-import { APP_URLS } from "@rutba/pos-shared/lib/roles";
+import { APP_URLS } from "@rutba/shared/lib/roles";
 
 function webBase() {
     return (APP_URLS.web || "").replace(/\/$/, "");
@@ -9,7 +9,7 @@ function withDraft(url, draft) {
     return url.includes("?") ? `${url}&draft=true` : `${url}?draft=true`;
 }
 
-// Map a cms-page `page_type` + `slug` to its rutba-web public URL.
+// Map a cms-page `page_type` + `slug` to its apps/content/storefront public URL.
 // The `index` slug is the storefront home; otherwise the `page_type`
 // picks the route (shop/blog/news/info), and unknown types fall back
 // to the /page/[slug] compatibility route.

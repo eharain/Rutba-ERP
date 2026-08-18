@@ -1,6 +1,6 @@
-import SharedSidebar from "@rutba/pos-shared/components/Sidebar";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { isAppAdmin, isActiveAdminRole } from "@rutba/pos-shared/lib/roles";
+import SharedSidebar from "@rutba/shared/components/Sidebar";
+import { useAuth } from "@rutba/shared/context/AuthContext";
+import { isAppAdmin, isActiveAdminRole } from "@rutba/shared/lib/roles";
 import { getAppName } from "@rutba/api-provider/lib/api";
 
 // Each child links to the orders list page with a `status` filter — see

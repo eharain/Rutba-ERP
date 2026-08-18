@@ -1,6 +1,6 @@
-import Topbar from "@rutba/pos-shared/components/Topbar";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { isAppAdmin, isActiveAdminRole } from "@rutba/pos-shared/lib/roles";
+import Topbar from "@rutba/shared/components/Topbar";
+import { useAuth } from "@rutba/shared/context/AuthContext";
+import { isAppAdmin, isActiveAdminRole } from "@rutba/shared/lib/roles";
 import { getAppName } from "@rutba/api-provider/lib/api";
 
 // Accounts and Relays hold platform/aggregator API keys — admin-only pages

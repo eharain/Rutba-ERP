@@ -379,7 +379,7 @@ async function resolveDesk(input) {
  * else is filing their own.
  *
  * The person spine is the canonical identity (§7.3), but Core has no native
- * person service yet — pos-strapi's ensureForUser lives behind the compat
+ * person service yet — services/strapi's ensureForUser lives behind the compat
  * layer. So an authenticated requester is linked by whichever identities the
  * entitlement resolver already found, and match-or-create against `person` is
  * the CRM seam to wire when that service is Core-native. Ownership checks work
@@ -851,7 +851,7 @@ function isReopen(fromStatus, toStatus) {
 
 /**
  * The requirements spec §8.5 puts on transitions that the seeded workflow
- * cannot yet carry: pos-strapi's workflow.transition component has no
+ * cannot yet carry: services/strapi's workflow.transition component has no
  * `requires` or `guards` attributes, so documents() projects them as undefined
  * and the workflow service applies its permissive defaults (migration 015
  * documents this). Until those components gain the fields, they are enforced

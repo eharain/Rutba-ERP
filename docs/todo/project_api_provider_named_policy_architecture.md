@@ -124,7 +124,7 @@ Each method exposes the full Strapi query surface in its destructured signature 
 - **System files** — `__`-prefixed filenames (e.g. `__publish_generic_helper.js`) are system helpers, skipped by validator. (Spread helpers are now resolved by the scaffolder — see [[feedback_strapi_api_pro_admin_routes_auth_false]] for adjacent gotchas.)
 - **Identity for every `/api` file** — must declare one of: `meta.uid: 'api::<slug>.<slug>'`, `meta.uid: 'plugin::<plugin>.<resource>'`, `meta.controllerActions: ['rider.find', ...]`, or `meta.routes: ['/auth/local', ...]`. No anonymous files.
 - **Strapi hook layer** — policies, not middlewares. Policies have the cleaner accept/reject + ctx-mutation surface and match strapi-api-pro's existing authorship UX.
-- **Action-tier source of truth** — validate custom method action names against `pos-strapi/src/api/<slug>/routes/*.js` (the route is what's actually exposed; controller-with-no-route is dead code).
+- **Action-tier source of truth** — validate custom method action names against `services/strapi/src/api/<slug>/routes/*.js` (the route is what's actually exposed; controller-with-no-route is dead code).
 - **Generated server file location** — `packages/api-provider/providers/generated/server/<entity>.js`. Imported by `strapi-api-pro`, not authored inside it. Keeps codegen colocated with the descriptors.
 - **Codegen artifact** — scaffolder emits a `policies.json` (or `_map.json`) reflection dump consumed by strapi-api-pro at boot. Build-time, not runtime descriptor import.
 - **Parameter visibility** — every Strapi query knob the developer might use is named in the descriptor's destructured signature, so the `.d.ts` exposes the full surface. JSON-Schema validation on top of that is a future option (would mostly cover shape-correctness rather than role-bound restrictions, which live in `meta.scope`).
@@ -139,7 +139,7 @@ Each method exposes the full Strapi query surface in its destructured signature 
 - Scaffolder handles `...__publish_generic_helper(name)` spread injection (5 methods: updateDraft/publish/unpublish/create/del).
 - Scaffolder handles multi-export files (`customers.js`, `sale-items.js`, `sale-return-items.js`) by preferring `*Endpoints` over `*EndpointRules`.
 - pos-shared package.json `exports` map got `.js` fallback array for `moduleResolution: bundler` resolution.
-- jsconfig.json with `checkJs: true` rolled out to rutba-rider, pos-auth, pos-sale, pos-stock, packages/pos-shared.
+- jsconfig.json with `checkJs: true` rolled out to apps/sales/rider, apps/admin/auth, apps/sales/pos, apps/inventory/stock, packages/shared.
 
 ## What's still ahead (the bigger work)
 

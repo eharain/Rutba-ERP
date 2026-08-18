@@ -1,4 +1,4 @@
-# @rutba/sync-core
+# @rutba/sync
 
 <!-- verify-docs: planned 4030 -->
 <!-- 4030 is the bridge's loopback default, bound in-process by the desktop
@@ -20,7 +20,7 @@ pointed at the API. Everything here is in service of that.
 ## Use
 
 ```js
-import { createBridge } from '@rutba/sync-core';
+import { createBridge } from '@rutba/sync';
 
 const bridge = createBridge({
     upstream: 'http://localhost:4020',   // the real API
@@ -45,13 +45,13 @@ The package is ESM. From a CommonJS host — an Electron main process that has
 not moved to ESM — load it with a dynamic import:
 
 ```js
-const { createBridge } = await import('@rutba/sync-core');
+const { createBridge } = await import('@rutba/sync');
 ```
 
 ### CLI
 
 ```bash
-node packages/sync-core/bin/bridge.js --upstream http://localhost:4020 --port 4030
+node packages/sync/bin/bridge.js --upstream http://localhost:4020 --port 4030
 ```
 
 ```
@@ -99,7 +99,7 @@ The one route the bridge answers itself.
 
 - `reachable` is a `HEAD` on the upstream base, cached for a second. It means
   "spoke HTTP", not "returned 2xx" — that base is a 404 on both Strapi and
-  rutba-core, and a 404 is a perfectly good proof of life. No credentials are
+  services/core, and a 404 is a perfectly good proof of life. No credentials are
   sent, so it never depends on a session.
 - `lastContactAt` / `lastError` come from **real proxied traffic**, which is
   the more honest signal of the two.
@@ -177,7 +177,7 @@ Everything else has been checked and is identical.
 
 ## What was verified, and how
 
-Phase 1's deliverable is the proof, not the code. Against a live `rutba-core`
+Phase 1's deliverable is the proof, not the code. Against a live `services/core`
 on `:4020` with the bridge on `:4030`:
 
 - **Differential harness** — 20 unauthenticated and 17 authenticated request
@@ -186,15 +186,15 @@ on `:4020` with the bridge on `:4030`:
   identical, including a 187 KB product list, a 1.1 MB `/me/permissions`, a
   CORS preflight, `HEAD`, gzip negotiation, a 60-parameter query string, an
   api-pro `403 PolicyError` and a `401`.
-- **A real POS session** — `pos-sale` on `:4002` with `NEXT_PUBLIC_API_URL`
+- **A real POS session** — `apps/sales/pos` on `:4002` with `NEXT_PUBLIC_API_URL`
   pointed at the bridge: SSO sign-in, desk selection, stock search, cart, a
   paid cash sale (the full §2 write chain — `POST /sales` → `/payments` →
   `/sale-items` → `PUT /stock-items/:id`), invoice print, and a full sale
   return (`/sale-returns` → `/sale-return-items` → stock restored →
   refund payment → cash-register transaction). 182 requests proxied, zero
   upstream failures.
-- **Role switching** — the `RoleSwitcher` flipping `sale_admin` →
-  `sale_staff` changes `X-Rutba-App-Role` on the wire, and api-pro's 403
+- **Role switching** — the `RoleSwitcher` flipping `pos_admin` →
+  `pos_staff` changes `X-Rutba-App-Role` on the wire, and api-pro's 403
   message names the switched role. The header survives the hop.
 - **Upload** — the same PNG posted direct and through the bridge produced
   byte-identical stored files.
@@ -207,7 +207,7 @@ at one line per request.
 
 ```
 [bridge] GET    /api/me/stock-items-search?pagination[pageSize]=5 → 401 (4 ms, 106 B)
-[bridge]   → {"Authorization":"Bearer <redacted:192>","X-Rutba-App":"sale","X-Rutba-App-Role":"sale_manager","Host":"127.0.0.1:4020"}
+[bridge]   → {"Authorization":"Bearer <redacted:192>","X-Rutba-App":"sale","X-Rutba-App-Role":"pos_manager","Host":"127.0.0.1:4020"}
 ```
 
 Two rules it never breaks:
@@ -228,7 +228,7 @@ never take a request down with it.
 ## Tests
 
 ```bash
-npm test --workspace=@rutba/sync-core
+npm test --workspace=@rutba/sync
 ```
 
 46 assertions, no framework, no fixtures, loopback only. The round-trip half
@@ -238,7 +238,7 @@ and hide duplicates — exactly the things this phase has to prove it preserves.
 
 ## Not here, on purpose
 
-Response caching, collection mirroring, local reads, SQLite, rutba-core
+Response caching, collection mirroring, local reads, SQLite, services/core
 hosting, the outbox, provisional `loc_` ids, replay, conflict handling,
 `Idempotency-Key`, descriptor `offline:` policy, Electron packaging, and the
 §10.2a discovery/attachment handshake (which exists only because a *browser*

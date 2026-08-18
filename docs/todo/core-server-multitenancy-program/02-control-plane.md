@@ -1,7 +1,7 @@
 # Phases 1 & 5 — Control plane, provisioning, fleet ops
 
 A standalone app (**rutba-console**, suggested port 4024 — 4019 is taken by
-rutba-campaigns and 4023 by rutba-helpdesk; `scripts/rutba_apps.sh` is the registry)
+apps/content/campaigns and 4023 by apps/sales/helpdesk; `scripts/rutba_apps.sh` is the registry)
 with its **own small database**
 — it must not live inside any tenant's backend. Generalizes the existing rutba.pk
 Docker-Compose + Caddy deployment into a fleet.

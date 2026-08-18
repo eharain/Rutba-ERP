@@ -2,13 +2,13 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import Layout from "../../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import { SeoMetasEndpoints } from "@rutba/api-provider/endpoints";
 import { useToast } from "../../components/Toast";
 import SeoMetaFields, { normaliseSeoMetaSavePayload } from "../../components/SeoMetaFields";
 
-// Mirrors pos-strapi/src/utils/seo-meta-helper.js.
+// Mirrors services/strapi/src/utils/seo-meta-helper.js.
 const ENTITY_TYPE_META = {
     "cms-page":       { route: "cms-page",       relation: "cms_page",       label: "CMS Page" },
     "product":        { route: "product",        relation: "product",        label: "Product" },

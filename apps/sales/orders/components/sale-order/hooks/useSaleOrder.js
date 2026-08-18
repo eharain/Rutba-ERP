@@ -10,7 +10,7 @@ import {
 export const SO_ENTITY_UID = "api::sale-order.sale-order";
 
 // Lifecycle map for the order-management UI. Mirrors the server-side
-// state machine in pos-strapi/src/api/sale-order/services/sale-order-state-machine.js
+// state machine in services/strapi/src/api/sale-order/services/sale-order-state-machine.js
 // — keep them in sync; the UI uses this to pick which stage panel to render
 // and which next-step buttons to surface.
 export const TRANSITIONS = {

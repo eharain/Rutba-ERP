@@ -22,8 +22,8 @@ set -e
 #   sudo bash scripts/setup-systemd-services.sh [optional-build-dir]
 #
 # After running this script, manage services with:
-#   sudo systemctl start|stop|restart|status rutba_pos_strapi
-#   sudo journalctl -fu rutba_pos_auth
+#   sudo systemctl start|stop|restart|status rutba_strapi
+#   sudo journalctl -fu rutba_auth
 #
 # The deploy script (rutba_deploy.sh) and rollback script
 # (rutba_rollback.sh) will re-write these unit files to point

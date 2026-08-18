@@ -10,10 +10,10 @@ const POST_UID = 'api::social-post.social-post';
 // accounts when composing a post (secrets are `private` and never serialized).
 //
 // `admin` rides alongside `social` because connecting/editing an account moved
-// to the rutba-admin console. Which APP may reach the write methods is a
+// to the apps/admin/console console. Which APP may reach the write methods is a
 // separate decision, made by `apps: ['admin']` on the descriptor; this list
 // only says which ROLE-key prefixes count as an administrator, so an instance
-// admin holding admin_admin qualifies without also holding social_admin.
+// admin holding console_admin qualifies without also holding social_admin.
 const requireAdmin = (ctx, strapi) => requireAppRole(ctx, strapi, {
   domains: ['admin', 'social'],
   levels: ['admin'],
@@ -29,7 +29,7 @@ function svc(strapi) {
 
 // Tiny HTML page the popup shows; it notifies the opener and closes itself.
 function popupHtml({ ok, message }) {
-  const payload = JSON.stringify({ source: 'rutba-social-oauth', ok, message });
+  const payload = JSON.stringify({ source: 'apps/content/social-oauth', ok, message });
   return `<!doctype html><html><head><meta charset="utf-8"><title>Connecting…</title></head>
 <body style="font-family:system-ui;padding:2rem;text-align:center">
 <p>${ok ? '✅ Connected. You can close this window.' : '❌ ' + (message || 'Connection failed')}</p>

@@ -4,7 +4,7 @@
  * Persistence for the ticket thread (helpdesk_ticket_messages, migration 012).
  *
  * knex rather than documents(): the table is Core-owned and deliberately absent
- * from pos-strapi's schema.json, so the registry the shim is built on has never
+ * from services/strapi's schema.json, so the registry the shim is built on has never
  * heard of it. getDb() is called at the point of every statement, never held in
  * a module-level const, so each one joins the caller's ambient transaction.
  *

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import Layout from "../../components/Layout";
 import RoutingRuleForm from "../../components/RoutingRuleForm";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import { HelpdeskConfigEndpoints, HelpdeskDesksEndpoints } from "@rutba/api-provider/endpoints";
 
 function serverError(err) {

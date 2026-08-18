@@ -50,13 +50,13 @@
 > make DAILY use painful enough that staff keep Gmail open in the next tab;
 > those are P0 regardless of how "advanced" they sound.
 
-## 1. Mail client (rutba-mail) vs Outlook / Gmail / Thunderbird
+## 1. Mail client (apps/content/mail) vs Outlook / Gmail / Thunderbird
 
 What we have that they don't: Link-to-record (person/contact/customer/
 order), CRM timelines, shared-inbox triage in the same pane, role-gated
 shared access, no per-seat license.
 
-| Capability | Gmail/Outlook | rutba-mail today | Verdict |
+| Capability | Gmail/Outlook | apps/content/mail today | Verdict |
 |---|---|---|---|
 | Conversation threading | Core UX | Flat message list; References/In-Reply-To captured on reply but not used for display | **P0 — the single loudest gap.** Group the list by thread (subject+References heuristic is enough for v1) |
 | Compose editor | Rich text, inline images | Plain textarea + auto-HTML wrap, signature append | **P0** — PrimeReact ships Quill (`Editor`); already a dependency, low-cost upgrade |
@@ -91,7 +91,7 @@ access, CRM linkage on every message.
 | SLA timers, response analytics | Yes | No | **P2** — needs imported-message timestamps we already store; report later |
 | Round-robin auto-assign | Yes | Manual assign | **P2** |
 
-## 3. Campaigns (rutba-campaigns) vs Mailchimp / Brevo
+## 3. Campaigns (apps/content/campaigns) vs Mailchimp / Brevo
 
 | Capability | Mailchimp/Brevo | Us | Verdict |
 |---|---|---|---|
@@ -127,10 +127,10 @@ access, CRM linkage on every message.
   app_roles writes — mail access_roles changes should clear affected users
   too) or surface "takes effect within a minute" in the UI. **P1**
 - **Backend split:** the mail client's live-IMAP surface exists only on
-  pos-strapi (:4010) while the fleet default is rutba-core (:4020). Until a
-  core `mail` module tranche lands, deploys must pin rutba-mail's API at
-  pos-strapi or users get a dead inbox. **P0 decision, not code.**
-- **Human browser pass** of rutba-mail / rutba-users / rutba-campaigns is
+  services/strapi (:4010) while the fleet default is services/core (:4020). Until a
+  core `mail` module tranche lands, deploys must pin apps/content/mail's API at
+  services/strapi or users get a dead inbox. **P0 decision, not code.**
+- **Human browser pass** of apps/content/mail / rutba-users / apps/content/campaigns is
   still outstanding; do it before any P0 build so real friction reorders
   this list.
 
@@ -144,7 +144,7 @@ person spine + CRM) · bulk actions · internal notes inline in shared
 MessageView · canned snippets · mailbox password reset · plus the user-named
 must-haves: personal/global address books, tags, advanced filters.
 **Still open from P0: the backend-split decision** (core `mail` module vs
-pinning rutba-mail at pos-strapi).
+pinning apps/content/mail at services/strapi).
 
 **P1 (retention): the daily-driver half is BUILT 2026-08-15** — archive/unread
 verbs · shortcuts · attachment preview · new-mail notifications · collision

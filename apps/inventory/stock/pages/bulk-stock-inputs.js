@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import Layout from '../components/Layout';
-import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
-import PermissionCheck from '@rutba/pos-shared/components/PermissionCheck';
+import ProtectedRoute from '@rutba/shared/components/ProtectedRoute';
+import PermissionCheck from '@rutba/shared/components/PermissionCheck';
 import { StockInputsEndpoints, BrandsEndpoints, CategoriesEndpoints, SuppliersEndpoints } from '@rutba/api-provider/endpoints/index.js';
-import { useUtil } from '@rutba/pos-shared/context/UtilContext';
-import ListPageLayout from '@rutba/pos-shared/components/ListPageLayout';
+import { useUtil } from '@rutba/shared/context/UtilContext';
+import ListPageLayout from '@rutba/shared/components/ListPageLayout';
 
 // ── Column mapping (mirrors export-catalog/utils/excel-helper.js) ──
 const COLUMN_ALIASES = {

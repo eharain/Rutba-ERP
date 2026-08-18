@@ -97,7 +97,7 @@ export const HrEmployeesEndpoints = {
         path: '/hr-employees',
         action: 'find',
         method: 'get',
-        apps: ['hr', 'manufacturing', 'order-management'],
+        apps: ['hr', 'manufacturing', 'orders'],
         approle: ['admin', 'manager', 'staff'],
         params: listParams(
             { page, pageSize, sort, populate, filters, fields },
@@ -109,7 +109,7 @@ export const HrEmployeesEndpoints = {
         path: `/hr-employees/${documentId}`,
         action: 'findOne',
         method: 'get',
-        apps: ['hr', 'manufacturing', 'order-management'],
+        apps: ['hr', 'manufacturing', 'orders'],
         approle: ['admin', 'manager', 'staff'],
         params: byIdParams({ populate, fields }),
     }),

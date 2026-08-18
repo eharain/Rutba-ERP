@@ -3,7 +3,7 @@
 /**
  * grant-full-access.js — grant a user every app-role in every app domain,
  * creating the account first when it does not exist. Core-native twin of
- * pos-strapi/scripts/grant-full-access.js: direct knex against the shared
+ * services/strapi/scripts/grant-full-access.js: direct knex against the shared
  * tables, no server boot, so it runs in seconds and works whether the
  * deployment serves Strapi, core, or both (RUTBA_BACKEND is irrelevant —
  * both servers read these rows).
@@ -35,7 +35,7 @@
  * cache until the TTL — restart it (or wait) before judging the grant failed.
  *
  * From the repo root:  npm run grant:full-access -- --email someone@rutba.pk
- * From rutba-core:     node scripts/grant-full-access.js --email someone@rutba.pk
+ * From services/core:     node scripts/grant-full-access.js --email someone@rutba.pk
  * (config/env.js hydrates DB credentials from the repo-root .env files.)
  *
  * Options:

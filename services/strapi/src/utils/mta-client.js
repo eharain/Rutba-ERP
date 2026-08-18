@@ -1,7 +1,7 @@
 'use strict';
 
 // HTTP client for Rutba-MTA (D:/Rutba/Rutba-MTA) — the send engine behind
-// rutba-campaigns. The MTA owns suppression, per-domain reputation pacing, the
+// apps/content/campaigns. The MTA owns suppression, per-domain reputation pacing, the
 // priority queue, bounce capture, unsubscribe, and delivery webhooks; this file
 // is only the transport.
 //

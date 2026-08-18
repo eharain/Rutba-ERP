@@ -97,10 +97,10 @@ The package.json **does NOT export `./package.json`**. Don't rely on `require.re
   "cms":                { "roles": ["cms_admin", "cms_manager", "cms_staff"] },
   "crm":                { "roles": ["crm_admin", "crm_manager", "crm_staff"] },
   "hr":                 { "roles": ["hr_admin", "hr_manager", "hr_staff"] },
-  "sale":               { "roles": ["sale_admin", "sale_manager", "sale_staff"] },
+  "sale":               { "roles": ["pos_admin", "pos_manager", "pos_staff"] },
   "stock":              { "roles": ["stock_admin", "stock_manager", "stock_staff"] },
-  "web-public":         { "roles": ["web_public"] },
-  "web-authenticated":  { "roles": ["web_user"] },
+  "web-public":         { "roles": ["storefront_public"] },
+  "web-authenticated":  { "roles": ["storefront_user"] },
   ... (18 total)
 }
 ```
@@ -111,7 +111,7 @@ The package.json **does NOT export `./package.json`**. Don't rely on `require.re
 {
   "accounts_admin":   { "level": "admin",   "domain": "accounts" },
   "hr_staff":         { "level": "staff",   "domain": "hr" },
-  "web_user":         { "level": "user",    "domain": "web-authenticated" },
+  "storefront_user":         { "level": "user",    "domain": "web-authenticated" },
   ... (60 total)
 }
 ```
@@ -170,7 +170,7 @@ Run `npm run validate` after touching anything under `api/`.
 | Add a new domain or role | `config/domains.json` and/or `config/roles.json`; re-seed api-pro |
 | Change which roles can access an endpoint method | The method's `apps` and `approle` arrays in `api/<resource>.js` |
 | Re-generate client wrappers | `npm run scaffold:endpoint-providers` |
-| Bootstrap api-pro DB tables | Strapi boot triggers `pos-strapi/src/seed/api-provider-seed.js` which calls the plugin's seeder; or `POST /api-pro/admin/seed` from the admin UI |
+| Bootstrap api-pro DB tables | Strapi boot triggers `services/strapi/src/seed/api-provider-seed.js` which calls the plugin's seeder; or `POST /api-pro/admin/seed` from the admin UI |
 
 ## Quirks
 

@@ -8,9 +8,9 @@ changes are needed, but disk only ever holds masters.
 
 ## Install
 
-**Monorepo (pos-strapi / ERP):** make it a workspace package and depend on it.
+**Monorepo (services/strapi / ERP):** make it a workspace package and depend on it.
 ```bash
-# move/copy this folder to packages/strapi-provider-upload-media, then in pos-strapi:
+# move/copy this folder to packages/strapi-provider-upload-media, then in services/strapi:
 #   "dependencies": { "strapi-provider-upload-media": "*" }
 npm install
 ```

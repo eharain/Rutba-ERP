@@ -4,7 +4,7 @@
 > remote-control session on an enrolled device **from inside a ticket**, with explicit consent,
 > a bounded session, and a full audit trail.
 >
-> Depends on Phase 2 (the `rutba-helpdesk` app + ticket detail screen). Independent of Phase 4.
+> Depends on Phase 2 (the `apps/sales/helpdesk` app + ticket detail screen). Independent of Phase 4.
 
 Authored: 2026-08-08. **Status: NOT STARTED.** No remote-access capability exists anywhere in
 the ERP today.
@@ -98,7 +98,7 @@ allowed_roles (json), allowed_hours (json), is_active
 
 ## Flow (attended — the default)
 
-1. Agent opens a ticket in `rutba-helpdesk`. The ticket's requester resolves to a person /
+1. Agent opens a ticket in `apps/sales/helpdesk`. The ticket's requester resolves to a person /
    employee; their enrolled devices show in a **Devices** panel (`agent_online` state visible).
 2. Agent clicks **Request remote session**, picks a mode. Rutba creates a
    `helpdesk-remote-session` in `consent_pending` and fires
@@ -171,7 +171,7 @@ someone else's machine. The controls are not optional extras — they are the fe
 
 ---
 
-## Screens (in `rutba-helpdesk`)
+## Screens (in `apps/sales/helpdesk`)
 
 1. **Devices** — inventory, online state, last seen, enrolment status, linked asset/employee,
    enrol/revoke.

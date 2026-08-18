@@ -102,7 +102,7 @@ for (const d of report.descriptors) {
     const discovered = d.discoveredDomains || [];
 
     // Merge: keep valid existing entries (preserves info my scanner missed,
-    // e.g. rutba-web has no setAppName so it's invisible), add discovered,
+    // e.g. apps/content/storefront has no setAppName so it's invisible), add discovered,
     // drop anything not in CANONICAL_DOMAINS.
     const mergedSet = new Set();
     for (const x of existing) if (CANONICAL_DOMAINS.has(x)) mergedSet.add(x);

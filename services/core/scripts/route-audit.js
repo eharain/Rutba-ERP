@@ -2,36 +2,36 @@
 'use strict';
 
 /**
- * Route-surface audit: every route pos-strapi serves vs every route
- * rutba-core mounts. This is the cross-check the contract-diff harness
+ * Route-surface audit: every route services/strapi serves vs every route
+ * services/core mounts. This is the cross-check the contract-diff harness
  * cannot do — contract-diff replays plain `find` routes and compares
  * bodies, while this compares the SURFACE: what exists on each side.
  *
  * Sources
- *   pos-strapi: the declarative route files under src/api/<api>/routes/*.js
+ *   services/strapi: the declarative route files under src/api/<api>/routes/*.js
  *               (+ the users-permissions extension routes), plus the core
  *               CRUD routes Strapi generates for every content type, plus
  *               the users-permissions plugin auth/user routes.
- *   rutba-core: the module registry (ported custom handlers) + the api-pro
+ *   services/core: the module registry (ported custom handlers) + the api-pro
  *               seeded route table (core CRUD, and custom actions that have
  *               no ported handler → 501).
  *
  * Output: four buckets —
- *   MISSING   route pos-strapi serves that core does not mount at all
+ *   MISSING   route services/strapi serves that core does not mount at all
  *   NOT_PORTED  core mounts it but answers 501 (seeded custom action)
- *   EXTRA     core mounts a route pos-strapi does not serve
+ *   EXTRA     core mounts a route services/strapi does not serve
  *   OK        both serve it
  *
  * Reading MISSING: entries sourced `<api>:core` are the five CRUD routes
  * Strapi's createCoreRouter generates for EVERY content type. Core mounts
  * only what the api-pro table seeds, and the unseeded ones are unreachable on
- * pos-strapi anyway — verified live: `DELETE /api/payments/:id` and
+ * services/strapi anyway — verified live: `DELETE /api/payments/:id` and
  * `GET /api/acc-bank-accounts` both return 403 API_PRO_FORBIDDEN
  * ("no policy for role ... on <uid>.<action>"). So those are a 403-vs-404
  * difference on surface no client can use. The entries with a real route-file
  * source are the ones that matter.
  *
- * Usage: node rutba-core/scripts/route-audit.js [--verbose]
+ * Usage: node services/core/scripts/route-audit.js [--verbose]
  */
 
 const fs = require('fs');
@@ -42,8 +42,8 @@ const { buildCompatStrapi } = require('../src/compat/strapi');
 const { initModules } = require('../src/modules');
 
 const VERBOSE = process.argv.includes('--verbose');
-const POS_API = path.join(__dirname, '..', '..', 'pos-strapi', 'src', 'api');
-const POS_EXT = path.join(__dirname, '..', '..', 'pos-strapi', 'src', 'extensions');
+const POS_API = path.join(__dirname, '..', '..', '..', 'services/strapi', 'src', 'api');
+const POS_EXT = path.join(__dirname, '..', '..', '..', 'services/strapi', 'src', 'extensions');
 
 const CORE_ACTIONS = new Set(['find', 'findOne', 'create', 'update', 'delete']);
 
@@ -173,8 +173,8 @@ async function main() {
   }
 
   console.log(`\n=== ROUTE AUDIT ===`);
-  console.log(`pos-strapi routes discovered : ${strapiRoutes.size}`);
-  console.log(`rutba-core routes mounted    : ${coreRoutes.size}`);
+  console.log(`services/strapi routes discovered : ${strapiRoutes.size}`);
+  console.log(`services/core routes mounted    : ${coreRoutes.size}`);
   console.log(`  served by both             : ${ok}`);
   console.log(`  mounted but NOT PORTED (501): ${notPorted.length}`);
   console.log(`  MISSING from core           : ${missing.length}`);
@@ -204,7 +204,7 @@ async function main() {
   process.exit(missing.length || notPorted.length ? 1 : 0);
 }
 
-// Exported so descriptor-audit.mjs can ask "does pos-strapi serve this at
+// Exported so descriptor-audit.mjs can ask "does services/strapi serve this at
 // all?" — a descriptor route neither server serves is descriptor drift, not a
 // core gap.
 module.exports = { collectStrapiRoutes, normalize };

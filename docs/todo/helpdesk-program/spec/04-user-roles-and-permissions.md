@@ -97,7 +97,7 @@ articles marked `internal`.
 where the desk grants it) · see internal notes · assign, transition beyond
 `reopen`/`cancel-own`, or view queues.
 
-### Customer — via `web_user`
+### Customer — via `storefront_user`
 
 **Can:** create tickets · view and reply to their own · attach files · reopen within the window ·
 rate · read `public` KB articles.
@@ -193,7 +193,7 @@ report. It grants **read** by default; write elevation is a separate, rarer gran
 - [ ] `helpdesk` domain in `packages/api-provider/config/domains.json` with
       `helpdesk_admin`, `helpdesk_manager`, `helpdesk_staff` (+ `helpdesk_approver`,
       `helpdesk_system`).
-- [ ] `packages/pos-shared/lib/roles.js` — `APP_URLS.helpdesk`, `VALID_APP_KEYS`, `APP_META`
+- [ ] `packages/shared/lib/roles.js` — `APP_URLS.helpdesk`, `VALID_APP_KEYS`, `APP_META`
       (category `sales`).
 - [ ] Descriptors declare `domains`, `apps` and per-method `scope`.
 - [ ] `RoleSwitcher` wired; `X-Rutba-App-Role` drives the claim.

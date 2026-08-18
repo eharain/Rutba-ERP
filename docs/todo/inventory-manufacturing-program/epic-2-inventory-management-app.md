@@ -1,4 +1,4 @@
-# Epic 2 — Inventory Management App (`rutba-inventory`, port 4017)
+# Epic 2 — Inventory Management App (`apps/inventory/control`, port 4017)
 
 <!-- verify-docs: planned packages/api-provider/api/warehouses.js sale/checkout.js -->
 
@@ -6,7 +6,7 @@
 > (warehouse, storage-location bin tree, `stock-level` cache, `track_mode`) + two-sided
 > `stock-transfer` (Draft→InTransit→Received) + `stock-adjustment` (posts loss GL
 > Dr `SHRINKAGE_EXPENSE` / Cr INVENTORY, idempotent) + specific-identification valuation report
-> + the full `rutba-inventory` app (screens: warehouses, stock-levels, transfers, adjustments,
+> + the full `apps/inventory/control` app (screens: warehouses, stock-levels, transfers, adjustments,
 > valuation, counts, batches, expiry, reorder, maintenance). **Deferred:** transfer-line CT +
 > `from_location`, adjustment approval workflow + reason-code CT + bulk signed-qty path,
 > movement/ageing reports, put-away screen. See the overview's
@@ -17,7 +17,7 @@
 > 1, 3, 4, 5 all build on, then delivers the full inventory-control feature set in a new
 > dedicated app.
 
-Owning app: **new `rutba-inventory`** (Next.js, port 4017). Backend: `pos-strapi`
+Owning app: **new `apps/inventory/control`** (Next.js, port 4017). Backend: `services/strapi`
 (`inventory-*` + extensions to `stock-item`, `product`, `purchase`). Depends on: nothing
 (this epic *is* the foundation). Blocks: Epics 3, 4, 5 and Epic 1's inventory hooks.
 
@@ -49,7 +49,7 @@ per line, 3PL/EDI integration.
 
 ### 1.1 Location content-types
 
-**`warehouse`** (`pos-strapi/src/api/warehouse/…`)
+**`warehouse`** (`services/strapi/src/api/warehouse/…`)
 | field | type | notes |
 |-------|------|-------|
 | `code` | uid | unique |
@@ -61,7 +61,7 @@ per line, 3PL/EDI integration.
 | `is_active` | boolean | default true |
 | `locations` | relation 1:m → storage-location | |
 
-**`storage-location`** (a.k.a. bin) (`pos-strapi/src/api/storage-location/…`)
+**`storage-location`** (a.k.a. bin) (`services/strapi/src/api/storage-location/…`)
 | field | type | notes |
 |-------|------|-------|
 | `code` | string | unique within warehouse (validate in lifecycle) |
@@ -76,7 +76,7 @@ per line, 3PL/EDI integration.
 
 ### 1.2 stock-item extension
 
-Add to `pos-strapi/src/api/stock-item/content-types/stock-item/schema.json`:
+Add to `services/strapi/src/api/stock-item/content-types/stock-item/schema.json`:
 - `warehouse` — relation m:1 → warehouse (inversedBy nothing needed, or a `stock_items` back-rel)
 - `storage_location` — relation m:1 → storage-location (inversedBy `stock_items`)
 - (Epic 5 also adds `batch` + `expiry_date` here — coordinate one schema change window.)
@@ -86,7 +86,7 @@ The existing `branch` FK stays; derive it from `warehouse.branch` on write for c
 
 ### 1.3 Per-location stock-level cache (F2)
 
-**`stock-level`** (`pos-strapi/src/api/stock-level/…`) — a **cache**, never hand-written:
+**`stock-level`** (`services/strapi/src/api/stock-level/…`) — a **cache**, never hand-written:
 | field | type | notes |
 |-------|------|-------|
 | `product` | relation m:1 → product | |
@@ -122,7 +122,7 @@ Branch every intake/consumption/lifecycle path on `product.track_mode`:
 
 ### 1.5 Backfill migration (idempotent)
 
-Strapi migration (`pos-strapi/database/migrations/…`):
+Strapi migration (`services/strapi/database/migrations/…`):
 1. For each `branch`, create one default `warehouse` (`is_default`) + one default
    receiving `storage-location` (type `staging`, `is_receivable`).
 2. Set every existing `stock-item.warehouse`/`storage_location` to its branch's defaults.
@@ -166,7 +166,7 @@ picks), quantity_received). State machine (executeTransition chokepoint):
 
 Custom routes `auth:false` + `ensureUser` manager check (same pattern as existing
 transfer/recompute). Keep the old `/stock-items/transfer` as a thin shim that creates+auto-
-receives a same-instant transfer, so `pos-stock`'s inline "send to branch" keeps working.
+receives a same-instant transfer, so `apps/inventory/stock`'s inline "send to branch" keeps working.
 
 **Print:** transfer note / pick list, client-side (BulkBarcodePrint pattern).
 
@@ -206,7 +206,7 @@ document. It is also the write path Epic 3 (cycle counts) uses to book count var
 
 ---
 
-## Phase 5 — `rutba-inventory` app UI
+## Phase 5 — `apps/inventory/control` app UI
 
 Screens (Bootstrap + Layout + ProtectedRoute + `useAuth().jwt`, matching sibling apps):
 - **Dashboard** — on-hand value, low-stock count (Epic 4), expiring-soon (Epic 5), pending
@@ -222,7 +222,7 @@ Screens (Bootstrap + Layout + ProtectedRoute + `useAuth().jwt`, matching sibling
   this app.
 
 Reuse `ProductPickerModal`, the XLSX column-alias parser, `printStorage` + print components
-from `pos-shared`/`pos-stock`.
+from `pos-shared`/`apps/inventory/stock`.
 
 ---
 

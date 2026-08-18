@@ -5,9 +5,9 @@ live dev DB; goldens, schema handover and the Caddy flip remain).
 
 ## What runs in core now
 
-`rutba-core/src/modules/marketplace.js` (same zero-copy model as tranches 1–5).
+`services/core/src/modules/marketplace.js` (same zero-copy model as tranches 1–5).
 Small tranche by design: the ENGINE (adapters, OAuth, scheduling, outbound
-HTTP) lives in the rutba-marketplace app — Strapi's side is only the data
+HTTP) lives in the apps/sales/marketplace app — Strapi's side is only the data
 contract. The other marketplace CTs (listing, mapping, price-rule, sync-log)
 are plain CRUD already served by the seeded route table.
 
@@ -40,7 +40,7 @@ code paths.
 
 ### Crons / lifecycles
 
-None. The worker schedules itself inside rutba-marketplace; sale-order's
+None. The worker schedules itself inside apps/sales/marketplace; sale-order's
 lifecycle was registered by hr; order-message has no lifecycle file.
 
 ### New platform capability this tranche forced
@@ -74,5 +74,5 @@ lifecycle was registered by hr; order-message has no lifecycle file.
 
 Same as tranches 1–5 (goldens, baseline migration via `schema-diff.js
 --filter`, Caddy flip). No cron cutover here. At the flip, the
-rutba-marketplace worker's STRAPI_URL simply follows the Caddy origin — its
+apps/sales/marketplace worker's STRAPI_URL simply follows the Caddy origin — its
 service token authenticates against core's strapi_api_tokens read unchanged.

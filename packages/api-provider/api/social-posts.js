@@ -32,7 +32,7 @@ export const SocialPostsEndpoints = {
     // platform_results — atomic server-side merge that also mirrors the
     // published copy. The desktop Social Poster calls this after each attempt.
     recordResult: (documentId, data) => ({ path: `/social-posts/${documentId}/record-result`, action: 'recordResult', method: 'post', data }),
-    // todo: speculative stub — rutba-social/pages/posts/index.js uses this to mark
+    // todo: speculative stub — apps/content/social/pages/posts/index.js uses this to mark
     // which drafts have a published counterpart. The current implementation returns
     // documentId-only list of published rows; verify the Strapi status filter is
     // applied correctly under the social-posts content type's draft-publish config.

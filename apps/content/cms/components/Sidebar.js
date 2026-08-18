@@ -1,5 +1,5 @@
-import SharedSidebar from "@rutba/pos-shared/components/Sidebar";
-import { APP_URLS } from "@rutba/pos-shared/lib/roles";
+import SharedSidebar from "@rutba/shared/components/Sidebar";
+import { APP_URLS } from "@rutba/shared/lib/roles";
 
 const SECTIONS = [
     {
@@ -46,5 +46,5 @@ const SECTIONS = [
 ];
 
 export default function Sidebar() {
-    return <SharedSidebar sections={SECTIONS} storageKey="rutba-cms-sidebar-pinned" />;
+    return <SharedSidebar sections={SECTIONS} storageKey="apps/content/cms-sidebar-pinned" />;
 }

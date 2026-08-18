@@ -7,7 +7,7 @@ export const StockAdjustmentsEndpoints = {
 
     meta: {
         uid: 'api::stock-adjustment.stock-adjustment',
-        domains: ['inventory', 'stock'],
+        domains: ['control', 'stock'],
         roles: ['admin', 'manager', 'staff'],
     },
 
@@ -17,7 +17,7 @@ export const StockAdjustmentsEndpoints = {
             path: '/stock-adjustments',
             action: 'find',
             method: 'get',
-            apps: ['inventory', 'stock'],
+            apps: ['control', 'stock'],
             approle: ['admin', 'manager', 'staff'],
             params: {
                 filters: {
@@ -37,7 +37,7 @@ export const StockAdjustmentsEndpoints = {
         path: `/stock-adjustments/${documentId}`,
         action: 'findOne',
         method: 'get',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             populate: { branch: true, stock_items: { populate: { product: true } } },
@@ -48,7 +48,7 @@ export const StockAdjustmentsEndpoints = {
         path: '/stock-adjustments',
         action: 'create',
         method: 'post',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager', 'staff'],
         data,
     }),
@@ -57,7 +57,7 @@ export const StockAdjustmentsEndpoints = {
         path: `/stock-adjustments/${documentId}`,
         action: 'update',
         method: 'put',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager', 'staff'],
         data,
     }),
@@ -66,7 +66,7 @@ export const StockAdjustmentsEndpoints = {
         path: `/stock-adjustments/${documentId}`,
         action: 'delete',
         method: 'delete',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager'],
     }),
 
@@ -75,7 +75,7 @@ export const StockAdjustmentsEndpoints = {
         path: `/stock-adjustments/${documentId}/post`,
         action: 'create',
         method: 'post',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager'],
         data: {},
     }),
@@ -85,7 +85,7 @@ export const StockAdjustmentsEndpoints = {
         path: `/stock-adjustments/${documentId}/cancel`,
         action: 'create',
         method: 'post',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager'],
         data: {},
     }),

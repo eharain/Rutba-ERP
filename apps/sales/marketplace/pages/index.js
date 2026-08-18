@@ -1,15 +1,15 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Layout from "../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import AppHome, {
     AppHomeStats,
     AppHomeStat,
     AppHomePanel,
     AppHomeEmpty,
     AppHomeSection,
-} from "@rutba/pos-shared/components/AppHome";
+} from "@rutba/shared/components/AppHome";
 import { MarketplaceAccountsEndpoints, MarketplaceSyncLogsEndpoints } from "@rutba/api-provider/endpoints";
 
 const STATUS_VARIANT = { success: "success", partial: "warning", error: "danger", running: "info" };

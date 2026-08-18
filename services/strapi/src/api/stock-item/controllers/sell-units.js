@@ -6,7 +6,7 @@
  * POS immediate-sale allocation for DIVISIBLE products (Divisible P2c). Sells
  * `qty` sub-units of a product across its InStock items (opened-first → FEFO,
  * depleting units flip to 'Sold'), optionally linking the touched units to a
- * sale-item. This is the pos-sale counterpart of the order-management
+ * sale-item. This is the apps/sales/pos counterpart of the order-management
  * /sale-orders/:id/attach-divisible endpoint — both funnel into the same tested
  * stock-item.allocateSellableUnits engine so allocation/FEFO/pricing stay in one
  * place (stock code lives under api::stock-item).
@@ -20,7 +20,7 @@
  *
  * auth:false route + manual auth (mirrors valuation/transfer/expiry). Selling
  * consumes stock with no payment step on this endpoint, so it requires a
- * sale/stock/inventory app-role (any level — POS tellers are sale_staff);
+ * sale/stock/inventory app-role (any level — POS tellers are pos_staff);
  * a bare storefront JWT is rejected.
  */
 

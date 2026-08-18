@@ -32,7 +32,7 @@
  * in one place, so a future desk-member table changes this function and nothing
  * else.
  *
- * BRANCH SCOPE HAS NO SOURCE OF TRUTH IN CORE YET. Nothing in pos-strapi maps a
+ * BRANCH SCOPE HAS NO SOURCE OF TRUTH IN CORE YET. Nothing in services/strapi maps a
  * user to a set of branches, so `actor.branchIds` is an input: an array narrows
  * every non-ownership grant to those branches, and null means unrestricted.
  * Null is the honest default — it preserves exactly today's behaviour rather

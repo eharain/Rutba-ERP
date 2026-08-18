@@ -228,7 +228,7 @@ All API Interfaces, Interface Methods, and Method Policies are stored as JSON fi
 {
   "interfaceId": "cms-footer",
   "methodId": "findOne",
-  "roleKey": "web_user",
+  "roleKey": "storefront_user",
   "filters": { "publishedAt": { "$notNull": true } },
   "populate": "{{input.populate}}",
   "fields": ["title", "links"],
@@ -327,7 +327,7 @@ Response shape (backward-compatible with AGP):
 ```jsonc
 {
   "domains": [{ "domainKey": "web-authenticated", "label": "Web" }],
-  "appRoles": [{ "roleKey": "web_user", "appName": "web-user", "domainKey": "web-authenticated" }],
+  "appRoles": [{ "roleKey": "storefront_user", "appName": "web-user", "domainKey": "web-authenticated" }],
   "permissions": {
     "cms-footer": {
       "find":    { "allowed": true, "policy": { "filters": { "publishedAt": { "$notNull": true } } } },
@@ -517,9 +517,9 @@ module.exports = require('./dist/server/index.js');
 
 ---
 
-## 13. `pos-strapi` integration
+## 13. `services/strapi` integration
 
-### `pos-strapi/config/plugins.js`
+### `services/strapi/config/plugins.js`
 
 ```js
 module.exports = ({ env }) => ({
@@ -540,11 +540,11 @@ module.exports = ({ env }) => ({
 });
 ```
 
-### `pos-strapi/src/extensions/users-permissions/strapi-server.js`
+### `services/strapi/src/extensions/users-permissions/strapi-server.js`
 
 Must:
 1. Register custom routes for `GET /api/users-permissions/me/permissions` pointing to the API-Pro `mePermissions` controller.
-2. After user registration (`register` lifecycle), assign the default `app-role` (roleKey = `web_user`, appName = `web-user`) if it exists.
+2. After user registration (`register` lifecycle), assign the default `app-role` (roleKey = `storefront_user`, appName = `web-user`) if it exists.
 3. Do **not** touch any AGP imports.
 
 ---
@@ -561,7 +561,7 @@ Must:
 8. Implement **Users** list + role assignment endpoints.
 9. Implement `me/permissions` endpoint.
 10. Build admin UI pages in order: Recordings → Interfaces → InterfaceDetail → Roles → Users → Policies (Editor tab first, Comparative tab last).
-11. Wire `pos-strapi` integration and verify end-to-end boot.
+11. Wire `services/strapi` integration and verify end-to-end boot.
 
 ---
 
@@ -570,9 +570,9 @@ Must:
 - ❌ Do not import `GridItem` or `Grid` from `@strapi/design-system` — it is not exported in v2.
 - ❌ Do not import any `@strapi/icons` symbol without first verifying it exists at runtime with `console.log(require('@strapi/icons'))`.
 - ❌ Do not declare `app_roles` in both a `schema.json` override AND `bootstrap.js` — pick one (bootstrap.js only).
-- ❌ Do not patch any `pos-strapi` file without reading it fully first — partial patches cause syntax errors.
+- ❌ Do not patch any `services/strapi` file without reading it fully first — partial patches cause syntax errors.
 - ❌ Do not reference a service (`plugin::api-pro.data-transfer`) that does not exist.
-- ❌ Do not run `npm install` in `pos-strapi` to add new dependencies to the plugin — use `resolve` path only.
+- ❌ Do not run `npm install` in `services/strapi` to add new dependencies to the plugin — use `resolve` path only.
 - ❌ Do not write `dist/server/package.json` manually — use the post-build script so it survives every rebuild.
 - ❌ Do not produce placeholder pages — every page listed in section 10 must be fully functional before the plugin is considered done.
 
@@ -583,7 +583,7 @@ Must:
 The plugin is done when:
 
 - [ ] `npm run build` in `packages/strapi-api-pro` succeeds with zero errors.
-- [ ] `npm run dev:strapi` in `pos-strapi` starts and the admin loads the plugin menu with all 5 items.
+- [ ] `npm run dev:strapi` in `services/strapi` starts and the admin loads the plugin menu with all 5 items.
 - [ ] A developer can start a recording, make API calls, stop the recording, and convert it to an interface.
 - [ ] The Interface Detail page shows methods with live signature preview and inline route-token mismatch warnings.
 - [ ] The Policies page (Editor tab) resolves sample context tokens live and saves the policy to a file.
@@ -591,4 +591,4 @@ The plugin is done when:
 - [ ] The Roles & Domains page supports full CRUD for both domains and roles.
 - [ ] The Users page shows all Strapi users with their current app_roles and allows reassignment exactly like the AGP Users page.
 - [ ] `GET /api/api-pro/me/permissions` returns the correct payload for an authenticated user.
-- [ ] `pos-strapi` boots cleanly with no AGP references and no missing-service errors.
+- [ ] `services/strapi` boots cleanly with no AGP references and no missing-service errors.

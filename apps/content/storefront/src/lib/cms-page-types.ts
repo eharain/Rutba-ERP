@@ -29,7 +29,7 @@ export function getPageUrl(page: Pick<CmsPageInterface, "page_type" | "slug">) {
 }
 
 /**
- * Page types that have a public list route on rutba-web (i.e. a
+ * Page types that have a public list route on apps/content/storefront (i.e. a
  * `pages/<type>/index.tsx`). "page" deliberately omitted — pages of that
  * type are linked directly via their slug; there's no aggregate list view.
  */

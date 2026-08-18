@@ -12,7 +12,7 @@ export const AddressesEndpoints = {
 
     meta: {
         uid: 'api::address.address',
-        domains: ['web', 'web-user'],
+        domains: ['storefront', 'portal'],
         roles: ['user'],
     },
 
@@ -21,7 +21,7 @@ export const AddressesEndpoints = {
         path: '/me/addresses',
         action: 'find',
         method: 'get',
-        apps: ['web', 'web-user'],
+        apps: ['storefront', 'portal'],
         approle: ['user'],
     }),
 
@@ -30,7 +30,7 @@ export const AddressesEndpoints = {
         path: '/me/addresses',
         action: 'create',
         method: 'post',
-        apps: ['web', 'web-user'],
+        apps: ['storefront', 'portal'],
         approle: ['user'],
         data,
     }),
@@ -40,7 +40,7 @@ export const AddressesEndpoints = {
         path: `/me/addresses/${documentId}`,
         action: 'update',
         method: 'put',
-        apps: ['web', 'web-user'],
+        apps: ['storefront', 'portal'],
         approle: ['user'],
         data,
     }),
@@ -50,7 +50,7 @@ export const AddressesEndpoints = {
         path: `/me/addresses/${documentId}`,
         action: 'delete',
         method: 'delete',
-        apps: ['web', 'web-user'],
+        apps: ['storefront', 'portal'],
         approle: ['user'],
     }),
 
@@ -59,7 +59,7 @@ export const AddressesEndpoints = {
         path: `/me/addresses/${documentId}/make-default`,
         action: 'update',
         method: 'post',
-        apps: ['web', 'web-user'],
+        apps: ['storefront', 'portal'],
         approle: ['user'],
         data: {},
     }),

@@ -1,5 +1,5 @@
-// Free-text variant creation, shared by pos-stock (product-variants page) and
-// rutba-cms (product Variants tab via ProductGalleryManager).
+// Free-text variant creation, shared by apps/inventory/stock (product-variants page) and
+// apps/content/cms (product Variants tab via ProductGalleryManager).
 //
 // The term-type / gallery-image creation flows require a predefined term or an
 // image selection. This surface lets a user just type one or more variant names

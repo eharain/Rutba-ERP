@@ -4,7 +4,7 @@
 ///      To re-run, rename the file or create a new one.
 
 /**
- * The rutba-users → rutba-admin cutover. Every holder of a `users_*` app-role
+ * The rutba-users → apps/admin/console cutover. Every holder of a `users_*` app-role
  * additively gets the matching `admin_*` role, so the administrators who ran
  * the old User Management app can open the new admin console without a manual
  * grant round.

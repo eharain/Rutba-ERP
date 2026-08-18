@@ -1,4 +1,4 @@
-import StrapiImage from '@rutba/pos-shared/components/StrapiImage';
+import StrapiImage from '@rutba/shared/components/StrapiImage';
 
 export default function PurchaseDocuments({ receipts, gallery }) {
     const hasReceipts = receipts && receipts.length > 0;

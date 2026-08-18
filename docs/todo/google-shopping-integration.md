@@ -1,9 +1,9 @@
 # Google Shopping — Marketplace Integration Spec
 
-<!-- verify-docs: planned rutba-marketplace/lib/providers/google.js -->
+<!-- verify-docs: planned apps/sales/marketplace/lib/providers/google.js -->
 
 > **Status (2026-08-10): 📋 Planned, nothing built.** Written against the
-> marketplace seam as it exists on `dev` (rutba-marketplace :4016, adapter
+> marketplace seam as it exists on `dev` (apps/sales/marketplace :4016, adapter
 > registry, marketplace-* CTs). Deadline-relevant fact: the legacy **Content
 > API for Shopping sunsets 2026-08-18** — this integration MUST be built on
 > the **Merchant API v1** (`merchantapi.googleapis.com`) from day one; there
@@ -15,7 +15,7 @@ Google Shopping is **not an order-taking marketplace**. "Buy on Google"
 checkout was retired in 2023; today Google surfaces product listings (free
 listings in the Shopping tab + paid Shopping/Performance Max ads) and sends
 the buyer to **our storefront** to check out. Orders therefore arrive as
-ordinary rutba-web storefront orders — there is no order pull, no
+ordinary apps/content/storefront storefront orders — there is no order pull, no
 fulfillment push-back, no message sync.
 
 What Google *does* consume is a **product feed** kept fresh: title,
@@ -158,7 +158,7 @@ Reuse the declarative `catalogSpec` the mapping UI renders:
      rendered server-side (SSR already the case).
 
 ### Phase 1 — adapter + catalog push
-1. `rutba-marketplace/lib/providers/google.js`: token minting
+1. `apps/sales/marketplace/lib/providers/google.js`: token minting
    (`refreshToken`), `validateConnection` (GET account), one-time data
    source ensure (create-if-missing, id cached in `extra_config`),
    `pushCatalog` (`productInputs.insert` per offer, bounded concurrency,
@@ -166,7 +166,7 @@ Reuse the declarative `catalogSpec` the mapping UI renders:
    (taxonomy file).
 2. Registry: add to `lib/providers/index.js`; config block
    `providers.google` in `lib/config.js`;
-   `RUTBA_MARKETPLACE__GOOGLE_*` entries in `.env.example` (service
+   `MARKETPLACE__GOOGLE_*` entries in `.env.example` (service
    account key stays per-account in `extra_config`, NOT env).
 3. `marketplace-account` schema: `platform` enum += `google` (frontends
    read enums dynamically — no UI edits).

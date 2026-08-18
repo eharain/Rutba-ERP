@@ -1,15 +1,15 @@
 import { useEffect } from "react";
 import { PrimeReactProvider } from "primereact/api";
-import { AuthProvider } from "@rutba/pos-shared/context/AuthContext";
-import { UtilProvider } from "@rutba/pos-shared/context/UtilContext";
+import { AuthProvider } from "@rutba/shared/context/AuthContext";
+import { UtilProvider } from "@rutba/shared/context/UtilContext";
 import { AppContextEndpoints } from "@rutba/api-provider/endpoints/index.js";
 
 AppContextEndpoints.setAppName('stock');
 
 import 'bootstrap/dist/css/bootstrap.min.css';
 import '@fortawesome/fontawesome-free/css/all.min.css';
-import '@rutba/pos-shared/styles/layout.css';
-import '@rutba/pos-shared/components/list-page.css';
+import '@rutba/shared/styles/layout.css';
+import '@rutba/shared/components/list-page.css';
 import '../src/styles/globals.css';
 import 'primereact/resources/themes/saga-blue/theme.css';
 import 'primereact/resources/primereact.min.css';

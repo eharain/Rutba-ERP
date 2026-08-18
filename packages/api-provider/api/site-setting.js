@@ -22,7 +22,7 @@ export const SiteSettingEndpoints = {
         // 'admin' administers the rows themselves — the admin app's
         // /site-settings list + editor. Without it here the admin app 403s on
         // every site-setting call, which is why it could not read them at all.
-        domains: ['admin', 'cms', 'order-management', 'social', 'web', 'web-user'],
+        domains: ['console', 'cms', 'orders', 'social', 'storefront', 'portal'],
         roles: ['admin', 'manager', 'staff', 'public', 'user'],
     },
 
@@ -88,7 +88,7 @@ export const SiteSettingEndpoints = {
     ...__publish_generic_helper('site-settings'),
 
     // ...except publish/unpublish, which the helper puts on
-    // /site-settings/:id/publish — a route NEITHER server has. pos-strapi
+    // /site-settings/:id/publish — a route NEITHER server has. services/strapi
     // routes publish at the singular /site-setting/publish and picks the row by
     // app slug (routes/01-custom-site-setting.js), and core mirrors it; the
     // per-row form was a deliberate omission, not an oversight, because the

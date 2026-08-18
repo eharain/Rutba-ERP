@@ -1,5 +1,5 @@
 {
-  "name": "rutba-ess",
+  "name": "@rutba/ess",
   "version": "0.1.0",
   "private": true,
   "scripts": {

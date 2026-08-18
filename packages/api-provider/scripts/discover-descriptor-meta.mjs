@@ -18,16 +18,16 @@ const API_DIR = path.resolve(__dirname, '..', 'api');
 
 // Every app whose `descriptorScan` is true in config/apps.manifest.json must
 // appear here; `npm run verify:wiring` fails otherwise. Eight of these were
-// missing until 2026-08-17 — every app added after rutba-web — so descriptor
+// missing until 2026-08-17 — every app added after apps/content/storefront — so descriptor
 // usage across manufacturing, marketplace, inventory, seed, campaigns, mail,
 // admin and helpdesk was silently invisible to this pass.
 const APP_FOLDERS = [
-    'pos-auth', 'pos-sale', 'pos-stock',
-    'rutba-accounts', 'rutba-admin', 'rutba-campaigns', 'rutba-cms', 'rutba-crm',
-    'rutba-ess', 'rutba-helpdesk', 'rutba-hr', 'rutba-inventory', 'rutba-mail',
-    'rutba-manufacturing', 'rutba-marketplace', 'rutba-order-management',
-    'rutba-payroll', 'rutba-rider', 'rutba-seed', 'rutba-social',
-    'rutba-web-user', 'rutba-web',
+    'apps/admin/auth', 'apps/sales/pos', 'apps/inventory/stock',
+    'apps/finance/accounts', 'apps/admin/console', 'apps/content/campaigns', 'apps/content/cms', 'apps/sales/crm',
+    'apps/people/ess', 'apps/sales/helpdesk', 'apps/people/hr', 'apps/inventory/control', 'apps/content/mail',
+    'apps/inventory/manufacturing', 'apps/sales/marketplace', 'apps/sales/orders',
+    'apps/finance/payroll', 'apps/sales/rider', 'apps/admin/seed', 'apps/content/social',
+    'apps/sales/portal', 'apps/content/storefront',
 ];
 
 // Shared packages that fan into multiple apps. We scan these too and attribute
@@ -36,7 +36,7 @@ const APP_FOLDERS = [
 // imports to ALL apps that consume that package — which is fine for the
 // purpose of building a domain set per descriptor.
 const SHARED_PACKAGES = [
-    'packages/pos-shared',
+    'packages/shared',
     'packages/api-provider/pos',
 ];
 

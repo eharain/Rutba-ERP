@@ -6,12 +6,12 @@ import { shortLinkPath } from "@rutba/api-provider/lib/short-code.js";
 //
 // A social post's "Shop now" link must point at the product's page on the
 // live storefront. The canonical base is site-settings.site_url (the same
-// value rutba-web uses to build canonical/SEO URLs); we only fall back to the
-// NEXT_PUBLIC_WEB_URL env when site_url isn't set. The product PATH is built
+// value apps/content/storefront uses to build canonical/SEO URLs); we only fall back to the
+// NEXT_PUBLIC_STOREFRONT_URL env when site_url isn't set. The product PATH is built
 // exactly like the storefront's productHref (slug preferred, documentId
 // fallback), so the link resolves to the real product page.
 
-const ENV_WEB_URL = (process.env.NEXT_PUBLIC_WEB_URL || "http://localhost:4000").replace(/\/+$/, "");
+const ENV_WEB_URL = (process.env.NEXT_PUBLIC_STOREFRONT_URL || "http://localhost:4000").replace(/\/+$/, "");
 
 let cachedBasePromise = null;
 
@@ -33,7 +33,7 @@ export async function resolveStorefrontBaseUrl() {
     return cachedBasePromise;
 }
 
-// Canonical product path — mirrors rutba-web/src/lib/product-href.ts
+// Canonical product path — mirrors apps/content/storefront/src/lib/product-href.ts
 // (slug || documentId). Path only, no host.
 export function productPath(p) {
     const key = p?.slug || p?.documentId;

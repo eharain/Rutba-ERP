@@ -98,7 +98,7 @@ async function main() {
     check('reset mail is addressed to the user', reset && reset.to === fakeUser.email);
     // KNOWN LIVE BUG, asserted so it cannot regress silently: the advanced
     // setting `email_reset_password` is null, so the link has no origin and
-    // renders as a bare `?code=`. pos-strapi sends the same broken link today.
+    // renders as a bare `?code=`. services/strapi sends the same broken link today.
     const advanced = (await db('strapi_core_store_settings')
       .where('key', 'plugin_users-permissions_advanced').first('value')) || {};
     const resetBase = JSON.parse(advanced.value || '{}').email_reset_password;
@@ -145,7 +145,7 @@ async function main() {
     created.push([ORDER_UID, order.documentId]);
 
     const notificationService = require(
-      require('path').join(__dirname, '..', '..', 'pos-strapi', 'src', 'api',
+      require('path').join(__dirname, '..', '..', '..', 'services/strapi', 'src', 'api',
         'sale-order', 'services', 'notification-service.js')
     );
 

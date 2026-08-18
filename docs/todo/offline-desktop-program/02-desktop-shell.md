@@ -13,12 +13,12 @@ One process tree, one install, one session.
 ```
 Electron main process (Node)
 ├── launcher shell            the desktop IS the app catalogue
-├── ONE @rutba/sync-core      proxy + cache + replicator + outbox + replayer
-├── ONE rutba-core on SQLite  local reads answer the apps' real routes
+├── ONE @rutba/sync      proxy + cache + replicator + outbox + replayer
+├── ONE services/core on SQLite  local reads answer the apps' real routes
 └── lazy per-app Next servers 127.0.0.1:<ephemeral>, started on first open
-    ├── pos-sale      ─┐
-    ├── rutba-mail     ├─ each is its own Next project → its own server
-    └── rutba-social  ─┘
+    ├── apps/sales/pos      ─┐
+    ├── apps/content/mail     ├─ each is its own Next project → its own server
+    └── apps/content/social  ─┘
 ```
 
 **One bridge, one replica, one outbox — for all three apps.** That is the whole
@@ -59,10 +59,10 @@ Reuse, do not rebuild:
 
 | Piece | Source |
 |---|---|
-| Grouped app catalogue | `getAppCatalogGroups(appAccess, currentApp)` — [`roles.js:326`](../../../packages/pos-shared/lib/roles.js) |
-| Top-N frecency ordering | `rankByUsage(keys)` — [`appUsage.js:109`](../../../packages/pos-shared/lib/appUsage.js) |
+| Grouped app catalogue | `getAppCatalogGroups(appAccess, currentApp)` — [`roles.js:326`](../../../packages/shared/lib/roles.js) |
+| Top-N frecency ordering | `rankByUsage(keys)` — [`appUsage.js:109`](../../../packages/shared/lib/appUsage.js) |
 | Usage recording | `recordAppUse` / `recordAppVisit` — same file |
-| Reference implementation | [`NavAppSwitcher.js:39, 63`](../../../packages/pos-shared/components/NavAppSwitcher.js) |
+| Reference implementation | [`NavAppSwitcher.js:39, 63`](../../../packages/shared/components/NavAppSwitcher.js) |
 
 The app list itself is **server-owned**, per
 [admin-console-program/01](../admin-console-program/01-app-catalogue-entitlements.md):
@@ -80,7 +80,7 @@ Two rules carried over from that document, both of which apply verbatim here:
 
 One thing the desktop gets for free: `appUsage`'s cookie is host-only for bare
 IPs and **cookies ignore ports** (stated in its own docblock, and `cookieDomain()`
-returns `null` for `/^[\d.]+$/` hosts at [line 33](../../../packages/pos-shared/lib/appUsage.js)).
+returns `null` for `/^[\d.]+$/` hosts at [line 33](../../../packages/shared/lib/appUsage.js)).
 So every app window at `127.0.0.1:<anything>` shares one `rutba_app_usage` jar
 already, with no desktop-specific plumbing. Verify it rather than assume it — one
 Electron `session` across all `BrowserWindow`s is what makes it true.
@@ -159,7 +159,7 @@ the origin and only one of them is a browser:
       non-desktop build must be byte-identical, and the golden case to test is
       the production storefront split (`rutba.pk` page → `api.rutba.pk` API) that
       the hostname-swap bug broke once already.
-- [ ] Repoint [`rutba-social/pages/api/media-proxy.js:38, 75`](../../../rutba-social/pages/api/media-proxy.js),
+- [ ] Repoint [`apps/content/social/pages/api/media-proxy.js:38, 75`](../../../apps/content/social/pages/api/media-proxy.js),
       the one file in the v1 set that reads `process.env.NEXT_PUBLIC_API_URL`
       directly rather than through the resolver.
 - [ ] Decide whether `IMAGE_URL` follows the bridge or stays pointed at the media
@@ -195,7 +195,7 @@ technicality:
 In-browser capture is gated on a secure origin. `getUserMedia` /
 `getDisplayMedia` are simply **undefined** at `http://192.168.x.x:<port>` — the
 browser hides the microphone and camera entirely. That is why
-[`RecorderDialog.js`](../../../packages/pos-shared/components/RecorderDialog.js)
+[`RecorderDialog.js`](../../../packages/shared/components/RecorderDialog.js)
 computes `support` from `!!navigator?.mediaDevices?.getUserMedia` (line 85) and
 renders a dedicated failure card (line 464) saying recording needs
 *"a secure origin — https, or localhost"*. It is also why capture works on dev and
@@ -261,7 +261,7 @@ gates.
 `rAF` only fires while the page is actually being composited. In an offscreen or
 non-rendering context it **never ticks at all** — so an rAF-driven loop hangs
 forever rather than merely stuttering. Recorded verbatim at
-[`video-maker/index.js:2778–2783`](../../../packages/video-maker/index.js), which
+[`video/index.js:2778–2783`](../../../packages/video/index.js), which
 is why the render loop is paced by `setTimeout` and not by rAF.
 
 Two symptoms, one cause, and neither points at the window:
@@ -287,7 +287,7 @@ Two symptoms, one cause, and neither points at the window:
 `canvas.captureStream(fps)` samples the canvas **off the compositor**, and a
 hidden or unfocused window barely composites — so it silently drops most of what
 was painted. The recorded symptom, at
-[`video-maker/index.js:2686`](../../../packages/video-maker/index.js): a render in
+[`video/index.js:2686`](../../../packages/video/index.js): a render in
 an offscreen Electron window came out *"a fraction of the size of the same render
 in a visible tab"*.
 
@@ -300,14 +300,14 @@ the path entirely, with a rate-based fallback only for engines lacking
       `manualFrames` is false in the shipped Electron, every render silently
       regresses to the broken behaviour — assert it, do not hope for it.
 
-> The brief for this program cited `packages/video-maker/index.js:2497` for this
+> The brief for this program cited `packages/video/index.js:2497` for this
 > hazard. That line is audio duck-envelope code. The offscreen-output hazard is at
 > **:2686** and the rAF hazard at **:2778**. Corrected here so the next reader
 > lands on the right comment.
 
 ### 3. The A/B harness is the gate
 
-[`packages/video-maker/harness/`](../../../packages/video-maker/harness) already
+[`packages/video/harness/`](../../../packages/video/harness) already
 exists and already encodes the right two checks. `serve.cjs` materializes
 `baseline.js` out of git history at `AB_BASELINE_REF` (default `90e15fa`) and
 serves `ab.html` on port 4890, so old and new render side by side and are

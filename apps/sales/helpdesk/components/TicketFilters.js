@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useEnumValues } from "@rutba/pos-shared/lib/use-enum-values";
+import { useEnumValues } from "@rutba/shared/lib/use-enum-values";
 import { humanizeToken } from "./StatusBadge";
 
 /**

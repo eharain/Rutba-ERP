@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * rutba-core's authorization policy layer.
+ * services/core's authorization policy layer.
  *
  * Today this owns the seeder that turns the descriptor contract
  * (`packages/api-provider/api/*.js`) into the `api_pro_*` tables core reads its
@@ -69,7 +69,7 @@ async function ensurePolicySeed({ registry, mode, log = console } = {}) {
       // deleting them is a revocation. `npm run seed:policy -- --prune` is the
       // deliberate act — same rule the api-pro prune tooling already follows.
       log.warn(`[policy] ${plan.totals.stale} row(s) no descriptor declares any more `
-        + '— run `npm --prefix rutba-core run seed:policy -- --prune` to remove them');
+        + '— run `npm --prefix services/core run seed:policy -- --prune` to remove them');
     }
 
     await checkpoint.write({

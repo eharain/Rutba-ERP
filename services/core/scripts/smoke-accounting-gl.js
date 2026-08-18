@@ -38,7 +38,7 @@ const ADJ_UID = 'api::pay-adjustment.pay-adjustment';
 const EMP_UID = 'api::hr-employee.hr-employee';
 const JE_UID = 'api::acc-journal-entry.acc-journal-entry';
 
-// Every key resolve() is called with anywhere in pos-strapi/src.
+// Every key resolve() is called with anywhere in services/strapi/src.
 const RESOLVER_KEYS = [
   'CASH_DRAWER', 'CASH_SAFE', 'BANK_PRIMARY', 'CARD_CLEARING', 'MOBILE_WALLET',
   'EXCHANGE_CLEARING', 'ACCOUNTS_RECEIVABLE', 'INVENTORY', 'ACCOUNTS_PAYABLE',

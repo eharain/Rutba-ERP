@@ -1,4 +1,4 @@
-import Topbar from "@rutba/pos-shared/components/Topbar";
+import Topbar from "@rutba/shared/components/Topbar";
 
 export default function Navigation() {
     return (

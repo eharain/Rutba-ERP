@@ -23,17 +23,17 @@ distinguishes `byo` from `mailcow`.
 
 ### `mail-server` — the registry
 
-[`mail_servers`](../../../pos-strapi/src/api/mail-server/content-types/mail-server/schema.json):
+[`mail_servers`](../../../services/strapi/src/api/mail-server/content-types/mail-server/schema.json):
 `name`, `kind` (enum: `mailcow`), `base_url`, `api_key_enc`, `mail_domains`
 (json), `imap_host`, `smtp_host`, `is_active`, `last_checked_at`, `last_error`.
 
-Admin UI: [`/email-servers`](../../../rutba-admin/pages/email-servers.js),
+Admin UI: [`/email-servers`](../../../apps/admin/console/pages/email-servers.js),
 `PermissionCheck`-wrapped. The API key is AES-256-GCM encrypted and never
 returned — see [02 §1](02-integrations-and-credentials.md).
 
 ### `mail-account` — the mailbox
 
-[`mail_accounts`](../../../pos-strapi/src/api/mail-account/content-types/mail-account/schema.json):
+[`mail_accounts`](../../../services/strapi/src/api/mail-account/content-types/mail-account/schema.json):
 `kind` (`personal` | `shared`), `email`, IMAP/SMTP coordinates,
 `imap_password_enc` / `smtp_password_enc`, `signature_html`,
 `provisioning_source` (`byo` | `mailcow`), `special_folders`, `unseen_counts`,
@@ -41,16 +41,16 @@ returned — see [02 §1](02-integrations-and-credentials.md).
 **`owners` (relation)**.
 
 Access is decided by `canAccess(userId, account)` at
-[`mail-account/services/mail-account.js:23`](../../../pos-strapi/src/api/mail-account/services/mail-account.js).
+[`mail-account/services/mail-account.js:23`](../../../services/strapi/src/api/mail-account/services/mail-account.js).
 `owners` follows the repo-wide ownership convention (plural m2m, always named
 `owners`); `access_roles` is the shared-inbox role gate.
 
-Admin UI: [`/mailboxes`](../../../rutba-admin/pages/mailboxes.js) — assign a new
+Admin UI: [`/mailboxes`](../../../apps/admin/console/pages/mailboxes.js) — assign a new
 address, ownership, shared-inbox access.
 
 ### `provisionAccount` — one-click mailbox creation
 
-At [`mail-account/services/mail-account.js:89`](../../../pos-strapi/src/api/mail-account/services/mail-account.js):
+At [`mail-account/services/mail-account.js:89`](../../../services/strapi/src/api/mail-account/services/mail-account.js):
 
 ```js
 async provisionAccount({ localPart, domain, name, kind = 'personal',
@@ -65,21 +65,21 @@ It rejects duplicates with a 409, calls `mailcow.addMailbox`, generates an
 > **Correction to a common description:** `provisionAccount` lives in the
 > `mail-account` **service**, not in `utils/mailcow-client.js`. The client is a
 > thin HTTP wrapper; the orchestration is in the service. Callers:
-> [`mail-account` controller:612](../../../pos-strapi/src/api/mail-account/controllers/mail-account.js)
-> and [`user-admin` controller:596](../../../pos-strapi/src/api/user-admin/controllers/user-admin.js)
+> [`mail-account` controller:612](../../../services/strapi/src/api/mail-account/controllers/mail-account.js)
+> and [`user-admin` controller:596](../../../services/strapi/src/api/user-admin/controllers/user-admin.js)
 > — the second is how assigning an email address in Rutba Admin provisions a real
 > mailbox.
 
 ### `mailcow-client.js` — more is built than is wired
 
-[`pos-strapi/src/utils/mailcow-client.js`](../../../pos-strapi/src/utils/mailcow-client.js)
+[`services/strapi/src/utils/mailcow-client.js`](../../../services/strapi/src/utils/mailcow-client.js)
 exports: `MailcowError`, `isConfigured`, `baseUrl`, `request`, `addMailbox`,
 `getMailbox`, `listMailboxes`, `listDomains`, `deleteMailbox`, `addAlias`.
 
 | Function | Wired to a route or UI? |
 |---|---|
 | `addMailbox` | ✅ via `provisionAccount` |
-| `listDomains` | ✅ [`mail-server/controllers/mail-server.js:110`](../../../pos-strapi/src/api/mail-server/controllers/mail-server.js) |
+| `listDomains` | ✅ [`mail-server/controllers/mail-server.js:110`](../../../services/strapi/src/api/mail-server/controllers/mail-server.js) |
 | `getMailbox`, `listMailboxes` | Partially — used for validation |
 | **`addAlias`** | ❌ **zero callers** |
 | **`deleteMailbox`** | ❌ **zero callers** |
@@ -90,7 +90,7 @@ have no route and no UI in front of them. That materially shortens the work.
 ### Quota — the field exists, the control does not
 
 `addMailbox` takes `quotaMb` with a default of `1024`
-([line 105](../../../pos-strapi/src/utils/mailcow-client.js)), and
+([line 105](../../../services/strapi/src/utils/mailcow-client.js)), and
 `provisionAccount` threads it through. Nothing in the UI ever sets it, so every
 mailbox Rutba has ever provisioned is exactly 1 GB. And there is **no
 quota-update call at all** — mailcow's `edit/mailbox` endpoint is not wrapped, so

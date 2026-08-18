@@ -8,7 +8,7 @@ export const WorkItemWatchesEndpoints = {
 
     meta: {
         uid: 'api::work-item-watch.work-item-watch',
-        domains: ['manufacturing', 'order-management', 'crm'],
+        domains: ['manufacturing', 'orders', 'crm'],
         roles: ['admin', 'manager', 'staff'],
     },
 
@@ -16,7 +16,7 @@ export const WorkItemWatchesEndpoints = {
         path: '/work-item-watches',
         action: 'find',
         method: 'get',
-        apps: ['manufacturing', 'order-management', 'crm'],
+        apps: ['manufacturing', 'orders', 'crm'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             filters: {
@@ -35,7 +35,7 @@ export const WorkItemWatchesEndpoints = {
         path: '/work-item-watches/toggle',
         action: 'toggle',
         method: 'post',
-        apps: ['manufacturing', 'order-management', 'crm'],
+        apps: ['manufacturing', 'orders', 'crm'],
         approle: ['admin', 'manager', 'staff'],
         data,
     }),

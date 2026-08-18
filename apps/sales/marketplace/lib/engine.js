@@ -6,7 +6,7 @@
 // pushes, and the cron loops invoked by the built-in worker (instrumentation.js)
 // and the manual-trigger API routes.
 //
-// Ported from the retired pos-strapi orchestration service; strapi.documents()
+// Ported from the retired services/strapi orchestration service; strapi.documents()
 // calls became HTTP calls through lib/strapi.js.
 
 const crypto = require('crypto');

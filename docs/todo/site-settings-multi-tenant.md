@@ -8,7 +8,7 @@ Convert `site-setting` from a Strapi `singleType` to a `collectionType` so each 
 documentId.
 
 ## Current state
-[pos-strapi/src/api/site-setting/content-types/site-setting/schema.json](../../pos-strapi/src/api/site-setting/content-types/site-setting/schema.json):
+[services/strapi/src/api/site-setting/content-types/site-setting/schema.json](../../services/strapi/src/api/site-setting/content-types/site-setting/schema.json):
 
 ```json
 "kind": "singleType",
@@ -41,7 +41,7 @@ Only one row exists; every app shares it.
 4. CMS UI: list page + edit-by-documentId page (replace whatever currently
    assumes a single record).
 5. Consumers: audit every app that reads site settings and switch them to the
-   per-app lookup. See pos-strapi integration contracts
+   per-app lookup. See services/strapi integration contracts
    for headers/contracts that may be affected.
 6. Permissions: ensure RBAC scopes still make sense per-row (owners/app-scoped
    reads).
@@ -66,7 +66,7 @@ needs to evolve.
 
 ### ✅ Fields added to site-setting (landed)
 These SEO fields are **on the schema now**
-(`pos-strapi/src/api/site-setting/content-types/site-setting/schema.json`) and
+(`services/strapi/src/api/site-setting/content-types/site-setting/schema.json`) and
 consumed by the storefront (`sitemap.xml.ts` reads `site_url` at request time;
 the Seo / JSON-LD components read the meta/OG/twitter fallbacks). They live on
 the **singleton** — the per-app evolution below is still pending.

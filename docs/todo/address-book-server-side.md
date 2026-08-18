@@ -24,7 +24,7 @@ contact-unification model (see `docs/todo/` notes on person unification),
 - **CSR / Strapi visibility** ✓ — rows live in the `addresses` table linked to
   `person`, so admin and order history can reference them.
 
-### Schema — `pos-strapi/src/api/address/content-types/address/schema.json`
+### Schema — `services/strapi/src/api/address/content-types/address/schema.json`
 `api::address.address` (collectionType, `collectionName: "addresses"`):
 `label`, `line1`, `line2`, `city`, `state`, `country`, `zip_code`,
 `is_default` (boolean), `archived_at` (datetime — soft-delete),
@@ -32,8 +32,8 @@ contact-unification model (see `docs/todo/` notes on person unification),
 `person` (manyToOne → `api::person.person`, `inversedBy: addresses`).
 
 ### API surface — shipped endpoints
-Routes in `pos-strapi/src/api/address/routes/address.js`, handlers in
-`pos-strapi/src/api/address/controllers/address.js` (every op scoped by
+Routes in `services/strapi/src/api/address/routes/address.js`, handlers in
+`services/strapi/src/api/address/controllers/address.js` (every op scoped by
 resolving `ctx.state.user → person → addresses`; ownership enforced in
 `findOwnedAddress` via `row.person.user.id === userId`):
 - `GET /me/addresses` → `list` (default first, then oldest; archived excluded)
@@ -49,15 +49,15 @@ top-level `api/` so it defaults to `authApi`; `domains: ['web','web-user']`,
 `roles: ['user']`).
 
 ### Storefront — shipped
-- `rutba-web/src/services/me-addresses.ts` — `createMeAddressesService()`
+- `apps/content/storefront/src/services/me-addresses.ts` — `createMeAddressesService()`
   (`list` / `create` / `update` / `remove` / `makeDefault`). Uses the
   descriptors for paths/methods but calls via axios + the next-auth session
   JWT (the generated proxy authenticates with the api-provider storage JWT,
-  which rutba-web doesn't populate).
-- `rutba-web/src/components/form/profile/form-shipping-information.tsx` — the
+  which apps/content/storefront doesn't populate).
+- `apps/content/storefront/src/components/form/profile/form-shipping-information.tsx` — the
   profile address form.
-- `rutba-web/src/pages/profile/address.tsx` — the profile address screen.
-- `rutba-web/src/pages/checkout.tsx` — pre-fills from the **default** server
+- `apps/content/storefront/src/pages/profile/address.tsx` — the profile address screen.
+- `apps/content/storefront/src/pages/checkout.tsx` — pre-fills from the **default** server
   address (`serverAddresses.find(a => a.is_default) || [0]`), falling back to
   the legacy localStorage `savedCustomer`; logged-in full-address checkouts
   persist into the server book (`saveAddress: !!jwt`).
@@ -66,7 +66,7 @@ top-level `api/` so it defaults to `authApi`; `domains: ['web','web-user']`,
 
 1. **Fold anonymous localStorage address into the server book on login** — not
    done. The localStorage `useSavedCustomer` store
-   (`rutba-web/src/store/store-customer.ts`) still lives in parallel; on login
+   (`apps/content/storefront/src/store/store-customer.ts`) still lives in parallel; on login
    the local record is never POSTed into `/me/addresses`. Checkout only reads
    the server default and *falls back* to the local record — it doesn't migrate it.
 2. **Multi-address picker dialog at checkout** (optional) — checkout currently
@@ -77,10 +77,10 @@ top-level `api/` so it defaults to `authApi`; `domains: ['web','web-user']`,
 
 ## Current state (v1, shipped)
 
-- [src/store/store-customer.ts](../../rutba-web/src/store/store-customer.ts) — Zustand-persisted, single saved customer record (contact + last shipping address) in `localStorage`.
+- [src/store/store-customer.ts](../../apps/content/storefront/src/store/store-customer.ts) — Zustand-persisted, single saved customer record (contact + last shipping address) in `localStorage`.
 - Used by:
-  - [src/pages/checkout.tsx](../../rutba-web/src/pages/checkout.tsx) — pre-fills `<FormQuickOrder>` and seeds `formShippingInformation` when the full-address path is opened. Surfaces a "Shipping to: …" hint above the express form when an address is on file.
-  - [src/pages/profile/address.tsx](../../rutba-web/src/pages/profile/address.tsx) — view / edit / clear UI ("Saved address" tab in the profile sidebar).
+  - [src/pages/checkout.tsx](../../apps/content/storefront/src/pages/checkout.tsx) — pre-fills `<FormQuickOrder>` and seeds `formShippingInformation` when the full-address path is opened. Surfaces a "Shipping to: …" hint above the express form when an address is on file.
+  - [src/pages/profile/address.tsx](../../apps/content/storefront/src/pages/profile/address.tsx) — view / edit / clear UI ("Saved address" tab in the profile sidebar).
 - Persists on every successful order — both express and full-address paths.
 
 This buys 80% of the win: returning shoppers skip the form on their next express order; logged-in users see a friendlier checkout greeting; the profile has an actual shipping section instead of dead UI.

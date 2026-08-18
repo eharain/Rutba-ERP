@@ -7,7 +7,7 @@ export const StockCountsEndpoints = {
 
     meta: {
         uid: 'api::stock-count.stock-count',
-        domains: ['inventory', 'stock'],
+        domains: ['control', 'stock'],
         roles: ['admin', 'manager', 'staff'],
     },
 
@@ -17,7 +17,7 @@ export const StockCountsEndpoints = {
             path: '/stock-counts',
             action: 'find',
             method: 'get',
-            apps: ['inventory', 'stock'],
+            apps: ['control', 'stock'],
             approle: ['admin', 'manager', 'staff'],
             params: {
                 filters: {
@@ -36,7 +36,7 @@ export const StockCountsEndpoints = {
         path: `/stock-counts/${documentId}`,
         action: 'findOne',
         method: 'get',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager', 'staff'],
         params: { populate: { branch: true, lines: true } },
     }),
@@ -45,7 +45,7 @@ export const StockCountsEndpoints = {
         path: '/stock-counts',
         action: 'create',
         method: 'post',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager', 'staff'],
         data,
     }),
@@ -54,7 +54,7 @@ export const StockCountsEndpoints = {
         path: `/stock-counts/${documentId}`,
         action: 'update',
         method: 'put',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager', 'staff'],
         data,
     }),
@@ -63,7 +63,7 @@ export const StockCountsEndpoints = {
         path: `/stock-counts/${documentId}`,
         action: 'delete',
         method: 'delete',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager'],
     }),
 
@@ -72,7 +72,7 @@ export const StockCountsEndpoints = {
         path: `/stock-counts/${documentId}/post`,
         action: 'create',
         method: 'post',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager'],
         data: {},
     }),
@@ -82,7 +82,7 @@ export const StockCountsEndpoints = {
         path: `/stock-counts/${documentId}/cancel`,
         action: 'create',
         method: 'post',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager'],
         data: {},
     }),

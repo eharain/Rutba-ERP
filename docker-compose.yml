@@ -82,7 +82,7 @@ services:
       EMAIL_FROM: ${STRAPI_EMAIL_FROM:-}
       NODE_ENV: production
     volumes:
-      - strapi_uploads:/app/pos-strapi/public/uploads
+      - strapi_uploads:/app/services/strapi/public/uploads
 
   # --------------------------------------------------------
   # Seed one-shot (deploy-time seeding)
@@ -108,11 +108,11 @@ services:
     environment:
       <<: *strapi-env
     volumes:
-      - strapi_uploads:/app/pos-strapi/public/uploads
+      - strapi_uploads:/app/services/strapi/public/uploads
     command: ["npm", "run", "seed"]
 
   # --------------------------------------------------------
-  # Core API (rutba-core) — strangler replacement for Strapi
+  # Core API (services/core) — strangler replacement for Strapi
   # --------------------------------------------------------
   # Runs ALONGSIDE strapi against the SAME database, sharing its secrets via
   # the &strapi-env anchor: identical JWT_SECRET and one strapi_sessions table
@@ -122,9 +122,9 @@ services:
   # Deliberately NOT routed by Caddy yet. It is started first to bake — real
   # process, real database, no traffic — before any path is pointed at it.
   #
-  # RUTBA_CORE_CRONS stays unset: pos-strapi still schedules the social and
+  # RUTBA_CORE_CRONS stays unset: services/strapi still schedules the social and
   # inventory jobs, and the same cron must never run in both. Flipping it on
-  # here and removing it from pos-strapi's config is one atomic deploy.
+  # here and removing it from services/strapi's config is one atomic deploy.
   core:
     build:
       context: .
@@ -147,7 +147,7 @@ services:
       # exist ONLY here — core would otherwise redirect them to a media host
       # that never had them. Read-only: core serves uploads, it does not yet
       # accept them.
-      - strapi_uploads:/app/pos-strapi/public/uploads:ro
+      - strapi_uploads:/app/services/strapi/public/uploads:ro
 
   # --------------------------------------------------------
   # Auth Portal
@@ -161,10 +161,10 @@ services:
         NEXT_PUBLIC_IMAGE_URL: ${NEXT_PUBLIC_IMAGE_URL}
         NEXT_PUBLIC_AUTH_URL: ${NEXT_PUBLIC_AUTH_URL}
         NEXT_PUBLIC_STOCK_URL: ${NEXT_PUBLIC_STOCK_URL}
-        NEXT_PUBLIC_SALE_URL: ${NEXT_PUBLIC_SALE_URL}
-        NEXT_PUBLIC_WEB_URL: ${NEXT_PUBLIC_WEB_URL}
-        NEXT_PUBLIC_WEB_USER_URL: ${NEXT_PUBLIC_WEB_USER_URL}
-        NEXT_PUBLIC_ORDER_MANAGEMENT_URL: ${NEXT_PUBLIC_ORDER_MANAGEMENT_URL}
+        NEXT_PUBLIC_POS_URL: ${NEXT_PUBLIC_POS_URL}
+        NEXT_PUBLIC_STOREFRONT_URL: ${NEXT_PUBLIC_STOREFRONT_URL}
+        NEXT_PUBLIC_PORTAL_URL: ${NEXT_PUBLIC_PORTAL_URL}
+        NEXT_PUBLIC_ORDERS_URL: ${NEXT_PUBLIC_ORDERS_URL}
         NEXT_PUBLIC_MANUFACTURING_URL: ${NEXT_PUBLIC_MANUFACTURING_URL}
         NEXT_PUBLIC_RIDER_URL: ${NEXT_PUBLIC_RIDER_URL}
         NEXT_PUBLIC_SOCIAL_URL: ${NEXT_PUBLIC_SOCIAL_URL}
@@ -175,11 +175,11 @@ services:
         NEXT_PUBLIC_PAYROLL_URL: ${NEXT_PUBLIC_PAYROLL_URL}
         NEXT_PUBLIC_CMS_URL: ${NEXT_PUBLIC_CMS_URL}
         NEXT_PUBLIC_MARKETPLACE_URL: ${NEXT_PUBLIC_MARKETPLACE_URL}
-        NEXT_PUBLIC_INVENTORY_URL: ${NEXT_PUBLIC_INVENTORY_URL}
+        NEXT_PUBLIC_CONTROL_URL: ${NEXT_PUBLIC_CONTROL_URL}
         NEXT_PUBLIC_SEED_URL: ${NEXT_PUBLIC_SEED_URL}
         NEXT_PUBLIC_CAMPAIGNS_URL: ${NEXT_PUBLIC_CAMPAIGNS_URL}
         NEXT_PUBLIC_MAIL_URL: ${NEXT_PUBLIC_MAIL_URL}
-        NEXT_PUBLIC_ADMIN_URL: ${NEXT_PUBLIC_ADMIN_URL}
+        NEXT_PUBLIC_CONSOLE_URL: ${NEXT_PUBLIC_CONSOLE_URL}
         NEXT_PUBLIC_IMAGE_HOST_PROTOCOL: ${NEXT_PUBLIC_IMAGE_HOST_PROTOCOL}
         NEXT_PUBLIC_IMAGE_HOST_NAME: ${NEXT_PUBLIC_IMAGE_HOST_NAME}
         NEXT_PUBLIC_IMAGE_HOST_PORT: ${NEXT_PUBLIC_IMAGE_HOST_PORT}
@@ -216,10 +216,10 @@ services:
   # --------------------------------------------------------
   # Point of Sale
   # --------------------------------------------------------
-  sale:
+  pos:
     build:
       context: .
-      target: sale
+      target: pos
       args: *global-build-args
     restart: unless-stopped
     depends_on:
@@ -233,10 +233,10 @@ services:
   # --------------------------------------------------------
   # Public Website
   # --------------------------------------------------------
-  web:
+  storefront:
     build:
       context: .
-      target: web
+      target: storefront
       args: *global-build-args
     restart: unless-stopped
     depends_on:
@@ -254,10 +254,10 @@ services:
   # --------------------------------------------------------
   # My Orders / Web User
   # --------------------------------------------------------
-  web-user:
+  portal:
     build:
       context: .
-      target: web-user
+      target: portal
       args: *global-build-args
     restart: unless-stopped
     depends_on:
@@ -271,10 +271,10 @@ services:
   # --------------------------------------------------------
   # Order Management
   # --------------------------------------------------------
-  order-management:
+  orders:
     build:
       context: .
-      target: order-management
+      target: orders
       args: *global-build-args
     restart: unless-stopped
     depends_on:
@@ -490,10 +490,10 @@ services:
   # --------------------------------------------------------
   # Inventory Management
   # --------------------------------------------------------
-  inventory:
+  control:
     build:
       context: .
-      target: inventory
+      target: control
       args: *global-build-args
     restart: unless-stopped
     depends_on:
@@ -558,10 +558,10 @@ services:
   # --------------------------------------------------------
   # Rutba Admin (users, roles, app access, app domains, mailbox maps)
   # --------------------------------------------------------
-  admin:
+  console:
     build:
       context: .
-      target: admin
+      target: console
       args: *global-build-args
     restart: unless-stopped
     depends_on:

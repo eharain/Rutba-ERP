@@ -48,7 +48,7 @@ function firstSet(...values: (string | undefined | null)[]) {
  * `custom_head_html` / `custom_body_end_html` accept editor-pasted raw markup
  * for partners with no tidy id slot (Hotjar, Clarity, LinkedIn Insight). Both
  * inject unescaped, so they are privileged CMS-authenticated content — edited
- * in rutba-cms only, deliberately not exposed as editable fields in the admin
+ * in apps/content/cms only, deliberately not exposed as editable fields in the admin
  * app. The "head" block is appended to <head> client-side after mount: SSR-safe,
  * at the cost of a small flash before it runs, which is fine for analytics.
  */

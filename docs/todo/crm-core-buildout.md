@@ -97,11 +97,11 @@ than silently dropped, so the gap is visible instead of invisible.
 Descriptors in `packages/api-provider/api/crm-{activities,segments}.js`;
 generated clients scaffolded; all three validators pass. UP grants for the new
 custom actions added to `CUSTOM_ACTIONS` in `src/seed/up-permissions-seed.js`.
-All routes are also mounted in `rutba-core/src/modules/crm.js` — including
+All routes are also mounted in `services/core/src/modules/crm.js` — including
 `crm-contact` create/update as core-action overrides, so contacts created
 through core still get their person link.
 
-### The segment engine (`pos-strapi/src/utils/crm-segment-engine.js`)
+### The segment engine (`services/strapi/src/utils/crm-segment-engine.js`)
 
 A **whitelisted field catalog** + filter compiler. This is load-bearing
 security, not ergonomics: a segment definition is client-authored JSON, and
@@ -151,7 +151,7 @@ instead of silently reaching fewer people than the member count implied.
 differ between the queries serving page 1 and page 2 — a consumer paging the
 whole audience would silently skip people.
 
-### Frontend (`rutba-crm`)
+### Frontend (`apps/sales/crm`)
 
 - `components/ActivityTimeline.js` — merged feed, source-coded, inline
   follow-up close/reopen, attachment download links, and an edit affordance on
@@ -222,9 +222,9 @@ decision logic in `person-link.js` with the controller dual-write — a row
 backfilled and a row created through the API resolve identically. Audits
 de-duplicate while unresolved, so re-running doesn't grow the pile.
 
-## Integration with `rutba-campaigns` (roadmap 1.4) — wired
+## Integration with `apps/content/campaigns` (roadmap 1.4) — wired
 
-`rutba-campaigns` landed on dev before this tranche did, and left the seam
+`apps/content/campaigns` landed on dev before this tranche did, and left the seam
 open deliberately: `cmp-audience.source` already had a `'segment'` value whose
 resolver threw *"not built yet (ROADMAP 0.6)"*, behind the contract
 `resolve(audience) → { members: [{ email, mergeData }], total }`.

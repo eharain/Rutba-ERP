@@ -1,7 +1,7 @@
 ﻿'use strict';
 
 // Builds the /me/permissions response payload consumed by
-// packages/pos-shared/context/AuthContext.js across every ERP frontend app.
+// packages/shared/context/AuthContext.js across every ERP frontend app.
 //
 // Response shape (load-bearing â€” see memory: project_pos_strapi_contracts):
 //   {
@@ -79,9 +79,9 @@ async function loadPoliciesForRoles(strapi, roleKeys) {
   });
 }
 
-// Allow consumers (e.g. pos-strapi) to inject additional role keys derived
+// Allow consumers (e.g. services/strapi) to inject additional role keys derived
 // from external context â€” HR team membership, dynamic group assignments, etc.
-// pos-strapi registers a provider in its bootstrap to add hr_* team roles.
+// services/strapi registers a provider in its bootstrap to add hr_* team roles.
 async function gatherExtraRoleKeys(strapi, user) {
   const providers = strapi.apiPro?.roleProviders || [];
   const extras = [];

@@ -1,3 +1,3 @@
-import AuthCallback from "@rutba/pos-shared/components/AuthCallback";
+import AuthCallback from "@rutba/shared/components/AuthCallback";
 
 export default AuthCallback;

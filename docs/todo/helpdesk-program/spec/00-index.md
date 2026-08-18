@@ -17,13 +17,13 @@ domain services, configurable workflows, domain events, and a REST API — not a
 collections.
 
 **Helpdesk is the first Core-native module.** Every module in
-[rutba-core/src/modules/](../../../../rutba-core/src/modules/) today (`hr`, `crm`, `mfg`,
+[services/core/src/modules/](../../../../services/core/src/modules/) today (`hr`, `crm`, `mfg`,
 `inventory`, `sale-stock`, `catalog`, `cms-social`, `marketplace`, `auth`, `uploads`) is a
-*strangler* port — it `posRequire()`s pos-strapi controllers zero-copy and registers their
+*strangler* port — it `posRequire()`s services/strapi controllers zero-copy and registers their
 routes. Helpdesk has no legacy controller to port, so it is built directly as:
 
 ```
-rutba-core/src/domain/helpdesk/        ← domain services (the module's real logic)
+services/core/src/domain/helpdesk/        ← domain services (the module's real logic)
     ticket.service.js                  TicketService
     sla.service.js                     SLAService
     knowledge.service.js               KnowledgeService
@@ -31,7 +31,7 @@ rutba-core/src/domain/helpdesk/        ← domain services (the module's real lo
     routing.service.js                 AssignmentService
     catalog.service.js                 ServiceCatalogService
     portal.service.js                  PortalService (requester-facing read model)
-rutba-core/src/modules/helpdesk.js     ← route registration + event subscriptions only
+services/core/src/modules/helpdesk.js     ← route registration + event subscriptions only
 ```
 
 `modules/helpdesk.js` stays thin: it maps HTTP to service calls and wires subscriptions. All
@@ -43,16 +43,16 @@ sweep, an AI action or a future GraphQL/gRPC surface without going through HTTP.
 | Capability | Where | State |
 |---|---|---|
 | HTTP + routing | `src/http/server.js`, `rest.js` | Koa + `@koa/router`; Strapi REST envelope `{ data, meta }` / `{ data: null, error }` |
-| Auth | `src/http/auth.js` | UP JWT (verify-only; pos-strapi still issues) + admin API tokens; `optional:true` = selfAuth parity with `auth:false` |
+| Auth | `src/http/auth.js` | UP JWT (verify-only; services/strapi still issues) + admin API tokens; `optional:true` = selfAuth parity with `auth:false` |
 | Authorization | `src/compat/strapi.js` + `packages/strapi-api-pro` | api-pro interceptor: context → permission-engine → policy-resolver, run through the compat object |
 | Data access | `src/documents/` | `documents()` shim over knex; Strapi filter dialect, populate, D&P semantics |
 | Transactions | `src/documents/` | `withTransaction()` via AsyncLocalStorage — ambient, every shim query joins automatically |
 | Document middleware | `useDocumentMiddleware()` | The interception seam for cross-cutting concerns |
-| Lifecycle adapter | `src/modules/lifecycles.js` | Runs pos-strapi lifecycle files as document middleware |
+| Lifecycle adapter | `src/modules/lifecycles.js` | Runs services/strapi lifecycle files as document middleware |
 | Scheduler | `src/platform/cron.js` | `registerCron(name, rule, fn)`, gated by `RUTBA_CORE_CRONS=1` + selective kill-switch |
 | Email | `src/platform/email.js` | — |
 | Uploads | `src/platform/upload.js`, `src/http/uploads.js` | — |
-| Schema registry | `src/schema/` | Loads pos-strapi `schema.json` files; derives table/column naming; `validate-schema` must exit clean |
+| Schema registry | `src/schema/` | Loads services/strapi `schema.json` files; derives table/column naming; `validate-schema` must exit clean |
 
 ### What Core does NOT yet provide — Helpdesk's platform prerequisites
 
@@ -63,12 +63,12 @@ every module.
 | # | Capability | Status | Spec |
 |---|---|---|---|
 | **P1** | **Domain event bus** — `platform/events.js` | ❌ **Missing.** `strapi.eventHub` is a bare `EventEmitter` compat stub with no persistence, no replay, no subscriber registry | [28-event-system.md](28-event-system.md) |
-| **P2** | **Workflow service** — promote `pos-strapi/src/utils/workflow-engine.js` to `platform/workflow.js` | 🟡 Exists as a pos-strapi util, consumed zero-copy by the Core HR module | [09-ticket-workflows.md](09-ticket-workflows.md) |
-| **P3** | **Notification service** | 🟡 Exists as the pos-strapi `notification-engine` service; needs a Core-native facade | [15-notifications.md](15-notifications.md) |
+| **P2** | **Workflow service** — promote `services/strapi/src/utils/workflow-engine.js` to `platform/workflow.js` | 🟡 Exists as a services/strapi util, consumed zero-copy by the Core HR module | [09-ticket-workflows.md](09-ticket-workflows.md) |
+| **P3** | **Notification service** | 🟡 Exists as the services/strapi `notification-engine` service; needs a Core-native facade | [15-notifications.md](15-notifications.md) |
 | **P4** | **Audit service** | 🟡 `work-item-activity` + `logActivity()` are generic and close; need immutability + actor/IP/reason | [30-audit-logging.md](30-audit-logging.md) |
 | **P5** | **Search** | ❌ Missing | [26-search-and-filtering.md](26-search-and-filtering.md) |
 | **P6** | **AI service seam** | ❌ Missing | [22-ai-features.md](22-ai-features.md) |
-| **P7** | **Core-owned SQL migrations** | ❌ Missing. Program ground rule: `schema.json` stays pos-strapi-owned until a module hands its tables over | [37-database-and-domain-model.md](37-database-and-domain-model.md) |
+| **P7** | **Core-owned SQL migrations** | ❌ Missing. Program ground rule: `schema.json` stays services/strapi-owned until a module hands its tables over | [37-database-and-domain-model.md](37-database-and-domain-model.md) |
 
 > **P1 and P7 are the two decisions that must be made before any code is written.** Everything
 > else can be sequenced. See [Open decisions](#open-decisions) below.
@@ -202,7 +202,7 @@ The forty sections are a *specification* structure, not a build order. Build in 
 |---|---|---|
 | **W0 — Platform** | P1 event bus, P2 workflow service promotion, P7 migration story | Other modules can emit and subscribe; Helpdesk can own tables |
 | **W1 — Domain core** | §07 data model, §08 lifecycle, §09 workflows, §12 SLA, §27 API, §28 events, §30 audit | A ticket can be created, threaded, assigned, transitioned and SLA-tracked via API |
-| **W2 — Agent surface** | §18, §06, §26, §24, §25, §29 | Agents work tickets in `rutba-helpdesk` (:4023) |
+| **W2 — Agent surface** | §18, §06, §26, §24, §25, §29 | Agents work tickets in `apps/sales/helpdesk` (:4023) |
 | **W3 — Requester surfaces** | §16, §17, §10, §15 | Requesters file and track their own tickets across channels |
 | **W4 — Scale-out** | §13, §14, §11, §23, §19, §20, §21 | The desk runs without manual triage |
 | **W5 — Intelligence** | §22, §39, remote support epic | Differentiation |
@@ -216,8 +216,8 @@ These block or reshape implementation and need an explicit answer.
 | # | Decision | Recommendation |
 |---|---|---|
 | D1 | **Event bus: in-process, DB-outbox, or broker?** | **DB-backed outbox + in-process dispatch.** Survives restart, replayable, no new infrastructure. Broker only if/when Core runs multi-instance. See §28 |
-| D2 | **Does Helpdesk own its tables via Core SQL migrations, or stay in pos-strapi `schema.json`?** | **Core-owned migrations for new tables**; keep `contact_tickets` in `schema.json` until the whole module flips. Consequence: new tables are invisible to Strapi admin — acceptable, since Helpdesk has its own app | 
-| D3 | **Keep the `contact-ticket` UID?** | **Yes.** Renaming touches pos-strapi, Core, descriptors, generated clients and notification templates for zero functional gain |
+| D2 | **Does Helpdesk own its tables via Core SQL migrations, or stay in services/strapi `schema.json`?** | **Core-owned migrations for new tables**; keep `contact_tickets` in `schema.json` until the whole module flips. Consequence: new tables are invisible to Strapi admin — acceptable, since Helpdesk has its own app | 
+| D3 | **Keep the `contact-ticket` UID?** | **Yes.** Renaming touches services/strapi, Core, descriptors, generated clients and notification templates for zero functional gain |
 | D4 | **Remote-control provider** | MeshCentral first, Guacamole second — see the remote-support epic |
 | D5 | **AI provider** | Claude via the Anthropic API; see §22 for the seam that keeps it swappable |
-| D6 | **Does Helpdesk ship before or after the Core cutover?** | Build Core-native from day one; run against Core with pos-strapi still serving legacy routes. Helpdesk should never gain a Strapi controller |
+| D6 | **Does Helpdesk ship before or after the Core cutover?** | Build Core-native from day one; run against Core with services/strapi still serving legacy routes. Helpdesk should never gain a Strapi controller |

@@ -1,5 +1,5 @@
 {
-  "name": "rutba-order-management",
+  "name": "@rutba/orders",
   "version": "0.1.0",
   "private": true,
   "scripts": {

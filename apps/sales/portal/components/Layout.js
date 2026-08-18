@@ -1,4 +1,4 @@
-import BaseLayout from "@rutba/pos-shared/components/BaseLayout";
+import BaseLayout from "@rutba/shared/components/BaseLayout";
 import Navigation from "./Navigation";
 import Sidebar from "./Sidebar";
 

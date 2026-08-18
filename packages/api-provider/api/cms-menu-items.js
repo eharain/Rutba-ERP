@@ -1,7 +1,7 @@
 /**
  * CmsMenuItemsEndpoints
  * Pure endpoint descriptors for the /cms-menu-items resource — individual
- * entries belonging to a CMS Menu. Edited from the rutba-cms menu builder.
+ * entries belonging to a CMS Menu. Edited from the apps/content/cms menu builder.
  */
 import { listParams, byIdParams } from './__param_builders.js';
 

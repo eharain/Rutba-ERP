@@ -1,10 +1,10 @@
 /**
  * CmsBulkEndpoints
- * Server-side bulk-import endpoint for the rutba-cms Excel I/O flow. The
+ * Server-side bulk-import endpoint for the apps/content/cms Excel I/O flow. The
  * client parses Excel and POSTs chunks of pre-zipped row objects; the server
  * validates contentType against an allowlist, caps chunk size, and upserts
  * each row inside one request boundary (replacing N×3 round-trips from the
- * browser). See pos-strapi/src/api/cms-bulk/controllers/cms-bulk.js for the
+ * browser). See services/strapi/src/api/cms-bulk/controllers/cms-bulk.js for the
  * field rules and per-row response shape.
  */
 

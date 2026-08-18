@@ -187,12 +187,12 @@ async function headerSuite() {
         const raw = [
             'Authorization', JWT,
             'X-Rutba-App', 'sale',
-            'X-Rutba-App-Role', 'sale_manager',
+            'X-Rutba-App-Role', 'pos_manager',
         ];
         const out = forwardableRequestHeaders(raw, 'upstream:4020');
         assert.strictEqual(out.Authorization, JWT);
         assert.strictEqual(out['X-Rutba-App'], 'sale');
-        assert.strictEqual(out['X-Rutba-App-Role'], 'sale_manager');
+        assert.strictEqual(out['X-Rutba-App-Role'], 'pos_manager');
     });
 
     await test('header name casing is preserved as sent', () => {
@@ -277,7 +277,7 @@ async function redactionSuite() {
 
     await test('the app headers are NOT masked — they are what you diff on', () => {
         assert.strictEqual(redactHeaderValue('X-Rutba-App', 'sale'), 'sale');
-        assert.strictEqual(redactHeaderValue('X-Rutba-App-Role', 'sale_manager'), 'sale_manager');
+        assert.strictEqual(redactHeaderValue('X-Rutba-App-Role', 'pos_manager'), 'pos_manager');
         assert.strictEqual(redactHeaderValue('Content-Type', 'application/json'), 'application/json');
     });
 
@@ -326,12 +326,12 @@ async function roundTripSuite() {
         const jwt = 'Bearer eyJhbGciOiJIUzI1NiJ9.aaaa.bbbb';
         const res = await call(bridge.url, {
             path: '/api/me',
-            headers: { Authorization: jwt, 'X-Rutba-App': 'sale', 'X-Rutba-App-Role': 'sale_manager' },
+            headers: { Authorization: jwt, 'X-Rutba-App': 'sale', 'X-Rutba-App-Role': 'pos_manager' },
         });
         const seen = pairs(JSON.parse(res.body).rawHeaders);
         assert.deepStrictEqual(seen.find(([n]) => n === 'authorization'), ['authorization', jwt]);
         assert.deepStrictEqual(seen.find(([n]) => n === 'x-rutba-app'), ['x-rutba-app', 'sale']);
-        assert.deepStrictEqual(seen.find(([n]) => n === 'x-rutba-app-role'), ['x-rutba-app-role', 'sale_manager']);
+        assert.deepStrictEqual(seen.find(([n]) => n === 'x-rutba-app-role'), ['x-rutba-app-role', 'pos_manager']);
     });
 
     await test('Host names the upstream, so it sees what a direct call would', async () => {

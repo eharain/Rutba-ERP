@@ -1,10 +1,16 @@
 # Repo restructure — P3, planned and tooled
 
-Status: **target declared and tooled 2026-08-18; not executed.** Brought forward from
-[P3](README.md) at the user's request. Nothing has moved: the target lives in
-[config/apps.manifest.json](../../../config/apps.manifest.json) under `rename`, and
-[scripts/js/restructure.js](../../../scripts/js/restructure.js) executes it when the tree is
-quiet.
+Status: **executed 2026-08-18.** Brought forward from [P3](README.md) at the user's request.
+The move is done: 27 directories relocated, six app keys and seventeen role keys renamed in
+the tree and in the database, all 22 apps building, `verify:wiring` 25/25, `verify:docs` clean,
+`smoke-policy` 44/44.
+
+The target was declared first in [config/apps.manifest.json](../../../config/apps.manifest.json)
+under `rename` blocks and executed by
+[scripts/js/restructure.js](../../../scripts/js/restructure.js). Those blocks have since been
+promoted to the canonical fields and removed — the manifest now records the new world, and
+`envPrefix`/`urlVar` are stored explicitly because the old derivation from the workspace
+directory name died with the move (§8).
 
 ```bash
 node scripts/js/restructure.js            # dry run — counts every change, touches nothing
@@ -169,7 +175,7 @@ Each phase is one commit, red-to-green.
 
 ### 4a. The database half
 
-[rutba-core/migrations/022-rename-app-keys.js](../../../rutba-core/migrations/022-rename-app-keys.js)
+[services/core/migrations/022-rename-app-keys.js](../../../services/core/migrations/022-rename-app-keys.js)
 renames six `api_pro_app_domains.key` and seventeen `api_pro_app_roles.key` rows, then drops the
 dead `users` domain.
 
@@ -217,3 +223,102 @@ restores the previous keys exactly.
 The one-way step is the dropped `users` domain — deliberately not recreated on rollback, because
 it was dead by measurement and seeding an alias nobody holds back into the database is not a
 restoration.
+
+## 8. What executing it actually cost
+
+The dry run caught two classes before anything moved (§4). Execution found six more that no
+amount of planning would have surfaced — every one of them silent, and every one caught by a
+gate rather than by reading the diff.
+
+**1. A path rule is not a name rule.** `rutba-web` is both a directory and an npm package name.
+The first refs pass rewrote 23 `package.json` `"name"` fields into `"apps/content/storefront"` —
+not a legal npm name — and rewrote `--workspace=rutba-web` in 69 root scripts into a path. Phase
+2 was discarded and re-run after splitting the two: package names became `@rutba/<key>` through
+their own slot-aware rule, ordered *before* path rules, because root `package.json` holds both
+forms of the same string — `workspaces` (a directory) and `--workspace=` (a name).
+
+**2. Prefix collisions on unrelated files.** `rutba-web-launch-backlog.md` is a document, not the
+app; `lib/rutba-admin.js` is a module inside the marketplace app; `.gitignore` pinned
+`/pos-strapi/scripts/rutba-cms-seed-data.xlsx`. A path rule matching a bare prefix rewrote all
+three into nonsense — `rutba-web-launch-backlog.md` became `apps/content/storefront-launch-backlog`
+plus the extension. Fixed by requiring the match
+to be followed by something that is not `-` or a word character. The three docs were renamed to
+drop the old app prefixes, which is the consistency this sweep is for.
+
+**3. The tool corrupted its own inputs.** Phase 2 rewrote the manifest's `workspace` fields to
+the new paths; phase 3 then derived each app's *old* env prefix from that same field and
+produced `APPS/CONTENT/STOREFRONT__`, matching nothing — so env prefixes and URL vars were
+silently skipped. Worse, the tree-wide role rule rewrote the left column of `ROLE_RENAMES`
+inside migration 022 itself, turning all 17 pairs into `['pos_admin', 'pos_admin']`; the
+migration ran, reported `0 role(s)` renamed, and would have looked like a success in a less
+suspicious log line. Both are the same lesson: **a rename tool must never read its "from" values
+out of state a previous phase can mutate.** Migrations and the mapping table are now excluded
+from the sweep for exactly the reason applied migrations are checksummed — they are historical
+records, not live references.
+
+**4. Applied migrations are checksummed.** Rewriting a path inside a *comment* in seven applied
+migrations tripped the drift guard and blocked every later migration. They were restored to
+their frozen bytes; they still name `rutba-core` and `pos-strapi`, which is correct, because
+those were the paths when they ran.
+
+**5. Depth.** Apps went from one level below the root to three, services to two. Twenty-two
+`next.config.js` files reached `../scripts/js/next-config-base`, and seven files computed the
+repo root as `path.resolve(__dirname, '..', '..', '..')`. The string form was fixed by resolving
+each candidate and only deepening it when the deeper path actually existed — which is what kept
+an app's own internal `../components/x` untouched. The `__dirname` form is code, not a string,
+and had to be found by hand: core's `REPO_ROOT` landed on `services/`, so no `.env` was found
+and every database credential resolved to empty.
+
+**6. Deleting a domain is structural, not textual.** Dropping the dead `users` alias meant
+removing an object key from `domains.json`, three roles from `roles.json`, 36 entries from six
+descriptors' `apps:` arrays, and one entry from the manifest — none of which is a string
+substitution. The tool reports it and stops; `validate:descriptor-apps` is what named all 36.
+
+**7. A green build proved nothing about env.** `load-env.js` detected its target from the
+`--workspace=` / `--prefix` argument and derived the env prefix by upper-casing it. Phase 2
+changed those 69 flags from directory names to package names; npm accepts either form, so every
+build kept passing while every app silently lost its env block — the target resolved to
+`@RUTBA/POS`, and `POS_STRAPI__*` matched nothing because `getAppDirs()` derived strapi's prefix
+as `SERVICES/STRAPI`. The signal was 125 `WARN: Missing …` lines inside a run with zero failures.
+Both functions now resolve `envPrefix` through `config/apps.manifest.json`, accepting a package
+name, a workspace path or a bare key; the 24 known prefixes match `.env.development` exactly.
+
+Three of these — the corrupted mapping table, the skipped env rules, and the broken env target —
+produced a **green-looking run that had done nothing**, which is the failure mode worth
+remembering: the sweep's own output said `763 occurrence(s) rewritten` while the half that
+mattered had quietly matched zero, and a 22-app build went green while no app could read its own
+port. The lesson is the same each time — *assert on the end state, never on the tool's report of
+its own work*.
+
+### The gates that caught them
+
+| Gate | Caught |
+|---|---|
+| `verify:wiring` | dead env derivation, `users` still in the manifest, Docker stage names |
+| `verify:docs` | 36 broken links: bare package names, corrupted doc filenames, README depth |
+| `npm run build:all` | `next.config.js` depth, the `lib/rutba-admin` collision |
+| `migrate status` | seven applied migrations edited in place |
+| `seed-policy --dry-run` | 1,328 superseded policy rows after the role rename |
+| `smoke-policy` | the whole policy layer still correct under the new keys |
+
+Note what is *missing* from that table: nothing caught finding 7. `build:all` deserves its own
+note — **the runner exits 0 even when an app fails to build**, so the first green run was hiding
+`build:marketplace failed`; checking the exit code is not enough, grep the log for
+`[run-app] … failed`. And a missing env variable is only a `WARN`, which is how 125 of them rode
+through a green run unnoticed. Two follow-ups fall out of that: the runner should propagate exit
+codes, and a missing `PREFIX__PORT` for a service that declares a port should be an error, not a
+warning. Until both land, *read the build log* — do not trust its exit code.
+
+## 9. Still owed
+
+- **Deploy boxes.** `.env.development` and `.env.production` were rewritten locally, but the
+  VPS and the LAN box's off-git master env still carry the old `PREFIX__` names, and nine
+  systemd units changed name and must be `disable`d before the new ones will bind.
+- **The compose variable convention** (`PORT_WEB`, `WEB_NEXTAUTH_SECRET`) was deliberately left
+  alone: renaming it means editing the compose env file in lockstep, and `INVENTORY` also
+  appears inside `RUTBA_MARKETPLACE__CRON_INVENTORY_RULE`, so a prefix sweep would corrupt an
+  unrelated setting.
+- **`workspaces` is still an explicit 22-entry list** rather than `apps/*/*`; collapsing it
+  needs the validator to understand globs.
+- **The marketplace worker** still shares the app's workspace; extracting it to
+  `services/marketplace-worker` needs its own package.json first.

@@ -10,9 +10,9 @@ Cross-cutting cleanup items surfaced during the 2026-06 documentation audit. The
 
 ## 1. Remove the dead `dev:desk` script (pos-desk retired) — ✅ Done (2026-06)
 
-Removed `dev:desk` from `package.json`, and the dangling `rutba_pos_desk` service from `scripts/rutba_services.sh`, `scripts/setup-systemd-services.sh`, and `scripts/rutba_log_rotate.sh` (the `SERVICES` list + `SVC_CMD`/`SVC_DESC` maps). Deleted the legacy launch scripts `rutba-web-user/scripts/{start-pos-desk-forever.sh, setup-and-start-pos-desk.sh, setup-and-start-pos-desk.bat}`.
+Removed `dev:desk` from `package.json`, and the dangling `rutba_pos_desk` service from `scripts/rutba_services.sh`, `scripts/setup-systemd-services.sh`, and `scripts/rutba_log_rotate.sh` (the `SERVICES` list + `SVC_CMD`/`SVC_DESC` maps). Deleted the legacy launch scripts `apps/sales/portal/scripts/{start-pos-desk-forever.sh, setup-and-start-pos-desk.sh, setup-and-start-pos-desk.bat}`.
 
-- **Left (cosmetic, harmless):** `.gitignore` `/pos-desk` entries; the `// /pos-desk/…` path comments at the top of some `pos-stock` files; the `pos-desk` example claim in `packages/strapi-api-pro/admin/src/pages/Policies.jsx`; and the defensive `${prefix}:desk` entries in the `run-all.js`/`run-app.js` EXCLUDED sets.
+- **Left (cosmetic, harmless):** `.gitignore` `/pos-desk` entries; the `// /pos-desk/…` path comments at the top of some `apps/inventory/stock` files; the `pos-desk` example claim in `packages/strapi-api-pro/admin/src/pages/Policies.jsx`; and the defensive `${prefix}:desk` entries in the `run-all.js`/`run-app.js` EXCLUDED sets.
 
 ## 2. Delete the vestigial api-provider server-proxy code — ✅ Done (2026-06)
 
@@ -25,23 +25,23 @@ Server-side scope enforcement is done via the api-pro **seeder** (DB policy rows
 
 ## 3. Uninstall `swiper` (SHOP-PAGE-REDESIGN step 14)
 
-The shop redesign replaced Swiper with a custom `ScrollSlider`, but `rutba-web/package.json` still depends on `swiper@^10.3.1`, still imported by `components/home/hero-slider.tsx`, `components/home/collection-list.tsx`, and `components/brands/index.tsx`.
+The shop redesign replaced Swiper with a custom `ScrollSlider`, but `apps/content/storefront/package.json` still depends on `swiper@^10.3.1`, still imported by `components/home/hero-slider.tsx`, `components/home/collection-list.tsx`, and `components/brands/index.tsx`.
 
 - **Action:** migrate those three components to `ScrollSlider`, then `npm uninstall swiper`. (See [`SHOP-PAGE-REDESIGN-PLAN.md`](../SHOP-PAGE-REDESIGN-PLAN.md) step 14.)
 
-## 4. Finish wiring `rutba-manufacturing` into config surfaces
+## 4. Finish wiring `apps/inventory/manufacturing` into config surfaces
 
-`rutba-manufacturing` (port 4014) was added after the other apps and was missing from several
+`apps/inventory/manufacturing` (port 4014) was added after the other apps and was missing from several
 config surfaces. **Re-measured 2026-08-17** (see the fuller
 [registry drift report](erp2-program/01-registry-drift-report.md)): three of the five gaps have
 since been fixed — `scripts/js/env-config.js` has `NEXT_PUBLIC_MANUFACTURING_URL`,
-`packages/pos-shared/lib/roles.js` carries `manufacturing` in `APP_URLS`/`VALID_APP_KEYS`/`APP_META`,
+`packages/shared/lib/roles.js` carries `manufacturing` in `APP_URLS`/`VALID_APP_KEYS`/`APP_META`,
 and `scripts/rutba_log_rotate.sh` now reads `RUTBA_SERVICES` from the registry. Still open:
 
 - `packages/api-provider/scripts/discover-descriptor-meta.mjs` — `APP_FOLDERS` is missing
-  `rutba-manufacturing` **and seven other late apps** (marketplace, inventory, seed, campaigns,
+  `apps/inventory/manufacturing` **and seven other late apps** (marketplace, inventory, seed, campaigns,
   mail, admin, helpdesk).
-- `rutba-web-user/scripts/hostinger/hostinger.config.js` — no `manufacturing` app entry.
+- `apps/sales/portal/scripts/hostinger/hostinger.config.js` — no `manufacturing` app entry.
 
 - **Action:** both are subsumed by the P0 app manifest (drift report, "What this feeds") —
   fix by generation, or hand-add if the manifest slips.

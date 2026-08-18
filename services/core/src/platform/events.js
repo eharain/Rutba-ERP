@@ -5,7 +5,7 @@
  *
  * Core had no way for one module to react to another without importing it.
  * `strapi.eventHub` in src/compat/strapi.js is a bare EventEmitter kept alive
- * only so ported pos-strapi code that calls `eventHub.emit` does not crash: no
+ * only so ported services/strapi code that calls `eventHub.emit` does not crash: no
  * persistence, no subscriber registry, no replay, no delivery guarantee. This
  * is the real bus, and it belongs to Core — helpdesk is merely its first
  * consumer.

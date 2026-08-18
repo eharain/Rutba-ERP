@@ -67,18 +67,18 @@ if (stripped !== query) {
 ## Why later
 
 The barcode/QR layouts are functional today, and the storefront URL routing
-isn't fully nailed down (slug strategy is in-flight per `docs/todo/rutba-web-readable-slug-urls.md`).
+isn't fully nailed down (slug strategy is in-flight per `docs/todo/storefront-readable-slug-urls.md`).
 Once that lands, wire the deep-link mode here.
 
 > **Update:** the blocking precondition — readable slug URLs — has now
-> **shipped** (see `docs/todo/rutba-web-readable-slug-urls.md`). This task is
+> **shipped** (see `docs/todo/storefront-readable-slug-urls.md`). This task is
 > therefore **unblocked and actionable**; the storefront product URLs the QR
 > deep-link should encode (`/product/<slug>`) now exist. (Status stays PENDING
 > — the label-generator and scanner-strip work below is not started.)
 
 ## Related files
 
-- `pos-stock/components/print/BulkBarcodePrint.js` — label renderer
-- `pos-stock/components/print/BulkPrintPreview.js` — settings panel
-- `pos-sale/components/form/sales-items-form.js` — scanner-side strip
-- `packages/pos-shared/context/UtilContext.js` — `labelPriceMode` etc.
+- `apps/inventory/stock/components/print/BulkBarcodePrint.js` — label renderer
+- `apps/inventory/stock/components/print/BulkPrintPreview.js` — settings panel
+- `apps/sales/pos/components/form/sales-items-form.js` — scanner-side strip
+- `packages/shared/context/UtilContext.js` — `labelPriceMode` etc.

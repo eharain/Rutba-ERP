@@ -6,7 +6,7 @@
  * Strapi gets this from koa-body/formidable via strapi::body; core's body
  * parser is JSON-only (every other route in the wire contract is JSON), so
  * multipart is parsed only for the routes that need it. Uses the same
- * formidable that Strapi does, out of pos-strapi's node_modules, so the file
+ * formidable that Strapi does, out of services/strapi's node_modules, so the file
  * objects handed to the upload service have the identical shape —
  * { filepath, originalFilename, mimetype, size } — that the ported callers
  * (media-library, the seed runner) already build by hand.
@@ -17,10 +17,10 @@ const os = require('os');
 const fsp = require('fs/promises');
 const { REPO_ROOT } = require('../config/env');
 
-const POS_ROOT = path.join(REPO_ROOT, 'pos-strapi');
+const POS_ROOT = path.join(REPO_ROOT, 'services/strapi');
 const formidable = require(path.join(POS_ROOT, 'node_modules', 'formidable'));
 
-/** Strapi's default; pos-strapi overrides it via UPLOAD_MAX_FILE_SIZE. */
+/** Strapi's default; services/strapi overrides it via UPLOAD_MAX_FILE_SIZE. */
 const DEFAULT_SIZE_LIMIT = 250 * 1024 * 1024;
 
 function isMultipart(ctx) {
@@ -32,7 +32,7 @@ function isMultipart(ctx) {
  * array; flattened here to the single-or-array shape Strapi's controller reads.
  */
 async function parseMultipart(ctx, { sizeLimit } = {}) {
-  const tmpDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'rutba-core-upload-'));
+  const tmpDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'services/core-upload-'));
   const form = formidable({
     maxFileSize: sizeLimit || DEFAULT_SIZE_LIMIT,
     uploadDir: tmpDir,

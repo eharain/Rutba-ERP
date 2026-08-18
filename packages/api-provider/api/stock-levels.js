@@ -11,7 +11,7 @@ export const StockLevelsEndpoints = {
 
     meta: {
         uid: 'api::stock-level.stock-level',
-        domains: ['stock', 'inventory'],
+        domains: ['stock', 'control'],
         roles: ['admin', 'manager', 'staff'],
     },
 
@@ -19,7 +19,7 @@ export const StockLevelsEndpoints = {
         path: '/stock-levels',
         action: 'find',
         method: 'get',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             filters: {
@@ -37,7 +37,7 @@ export const StockLevelsEndpoints = {
         path: '/stock-levels',
         action: 'find',
         method: 'get',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             filters: { product: { documentId: productDocId } },
@@ -55,7 +55,7 @@ export const StockLevelsEndpoints = {
         path: '/stock-levels/recompute',
         action: 'create',
         method: 'post',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin'],
         // Full-DB cache rebuild: scans the product join tables for every
         // referenced edition, then recomputes per product/location. Explicitly a

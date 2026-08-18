@@ -11,14 +11,14 @@ T1 `1249f12` · T2 `ca421f1` · T3 `5c9b713` (ERP); T4 `bb3aa06` (poster).
 editor, transitions, commerce, audio start points).
 
 **How the gates were proven** (all repeatable):
-- **A/B rig** `packages/video-maker/harness/` — `serve.cjs` materializes the
+- **A/B rig** `packages/video/harness/` — `serve.cjs` materializes the
   `90e15fa` baseline from git and serves it beside the working tree;
   `ab.html` paints five legacy looks × 12 stamps through both and
   byte-compares (a GPU-flake repaint rule: a mismatch only counts if a fresh
   repaint of both sides still differs). Poster `tools/ab-check.js` runs the
   same page in a hidden Electron window. 60/60 identical in BOTH hosts, and
   the sound probe (two overlapping clips, Goertzel on the decoded file) 6/6.
-- **T2 rig** `rutba-social/pages/dev/timeline-fixture.js` (no auth, no
+- **T2 rig** `apps/content/social/pages/dev/timeline-fixture.js` (no auth, no
   network) driven by poster `tools/t2-check.js` with real input events in a
   visible Electron window (a hidden page never hydrates Next — rAF freeze):
   retime probe 14/14, move/trim/scrub/duplicate/delete/zoom 8/8.

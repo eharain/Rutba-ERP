@@ -47,7 +47,7 @@ it up — which is how a P1 row becomes a quarter.
 ### Why each one is blocked by the same thing
 
 **Search is subject/from/to, one folder, one account.** The free-text term in
-[`gateway.js:107-122`](../../../pos-strapi/src/utils/mail/gateway.js) becomes
+[`gateway.js:107-122`](../../../services/strapi/src/utils/mail/gateway.js) becomes
 exactly three IMAP criteria:
 
 ```js
@@ -66,24 +66,24 @@ N more — against a pool that serializes per account (below). It is not a loop
 somebody forgot to write.
 
 **Threading is subject-grouping within one loaded page.**
-[`MessageList.js:75-84`](../../../rutba-mail/components/MessageList.js) groups by
+[`MessageList.js:75-84`](../../../apps/content/mail/components/MessageList.js) groups by
 `normSubject(m.subject)` over `messages` — the array the page currently holds —
 and the file says so at line 5: *"Threading v1 groups by normalized subject within
 the loaded page."* That page is 50 messages
-([`index.js:81`](../../../rutba-mail/pages/index.js)). A reply older than the
+([`index.js:81`](../../../apps/content/mail/pages/index.js)). A reply older than the
 current window is not in a thread; it is in the next page.
 
 `References` and `In-Reply-To` **are** captured — and this is the sharp detail:
 they are captured in the **single-message read** path only
-([`gateway.js:363-369`](../../../pos-strapi/src/utils/mail/gateway.js)), which
+([`gateway.js:363-369`](../../../services/strapi/src/utils/mail/gateway.js)), which
 downloads and parses `BODY[]`. The list path's `mapEnvelope`
-([`gateway.js:82-99`](../../../pos-strapi/src/utils/mail/gateway.js)) exposes
+([`gateway.js:82-99`](../../../services/strapi/src/utils/mail/gateway.js)) exposes
 `messageId` and `inReplyTo` but **not** `references`. So the data threading needs
 exists only after a human has opened the message. Subject-grouping is not the lazy
 choice; it is the only information the list has.
 
 **Unified inbox** is one account at a time by construction —
-[`index.js:22`](../../../rutba-mail/pages/index.js) holds a single `account` in
+[`index.js:22`](../../../apps/content/mail/pages/index.js) holds a single `account` in
 state and everything downstream keys off `account.documentId`.
 
 ## Three options
@@ -144,7 +144,7 @@ attachments is a storage problem with a backup problem attached to it. The ADR's
 
 This is the strongest reason and it is not on any feature list.
 
-[`pool.js`](../../../pos-strapi/src/utils/mail/pool.js) serializes **every**
+[`pool.js`](../../../services/strapi/src/utils/mail/pool.js) serializes **every**
 operation for an account onto one promise mutex, because IMAP is single-channel
 (its own invariant 1, lines 8-9):
 
@@ -191,7 +191,7 @@ stop queueing.
 
 **Any incremental sync needs CONDSTORE/QRESYNC — RFC 7162's `MODSEQ` — and the
 gateway implements neither.** Verified: the strings `CONDSTORE`, `QRESYNC`,
-`MODSEQ` and `modseq` appear **nowhere** in `pos-strapi/src/utils/mail/` (all
+`MODSEQ` and `modseq` appear **nowhere** in `services/strapi/src/utils/mail/` (all
 five files).
 
 Without `MODSEQ` there is no way to ask *"what changed since I last looked"*.

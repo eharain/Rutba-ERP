@@ -43,7 +43,7 @@ const EMPTY = {
  * and that rejection is rendered verbatim below.
  *
  * `strategies` is the set already in use by existing rules — the strategy
- * vocabulary lives in rutba-core and no endpoint publishes it, so the box accepts
+ * vocabulary lives in services/core and no endpoint publishes it, so the box accepts
  * free text and the server names the allowed values when it refuses.
  */
 export default function RoutingRuleForm({ rule, desks, strategies, onSaved, onCancel }) {
@@ -317,7 +317,7 @@ export default function RoutingRuleForm({ rule, desks, strategies, onSaved, onCa
                         A tree of <code>all</code> / <code>any</code> / <code>not</code> groups over
                         <code className="mx-1">{"{ field, op, value }"}</code> leaves. The addressable field
                         namespace and the operator set are documented in the routing spec (§14.7) and in
-                        rutba-core <code>domain/helpdesk/conditions.js</code>; the server names them when it
+                        services/core <code>domain/helpdesk/conditions.js</code>; the server names them when it
                         rejects a tree, so a wrong path never becomes a rule that silently matches nothing.
                     </div>
                 </div>

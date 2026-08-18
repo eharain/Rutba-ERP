@@ -1,6 +1,6 @@
 'use strict';
 
-// Marketplace data-side service. After the engine moved into the rutba-marketplace
+// Marketplace data-side service. After the engine moved into the apps/sales/marketplace
 // app, Strapi's only marketplace responsibility is the ORDER-WRITE contract:
 // mapping a normalized marketplace order (sent by the app's worker) into a
 // sale-order — kept here, server-side, next to the order state machine + stock

@@ -9,7 +9,7 @@ import { listParams } from './__param_builders.js';
  * which. `audio_file` is set only for uploads, and is what tells the two apart
  * when one needs deleting.
  *
- * Read by the Video Studio in rutba-social and by the Rutba Social Poster
+ * Read by the Video Studio in apps/content/social and by the Rutba Social Poster
  * desktop app, which draws a random active track when it renders a video
  * unattended.
  */

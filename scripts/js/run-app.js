@@ -6,12 +6,12 @@
  *
  * Usage:
  *   node scripts/run-app.js build           → builds all Next.js apps (sequentially)
- *   node scripts/run-app.js build auth      → builds only pos-auth
+ *   node scripts/run-app.js build auth      → builds only apps/admin/auth
  *   node scripts/run-app.js start           → starts all apps in parallel (via run-all.js)
- *   node scripts/run-app.js start web       → starts only rutba-web
+ *   node scripts/run-app.js start web       → starts only apps/content/storefront
  *
  * Single-app mode is also activated by the RUTBA_APP environment variable:
- *   RUTBA_APP=auth   node scripts/run-app.js build   → builds only pos-auth
+ *   RUTBA_APP=auth   node scripts/run-app.js build   → builds only apps/admin/auth
  *
  * The app short-name is the suffix used in package.json scripts:
  *   auth, stock, sale, web, web-user, crm, hr, accounts, payroll, cms, social, strapi
@@ -64,8 +64,8 @@ const pkg = JSON.parse(
 
 /**
  * Extract the workspace directory name from a build script key.
- * e.g. "build:web" → script value contains "--workspace=rutba-web" → "rutba-web"
- *      "build:strapi" → script value contains "--prefix pos-strapi" → "pos-strapi"
+ * e.g. "build:web" → script value contains "--workspace=apps/content/storefront" → "apps/content/storefront"
+ *      "build:strapi" → script value contains "--prefix services/strapi" → "services/strapi"
  */
 function getWorkspaceDir(scriptKey) {
   const script = pkg.scripts[scriptKey] || '';

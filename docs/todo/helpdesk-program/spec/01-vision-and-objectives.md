@@ -121,7 +121,7 @@ training and grounding corpus a tenant produces.
 ## 1.9 Non-goals
 
 - Not a project-management tool. Tickets are requests with an SLA, not sprints or epics.
-- Not a CRM replacement. `rutba-crm` owns leads, contacts and the relationship timeline;
+- Not a CRM replacement. `apps/sales/crm` owns leads, contacts and the relationship timeline;
   Helpdesk *feeds* it.
 - Not a chat product. Real-time chat may be a future *source*, not the system of record.
 - Not a document management system. Attachments only.

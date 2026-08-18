@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { MailLinksEndpoints } from "@rutba/api-provider/endpoints";
 
-// "Mail" panel for a CRM record — every email linked to it via rutba-mail's
+// "Mail" panel for a CRM record — every email linked to it via apps/content/mail's
 // import-on-link flow (docs/todo/email-program/04). Read-only here: linking
 // happens in the mail client. Callers without a mail app-role get a 403 from
 // the links route; the panel then renders nothing rather than an error.

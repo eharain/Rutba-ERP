@@ -1,6 +1,6 @@
 'use strict';
 
-// The campaign runner (rutba-campaigns spec §4.5) — resolve the audience,
+// The campaign runner (apps/content/campaigns spec §4.5) — resolve the audience,
 // submit ONE templated batch to Rutba-MTA, and materialize the run +
 // per-recipient rows that make delivery attributable.
 //

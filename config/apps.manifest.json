@@ -9,220 +9,115 @@
     "which fails the build on any disagreement.",
     "",
     "WHAT LIVES HERE: identity and wiring — key, systemd unit, workspace directory,",
-    "port, api-pro domains, launcher category, and the flags that record a DELIBERATE",
-    "divergence so it can never be mistaken for drift again.",
+    "npm package name, env prefix, URL var, port, api-pro domains, launcher category,",
+    "and the flags that record a DELIBERATE divergence so it can never be mistaken",
+    "for drift again.",
     "",
     "WHAT DOES NOT: presentation (label, icon, description). Those stay in",
-    "packages/pos-shared/lib/roles.js APP_META until the admin console's app-catalogue",
+    "packages/shared/lib/roles.js APP_META until the admin console’s app-catalogue",
     "work (docs/todo/admin-console-program/01-app-catalogue-entitlements.md) moves the",
     "catalogue server-side per tenant. Baking titles in here now would be work undone",
     "the moment a tenant can enable its own app set.",
     "",
-    "DERIVED, NOT STORED (the validator computes and checks these):",
-    "  envPrefix  workspace uppercased, '-' -> '_'   pos-auth      -> POS_AUTH__PORT",
-    "  urlVar     workspace minus pos-/rutba- prefix rutba-web-user -> NEXT_PUBLIC_WEB_USER_URL",
-    "An entry only carries `urlVar` when it deliberately breaks that rule.",
+    "NOTHING IS DERIVED ANY MORE. Until the P3 restructure (2026-08-18) the validator",
+    "computed envPrefix and urlVar from the workspace directory name — pos-auth ->",
+    "AUTH__PORT. That rule died with the move: the workspace is now a path, and",
+    "\"APPS/ADMIN/AUTH__PORT\" is not an environment variable. Both are stored",
+    "explicitly, which is also what lets an app be renamed without its deploy env",
+    "changing underneath it.",
     "",
     "FLAGS (absent = the common case):",
     "  public        no access grant needed; always in the catalogue, never in VALID_APP_KEYS",
     "  npmWorkspace  false = installs standalone via `npm --prefix` (the two backends)",
     "  build         false = has no build step, so no root build:* script is expected",
     "  launcher      false = not a launchable app, so no roles.js APP_URLS entry",
-    "  descriptorScan false = excluded from APP_FOLDERS in discover-descriptor-meta.mjs",
-    "",
-    "`rename` — THE ERP 2.0 P3 TARGET, NOT THE CURRENT STATE.",
-    "Declared here ahead of the move so the target is reviewable and machine-readable",
-    "before a single directory shifts; scripts/js/restructure.js is the only thing that",
-    "reads it, and verify-app-wiring.js ignores it entirely until the sweep lands and",
-    "the fields above are overwritten with these values. Plan and rationale:",
-    "docs/todo/erp2-program/03-repo-restructure.md.",
-    "  path       new directory, relative to the repo root",
-    "  key        new app key — the X-Rutba-App value and the api-pro domain",
-    "  unit       new systemd unit name",
-    "  envPrefix  new PREFIX__ for this app's env vars",
-    "  urlVar     new NEXT_PUBLIC_*_URL",
-    "  domains    new api-pro domain keys (absent = unchanged)",
-    "  roles      old role key -> new role key (absent = unchanged). EXPLICIT, never",
-    "             derived: today's prefixes do not follow the domain (order-management",
-    "             -> order_*, web-user -> webuser_*, web -> web_public/web_user), so a",
-    "             derivation rule would silently mint the wrong key for four domains.",
-    "             Grants survive a key change on their own — up_users_app_roles_lnk",
-    "             references app_role_id, not the key — so this is an UPDATE of",
-    "             api_pro_app_roles.key, not a re-grant. Measured 2026-08-18: 69 of the",
-    "             79 roles are held by at least one user."
+    "  descriptorScan false = excluded from APP_FOLDERS in discover-descriptor-meta.mjs"
   ],
 
-  "categories": ["sales", "inventory", "people", "finance", "content", "admin"],
+  "categories": ["sales","inventory","people","finance","content","admin"],
 
   "services": [
     {
       "key": "strapi",
-      "unit": "rutba_pos_strapi",
-      "workspace": "pos-strapi",
+      "unit": "rutba_strapi",
+      "workspace": "services/strapi",
+      "npm": "@rutba/strapi",
       "kind": "backend",
       "port": 4010,
-      "domains": [],
+      "envPrefix": "POS_STRAPI",
       "urlVar": "NEXT_PUBLIC_API_URL",
+      "domains": [],
       "npmWorkspace": false,
       "launcher": false,
       "descriptorScan": false,
-      "note": "Legacy Strapi backend. Retires in ERP 2.0 phase P2; every frontend reaches it via NEXT_PUBLIC_API_URL, not a per-app URL var.",
-      "rename": {
-        "path": "services/strapi",
-        "unit": "rutba_strapi",
-        "envPrefix": "POS_STRAPI",
-        "why": "envPrefix deliberately NOT renamed. POS_STRAPI__ carries the DATABASE_* values rutba-core falls back to, and ~20 keys of it live in every deploy env including the LAN box's off-git master file. The whole block dies with pos-strapi in P2, so renaming it now buys two coordinated live-env edits and nothing that outlives them."
-      }
+      "note": "Legacy Strapi backend. Retires in ERP 2.0 phase P2; every frontend reaches it via NEXT_PUBLIC_API_URL, not a per-app URL var."
     },
     {
       "key": "core",
       "unit": "rutba_core",
-      "workspace": "rutba-core",
+      "workspace": "services/core",
+      "npm": "@rutba/core",
       "kind": "backend",
       "port": 4020,
-      "domains": [],
+      "envPrefix": "CORE",
       "urlVar": "NEXT_PUBLIC_API_URL",
+      "domains": [],
       "npmWorkspace": false,
       "build": false,
       "launcher": false,
       "descriptorScan": false,
-      "note": "Koa/Knex backend serving the same descriptor contract. Plain Node — no bundling step, hence build:false. Shares NEXT_PUBLIC_API_URL with strapi because RUTBA_BACKEND picks which one listens.",
-      "rename": {
-        "path": "services/core",
-        "unit": "rutba_core",
-        "envPrefix": "CORE",
-        "why": "RUTBA_CORE__ -> CORE__. Needs the precedence chain in src/config/env.js updated in the same commit (CORE__NAME > POS_STRAPI__NAME > NAME)."
-      }
+      "note": "Koa/Knex backend serving the same descriptor contract. Plain Node — no bundling step, hence build:false. Shares NEXT_PUBLIC_API_URL with strapi because RUTBA_BACKEND picks which one listens."
     },
-
-    { "key": "web", "unit": "rutba_web", "workspace": "rutba-web", "kind": "app", "port": 4000, "category": "content", "domains": ["web"], "public": true, "descriptorScan": true,
-      "rename": { "path": "apps/content/storefront", "key": "storefront", "unit": "rutba_storefront", "envPrefix": "STOREFRONT", "urlVar": "NEXT_PUBLIC_STOREFRONT_URL", "domains": ["storefront"],
-        "roles": { "web_public": "storefront_public", "web_user": "storefront_user" },
-        "why": "'web' names the technology, not the thing. This is the public shop." } },
-
-    { "key": "stock", "unit": "rutba_pos_stock", "workspace": "pos-stock", "kind": "app", "port": 4001, "category": "inventory", "domains": ["stock"], "descriptorScan": true,
-      "rename": { "path": "apps/inventory/stock", "unit": "rutba_stock", "envPrefix": "STOCK", "urlVar": "NEXT_PUBLIC_STOCK_URL" } },
-
-    { "key": "sale", "unit": "rutba_pos_sale", "workspace": "pos-sale", "kind": "app", "port": 4002, "category": "sales", "domains": ["sale"], "descriptorScan": true,
-      "rename": { "path": "apps/sales/pos", "key": "pos", "unit": "rutba_pos", "envPrefix": "POS", "urlVar": "NEXT_PUBLIC_POS_URL", "domains": ["pos"],
-        "roles": { "sale_admin": "pos_admin", "sale_manager": "pos_manager", "sale_staff": "pos_staff" },
-        "why": "apps/sales/sale is the repetition this sweep exists to kill, and the app IS the point-of-sale terminal." } },
-
-    { "key": "auth", "unit": "rutba_pos_auth", "workspace": "pos-auth", "kind": "app", "port": 4003, "category": "admin", "domains": ["auth"], "descriptorScan": true,
-      "rename": { "path": "apps/admin/auth", "unit": "rutba_auth", "envPrefix": "AUTH", "urlVar": "NEXT_PUBLIC_AUTH_URL" } },
-
-    { "key": "web-user", "unit": "rutba_web_user", "workspace": "rutba-web-user", "kind": "app", "port": 4004, "category": "sales", "domains": ["web-user"], "descriptorScan": true,
-      "rename": { "path": "apps/sales/portal", "key": "portal", "unit": "rutba_portal", "envPrefix": "PORTAL", "urlVar": "NEXT_PUBLIC_PORTAL_URL", "domains": ["portal"],
-        "roles": { "webuser_admin": "portal_admin", "webuser_manager": "portal_manager", "webuser_staff": "portal_staff" },
-        "why": "'web-user' reads as a user type, not an app. It is the customer self-service portal." } },
-
-    { "key": "crm", "unit": "rutba_crm", "workspace": "rutba-crm", "kind": "app", "port": 4005, "category": "sales", "domains": ["crm"], "descriptorScan": true,
-      "rename": { "path": "apps/sales/crm", "unit": "rutba_crm", "envPrefix": "CRM", "urlVar": "NEXT_PUBLIC_CRM_URL" } },
-
-    { "key": "hr", "unit": "rutba_hr", "workspace": "rutba-hr", "kind": "app", "port": 4006, "category": "people", "domains": ["hr"], "descriptorScan": true,
-      "rename": { "path": "apps/people/hr", "unit": "rutba_hr", "envPrefix": "HR", "urlVar": "NEXT_PUBLIC_HR_URL" } },
-
-    { "key": "accounts", "unit": "rutba_accounts", "workspace": "rutba-accounts", "kind": "app", "port": 4007, "category": "finance", "domains": ["accounts", "accounts-ap", "accounts-ar", "accounts-viewer"], "descriptorScan": true,
-      "rename": { "path": "apps/finance/accounts", "unit": "rutba_accounts", "envPrefix": "ACCOUNTS", "urlVar": "NEXT_PUBLIC_ACCOUNTS_URL",
-        "why": "The three accounts-* sub-domains are authorization-only and keep their keys — they name permission scopes, not apps." } },
-
-    { "key": "payroll", "unit": "rutba_payroll", "workspace": "rutba-payroll", "kind": "app", "port": 4008, "category": "finance", "domains": ["payroll"], "descriptorScan": true,
-      "rename": { "path": "apps/finance/payroll", "unit": "rutba_payroll", "envPrefix": "PAYROLL", "urlVar": "NEXT_PUBLIC_PAYROLL_URL" } },
-
-    { "key": "cms", "unit": "rutba_cms", "workspace": "rutba-cms", "kind": "app", "port": 4009, "category": "content", "domains": ["cms"], "descriptorScan": true,
-      "rename": { "path": "apps/content/cms", "unit": "rutba_cms", "envPrefix": "CMS", "urlVar": "NEXT_PUBLIC_CMS_URL" } },
-
-    { "key": "social", "unit": "rutba_social", "workspace": "rutba-social", "kind": "app", "port": 4011, "category": "content", "domains": ["social"], "descriptorScan": true,
-      "rename": { "path": "apps/content/social", "unit": "rutba_social", "envPrefix": "SOCIAL", "urlVar": "NEXT_PUBLIC_SOCIAL_URL" } },
-
-    { "key": "rider", "unit": "rutba_rider", "workspace": "rutba-rider", "kind": "app", "port": 4012, "category": "sales", "domains": ["rider"], "descriptorScan": true,
-      "rename": { "path": "apps/sales/rider", "unit": "rutba_rider", "envPrefix": "RIDER", "urlVar": "NEXT_PUBLIC_RIDER_URL",
-        "why": "Also drops the hardcoded `-p 4012` in its package.json scripts (drift report A6) — the only app not taking PORT from load-env.js." } },
-
-    { "key": "order-management", "unit": "rutba_order_management", "workspace": "rutba-order-management", "kind": "app", "port": 4013, "category": "sales", "domains": ["order-management"], "descriptorScan": true,
-      "rename": { "path": "apps/sales/orders", "key": "orders", "unit": "rutba_orders", "envPrefix": "ORDERS", "urlVar": "NEXT_PUBLIC_ORDERS_URL", "domains": ["orders"],
-        "roles": { "order_admin": "orders_admin", "order_manager": "orders_manager", "order_staff": "orders_staff" },
-        "why": "Longest name in the estate, and its roles already disagreed with it (order_* under domain order-management)." } },
-
-    { "key": "manufacturing", "unit": "rutba_manufacturing", "workspace": "rutba-manufacturing", "kind": "app", "port": 4014, "category": "inventory", "domains": ["manufacturing"], "descriptorScan": true,
-      "rename": { "path": "apps/inventory/manufacturing", "unit": "rutba_manufacturing", "envPrefix": "MANUFACTURING", "urlVar": "NEXT_PUBLIC_MANUFACTURING_URL",
-        "why": "Long, but kept in full: 'mfg' is the core module's internal name and would be cryptic on a user-facing app." } },
-
-    { "key": "ess", "unit": "rutba_ess", "workspace": "rutba-ess", "kind": "app", "port": 4015, "category": "people", "domains": ["ess"], "descriptorScan": true,
-      "rename": { "path": "apps/people/ess", "unit": "rutba_ess", "envPrefix": "ESS", "urlVar": "NEXT_PUBLIC_ESS_URL",
-        "why": "Roles stay ess_employee/ess_manager — this domain has never had the admin/manager/staff triple." } },
-
-    { "key": "marketplace", "unit": "rutba_marketplace", "workspace": "rutba-marketplace", "kind": "app", "port": 4016, "category": "sales", "domains": ["marketplace"], "descriptorScan": true,
-      "rename": { "path": "apps/sales/marketplace", "unit": "rutba_marketplace", "envPrefix": "MARKETPLACE", "urlVar": "NEXT_PUBLIC_MARKETPLACE_URL" } },
-
-    { "key": "inventory", "unit": "rutba_inventory", "workspace": "rutba-inventory", "kind": "app", "port": 4017, "category": "inventory", "domains": ["inventory"], "descriptorScan": true,
-      "rename": { "path": "apps/inventory/control", "key": "control", "unit": "rutba_control", "envPrefix": "CONTROL", "urlVar": "NEXT_PUBLIC_CONTROL_URL", "domains": ["control"],
-        "roles": { "inventory_admin": "control_admin", "inventory_manager": "control_manager", "inventory_staff": "control_staff" },
-        "why": "apps/inventory/inventory is absurd, and 'stock' vs 'inventory' has never been separable by name. Its pages are levels, transfers, counts, adjustments, valuation, expiry and reorder — inventory control. 'stock' keeps products and purchasing." } },
-
-    { "key": "seed", "unit": "rutba_seed", "workspace": "rutba-seed", "kind": "app", "port": 4018, "category": "admin", "domains": ["seed"], "descriptorScan": true,
-      "rename": { "path": "apps/admin/seed", "unit": "rutba_seed", "envPrefix": "SEED", "urlVar": "NEXT_PUBLIC_SEED_URL" } },
-
-    { "key": "campaigns", "unit": "rutba_campaigns", "workspace": "rutba-campaigns", "kind": "app", "port": 4019, "category": "content", "domains": ["campaigns"], "descriptorScan": true,
-      "rename": { "path": "apps/content/campaigns", "unit": "rutba_campaigns", "envPrefix": "CAMPAIGNS", "urlVar": "NEXT_PUBLIC_CAMPAIGNS_URL" } },
-
-    { "key": "mail", "unit": "rutba_mail", "workspace": "rutba-mail", "kind": "app", "port": 4021, "category": "content", "domains": ["mail"], "descriptorScan": true,
-      "rename": { "path": "apps/content/mail", "unit": "rutba_mail", "envPrefix": "MAIL", "urlVar": "NEXT_PUBLIC_MAIL_URL" } },
-
-    { "key": "admin", "unit": "rutba_admin", "workspace": "rutba-admin", "kind": "app", "port": 4022, "category": "admin", "domains": ["admin", "users"], "descriptorScan": true,
-      "rename": { "path": "apps/admin/console", "key": "console", "unit": "rutba_console", "envPrefix": "CONSOLE", "urlVar": "NEXT_PUBLIC_CONSOLE_URL", "domains": ["console"],
-        "roles": { "admin_admin": "console_admin", "admin_manager": "console_manager", "admin_staff": "console_staff" },
-        "why": "apps/admin/admin, and admin_admin, are both self-parody. Drops the deprecated `users` alias in the same move: users_admin/manager/staff are held by zero users (measured 2026-08-18), so the alias can go rather than be carried into the new tree. NOTE: this claims the name `console`, so P5's control plane becomes services/control-plane rather than rutba-console." } },
-
-    { "key": "helpdesk", "unit": "rutba_helpdesk", "workspace": "rutba-helpdesk", "kind": "app", "port": 4023, "category": "sales", "domains": ["helpdesk"], "descriptorScan": true,
-      "rename": { "path": "apps/sales/helpdesk", "unit": "rutba_helpdesk", "envPrefix": "HELPDESK", "urlVar": "NEXT_PUBLIC_HELPDESK_URL" } },
-
+    {"key":"storefront","unit":"rutba_storefront","workspace":"apps/content/storefront","npm":"@rutba/storefront","kind":"app","port":4000,"category":"content","envPrefix":"STOREFRONT","urlVar":"NEXT_PUBLIC_STOREFRONT_URL","domains":["storefront"],"public":true,"descriptorScan":true},
+    {"key":"stock","unit":"rutba_stock","workspace":"apps/inventory/stock","npm":"@rutba/stock","kind":"app","port":4001,"category":"inventory","envPrefix":"STOCK","urlVar":"NEXT_PUBLIC_STOCK_URL","domains":["stock"],"descriptorScan":true},
+    {"key":"pos","unit":"rutba_pos","workspace":"apps/sales/pos","npm":"@rutba/pos","kind":"app","port":4002,"category":"sales","envPrefix":"POS","urlVar":"NEXT_PUBLIC_POS_URL","domains":["pos"],"descriptorScan":true},
+    {"key":"auth","unit":"rutba_auth","workspace":"apps/admin/auth","npm":"@rutba/auth","kind":"app","port":4003,"category":"admin","envPrefix":"AUTH","urlVar":"NEXT_PUBLIC_AUTH_URL","domains":["auth"],"descriptorScan":true},
+    {"key":"portal","unit":"rutba_portal","workspace":"apps/sales/portal","npm":"@rutba/portal","kind":"app","port":4004,"category":"sales","envPrefix":"PORTAL","urlVar":"NEXT_PUBLIC_PORTAL_URL","domains":["portal"],"descriptorScan":true},
+    {"key":"crm","unit":"rutba_crm","workspace":"apps/sales/crm","npm":"@rutba/crm","kind":"app","port":4005,"category":"sales","envPrefix":"CRM","urlVar":"NEXT_PUBLIC_CRM_URL","domains":["crm"],"descriptorScan":true},
+    {"key":"hr","unit":"rutba_hr","workspace":"apps/people/hr","npm":"@rutba/hr","kind":"app","port":4006,"category":"people","envPrefix":"HR","urlVar":"NEXT_PUBLIC_HR_URL","domains":["hr"],"descriptorScan":true},
+    {"key":"accounts","unit":"rutba_accounts","workspace":"apps/finance/accounts","npm":"@rutba/accounts","kind":"app","port":4007,"category":"finance","envPrefix":"ACCOUNTS","urlVar":"NEXT_PUBLIC_ACCOUNTS_URL","domains":["accounts","accounts-ap","accounts-ar","accounts-viewer"],"descriptorScan":true},
+    {"key":"payroll","unit":"rutba_payroll","workspace":"apps/finance/payroll","npm":"@rutba/payroll","kind":"app","port":4008,"category":"finance","envPrefix":"PAYROLL","urlVar":"NEXT_PUBLIC_PAYROLL_URL","domains":["payroll"],"descriptorScan":true},
+    {"key":"cms","unit":"rutba_cms","workspace":"apps/content/cms","npm":"@rutba/cms","kind":"app","port":4009,"category":"content","envPrefix":"CMS","urlVar":"NEXT_PUBLIC_CMS_URL","domains":["cms"],"descriptorScan":true},
+    {"key":"social","unit":"rutba_social","workspace":"apps/content/social","npm":"@rutba/social","kind":"app","port":4011,"category":"content","envPrefix":"SOCIAL","urlVar":"NEXT_PUBLIC_SOCIAL_URL","domains":["social"],"descriptorScan":true},
+    {"key":"rider","unit":"rutba_rider","workspace":"apps/sales/rider","npm":"@rutba/rider","kind":"app","port":4012,"category":"sales","envPrefix":"RIDER","urlVar":"NEXT_PUBLIC_RIDER_URL","domains":["rider"],"descriptorScan":true},
+    {"key":"orders","unit":"rutba_orders","workspace":"apps/sales/orders","npm":"@rutba/orders","kind":"app","port":4013,"category":"sales","envPrefix":"ORDERS","urlVar":"NEXT_PUBLIC_ORDERS_URL","domains":["orders"],"descriptorScan":true},
+    {"key":"manufacturing","unit":"rutba_manufacturing","workspace":"apps/inventory/manufacturing","npm":"@rutba/manufacturing","kind":"app","port":4014,"category":"inventory","envPrefix":"MANUFACTURING","urlVar":"NEXT_PUBLIC_MANUFACTURING_URL","domains":["manufacturing"],"descriptorScan":true},
+    {"key":"ess","unit":"rutba_ess","workspace":"apps/people/ess","npm":"@rutba/ess","kind":"app","port":4015,"category":"people","envPrefix":"ESS","urlVar":"NEXT_PUBLIC_ESS_URL","domains":["ess"],"descriptorScan":true},
+    {"key":"marketplace","unit":"rutba_marketplace","workspace":"apps/sales/marketplace","npm":"@rutba/marketplace","kind":"app","port":4016,"category":"sales","envPrefix":"MARKETPLACE","urlVar":"NEXT_PUBLIC_MARKETPLACE_URL","domains":["marketplace"],"descriptorScan":true},
+    {"key":"control","unit":"rutba_control","workspace":"apps/inventory/control","npm":"@rutba/control","kind":"app","port":4017,"category":"inventory","envPrefix":"CONTROL","urlVar":"NEXT_PUBLIC_CONTROL_URL","domains":["control"],"descriptorScan":true},
+    {"key":"seed","unit":"rutba_seed","workspace":"apps/admin/seed","npm":"@rutba/seed","kind":"app","port":4018,"category":"admin","envPrefix":"SEED","urlVar":"NEXT_PUBLIC_SEED_URL","domains":["seed"],"descriptorScan":true},
+    {"key":"campaigns","unit":"rutba_campaigns","workspace":"apps/content/campaigns","npm":"@rutba/campaigns","kind":"app","port":4019,"category":"content","envPrefix":"CAMPAIGNS","urlVar":"NEXT_PUBLIC_CAMPAIGNS_URL","domains":["campaigns"],"descriptorScan":true},
+    {"key":"mail","unit":"rutba_mail","workspace":"apps/content/mail","npm":"@rutba/mail","kind":"app","port":4021,"category":"content","envPrefix":"MAIL","urlVar":"NEXT_PUBLIC_MAIL_URL","domains":["mail"],"descriptorScan":true},
+    {"key":"console","unit":"rutba_console","workspace":"apps/admin/console","npm":"@rutba/console","kind":"app","port":4022,"category":"admin","envPrefix":"CONSOLE","urlVar":"NEXT_PUBLIC_CONSOLE_URL","domains":["console"],"descriptorScan":true},
+    {"key":"helpdesk","unit":"rutba_helpdesk","workspace":"apps/sales/helpdesk","npm":"@rutba/helpdesk","kind":"app","port":4023,"category":"sales","envPrefix":"HELPDESK","urlVar":"NEXT_PUBLIC_HELPDESK_URL","domains":["helpdesk"],"descriptorScan":true},
     {
       "key": "marketplace-worker",
       "unit": "rutba_marketplace_worker",
-      "workspace": "rutba-marketplace",
+      "workspace": "apps/sales/marketplace",
       "kind": "worker",
       "port": null,
+      "envPrefix": "MARKETPLACE",
       "domains": [],
       "launcher": false,
       "descriptorScan": false,
-      "note": "Background sync worker sharing the rutba-marketplace workspace. No HTTP surface, so no port and no URL var; the registry records its port as '-'.",
-      "rename": {
-        "path": "apps/sales/marketplace",
-        "unit": "rutba_marketplace_worker",
-        "envPrefix": "MARKETPLACE",
-        "why": "Still shares the app's workspace and env block. Extracting it to services/marketplace-worker is P3 follow-up work, not part of the move — it needs its own package.json and dependency set first."
-      }
+      "note": "Background sync worker sharing the apps/sales/marketplace workspace. No HTTP surface, so no port and no URL var; the registry records its port as '-'."
     }
   ],
 
   "packages": [
-    { "path": "packages/api-provider", "npm": "@rutba/api-provider",
-      "rename": { "path": "packages/api-provider", "npm": "@rutba/api-provider", "why": "Already correct. The descriptor contract is the API; renaming it would churn 390 files for nothing." } },
-    { "path": "packages/pos-shared", "npm": "@rutba/pos-shared",
-      "rename": { "path": "packages/shared", "npm": "@rutba/shared", "why": "Nothing about it is point-of-sale — it holds roles.js, the app catalogue and shared UI for all 22 apps. The single largest rewrite in the sweep: 405 files import it." } },
-    { "path": "packages/sync-core", "npm": "@rutba/sync-core",
-      "rename": { "path": "packages/sync", "npm": "@rutba/sync", "why": "'-core' meant 'the core of sync', but rutba-core is a different thing entirely and the collision misleads." } },
-    { "path": "packages/video-maker", "npm": "@rutba/video-maker",
-      "rename": { "path": "packages/video", "npm": "@rutba/video" } },
-    { "path": "packages/strapi-api-pro", "npm": "strapi-api-pro",
-      "rename": { "path": "packages/strapi-api-pro", "npm": "strapi-api-pro", "why": "Left alone deliberately: the plugin wrapper retires in P2 once enforcement moves into rutba-core/src/policy/. Renaming a component with a scheduled death date is churn." } },
-    { "path": "packages/strapi-provider-upload-media", "npm": "strapi-provider-upload-media",
-      "rename": { "path": "packages/strapi-provider-upload-media", "npm": "strapi-provider-upload-media", "why": "Same: its Strapi peer dependency retires in P2 and the provider logic lives on inside core's upload platform." } }
+    {"path":"packages/api-provider","npm":"@rutba/api-provider"},
+    {"path":"packages/shared","npm":"@rutba/shared"},
+    {"path":"packages/sync","npm":"@rutba/sync"},
+    {"path":"packages/video","npm":"@rutba/video"},
+    {"path":"packages/strapi-api-pro","npm":"strapi-api-pro"},
+    {"path":"packages/strapi-provider-upload-media","npm":"strapi-provider-upload-media"}
   ],
 
   "domainsWithoutApps": [
     {
-      "domain": "users",
-      "status": "deprecated",
-      "why": "rutba-users was replaced by rutba-admin, which inherited port 4022. The domain stays alive as an alias so existing users_* grants keep resolving. Retires in ERP 2.0 phase P3 with the alias sweep.",
-      "rename": { "action": "delete", "why": "Measured 2026-08-18: users_admin, users_manager and users_staff are held by ZERO users, so the alias protects nothing. Deleted by the restructure rather than carried into the new tree." }
-    },
-    {
       "domain": "delivery",
       "status": "undecided",
-      "why": "Present in domains.json with no app, no workspace and no catalogue entry. Either a planned domain or vestigial — flagged in the registry drift report (A3) as a decision that is still owed.",
-      "rename": { "action": "keep", "why": "Measured 2026-08-18: 15 users hold delivery_admin/manager/staff. Whatever its origin, it is live — so the restructure carries it unchanged and the decision stays owed. Deleting it would revoke access from 15 people." }
+      "why": "Present in domains.json with no app, no workspace and no catalogue entry. Either a planned domain or vestigial — flagged in the registry drift report (A3) as a decision that is still owed."
     }
   ]
 }

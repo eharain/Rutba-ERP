@@ -19,7 +19,7 @@ export const SaleReturnsEndpoints = {
 
     meta: {
         uid: 'api::sale-return.sale-return',
-        domains: ['sale'],
+        domains: ['pos'],
         roles: ['admin', 'manager', 'staff'],
     },
 
@@ -33,7 +33,7 @@ export const SaleReturnsEndpoints = {
         path: '/sale-returns',
         action: 'find',
         method: 'get',
-        apps: ['sale'],
+        apps: ['pos'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
         params: {
@@ -49,7 +49,7 @@ export const SaleReturnsEndpoints = {
         path: '/sale-returns',
         action: 'create',
         method: 'post',
-        apps: ['sale'],
+        apps: ['pos'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
         data,
@@ -63,7 +63,7 @@ export const SaleReturnsEndpoints = {
         path: `/sale-returns/${documentId}`,
         action: 'findOne',
         method: 'get',
-        apps: ['sale'],
+        apps: ['pos'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
         params: byIdParams(
@@ -94,14 +94,14 @@ export const SaleReturnsEndpoints = {
         path: `/sale-returns/${documentId}`,
         action: 'update',
         method: 'put',
-        apps: ['sale'],
+        apps: ['pos'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
         data,
     }),
 
     // No publish/unpublish: sale-return is draftAndPublish: false, so there is
-    // nothing to publish and pos-strapi routes no such endpoint. The pair that
+    // nothing to publish and services/strapi routes no such endpoint. The pair that
     // used to be declared here resolved to nothing on either server, and
     // nothing called them.
 /** Async: fetch a single sale return by documentId. */

@@ -7,7 +7,7 @@ export const StorageLocationsEndpoints = {
 
     meta: {
         uid: 'api::storage-location.storage-location',
-        domains: ['stock', 'inventory'],
+        domains: ['stock', 'control'],
         roles: ['admin', 'manager', 'staff'],
     },
 
@@ -17,7 +17,7 @@ export const StorageLocationsEndpoints = {
             path: '/storage-locations',
             action: 'find',
             method: 'get',
-            apps: ['inventory', 'stock'],
+            apps: ['control', 'stock'],
             approle: ['admin', 'manager', 'staff'],
             params: {
                 filters: {
@@ -38,7 +38,7 @@ export const StorageLocationsEndpoints = {
         path: `/storage-locations/${documentId}`,
         action: 'findOne',
         method: 'get',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             populate: { branch: true, parent: true, children: true },
@@ -49,7 +49,7 @@ export const StorageLocationsEndpoints = {
         path: '/storage-locations',
         action: 'create',
         method: 'post',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager'],
         data,
     }),
@@ -58,7 +58,7 @@ export const StorageLocationsEndpoints = {
         path: `/storage-locations/${documentId}`,
         action: 'update',
         method: 'put',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager'],
         data,
     }),
@@ -67,7 +67,7 @@ export const StorageLocationsEndpoints = {
         path: `/storage-locations/${documentId}`,
         action: 'delete',
         method: 'delete',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin'],
     }),
 };

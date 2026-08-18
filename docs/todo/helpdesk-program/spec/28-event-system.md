@@ -21,7 +21,7 @@ Rutba Core has **no domain event bus**. What exists:
 - The `notification-engine`'s `processEvent` — a *notification* dispatcher keyed by event name,
   not a general bus. Helpdesk uses it as a **subscriber**, not as the bus.
 
-**Prerequisite P1 is to build `rutba-core/src/platform/events.js`.** Helpdesk is its first
+**Prerequisite P1 is to build `services/core/src/platform/events.js`.** Helpdesk is its first
 consumer, but it belongs to Core and every module should use it.
 
 ## 28.3 Design (D1)

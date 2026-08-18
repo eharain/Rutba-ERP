@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import * as XLSX from 'xlsx';
-import PermissionCheck from '@rutba/pos-shared/components/PermissionCheck';
+import PermissionCheck from '@rutba/shared/components/PermissionCheck';
 import { CmsBulkEndpoints } from '@rutba/api-provider/endpoints';
 
 // Drop-in Excel Export/Import controls for a list page. Mirrors
-// rutba-cms/components/ExcelIO.js — the server side (cms-bulk controller) is a
+// apps/content/cms/components/ExcelIO.js — the server side (cms-bulk controller) is a
 // generic, allowlist-gated upsert, so the same component drives bulk editing
 // for any whitelisted content type (here: api::social-post.social-post).
 //

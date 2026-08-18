@@ -1,6 +1,6 @@
 # Order lifecycle — complete plan
 
-<!-- verify-docs: planned pos-strapi/src/api/payment/providers/ -->
+<!-- verify-docs: planned services/strapi/src/api/payment/providers/ -->
 
 > **Status (May 2026):** Drafted after the storefront launch + COD payment
 > collection landed. Phases A-G below are forward work; the "already wired"
@@ -23,7 +23,7 @@
 >   printing UI) shipped alongside it. The fuller C.1 (getRates,
 >   createShipment, cancelShipment, parseWebhook) remains TODO.
 >
-> Sister docs: [rutba-web-launch-backlog.md](./rutba-web-launch-backlog.md),
+> Sister docs: [storefront-launch-backlog.md](./storefront-launch-backlog.md),
 > [contact-entity-unification.md](./contact-entity-unification.md).
 
 ## TL;DR
@@ -52,7 +52,7 @@ This doc is the staged plan for adding all of the above.
 
 ## Already wired (recap)
 
-- **State machine** (`pos-strapi/src/api/sale-order/services/sale-order-state-machine.js`):
+- **State machine** (`services/strapi/src/api/sale-order/services/sale-order-state-machine.js`):
   PENDING_PAYMENT → PAYMENT_CONFIRMED → PREPARING → AWAITING_PICKUP →
   OUT_FOR_DELIVERY → DELIVERED, with CANCELLED + FAILED_DELIVERY +
   REFUND_INITIATED → REFUNDED side paths, plus the returns detour
@@ -124,12 +124,12 @@ This doc is the staged plan for adding all of the above.
   - Sale-order schema gains `label_url`, `label_generated_at`,
     `return_label_url`, `return_label_generated_at`, plus the
     `return_method` relation.
-  - `rutba-order-management` has a `/print/sale-order-label` page;
+  - `apps/sales/orders` has a `/print/sale-order-label` page;
     `PrintAddressLabel` opens it in a new window.
 - **Stage-based order-management refactor** (2026-05-21) — the
   monolithic `/[documentId]/sale-order.js` (1200 lines) broken into a
   thin shell + per-stage components under
-  `rutba-order-management/components/sale-order/`:
+  `apps/sales/orders/components/sale-order/`:
   `DraftStage`, `PaymentStage`, `VerificationStage`, `PreparationStage`,
   `PickupStage`, `DeliveryStage`, `SettledStage`, `ReturnStage`,
   `CancelledStage`, `FailedStage`, plus `StageStepper`, `ItemsTable`,
@@ -260,7 +260,7 @@ tenant fills with concrete providers.
 ### A.2 — Gateway provider strategy interface (generic)
 
 Mirror the delivery provider abstraction (Phase C). One module per
-gateway under `pos-strapi/src/api/payment/providers/`:
+gateway under `services/strapi/src/api/payment/providers/`:
 
 ```js
 {
@@ -321,7 +321,7 @@ New tab in CRM lists `confirmation_status = pending_call`. One-click
 
 ### A.5 — Rider app: cash-collect modal on delivery completion
 
-When the rider marks an order DELIVERED in `rutba-rider`, prompt for
+When the rider marks an order DELIVERED in `apps/sales/rider`, prompt for
 actual amount collected (default `order.total`) + courier ref / note,
 then POST `/sale-orders/:id/record-payment` via the existing descriptor.
 Payment lands as `unverified`, feeds the accounts inbox (A.6).
@@ -329,7 +329,7 @@ Mobile-first UI — one-thumb usable at the door.
 
 ### A.6 — Accounts cash-drops verification inbox
 
-Page in `rutba-accounts` listing orders with
+Page in `apps/finance/accounts` listing orders with
 `payment_verification_status = unverified` AND `payment_method = cod`
 AND `paid_amount > 0`. Columns: order ref, rider name, amount,
 collected_at, courier ref / note. **Bulk-select + bulk-verify** for daily
@@ -399,7 +399,7 @@ units across two or three parcels naturally.
 PDF generation at
 `/sale-orders/:documentId/pick-list.pdf` and `/packing-slip.pdf`. Pure
 data binding into a template — no business logic. Lives in
-`rutba-order-management`.
+`apps/sales/orders`.
 
 ---
 
@@ -416,7 +416,7 @@ example when expanding to the full strategy interface below.
 ### C.1 — Provider strategy interface (generic) — matches A.2
 
 ```js
-// pos-strapi/src/api/delivery-method/providers/<key>/index.js
+// services/strapi/src/api/delivery-method/providers/<key>/index.js
 module.exports = {
   key: 'tcs',
   capabilities: {
@@ -527,7 +527,7 @@ Touchpoints to add SMS to existing notification templates:
 ### D.2 — Richer tracking page (generic)
 
 Today's `/order-tracking/:documentId?secret=…` returns a JSON blob.
-Build a real page on `rutba-web`:
+Build a real page on `apps/content/storefront`:
 
 - Visual timeline driven by the **G.1 buyer-visible event feed** — each
   row renders as `{customer_message}` with `{customer_icon}` glyph and
@@ -684,7 +684,7 @@ Form: pick line items + qty, pick reason per line, upload photos. Submit
 
 ### F.3 — Staff return-management page (generic)  ✅ shipped 2026-05-21
 
-New page in `rutba-order-management` at `/returns`:
+New page in `apps/sales/orders` at `/returns`:
 
 - Inbox view of `status = requested`.
 - Approve / reject (with reason).
@@ -821,7 +821,7 @@ and eventually the analytics in G.2.
 - `return_rate` per product / per category
 
 SQL views; no new entities. Surface on a dashboard page in
-`rutba-order-management`.
+`apps/sales/orders`.
 
 ### G.3 — Exception queues (generic)
 

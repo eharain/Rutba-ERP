@@ -6,7 +6,7 @@ An open-source, modular business management system built as an **npm workspaces 
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                      pos-strapi (Strapi 5)                      │
+│                      services/strapi (Strapi 5)                      │
 │                  Headless API — port 4010 (dev)                  │
 └──┬───────┬───────┬───────┬───────┬───────┬───────┬───────┬──────┘
    │       │       │       │       │       │       │       │
@@ -19,7 +19,7 @@ An open-source, modular business management system built as an **npm workspaces 
  rider   crm     hr      ess     acct    payroll mfg     inventory
  :4012   :4005   :4006   :4015   :4007   :4008   :4014   :4017
 
- Shared:  packages/pos-shared  (UI + context)
+ Shared:  packages/shared  (UI + context)
           packages/api-provider (descriptor-driven Strapi clients)
           packages/strapi-api-pro (Strapi plugin: auth + scope enforcement)
 ```
@@ -28,41 +28,41 @@ An open-source, modular business management system built as an **npm workspaces 
 
 | Directory | App | Port | Description |
 |---|---|---|---|
-| `pos-strapi/` | **Strapi API** | 4010 | Strapi 5.x headless CMS — content types, REST API, lifecycle hooks |
-| `rutba-core/` | **Core API** | 4020 | In-house backend replacing pos-strapi: serves the descriptor API from the same database (strangler migration) |
-| `packages/pos-shared/` | **Shared Library** | — | Components, context providers, utilities shared by all apps |
+| `services/strapi/` | **Strapi API** | 4010 | Strapi 5.x headless CMS — content types, REST API, lifecycle hooks |
+| `services/core/` | **Core API** | 4020 | In-house backend replacing services/strapi: serves the descriptor API from the same database (strangler migration) |
+| `packages/shared/` | **Shared Library** | — | Components, context providers, utilities shared by all apps |
 | `packages/api-provider/` | **API descriptors** | — | Single source of truth for every Strapi endpoint; scaffolder emits per-app client + server bindings |
 | `packages/strapi-api-pro/` | **Strapi RBAC plugin** | — | Replaces api-guard-pro: descriptor-driven auth, role scope, claim caching |
-| `pos-auth/` | **Auth Portal** | 4003 | Login, OAuth-style flow, user management, app-access admin |
-| `pos-stock/` | **Stock Management** | 4001 | Products, purchases, stock items, suppliers, brands, categories |
-| `pos-sale/` | **Point of Sale** | 4002 | Sales, cart, returns, cash register, reports |
-| `rutba-web/` | **Public Website** | 4000 | Storefront — Next.js 16, SSR, sale offers, checkout (express + full address), COD |
-| `rutba-web-user/` | **My Orders** | 4004 | Customer order tracking, returns, account management |
-| `rutba-cms/` | **CMS** | 4009 | Page authoring, product groups, CMS sections, SEO defaults, bulk import/export |
-| `rutba-social/` | **Social** | 4011 | Social-account management, post composer with product preview |
-| `rutba-order-management/` | **Order Management** | 4013 | Stage-based order shell (per-status components funnelled through one state-machine chokepoint), returns inbox + detail, label printing, delivery ops, rider assignment, payment verify, notification templates |
-| `rutba-rider/` | **Rider App** | 4012 | Rider offers, active deliveries, status updates, buyer messaging |
-| `rutba-crm/` | **CRM** | 4005 | Contacts, leads, activities, person browse + dedup audit (planned) |
-| `rutba-hr/` | **Human Resources** | 4006 | Employees, departments, attendance, leave requests |
-| `rutba-ess/` | **Employee Self-Service** | 4015 | Employee portal — own profile, attendance, leave requests, payslips |
-| `rutba-accounts/` | **Accounting** | 4007 | Chart of accounts, journal entries, invoices, expenses |
-| `rutba-payroll/` | **Payroll** | 4008 | Salary structures, payroll runs, payslips, deduction rules, employee profiles, adjustments |
-| `rutba-manufacturing/` | **Manufacturing** | 4014 | Tailoring production — work orders, tasks/piece-rate, BOM (multi-output + auto-consume), bundles, operations, material lots/issues, QC, reusable production templates |
-| `rutba-inventory/` | **Inventory Management** | 4017 | Warehouses/bins, stock levels, transfers, adjustments, cycle counts, batch/expiry, reorder/replenishment, inventory valuation |
-| `rutba-marketplace/` | **Marketplace** | 4016 | Channel listings, mapping, pricing and account wiring; a background sync worker (portless) runs alongside |
-| `rutba-seed/` | **Seeding Control** | 4018 | Guarded runner for the seed registry — run history, per-seeder execution |
-| `rutba-campaigns/` | **Campaigns** | 4019 | Audiences, templates, campaign runs and delivery settings |
-| `rutba-mail/` | **Mail** | 4021 | Mail client over live IMAP — shared inboxes, contacts, server settings |
-| `rutba-admin/` | **Admin Console** | 4022 | Central users, app domains, mailboxes, email-server registry, invite flow, social accounts and relay providers |
-| `rutba-helpdesk/` | **Helpdesk** | 4023 | Tickets, desks and routing — the first Rutba-Core-native module |
+| `apps/admin/auth/` | **Auth Portal** | 4003 | Login, OAuth-style flow, user management, app-access admin |
+| `apps/inventory/stock/` | **Stock Management** | 4001 | Products, purchases, stock items, suppliers, brands, categories |
+| `apps/sales/pos/` | **Point of Sale** | 4002 | Sales, cart, returns, cash register, reports |
+| `apps/content/storefront/` | **Public Website** | 4000 | Storefront — Next.js 16, SSR, sale offers, checkout (express + full address), COD |
+| `apps/sales/portal/` | **My Orders** | 4004 | Customer order tracking, returns, account management |
+| `apps/content/cms/` | **CMS** | 4009 | Page authoring, product groups, CMS sections, SEO defaults, bulk import/export |
+| `apps/content/social/` | **Social** | 4011 | Social-account management, post composer with product preview |
+| `apps/sales/orders/` | **Order Management** | 4013 | Stage-based order shell (per-status components funnelled through one state-machine chokepoint), returns inbox + detail, label printing, delivery ops, rider assignment, payment verify, notification templates |
+| `apps/sales/rider/` | **Rider App** | 4012 | Rider offers, active deliveries, status updates, buyer messaging |
+| `apps/sales/crm/` | **CRM** | 4005 | Contacts, leads, activities, person browse + dedup audit (planned) |
+| `apps/people/hr/` | **Human Resources** | 4006 | Employees, departments, attendance, leave requests |
+| `apps/people/ess/` | **Employee Self-Service** | 4015 | Employee portal — own profile, attendance, leave requests, payslips |
+| `apps/finance/accounts/` | **Accounting** | 4007 | Chart of accounts, journal entries, invoices, expenses |
+| `apps/finance/payroll/` | **Payroll** | 4008 | Salary structures, payroll runs, payslips, deduction rules, employee profiles, adjustments |
+| `apps/inventory/manufacturing/` | **Manufacturing** | 4014 | Tailoring production — work orders, tasks/piece-rate, BOM (multi-output + auto-consume), bundles, operations, material lots/issues, QC, reusable production templates |
+| `apps/inventory/control/` | **Inventory Management** | 4017 | Warehouses/bins, stock levels, transfers, adjustments, cycle counts, batch/expiry, reorder/replenishment, inventory valuation |
+| `apps/sales/marketplace/` | **Marketplace** | 4016 | Channel listings, mapping, pricing and account wiring; a background sync worker (portless) runs alongside |
+| `apps/admin/seed/` | **Seeding Control** | 4018 | Guarded runner for the seed registry — run history, per-seeder execution |
+| `apps/content/campaigns/` | **Campaigns** | 4019 | Audiences, templates, campaign runs and delivery settings |
+| `apps/content/mail/` | **Mail** | 4021 | Mail client over live IMAP — shared inboxes, contacts, server settings |
+| `apps/admin/console/` | **Admin Console** | 4022 | Central users, app domains, mailboxes, email-server registry, invite flow, social accounts and relay providers |
+| `apps/sales/helpdesk/` | **Helpdesk** | 4023 | Tickets, desks and routing — the first Rutba-Core-native module |
 
 > Ports above are the workspace defaults; `process.env.PORT` (set by Hostinger / Passenger / Docker) always overrides. See [.env.example](.env.example) for the `<APP_PREFIX>__PORT=` overrides.
 
 ## Tech Stack
 
-- **Frontend:** Next.js 16, React 19, Bootstrap 5 (POS / admin apps), Tailwind CSS (rutba-web storefront)
+- **Frontend:** Next.js 16, React 19, Bootstrap 5 (POS / admin apps), Tailwind CSS (apps/content/storefront storefront)
 - **Backend:** Strapi 5.x (MySQL / MariaDB); custom plugin `packages/strapi-api-pro` for descriptor-driven RBAC
-- **Auth:** OAuth-style flow via `pos-auth` with JWT + per-app `app_access` rows; `X-Rutba-App` / `X-Rutba-App-Role` headers select the active claim
+- **Auth:** OAuth-style flow via `apps/admin/auth` with JWT + per-app `app_access` rows; `X-Rutba-App` / `X-Rutba-App-Role` headers select the active claim
 - **Data API layer:** `packages/api-provider` descriptors are the single source of truth; the scaffolder emits per-app clients and `.d.ts` sidecars
 - **Monorepo:** npm workspaces; env loader at `scripts/js/load-env.js` resolves `<APP_PREFIX>__VAR` overrides into bare env vars per child process
 
@@ -85,12 +85,12 @@ npm install
 
 # 3. Set up environment — copy the dev template and edit DB creds at minimum.
 #    Per-app vars use the APP_PREFIX__NAME convention (e.g. POS_STRAPI__PORT=4010).
-#    Workspace .env files (pos-strapi/.env, etc.) are intentionally empty —
+#    Workspace .env files (services/strapi/.env, etc.) are intentionally empty —
 #    do NOT add vars there; the loader strips prefixes from the root .env.<ENV>
 #    See [.env.example](.env.example) for the contract.
 cp .env.example .env.development
 
-# 4. Start Strapi via the workspace launcher (NOT `cd pos-strapi`).
+# 4. Start Strapi via the workspace launcher (NOT `cd services/strapi`).
 #    The launcher runs load-env.js so POS_STRAPI__* vars become DATABASE_*, etc.
 npm run dev:strapi          # Strapi API      → http://localhost:4010
 
@@ -196,7 +196,7 @@ docker compose down
 
 ## Managed hosting (Hostinger / PaaS)
 
-To run a single app (typically `rutba-web`) on managed Node.js hosting rather
+To run a single app (typically `apps/content/storefront`) on managed Node.js hosting rather
 than the systemd estate, see
 [§13 of the deployment guide](docs/DEPLOYMENT.md#13-deploying-a-single-app-on-hostinger--paas).
 The platform sets `PORT` and the env loader respects it, so no per-app port
@@ -204,7 +204,7 @@ configuration is needed.
 
 ## Strapi Content Types
 
-Browse `pos-strapi/src/api/*/content-types/*/schema.json` for the full list.
+Browse `services/strapi/src/api/*/content-types/*/schema.json` for the full list.
 Key domain groupings:
 
 | Domain | Content Types |
@@ -263,8 +263,8 @@ Forward-looking work, organised by surface. Items marked ✓ have shipped. Cross
 - [payroll-module-implementation.md](docs/todo/payroll-module-implementation.md) — payroll module spec. **Built:** the `pay-payroll-run` engine, configurable deduction engine (`pay-deduction-rule`), employee profiles, and adjustments; posts into the accounting ledger.
 - [contact-entity-unification.md](docs/todo/contact-entity-unification.md) — Phase 1A (person + address + sale-order rewire) and 1C.5 (contact-ticket), 3.3 (UP signup promotion) ✓. Phase 1B (customer backfill) is next.
 - [contact-unification-launch-test-plan.md](docs/todo/contact-unification-launch-test-plan.md) — Tier P0/P1/P2 test plan for the unification work.
-- [rutba-web-launch-backlog.md](docs/todo/rutba-web-launch-backlog.md) — storefront pre/post-launch backlog.
-- [rutba-web-readable-slug-urls.md](docs/todo/rutba-web-readable-slug-urls.md) — ✓ shipped (commit `4bb1dd7`).
+- [storefront-launch-backlog.md](docs/todo/storefront-launch-backlog.md) — storefront pre/post-launch backlog.
+- [storefront-readable-slug-urls.md](docs/todo/storefront-readable-slug-urls.md) — ✓ shipped (commit `4bb1dd7`).
 - [address-book-server-side.md](docs/todo/address-book-server-side.md) — ✓ server-side address book shipped (`/me/addresses` on the person/address model); only fold-anonymous-on-login + a checkout multi-address picker remain.
 - [barcode-qr-deep-link.md](docs/todo/barcode-qr-deep-link.md) — storefront-URL QR + POS scanner strip. Blocked on the slug pass (now done).
 - [cms-preview-from-storefront.md](docs/todo/cms-preview-from-storefront.md) — draft-mode preview from CMS to storefront.

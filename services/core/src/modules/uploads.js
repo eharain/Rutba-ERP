@@ -13,7 +13,7 @@
  * the catalog module; they call the same plugin service underneath, so both
  * paths write identical rows.
  *
- * Auth: Strapi ships these routes behind users-permissions, and pos-strapi puts
+ * Auth: Strapi ships these routes behind users-permissions, and services/strapi puts
  * /upload on api-pro's bypass list — so an authenticated user is required but no
  * per-action policy is enforced. Mounted selfAuth for the same reason, with an
  * explicit user check here rather than an interceptor.

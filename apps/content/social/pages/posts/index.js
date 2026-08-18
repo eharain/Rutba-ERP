@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import { MediaUtilsEndpoints, SocialPostsEndpoints, SocialAccountsEndpoints, SocialRelayProvidersEndpoints } from "@rutba/api-provider/endpoints";
 import { useToast } from "../../components/Toast";
 import PLATFORMS, { PlatformBadge } from "../../components/PlatformBadge";
@@ -20,7 +20,7 @@ const CARDS_PER_PAGE = 24;
 // anyone chose — including captions:false for everyone who opened the page
 // before captions defaulted on. Reading it would quietly override the new
 // default, so the old key is abandoned rather than migrated.
-const VIEW_KEY = "rutba-social-posts-view.v2";
+const VIEW_KEY = "apps/content/social-posts-view.v2";
 
 // Bulk-edit columns. documentId/id/contentType/publish are auto-emitted by
 // ExcelIO. Keep the documentId on a row to update it; clear it (or add a new

@@ -5,7 +5,7 @@ dev DB; goldens, schema handover and the Caddy flip remain).
 
 ## What runs in core now
 
-`rutba-core/src/modules/inventory.js` (same zero-copy model as tranches 1–3).
+`services/core/src/modules/inventory.js` (same zero-copy model as tranches 1–3).
 The stock-item CORE (sale/allocate/transfer) stays in Strapi until tranche 7 —
 this module owns only the replenishment + expiry surface.
 
@@ -24,10 +24,10 @@ requireAppRole / isReplenishManager) → `selfAuth` in core, exactly like mfg.
 ### Crons — FIRST CRON MIGRATION
 
 `inventoryExpirySweep` (02:15) and `lowStockAlertSweep` (02:30) are read
-zero-copy from pos-strapi's own `config/inventory-cron-tasks.js` and registered
+zero-copy from services/strapi's own `config/inventory-cron-tasks.js` and registered
 with the core scheduler. They stay **dormant** unless `RUTBA_CORE_CRONS=1`.
 **At the tranche flip they start in core and must simultaneously be removed
-from pos-strapi's config/server.js merge — never run in both servers.**
+from services/strapi's config/server.js merge — never run in both servers.**
 
 ### Lifecycles
 
@@ -63,16 +63,16 @@ the saner behavior. Revisit if a ported module ever depends on seeing both.
   dismiss (notes) → ack-after-dismiss 400 → auto-resolve once on-order covers
   the deficit, generate-purchases/WOs + idempotency skips, expiring horizon +
   fields projection, sweep flips unit AND batch with cache recomputes, sweep
-  idempotency, cron registration (dormant, pos-strapi rules). Real stock rows
+  idempotency, cron registration (dormant, services/strapi rules). Real stock rows
   a sweep could flip are snapshotted and restored (none existed); the run-now
   calls refresh real alert rows' derived metrics — the same convergence the
   daily cron performs.
-- All prior suites green; contract sweep vs live pos-strapi 113/113
+- All prior suites green; contract sweep vs live services/strapi 113/113
   byte-identical; validate-schema zero mismatches.
 
 ## Remaining for this tranche
 
 Same as tranches 1–3 (goldens, baseline migration via `schema-diff.js
 --filter`, Caddy flip) **plus the cron cutover**: set `RUTBA_CORE_CRONS=1` on
-the core instance and remove `buildInventoryCronTasks` from pos-strapi
+the core instance and remove `buildInventoryCronTasks` from services/strapi
 config/server.js in the same deploy.

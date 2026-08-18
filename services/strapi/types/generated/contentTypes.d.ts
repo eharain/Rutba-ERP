@@ -5523,7 +5523,7 @@ export interface ApiMarketplaceListingMarketplaceListing
   extends Struct.CollectionTypeSchema {
   collectionName: 'marketplace_listings';
   info: {
-    description: 'Per (account, product) listing config: whether the product is selected for a marketplace, its per-listing price adjustment, and the external listing/sku ids + push state. Pure datastore \u2014 the rutba-marketplace app reads/writes it.';
+    description: 'Per (account, product) listing config: whether the product is selected for a marketplace, its per-listing price adjustment, and the external listing/sku ids + push state. Pure datastore \u2014 the apps/sales/marketplace app reads/writes it.';
     displayName: 'Marketplace Listing';
     pluralName: 'marketplace-listings';
     singularName: 'marketplace-listing';
@@ -5571,7 +5571,7 @@ export interface ApiMarketplaceMappingMarketplaceMapping
   extends Struct.CollectionTypeSchema {
   collectionName: 'marketplace_mappings';
   info: {
-    description: "Maps an internal taxonomy entity (category/brand/term/term-type) to a marketplace's taxonomy id. Pure reference data \u2014 the rutba-marketplace app reads/writes it; Strapi just stores it.";
+    description: "Maps an internal taxonomy entity (category/brand/term/term-type) to a marketplace's taxonomy id. Pure reference data \u2014 the apps/sales/marketplace app reads/writes it; Strapi just stores it.";
     displayName: 'Marketplace Mapping';
     pluralName: 'marketplace-mappings';
     singularName: 'marketplace-mapping';

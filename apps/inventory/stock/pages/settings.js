@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { BranchesEndpoints } from "@rutba/api-provider/endpoints/index.js";
 import Layout from "../components/Layout";
-import { useUtil } from "@rutba/pos-shared/context/UtilContext"
+import { useUtil } from "@rutba/shared/context/UtilContext"
 export default function SettingsPage() {
     const [branches, setBranches] = useState([]);
     const [selectedBranch, setSelectedBranch] = useState(null);

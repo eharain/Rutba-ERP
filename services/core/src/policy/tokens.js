@@ -12,7 +12,7 @@
  *
  * The formats below are Strapi's, reproduced exactly, so a token minted here
  * works in both backends during the coexistence window and keeps working after
- * pos-strapi is gone:
+ * services/strapi is gone:
  *
  *   accessKey     256 hex chars (crypto.randomBytes(128)) — shown once, never stored
  *   access_key    HMAC-SHA512(API_TOKEN_SALT, accessKey), hex — what is stored

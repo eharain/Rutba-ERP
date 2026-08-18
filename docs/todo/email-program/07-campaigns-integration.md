@@ -1,7 +1,7 @@
 # Email Program — Campaigns Integration
 
-`rutba-campaigns` (:4019) remains its own app with its own authoritative spec
-([`../rutba-campaigns-implementation.md`](../rutba-campaigns-implementation.md));
+`apps/content/campaigns` (:4019) remains its own app with its own authoritative spec
+([`../campaigns-implementation.md`](../campaigns-implementation.md));
 this umbrella sequences its outstanding phases and defines the shared seams.
 
 ## Mapping

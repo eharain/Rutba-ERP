@@ -3,12 +3,12 @@ import { listParams, byIdParams } from './__param_builders.js';
 export const SaleOffersEndpoints = {
     meta: {
         uid: 'api::sale-offer.sale-offer',
-        domains: ['cms', 'web', 'web-user', 'order-management'],
+        domains: ['cms', 'storefront', 'portal', 'orders'],
         roles: ['admin', 'manager', 'staff', 'public', 'user'],
     },
 
     // Live offers that reach a product, each with the price it would give.
-    // Feeds the per-line discount picker in rutba-order-management — staff
+    // Feeds the per-line discount picker in apps/sales/orders — staff
     // pick an offer explicitly (no storefront group click-context), and the
     // order line stores the chosen offer. Read-only: the binding check runs
     // server-side on save, in validateOrderPricing.
@@ -16,7 +16,7 @@ export const SaleOffersEndpoints = {
         path: `/sale-offers/for-product/${productDocumentId}`,
         action: 'listOffersForProduct',
         method: 'get',
-        apps: ['order-management', 'sale', 'cms'],
+        apps: ['orders', 'pos', 'cms'],
         approle: ['admin', 'manager', 'staff'],
     }),
 
@@ -37,7 +37,7 @@ export const SaleOffersEndpoints = {
         path: '/sale-offers',
         action: 'find',
         method: 'get',
-        apps: ['cms', 'web', 'web-user'],
+        apps: ['cms', 'storefront', 'portal'],
         approle: ['admin', 'manager', 'staff', 'public', 'user'],
         params: listParams(
             { page, pageSize, sort, populate, filters, fields },
@@ -59,7 +59,7 @@ export const SaleOffersEndpoints = {
         path: `/sale-offers/${documentId}`,
         action: 'findOne',
         method: 'get',
-        apps: ['cms', 'web', 'web-user'],
+        apps: ['cms', 'storefront', 'portal'],
         approle: ['admin', 'manager', 'staff', 'public', 'user'],
         params: byIdParams({ populate, fields }, {}, { status: 'published' }),
     }),

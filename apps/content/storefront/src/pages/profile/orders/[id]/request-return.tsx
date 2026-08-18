@@ -9,7 +9,7 @@ import type { CreateReturnInput, ReturnLineInput } from "@/services";
 import { BASE_URL } from "@/static/const";
 
 // Hard-coded reason set mirrors the Strapi enum on return-request.reason.
-// Keep in sync with pos-strapi/src/api/return-request/content-types/return-request/schema.json.
+// Keep in sync with services/strapi/src/api/return-request/content-types/return-request/schema.json.
 const RETURN_REASONS = [
   { value: "defective",          label: "Item is defective" },
   { value: "damaged_in_transit", label: "Damaged in transit" },

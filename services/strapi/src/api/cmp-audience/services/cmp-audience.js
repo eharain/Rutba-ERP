@@ -1,7 +1,7 @@
 'use strict';
 
 // The audience resolver — the one contract the whole campaign pipeline hangs
-// on (rutba-campaigns spec §2): resolve(audience) → { members: [{ email,
+// on (apps/content/campaigns spec §2): resolve(audience) → { members: [{ email,
 // mergeData }], total }. When the crm-segment engine lands (ROADMAP 0.6), the
 // 'segment' source resolves through this same signature and nothing else moves.
 

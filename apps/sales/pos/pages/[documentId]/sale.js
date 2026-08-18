@@ -4,8 +4,8 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 
 import Layout from '../../components/Layout';
-import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
-import PermissionCheck from '@rutba/pos-shared/components/PermissionCheck';
+import ProtectedRoute from '@rutba/shared/components/ProtectedRoute';
+import PermissionCheck from '@rutba/shared/components/PermissionCheck';
 import CustomerSelect from '../../components/CustomerSelect';
 import SalesItemsForm from '../../components/form/sales-items-form';
 import SalesItemsList from '../../components/lists/sales-items-list';
@@ -17,13 +17,13 @@ import CashDrawTopUpModal from '../../components/CashDrawTopUpModal';
 import RecentProductsPanel, { recordRecentFromStockItem } from '../../components/RecentProductsPanel';
 import PinnedListsManager from '../../components/PinnedListsManager';
 
-import { useUtil } from '@rutba/pos-shared/context/UtilContext';
+import { useUtil } from '@rutba/shared/context/UtilContext';
 
-import SaleModel from '@rutba/pos-shared/context/domain/sale/SaleModel';
-import SaleApi from '@rutba/pos-shared/lib/saleApi';
-import { recordSaleAudit, fetchSaleAudit, SALE_AUDIT_EVENT } from '@rutba/pos-shared/lib/saleAudit';
-import { useAuth } from '@rutba/pos-shared/context/AuthContext';
-import { isAppAdmin, isActiveAdminRole } from '@rutba/pos-shared/lib/roles';
+import SaleModel from '@rutba/shared/context/domain/sale/SaleModel';
+import SaleApi from '@rutba/shared/lib/saleApi';
+import { recordSaleAudit, fetchSaleAudit, SALE_AUDIT_EVENT } from '@rutba/shared/lib/saleAudit';
+import { useAuth } from '@rutba/shared/context/AuthContext';
+import { isAppAdmin, isActiveAdminRole } from '@rutba/shared/lib/roles';
 import { AppContextEndpoints } from '@rutba/api-provider/endpoints';
 
 const ACTION_BADGE_CLASSES = {

@@ -4,7 +4,7 @@ import { listParams } from './__param_builders.js';
  * Connected social accounts and their stored credentials.
  *
  * ── Who may READ vs who may WRITE ─────────────────────────────────────────
- * Administering these accounts belongs to the admin console (rutba-admin) —
+ * Administering these accounts belongs to the admin console (apps/admin/console) —
  * the "Integrations & connected accounts" section of the admin-console
  * program. The social app keeps a READ-ONLY view, because `list` is
  * load-bearing there far beyond the accounts screen: posts/create,
@@ -25,7 +25,7 @@ import { listParams } from './__param_builders.js';
  * still working?" without being able to change it.
  */
 export const SocialAccountsEndpoints = {
-    meta: { domains: ['social', 'admin'] },
+    meta: { domains: ['social', 'console'] },
 
     list: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/social-accounts',
@@ -34,16 +34,16 @@ export const SocialAccountsEndpoints = {
             { sort: ['createdAt:desc'] },
         ),
     }),
-    create: (data) => ({ path: '/social-accounts', action: 'create', method: 'post', apps: ['admin'], data }),
-    update: (documentId, data) => ({ path: `/social-accounts/${documentId}`, action: 'update', method: 'put', apps: ['admin'], data }),
-    del: (documentId) => ({ path: `/social-accounts/${documentId}`, action: 'delete', method: 'delete', apps: ['admin'] }),
+    create: (data) => ({ path: '/social-accounts', action: 'create', method: 'post', apps: ['console'], data }),
+    update: (documentId, data) => ({ path: `/social-accounts/${documentId}`, action: 'update', method: 'put', apps: ['console'], data }),
+    del: (documentId) => ({ path: `/social-accounts/${documentId}`, action: 'delete', method: 'delete', apps: ['console'] }),
 
     // Which platforms have a server-level OAuth app (→ one-click Connect, no keys).
     providerStatus: () => ({ path: '/social-accounts/provider-status', action: 'providerStatus', method: 'get' }),
 
     // ── OAuth connect + connection health ──
-    getConnectUrl: (documentId) => ({ path: `/social-accounts/${documentId}/connect-url`, action: 'getConnectUrl', method: 'post', apps: ['admin'] }),
+    getConnectUrl: (documentId) => ({ path: `/social-accounts/${documentId}/connect-url`, action: 'getConnectUrl', method: 'post', apps: ['console'] }),
     validateConnection: (documentId) => ({ path: `/social-accounts/${documentId}/validate-connection`, action: 'validateConnection', method: 'post' }),
-    syncToken: (documentId) => ({ path: `/social-accounts/${documentId}/refresh-token`, action: 'syncToken', method: 'post', apps: ['admin'] }),
+    syncToken: (documentId) => ({ path: `/social-accounts/${documentId}/refresh-token`, action: 'syncToken', method: 'post', apps: ['console'] }),
 
 };

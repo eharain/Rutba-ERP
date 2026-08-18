@@ -1,12 +1,12 @@
 import React, { useEffect, useState, useCallback } from "react";
 import Layout from "../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
 import { BranchesEndpoints, StockItemsEndpoints } from "@rutba/api-provider/endpoints/index.js";
 import {
     CircularProgress,
-} from "@rutba/pos-shared/components/Table";
-import ListPageLayout from "@rutba/pos-shared/components/ListPageLayout";
-import ListPagination from "@rutba/pos-shared/components/ListPagination";
+} from "@rutba/shared/components/Table";
+import ListPageLayout from "@rutba/shared/components/ListPageLayout";
+import ListPagination from "@rutba/shared/components/ListPagination";
 
 const TERMINAL_STATUSES = [
     'Sold',

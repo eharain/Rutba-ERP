@@ -13,8 +13,8 @@
 > denormalise expiry onto stock units for fast querying, allocate stock **first-expiry-
 > first-out** at sale, alert on expiring stock, and block selling expired units.
 
-Owning app: `pos-strapi` (schema + lifecycle + allocation) with UI in `rutba-inventory`
-(batch management, expiry dashboard) and behaviour changes in `pos-sale` / `rutba-web`
+Owning app: `services/strapi` (schema + lifecycle + allocation) with UI in `apps/inventory/control`
+(batch management, expiry dashboard) and behaviour changes in `apps/sales/pos` / `apps/content/storefront`
 (FEFO + block-expired). Depends on: Foundation F3 (batch/expiry fields) — small once that
 lands. Converges with Epic 1's material-lot concept.
 
@@ -47,7 +47,7 @@ See [00-overview-and-roadmap.md](00-overview-and-roadmap.md) F3.
 > you can add units with an expiry and **no batch**, and units within a batch may still carry
 > individually overridden expiries.
 
-`pos-strapi/src/api/stock-batch/…`:
+`services/strapi/src/api/stock-batch/…`:
 | field | type | notes |
 |-------|------|-------|
 | `batch_code` | string | unique per product (validate in lifecycle) |
@@ -111,7 +111,7 @@ The existing `stock-item.status` enum already has `Expired` — reuse it (no sch
 
 ### FEFO allocation (the core change)
 
-- **POS (`pos-sale`) & sale-order picking:** when selecting which physical unit fulfils a
+- **POS (`apps/sales/pos`) & sale-order picking:** when selecting which physical unit fulfils a
   line for a perishable product, order candidate InStock units by `expiry_date asc`
   (nulls last), then `createdAt asc`. Today POS resolves units via
   `StockItemsEndpoints.list` / scan; add an `expiry_date:asc` sort and an
@@ -139,7 +139,7 @@ The existing `stock-item.status` enum already has `Expired` — reuse it (no sch
 
 - `inventory-report`-style read endpoints: `getExpiringSoon` (within alert window),
   `getExpired`, `getExpiryAgeing` (buckets). All `get*` verbs are api-pro-whitelisted.
-- `rutba-inventory` **Expiry dashboard**: expiring-soon list (by product/warehouse/batch),
+- `apps/inventory/control` **Expiry dashboard**: expiring-soon list (by product/warehouse/batch),
   expired-not-written-off list (→ one-click create write-off adjustment), batch browser.
 - Optional notification hook: reuse the notification-template system to email/notify on
   expiring batches (defer if not needed).
@@ -152,18 +152,18 @@ The existing `stock-item.status` enum already has `Expired` — reuse it (no sch
   `getExpired` report actions), `export` in `api/index.js`.
 - product & stock-item schema extensions (additive; defaults keep non-perishable products
   unaffected).
-- Cron job `pos-strapi/src/api/stock-batch/…` or a `bootstrap`-registered scheduled task for
+- Cron job `services/strapi/src/api/stock-batch/…` or a `bootstrap`-registered scheduled task for
   expiry sweep (idempotent; only flips status, never posts GL).
 - Sort/filter additions on the stock-item list descriptor for FEFO.
 
 ## Frontend surface
 
-- `rutba-inventory`: Batch management (CRUD, quarantine/recall), Expiry dashboard.
-- `pos-sale`: FEFO pick order in the unit picker; block-expired at checkout with a clear
+- `apps/inventory/control`: Batch management (CRUD, quarantine/recall), Expiry dashboard.
+- `apps/sales/pos`: FEFO pick order in the unit picker; block-expired at checkout with a clear
   message.
-- `rutba-web`: no change if it reads `stock_quantity` (the sweep keeps it honest); optionally
+- `apps/content/storefront`: no change if it reads `stock_quantity` (the sweep keeps it honest); optionally
   surface "best before" on PDP for perishables.
-- Intake screens (`pos-stock` receiving, bulk import): batch/expiry columns.
+- Intake screens (`apps/inventory/stock` receiving, bulk import): batch/expiry columns.
 
 ---
 
@@ -174,7 +174,7 @@ The existing `stock-item.status` enum already has `Expired` — reuse it (no sch
 3. **Expiry sweep + block-expired** — cron + checkout guard; reports `getExpiringSoon`/
    `getExpired`.
 4. **FEFO allocation** — sort at pick/scan; then revive allocateStock FEFO-aware.
-5. **UI** — batch mgmt + expiry dashboard in `rutba-inventory`; PDP "best before" (optional).
+5. **UI** — batch mgmt + expiry dashboard in `apps/inventory/control`; PDP "best before" (optional).
 
 ## Open decisions
 

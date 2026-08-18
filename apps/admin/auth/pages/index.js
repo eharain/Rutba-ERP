@@ -1,12 +1,12 @@
 import Layout from "../components/Layout";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
+import { useAuth } from "@rutba/shared/context/AuthContext";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
 import AppHome, {
     AppHomeGrid,
     AppHomeTile,
     AppHomeSection,
-} from "@rutba/pos-shared/components/AppHome";
-import { getAllowedApps, APP_URLS, APP_META, APP_CATEGORIES } from "@rutba/pos-shared/lib/roles";
+} from "@rutba/shared/components/AppHome";
+import { getAllowedApps, APP_URLS, APP_META, APP_CATEGORIES } from "@rutba/shared/lib/roles";
 
 /**
  * The SSO portal home — the launcher every user lands on.

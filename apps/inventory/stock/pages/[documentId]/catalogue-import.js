@@ -2,9 +2,9 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Layout from '../../components/Layout';
-import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
+import ProtectedRoute from '@rutba/shared/components/ProtectedRoute';
 import { TermTypesEndpoints, ProductsEndpoints, fetchProducts } from '@rutba/api-provider/endpoints';
-import { createVariant } from '@rutba/pos-shared/lib/variants';
+import { createVariant } from '@rutba/shared/lib/variants';
 
 function getEntryId(entry) {
     return entry?.documentId || entry?.id;

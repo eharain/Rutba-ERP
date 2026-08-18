@@ -17,15 +17,15 @@
  */
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Layout from "../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import {
     MediaUtilsEndpoints, MediaLibraryEndpoints, SocialPostsEndpoints, UploadEndpoints,
 } from "@rutba/api-provider/endpoints";
 import { useToast } from "../components/Toast";
 import DropZone from "../components/DropZone";
-import RecorderDialog from "@rutba/pos-shared/components/RecorderDialog";
-import VideoEditorDialog from "@rutba/pos-shared/components/VideoEditorDialog";
+import RecorderDialog from "@rutba/shared/components/RecorderDialog";
+import VideoEditorDialog from "@rutba/shared/components/VideoEditorDialog";
 import Link from "next/link";
 import { fetchMediaViaProxy, imageItems, isVideoFile } from "../lib/video-maker";
 

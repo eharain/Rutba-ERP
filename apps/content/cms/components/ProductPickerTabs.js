@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import { BrandsEndpoints, CategoriesEndpoints, MediaUtilsEndpoints, PurchasesEndpoints, SuppliersEndpoints, TermTypesEndpoints, fetchProducts } from "@rutba/api-provider/endpoints";
-import { ProductFilter } from "@rutba/pos-shared/components/filter/product-filter";
+import { ProductFilter } from "@rutba/shared/components/filter/product-filter";
 import Link from "next/link";
 import OrderableRelationList from "./OrderableRelationList";
 

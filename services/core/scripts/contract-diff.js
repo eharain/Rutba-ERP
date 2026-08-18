@@ -2,12 +2,12 @@
 'use strict';
 
 /**
- * Golden contract diff: replays identical requests against live pos-strapi
- * (:4010) and rutba-core (booted here on :4023) with the same JWT + claim
+ * Golden contract diff: replays identical requests against live services/strapi
+ * (:4010) and services/core (booted here on :4023) with the same JWT + claim
  * headers, and deep-diffs the JSON responses. This is the parity gate â€”
  * "at par with Strapi" for a route means zero diff paths here.
  *
- * Usage: node rutba-core/scripts/contract-diff.js [maxRoutes]
+ * Usage: node services/core/scripts/contract-diff.js [maxRoutes]
  * Output: summary + .tmp/contract-diff.json (full per-route diffs)
  */
 
@@ -174,14 +174,14 @@ async function main() {
     server.close();
   }
 
-  // Known-additive diffs: core follows plugin SRC; pos-strapi's built dist lags.
+  // Known-additive diffs: core follows plugin SRC; services/strapi's built dist lags.
   // (me-permissions src maps appRoles with id; the deployed dist build doesn't.)
   const ALLOWED = [
     /appRoles\[\d+\]\.id: MISSING in strapi/,
     // Live-Strapi bug: branch.locations (â†’ api::storage-location) is stripped
     // from populate=* by removeRestrictedRelations because the storage-location
     // UP find grant is missing; core returns the real data. Remove once the
-    // grant is reseeded / the branch.locations fix lands in pos-strapi.
+    // grant is reseeded / the branch.locations fix lands in services/strapi.
     /\.locations: MISSING in strapi/,
   ];
 

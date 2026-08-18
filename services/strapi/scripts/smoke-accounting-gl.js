@@ -2,11 +2,11 @@
 'use strict';
 
 /**
- * Accounting GL smoke against pos-strapi itself (roadmap 0.4).
+ * Accounting GL smoke against services/strapi itself (roadmap 0.4).
  *
- * The sibling rutba-core/scripts/smoke-accounting-gl.js covers the same ground
+ * The sibling services/core/scripts/smoke-accounting-gl.js covers the same ground
  * on core, where lifecycles run through the document-middleware adapter. This
- * one boots pos-strapi so the checks go through Strapi's OWN query-engine
+ * one boots services/strapi so the checks go through Strapi's OWN query-engine
  * lifecycles and services — the two servers must agree.
  *
  *   A. Every account-mapping key the code resolves is seeded (SHRINKAGE_EXPENSE
@@ -30,7 +30,7 @@
  * this work, so it is the harness and not these endpoints. Section E probes for
  * that and SKIPS the claim-dependent assertions rather than reporting a
  * failure it cannot attribute. Full HTTP + policy coverage for the same two
- * endpoints runs in rutba-core/scripts/smoke-accounting-gl.js, which serves
+ * endpoints runs in services/core/scripts/smoke-accounting-gl.js, which serves
  * through core's own interceptor. What section E still asserts unconditionally:
  * the session token works, api-pro can see the granted roles, and disburse
  * refuses a non-payroll caller.
@@ -41,8 +41,8 @@
  * jwt service, which routes via strapi.sessionManager.
  *
  * Self-cleaning: marker rows and the journal entries they produce are removed.
- * Run: npm --prefix pos-strapi run smoke:accounting-gl   (from the repo root:
- * node scripts/js/load-env.js -- npm --prefix pos-strapi run smoke:accounting-gl)
+ * Run: npm --prefix services/strapi run smoke:accounting-gl   (from the repo root:
+ * node scripts/js/load-env.js -- npm --prefix services/strapi run smoke:accounting-gl)
  */
 
 const { createStrapi, compileStrapi } = require('@strapi/strapi');
@@ -258,7 +258,7 @@ async function main() {
     check('idempotent path flags alreadyPosted', ctx.sent?.meta?.alreadyPosted === true);
 
     /* ── E ── */
-    console.log(`E. HTTP against a running pos-strapi (${BASE})`);
+    console.log(`E. HTTP against a running services/strapi (${BASE})`);
     if (!(await reachable())) {
       check(`HTTP server came up on ${SMOKE_PORT}`, false, 'is something else holding the port?');
     } else {
@@ -311,7 +311,7 @@ async function main() {
         console.log('        — no ctx.state.apiProClaim on a known claim-gated route, so the');
         console.log('          claim-dependent assertions below would test the harness, not the code.');
         console.log('        HTTP + policy coverage for these endpoints lives in');
-        console.log('          rutba-core/scripts/smoke-accounting-gl.js (section C/D).');
+        console.log('          services/core/scripts/smoke-accounting-gl.js (section C/D).');
       }
 
       // generate-bill: the path that used to 403 every non-super-admin.

@@ -1,4 +1,4 @@
-import SharedSidebar from "@rutba/pos-shared/components/Sidebar";
+import SharedSidebar from "@rutba/shared/components/Sidebar";
 
 // Screens land as the campaigns phases ship. Phase 0 (this one) is the shell +
 // settings; the template studio, audience builder and composer follow.
@@ -12,5 +12,5 @@ const SECTIONS = [
 ];
 
 export default function Sidebar() {
-    return <SharedSidebar sections={SECTIONS} storageKey="rutba-campaigns-sidebar-pinned" />;
+    return <SharedSidebar sections={SECTIONS} storageKey="apps/content/campaigns-sidebar-pinned" />;
 }

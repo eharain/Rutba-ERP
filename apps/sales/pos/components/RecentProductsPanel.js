@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useUtil } from '@rutba/pos-shared/context/UtilContext';
-import SaleApi from '@rutba/pos-shared/lib/saleApi';
+import { useUtil } from '@rutba/shared/context/UtilContext';
+import SaleApi from '@rutba/shared/lib/saleApi';
 import {
     loadState, setActiveList, addEntry, removeEntry,
     entryKeyOf, productThumbUrl, MAX_ITEMS_PER_LIST,

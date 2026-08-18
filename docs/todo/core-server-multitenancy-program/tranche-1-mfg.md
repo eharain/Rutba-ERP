@@ -5,12 +5,12 @@ goldens on a fixture DB, schema handover and the Caddy flip remain).
 
 ## What runs in core now
 
-`rutba-core/src/modules/mfg.js` (registered via `src/modules/index.js`; the HTTP layer
+`services/core/src/modules/mfg.js` (registered via `src/modules/index.js`; the HTTP layer
 mounts module routes before the descriptor-seeded table).
 
 ### Custom routes (were 501)
 
-| Route | Handler (pos-strapi source, required as-is) |
+| Route | Handler (services/strapi source, required as-is) |
 |---|---|
 | POST /mfg-work-orders/:documentId/process | mfg-work-order/controllers/transition.js |
 | POST /mfg-bundles/:documentId/process | mfg-bundle/controllers/transition.js |
@@ -24,9 +24,9 @@ interceptor never gated them there, so core doesn't either).
 
 ### Document middlewares
 
-- **mfg-bom KIND typing** — same `validateBomWrite` registration as pos-strapi
+- **mfg-bom KIND typing** — same `validateBomWrite` registration as services/strapi
   `src/index.js`.
-- **Lifecycle adapters** (`src/modules/lifecycles.js` runs pos-strapi
+- **Lifecycle adapters** (`src/modules/lifecycles.js` runs services/strapi
   `content-types/*/lifecycles.js` files unchanged around core `documents()` writes):
   mfg-job-work, mfg-material-issue, mfg-material-lot, mfg-qc-inspection, plus the
   cross-module invariants the mfg flows write into: **stock-item, stock-batch,
@@ -35,18 +35,18 @@ interceptor never gated them there, so core doesn't either).
 
 ### Crons
 
-**None.** pos-strapi has no manufacturing crons (config/server.js schedules social +
+**None.** services/strapi has no manufacturing crons (config/server.js schedules social +
 inventory tasks only — those move with tranches 5/4). The scheduler stays dormant for
 this tranche; nothing to disable on the Strapi side at flip time.
 
 ## How it was ported (deviation from the playbook — better than planned)
 
 Playbook step 3 said "copy controllers/services and swap to the shim". Instead the
-port is **zero-copy**: rutba-core `require()`s the pos-strapi source files
+port is **zero-copy**: services/core `require()`s the services/strapi source files
 (controllers, state machines, services, lifecycles, validator, shared utils) and runs
 them against the compat `strapi` object (`src/compat/strapi.js`), which grew:
 
-- `strapi.service(uid)` → loads `pos-strapi/src/api/<name>/services/<svc>.js`;
+- `strapi.service(uid)` → loads `services/strapi/src/api/<name>/services/<svc>.js`;
   a require-cache stub for `@strapi/strapi` supplies `factories.createCoreService`
   markers so the Strapi runtime is never loaded into the core process.
 - `strapi.entityService` → id-based adapter over `documents()` (document middlewares
@@ -61,8 +61,8 @@ them against the compat `strapi` object (`src/compat/strapi.js`), which grew:
   arrays, null), UP **role** populate (super-admin gates read `role.type`), builtin
   relation targets writable by documentId (audit-trail `actor`).
 
-One commit to pos-strapi source = both servers pick it up. When pos-strapi's copies
-are deleted at playbook step 8, the files MOVE into rutba-core (they are the only
+One commit to services/strapi source = both servers pick it up. When services/strapi's copies
+are deleted at playbook step 8, the files MOVE into services/core (they are the only
 consumer by then).
 
 ## Gaps found while porting (fixed)
@@ -92,5 +92,5 @@ consumer by then).
 2. Schema handover (step 5): baseline SQL migration for the mfg-* tables +
    freeze-check on their schema.json files.
 3. Caddy flip for `/api/mfg-*` path prefixes (+ Strapi-side 503 guard), canary first.
-4. Bake 1–2 weeks; then delete pos-strapi's mfg controllers/services/lifecycles
-   (schema.json stays) and move the source files into rutba-core.
+4. Bake 1–2 weeks; then delete services/strapi's mfg controllers/services/lifecycles
+   (schema.json stays) and move the source files into services/core.

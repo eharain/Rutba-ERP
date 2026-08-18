@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import { MediaUtilsEndpoints, SocialPostsEndpoints, ProductsEndpoints } from "@rutba/api-provider/endpoints";
 import { useToast } from "../../components/Toast";
 import PLATFORMS from "../../components/PlatformBadge";
-import FileView from "@rutba/pos-shared/components/FileView";
+import FileView from "@rutba/shared/components/FileView";
 import Link from "next/link";
 import { useStorefrontBaseUrl, productShortUrl } from "../../lib/storefront-url";
 
@@ -78,7 +78,7 @@ export default function FromProductPage() {
     const router = useRouter();
 
     // Storefront base for the "Shop now" deep-link — site-settings.site_url
-    // preferred, NEXT_PUBLIC_WEB_URL fallback.
+    // preferred, NEXT_PUBLIC_STOREFRONT_URL fallback.
     const storefrontBase = useStorefrontBaseUrl();
 
     const [search, setSearch] = useState("");

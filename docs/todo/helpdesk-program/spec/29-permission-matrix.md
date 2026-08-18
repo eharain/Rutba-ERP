@@ -23,7 +23,7 @@ Effective access is always `capability ∩ desk scope ∩ branch scope ∩ owner
 it never overrides scope.
 
 Roles: **Adm** `helpdesk_admin` · **Mgr** `helpdesk_manager` · **Agt** `helpdesk_staff` ·
-**Apr** `helpdesk_approver` · **Emp** ESS employee · **Cus** `web_user` · **Sys**
+**Apr** `helpdesk_approver` · **Emp** ESS employee · **Cus** `storefront_user` · **Sys**
 `helpdesk_system` · **Anon** guest.
 
 ## 29.3 Tickets

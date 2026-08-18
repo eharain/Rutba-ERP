@@ -5,7 +5,7 @@ dev DB; goldens, schema handover and the Caddy flip remain).
 
 ## What runs in core now
 
-`rutba-core/src/modules/hr.js` (same zero-copy model as tranche 1 — see
+`services/core/src/modules/hr.js` (same zero-copy model as tranche 1 — see
 tranche-1-mfg.md for the mechanism).
 
 ### Custom routes (18)
@@ -42,7 +42,7 @@ claims, not hr).
   populate dialect).
 - `$eqi`/`$nei` filter operators (employee email fallback lookups).
 - HR team-role provider registered via `strapi.apiPro.registerRoleProvider` —
-  /me/permissions parity with pos-strapi's bootstrap wiring.
+  /me/permissions parity with services/strapi's bootstrap wiring.
 
 ### Lifecycles registered
 
@@ -53,7 +53,7 @@ Tranche 7 inherits these.
 
 ### Crons
 
-None (pos-strapi schedules no hr/pay tasks).
+None (services/strapi schedules no hr/pay tasks).
 
 ## Verification
 

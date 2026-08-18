@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Layout from "../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import { CrmLeadsEndpoints, CrmActivitiesEndpoints, CrmContactsEndpoints } from "@rutba/api-provider/endpoints";
 import AppHome, {
     AppHomeStats,
@@ -9,7 +9,7 @@ import AppHome, {
     AppHomePanel,
     AppHomeEmpty,
     AppHomeSection,
-} from "@rutba/pos-shared/components/AppHome";
+} from "@rutba/shared/components/AppHome";
 import Link from "next/link";
 import { useLeadStatuses, isOpenStatus, leadStatusColor } from "../components/leadStatus";
 

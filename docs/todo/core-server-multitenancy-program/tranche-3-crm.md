@@ -5,7 +5,7 @@ dev DB; goldens, schema handover and the Caddy flip remain).
 
 ## What runs in core now
 
-`rutba-core/src/modules/crm.js` (same zero-copy model as tranches 1–2 — see
+`services/core/src/modules/crm.js` (same zero-copy model as tranches 1–2 — see
 tranche-1-mfg.md for the mechanism). No lifecycles, no crons in this cluster.
 
 ### Custom routes (13)
@@ -60,7 +60,7 @@ from 404 to served.
 - smoke-http deny-probe now excludes selfAuth module GET paths (its old probe,
   /me/addresses, is parity-correct 200 now).
 - All prior suites green (documents, writes, platform, http, mfg, hr); contract
-  sweep vs live pos-strapi 113/113 byte-identical.
+  sweep vs live services/strapi 113/113 byte-identical.
 
 ## Remaining for this tranche
 

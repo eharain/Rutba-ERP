@@ -2,7 +2,7 @@
 
 // Receiving side of the Rutba↔Rutba catalog integration.
 //
-// The in-house instance's marketplace worker (rutba-marketplace, `rutba`
+// The in-house instance's marketplace worker (apps/sales/marketplace, `rutba`
 // provider) POSTs a batch of already-price-adjusted products here; this upserts
 // them into THIS instance (the online store). It runs on whichever instance is
 // the target — same codebase, dormant on the source.

@@ -1,7 +1,7 @@
 // file: /pos-desk/components/print/BulkPrintPreview.js
 import React, { useEffect, useState } from 'react';
 import BulkBarcodePrint from './BulkBarcodePrint';
-import { useUtil } from '@rutba/pos-shared/context/UtilContext';
+import { useUtil } from '@rutba/shared/context/UtilContext';
 
 const BulkPrintPreview = ({ storageKey, title, onClose }) => {
     const { labelSize, setLabelSize, printMode, setPrintMode, labelPriceMode, setLabelPriceMode } = useUtil();

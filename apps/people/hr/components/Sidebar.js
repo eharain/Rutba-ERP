@@ -1,4 +1,4 @@
-import SharedSidebar from "@rutba/pos-shared/components/Sidebar";
+import SharedSidebar from "@rutba/shared/components/Sidebar";
 
 const SECTIONS = [
     { href: "/employees",              label: "Employees",           icon: "fa-user-tie" },
@@ -24,5 +24,5 @@ const SECTIONS = [
 ];
 
 export default function Sidebar() {
-    return <SharedSidebar sections={SECTIONS} storageKey="rutba-hr-sidebar-pinned" />;
+    return <SharedSidebar sections={SECTIONS} storageKey="apps/people/hr-sidebar-pinned" />;
 }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
 import AppAccessGate from "../../components/AppAccessGate";
 import { UsersEndpoints, AppDomainsEndpoints } from "@rutba/api-provider/endpoints";
 import UserMailboxes from "../../components/UserMailboxes";

@@ -1,4 +1,4 @@
-import SharedSidebar from "@rutba/pos-shared/components/Sidebar";
+import SharedSidebar from "@rutba/shared/components/Sidebar";
 
 // M0 is the live mail client + account settings. Later phases add search (M1),
 // CRM-linked timelines (M2), and shared-inbox triage queues (M3) — see
@@ -10,5 +10,5 @@ const SECTIONS = [
 ];
 
 export default function Sidebar() {
-    return <SharedSidebar sections={SECTIONS} storageKey="rutba-mail-sidebar-pinned" />;
+    return <SharedSidebar sections={SECTIONS} storageKey="apps/content/mail-sidebar-pinned" />;
 }

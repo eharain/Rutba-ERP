@@ -9,7 +9,7 @@ const ACCOUNT_UID = 'api::marketplace-account.marketplace-account';
 // admin-only (requireAppAdmin). find/findOne stay on the core controller for the
 // operator UI (api-pro gates them; private fields are stripped on serialize).
 //
-// Two endpoints are for the rutba-marketplace worker ONLY — gated to a Strapi
+// Two endpoints are for the apps/sales/marketplace worker ONLY — gated to a Strapi
 // API token (the worker authenticates with one; a token sets ctx.state.auth but
 // not ctx.state.user, so api-pro skips it). The UI never calls these.
 const requireAdmin = (ctx, strapi) => requireAppAdmin(ctx, strapi, 'marketplace');

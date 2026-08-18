@@ -10,7 +10,7 @@
 //   never written to last_error: a transient poll miss must not scare the
 //   settings screen.
 //
-//   Which folders: whatever the client last asked about. rutba-mail's live
+//   Which folders: whatever the client last asked about. apps/content/mail's live
 //   refresh (listUnseen) writes the folders it is showing into
 //   `unseen_counts`, so the keys already there ARE the folders someone
 //   actually has open — polling INBOX alone left every other badge blank

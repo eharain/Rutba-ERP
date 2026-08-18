@@ -1,5 +1,5 @@
 {
-  "name": "rutba-mail",
+  "name": "@rutba/mail",
   "version": "0.1.0",
   "private": true,
   "scripts": {

@@ -2,7 +2,7 @@ import { listParams, byIdParams } from './__param_builders.js';
 
 // Staff-facing return-management surface. Customer-side endpoints live in
 // /api/web/return-requests.js so the public-`webApi` client (X-Rutba-App: web)
-// keeps them separate per project_api_provider_web_public_client.
+// keeps them separate per project_api_provider_storefront_public_client.
 //
 // Verb naming: every method starts with a whitelisted prefix per
 // feedback_api_pro_descriptor_verb_whitelist (list, by, create, approve,
@@ -22,7 +22,7 @@ const ROLE_SCOPES = {
 export const ReturnRequestsEndpoints = {
     meta: {
         uid:     'api::return-request.return-request',
-        domains: ['order-management', 'sale', 'web-user'],
+        domains: ['orders', 'pos', 'portal'],
         roles:   ['admin', 'manager', 'staff'],
     },
 
@@ -34,7 +34,7 @@ export const ReturnRequestsEndpoints = {
         path: '/return-requests',
         action: 'createReturnRequest',
         method: 'post',
-        apps: ['order-management', 'sale'],
+        apps: ['orders', 'pos'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
         data,
@@ -44,7 +44,7 @@ export const ReturnRequestsEndpoints = {
         path: '/return-requests',
         action: 'find',
         method: 'get',
-        apps: ['order-management', 'sale', 'accounts'],
+        apps: ['orders', 'pos', 'accounts'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
         params: listParams(
@@ -61,7 +61,7 @@ export const ReturnRequestsEndpoints = {
         path: `/return-requests/${documentId}`,
         action: 'findOne',
         method: 'get',
-        apps: ['order-management', 'sale', 'accounts'],
+        apps: ['orders', 'pos', 'accounts'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
         params: byIdParams(
@@ -76,7 +76,7 @@ export const ReturnRequestsEndpoints = {
         path: `/return-requests/${documentId}/approve`,
         action: 'approveReturn',
         method: 'post',
-        apps: ['order-management', 'sale'],
+        apps: ['orders', 'pos'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
         data,
@@ -88,7 +88,7 @@ export const ReturnRequestsEndpoints = {
         path: `/return-requests/${documentId}/reject`,
         action: 'rejectReturn',
         method: 'post',
-        apps: ['order-management', 'sale'],
+        apps: ['orders', 'pos'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
         data,
@@ -100,7 +100,7 @@ export const ReturnRequestsEndpoints = {
         path: `/return-requests/${documentId}/cancel`,
         action: 'cancelReturn',
         method: 'post',
-        apps: ['order-management', 'sale'],
+        apps: ['orders', 'pos'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
         data,
@@ -113,7 +113,7 @@ export const ReturnRequestsEndpoints = {
         path: `/return-requests/${documentId}/set-received`,
         action: 'setReceived',
         method: 'post',
-        apps: ['order-management', 'sale'],
+        apps: ['orders', 'pos'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
         data,
@@ -127,7 +127,7 @@ export const ReturnRequestsEndpoints = {
         path: `/return-requests/${documentId}/resolve`,
         action: 'resolveReturn',
         method: 'post',
-        apps: ['order-management', 'sale', 'accounts'],
+        apps: ['orders', 'pos', 'accounts'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
         data,
@@ -144,7 +144,7 @@ export const ReturnRequestsEndpoints = {
         path: `/return-requests/${documentId}/label${reprint ? '?reprint=1' : ''}`,
         action: 'getReturnLabel',
         method: 'get',
-        apps: ['order-management', 'sale'],
+        apps: ['orders', 'pos'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
     }),

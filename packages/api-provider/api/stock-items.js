@@ -8,7 +8,7 @@ export const StockItemsEndpoints = {
 
     meta: {
         uid: 'api::stock-item.stock-item',
-        domains: ['sale', 'stock', 'inventory'],
+        domains: ['pos', 'stock', 'control'],
         roles: ['admin', 'manager', 'staff']
     },
 
@@ -27,7 +27,7 @@ export const StockItemsEndpoints = {
             action: 'find',
             method: 'get',
             // `sale` — this is the POS search box (SaleApi.searchStockItemsByNameOrBarcode).
-            apps: ['sale', 'inventory', 'stock'],
+            apps: ['pos', 'control', 'stock'],
             approle: ['admin', 'manager', 'staff'],
             // Flat params. The six-way search `$or` and the populate tree are
             // rebuilt by the route's controller from `view` — spelled out here
@@ -94,7 +94,7 @@ export const StockItemsEndpoints = {
     listByBarcode: (barcode, { productDocId } = {}) => ({
         path: '/stock-items',
         // Explicit apps: the mfg app's job-work scan-to-add flow uses this too.
-        apps: ['sale', 'stock', 'inventory', 'manufacturing'],
+        apps: ['pos', 'stock', 'control', 'manufacturing'],
         params: {
             filters: {
                 barcode: { $eq: barcode },
@@ -163,7 +163,7 @@ export const StockItemsEndpoints = {
         path: '/stock-items',
         action: 'create',
         method: 'post',
-        apps: ['sale', 'inventory', 'stock'],
+        apps: ['pos', 'control', 'stock'],
         approle: ['admin', 'manager', 'staff'],
         data,
     }),
@@ -172,7 +172,7 @@ export const StockItemsEndpoints = {
      * Bulk Stock-Item Import — DRY RUN (no writes).
      * For each row, resolves the target product (documentId / exact name / candidate
      * shortlist) and computes the intended per-unit barcodes + which already exist.
-     * The server route lives at pos-strapi/src/api/stock-item/controllers/stock-item.js
+     * The server route lives at services/strapi/src/api/stock-item/controllers/stock-item.js
      * (resolveBulkStock).
      *
      * @param {Array<object>} rows
@@ -181,7 +181,7 @@ export const StockItemsEndpoints = {
         path: '/stock-items/bulk-resolve',
         action: 'resolveBulkStock',
         method: 'post',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager', 'staff'],
         // Read-only, but not cheap: it loads the entire product catalogue as a
         // name-match cache and then counts existing stock per planned row. A
@@ -204,7 +204,7 @@ export const StockItemsEndpoints = {
         path: '/stock-items/bulk-process',
         action: 'processBulkStock',
         method: 'post',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager'],
         // The commit half, and the slowest endpoint in the import path: rows are
         // processed serially and a row writes one stock-item per unit, so a
@@ -246,7 +246,7 @@ export const StockItemsEndpoints = {
      *  `sale` + `staff` are load-bearing, not a widening for convenience: every
      *  POS sale calls this per line to connect `sale_items` and flip the unit to
      *  Sold (and back to InStock when a line is removed), and the cashier who
-     *  rings it up holds sale_staff. Leaving them out 403s the write, which
+     *  rings it up holds pos_staff. Leaving them out 403s the write, which
      *  aborts saveSaleItems after the first line — the sale header keeps the
      *  full basket total while lines 2..n are never written and no stock is
      *  consumed. */
@@ -254,7 +254,7 @@ export const StockItemsEndpoints = {
         path: `/stock-items/${documentId}`,
         action: 'update',
         method: 'put',
-        apps: ['sale', 'inventory', 'stock'],
+        apps: ['pos', 'control', 'stock'],
         approle: ['admin', 'manager', 'staff'],
         data,
     }),
@@ -279,7 +279,7 @@ export const StockItemsEndpoints = {
      * `product.stock_quantity` from the live count of InStock stock-items.
      * Idempotent — safe to invoke after migrations, suspected drift, or as
      * part of an ad-hoc reconciliation. The server route lives at
-     * pos-strapi/src/api/stock-item/controllers/recompute-product-stock.js.
+     * services/strapi/src/api/stock-item/controllers/recompute-product-stock.js.
      *
      * Returns { processed, corrected, errors, durationMs }.
      */
@@ -287,7 +287,7 @@ export const StockItemsEndpoints = {
         path: '/stock-items/recompute-product-stock',
         action: 'create',
         method: 'post',
-        apps: ['inventory', 'stock', 'cms'],
+        apps: ['control', 'stock', 'cms'],
         approle: ['admin'],
         // Walks every product serially, one count-and-write per product. The
         // work scales with the catalogue, and this is the reconciliation job an
@@ -307,7 +307,7 @@ export const StockItemsEndpoints = {
         path: '/stock-items/sweep-expired',
         action: 'create',
         method: 'post',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin'],
         // Flips every expired serialized unit and bulk batch in one pass. Bounded
         // by how much stock is past expiry, which after a long gap between
@@ -380,7 +380,7 @@ export const StockItemsEndpoints = {
         path: '/stock-items/backfill-default-locations',
         action: 'create',
         method: 'post',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin'],
         // Migration backfill: places every unplaced stock-item and then rebuilds
         // the stock-level cache. Run once over the entire existing inventory, so
@@ -394,7 +394,7 @@ export const StockItemsEndpoints = {
      * Each item is set to branch=toBranch + status='InStock', and a
      * `Transferred` entry is appended to its status_history so the move
      * shows up on the audit trail. The server route lives at
-     * pos-strapi/src/api/stock-item/controllers/transfer.js.
+     * services/strapi/src/api/stock-item/controllers/transfer.js.
      *
      * @param {{ items: Array<string|number>, toBranch: string|number, reason?: string }} payload
      */
@@ -402,7 +402,7 @@ export const StockItemsEndpoints = {
         path: '/stock-items/transfer',
         action: 'create',
         method: 'post',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager'],
         data: payload,
     }),
@@ -421,7 +421,7 @@ export const StockItemsEndpoints = {
         path: '/stock-items/sell-units',
         action: 'run',
         method: 'post',
-        apps: ['sale', 'inventory', 'stock'],
+        apps: ['pos', 'control', 'stock'],
         approle: ['admin', 'manager', 'staff'],
         data: {
             product_document_id: productDocId,
@@ -442,7 +442,7 @@ export const StockItemsEndpoints = {
         path: '/stock-items/return-units',
         action: 'run',
         method: 'post',
-        apps: ['sale', 'inventory', 'stock'],
+        apps: ['pos', 'control', 'stock'],
         approle: ['admin', 'manager', 'staff'],
         data: {
             sale_item_document_id: saleItemDocId,

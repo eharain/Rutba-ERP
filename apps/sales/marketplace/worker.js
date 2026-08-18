@@ -2,7 +2,7 @@
 
 // Standalone marketplace sync worker — a SEPARATE process from the Next.js web
 // UI (run with `npm run worker`, or `npm run worker:marketplace` from the root
-// so load-env injects the RUTBA_MARKETPLACE__* env).
+// so load-env injects the MARKETPLACE__* env).
 //
 // Why separate: a sync run (pulling/ingesting orders, pushing inventory across
 // many SKUs) can take an arbitrary amount of time and must not ride the web

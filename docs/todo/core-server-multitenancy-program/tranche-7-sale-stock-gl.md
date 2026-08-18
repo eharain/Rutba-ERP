@@ -5,7 +5,7 @@ live dev DB; goldens, schema handover and the Caddy flip remain).
 
 ## What runs in core now
 
-`rutba-core/src/modules/sale-stock.js` (same zero-copy model as tranches 1–6).
+`services/core/src/modules/sale-stock.js` (same zero-copy model as tranches 1–6).
 This is "the big one": every flow funnels through the sale-order state
 machine's `executeTransition` chokepoint and the stock/GL lifecycles it
 drives, so the whole cluster migrates as ONE tranche — 97 custom routes
@@ -27,7 +27,7 @@ across 14 APIs.
 | rider | me, me/status, offers ×2, accept/reject ×4, deliveries, delivery status | selfAuth |
 
 Parity notes baked into the ordering: `GET /sale-orders/confirm-change` is
-declared after `GET /sale-orders/:documentId` in pos-strapi, so live serves
+declared after `GET /sale-orders/:documentId` in services/strapi, so live serves
 myOrderDetail for it — core preserves that shadowing (the POST route is the
 functional one).
 
@@ -98,7 +98,7 @@ Smoke hygiene learned here (baked into the script):
   cms-social, marketplace. smoke-mfg still shows only the 3 PRE-EXISTING
   dev-DB WO-stage failures (tracked separately since tranche 5).
 - validate-schema: 0 mismatches, 0 warnings.
-- contract-diff vs live pos-strapi: at the pre-existing 101/113 baseline
+- contract-diff vs live services/strapi: at the pre-existing 101/113 baseline
   (the 12 /api/branches populate=* items-ordering diffs tracked separately).
 
 ## Remaining for this tranche

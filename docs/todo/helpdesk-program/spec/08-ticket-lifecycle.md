@@ -28,7 +28,7 @@ to canonical `waiting`.
 
 **Why this matters beyond Helpdesk:** it is the same engine HR leave requests, manufacturing
 work orders and sale orders use. Helpdesk *configures* it; it does not fork it. The engine is
-being promoted from `pos-strapi/src/utils/workflow-engine.js` to a Core platform service
+being promoted from `services/strapi/src/utils/workflow-engine.js` to a Core platform service
 (prerequisite P2, [00 Index](00-index.md)), and Helpdesk is its first Core-native consumer.
 
 ## 8.3 Canonical statuses

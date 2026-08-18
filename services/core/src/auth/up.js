@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Users-permissions subsystem for rutba-core (tranche 8 — auth).
+ * Users-permissions subsystem for services/core (tranche 8 — auth).
  *
  * Reimplements the CONTRACT of Strapi 5.51's users-permissions plugin in
  * refresh mode against the same tables, because the reference implementation
@@ -27,7 +27,7 @@
  *
  * What IS zero-copy: the UP yup validators (loaded from the plugin dist),
  * bcryptjs and the @strapi/utils session-display helpers — all from
- * pos-strapi's node_modules so the exact same versions run.
+ * services/strapi's node_modules so the exact same versions run.
  */
 
 const path = require('path');
@@ -36,7 +36,10 @@ const { get: envGet } = require('../config/env');
 const { getDb } = require('../db/connection');
 const { generateDocumentId } = require('../documents/write');
 
-const POS_ROOT = path.join(__dirname, '..', '..', '..', 'pos-strapi');
+// services/core/src/auth -> repo root is four levels, not three. Core moved a
+// level deeper in the P3 restructure; at three this resolved to services/ and
+// the join produced services/services/strapi.
+const POS_ROOT = path.join(__dirname, '..', '..', '..', '..', 'services/strapi');
 const posModule = (name) => require(path.join(POS_ROOT, 'node_modules', name));
 
 const bcrypt = posModule('bcryptjs');
@@ -52,7 +55,7 @@ const upValidators = require(path.join(
 const SESSIONS_TABLE = 'strapi_sessions';
 const ORIGIN = 'users-permissions';
 
-// ── config (mirrors pos-strapi/config/plugins.js users-permissions block) ──
+// ── config (mirrors services/strapi/config/plugins.js users-permissions block) ──
 function toSeconds(value, fallback) {
   const v = String(value ?? fallback).trim().toLowerCase();
   const match = v.match(/^(\d+)([smhd]?)$/);
@@ -336,7 +339,7 @@ function templateFrom(options) {
   return from.email || from.name ? `${from.name} <${from.email}>` : undefined;
 }
 
-/** The public origin core builds links against (pos-strapi: server.absoluteUrl). */
+/** The public origin core builds links against (services/strapi: server.absoluteUrl). */
 function publicUrl() {
   return String(envGet('PUBLIC_URL', '') || '').replace(/\/+$/, '');
 }
@@ -367,7 +370,7 @@ const upEmail = {
     const emailSettings = await upStore.get('email');
     const options = (emailSettings || {}).email_confirmation?.options || {};
     const vars = {
-      // pos-strapi: urlJoin(server.absoluteUrl, api.rest.prefix, '/auth/email-confirmation').
+      // services/strapi: urlJoin(server.absoluteUrl, api.rest.prefix, '/auth/email-confirmation').
       // config/api.js sets no rest.prefix, so Strapi's default /api applies.
       URL: `${publicUrl()}/api/auth/email-confirmation`,
       SERVER_URL: publicUrl(),
@@ -496,7 +499,7 @@ const userService = {
  * plugin('users-permissions').service('jwt').getToken(ctx) on auth:false routes
  * and then read `token.id`.
  *
- * That only works because pos-strapi runs jwtManagement:'refresh', where the
+ * That only works because services/strapi runs jwtManagement:'refresh', where the
  * plugin's verify() resolves the session-shaped payload to { id, sessionId }
  * rather than returning it raw — so the same resolution happens here. Core is
  * stricter on one point, consistently with its own auth middleware: a session

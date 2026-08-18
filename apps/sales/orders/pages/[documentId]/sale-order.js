@@ -1,5 +1,5 @@
 import Layout from "../../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
 import SaleOrderShell from "../../components/sale-order/SaleOrderShell";
 
 export default function SaleOrderDetailPage() {

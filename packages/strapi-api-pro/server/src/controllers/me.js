@@ -3,7 +3,7 @@
 // GET /api/api-pro/me/permissions
 //
 // Returns the current authenticated user's effective permissions. The shape
-// matches what packages/pos-shared/context/AuthContext.js expects. Bypassed
+// matches what packages/shared/context/AuthContext.js expects. Bypassed
 // by the global interceptor (path is in the default bypassPaths list).
 //
 // This controller intentionally does NOT use Strapi's users-permissions

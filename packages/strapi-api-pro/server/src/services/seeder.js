@@ -39,7 +39,7 @@ const SEEDER_VERSION = 5;
 // api-provider's package.json doesn't export './package.json', so we can't
 // use that path. Instead, resolve a config file we know IS exported
 // (./config/domains) and walk up two levels to find the package root.
-// This mirrors how pos-strapi/config/plugins.js locates the package.
+// This mirrors how services/strapi/config/plugins.js locates the package.
 function resolveApiProviderRoot(strapi) {
   const cwd = strapi?.dirs?.app?.root || process.cwd();
   try {

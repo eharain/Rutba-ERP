@@ -1,7 +1,7 @@
 'use strict';
 
 // Delivery-state ingestion for campaign runs: the MTA webhook receiver and
-// the batch-report poller (rutba-campaigns spec §4.6–4.7). Both are
+// the batch-report poller (apps/content/campaigns spec §4.6–4.7). Both are
 // idempotent — the MTA retries webhooks 6×, and the poller reconciles
 // anything a webhook missed.
 

@@ -7,7 +7,7 @@ renders on GitHub) — no binary assets.
 Four questions, one diagram each:
 
 1. [How the code is structured](#1-how-the-code-is-structured) — the repo after P3
-2. [What is inside the core](#2-what-is-inside-rutba-core) — modules, platform, policy
+2. [What is inside the core](#2-what-is-inside-services/core) — modules, platform, policy
 3. [How the apps connect](#3-how-an-app-reaches-its-data) — one request, end to end
 4. [How growth is absorbed](#4-how-growth-is-absorbed) — the anti-monolith mechanisms
 
@@ -30,7 +30,7 @@ flowchart TB
             A1["web · sale · stock · crm · hr · cms<br/>+16 more · renamed pos-* → rutba-*<br/>no server logic of their own"]
         end
         subgraph S["services/ — each owns its data"]
-            S1["rutba-core — the tenant backend<br/>rutba-console — control plane<br/>workers: marketplace · sync-bridge"]
+            S1["services/core — the tenant backend<br/>rutba-console — control plane<br/>workers: marketplace · sync-bridge"]
         end
         subgraph P["packages/ — shared libraries"]
             P1["api-provider — THE contract<br/>pos-shared — UI kit<br/>sync-core · video-maker"]
@@ -53,12 +53,12 @@ rutba/
 │   ├── web/  sale/  stock/  crm/  hr/  cms/  …
 │   └── (each: pages only — data access via generated clients)
 ├── services/
-│   ├── core/                     ← rutba-core: modules, platform, policy, migrations
+│   ├── core/                     ← services/core: modules, platform, policy, migrations
 │   ├── console/                  ← control plane (own DB, never a tenant's)
 │   └── workers/{marketplace,sync-bridge}/
 ├── packages/
 │   ├── api-provider/             ← descriptors → clients + authorization policy
-│   ├── pos-shared/  sync-core/  video-maker/
+│   ├── shared/  sync/  video/
 └── infra/{deploy,docker,scripts}/
 ```
 
@@ -70,7 +70,7 @@ and deploy story belong.
 
 ---
 
-## 2. What is inside rutba-core
+## 2. What is inside services/core
 
 One binary. The internal layering is what keeps it from becoming the next monolith: modules
 are bounded contexts that own their surface end to end, and everything shared sits *below*
@@ -106,7 +106,7 @@ flowchart TB
 |---|---|
 | `modules/` | A module owns its routes, crons, event subscriptions and tables. It may **read** another module's data, but may only **write** through that module's service API or `core_events`. |
 | `platform/` | Capability shared by all modules (outbox, workflow, cron, upload, email). Modules depend on platform; platform never depends on a module. |
-| `policy/` | Descriptors stay the single source of authorization truth. The [seeder](../../../rutba-core/src/policy/seeder.js) and api-token minting landed 2026-08-17, so a descriptor edit reaches the route table with no Strapi process alive — see [02-policy-seeder-port.md](02-policy-seeder-port.md). |
+| `policy/` | Descriptors stay the single source of authorization truth. The [seeder](../../../services/core/src/policy/seeder.js) and api-token minting landed 2026-08-17, so a descriptor edit reaches the route table with no Strapi process alive — see [02-policy-seeder-port.md](02-policy-seeder-port.md). |
 | `documents/` | Frozen compat shim. It exists to keep ported code alive, and stops growing — new domains are core-native ([README](README.md) decision D5). |
 | `migrations/` | Per-module DDL. This is what makes a later physical table move a config change instead of an archaeology project. |
 
@@ -182,7 +182,7 @@ Each rule above has a mechanism, not just a convention:
 |---|---|
 | Every table has one owning module | Boundary validator (P3) fails any cross-module write outside `core_events` or the owning service |
 | The compat shim stops growing | New domains are core-native by convention + review; the shim gains no new call sites |
-| Coverage claims are measurable | [route-audit.js](../../../rutba-core/scripts/route-audit.js) NOT_PORTED = 0 and [descriptor-audit.mjs](../../../rutba-core/scripts/descriptor-audit.mjs) exit 0 |
+| Coverage claims are measurable | [route-audit.js](../../../services/core/scripts/route-audit.js) NOT_PORTED = 0 and [descriptor-audit.mjs](../../../services/core/scripts/descriptor-audit.mjs) exit 0 |
 | Registries cannot drift | [verify-app-wiring.js](../../../scripts/js/verify-app-wiring.js) hard-fails against the manifest — live since 2026-08-17 |
 | Splitting is evidence-based | P0 baseline metrics (boot, RSS, p95, cron runtimes) rerun per topology in P4 |
 | Docs match the tree | [verify-docs.js](../../../scripts/js/verify-docs.js) — this file included |

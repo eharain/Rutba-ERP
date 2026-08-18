@@ -1,4 +1,4 @@
-import { useUtil } from '@rutba/pos-shared/context/UtilContext';
+import { useUtil } from '@rutba/shared/context/UtilContext';
 export default function PurchaseSummary({ purchase, totals }) {
     const { currency } = useUtil();
     return (

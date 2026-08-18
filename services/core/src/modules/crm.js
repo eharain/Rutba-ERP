@@ -5,7 +5,7 @@
  * contact tickets, crm-lead assignment.
  *
  * Same zero-copy porting model as mfg/hr — controllers and the person service
- * are require()d from pos-strapi source and run against the compat strapi.
+ * are require()d from services/strapi source and run against the compat strapi.
  * No content-type in this cluster has lifecycles, so the module registers no
  * document middlewares.
  *
@@ -25,7 +25,7 @@
  *    sanitized assignee projection on reads); `assignees` is the literal-path
  *    picker endpoint.
  *
- * Crons: none (pos-strapi schedules no crm/contact tasks).
+ * Crons: none (services/strapi schedules no crm/contact tasks).
  */
 
 const path = require('path');

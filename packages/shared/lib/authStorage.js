@@ -4,8 +4,8 @@
  * authStorage — DEPRECATED.
  *
  * Auth is now handled via an OAuth-like flow:
- *   - pos-auth is the authorization server (login + /authorize endpoint)
- *   - Other apps redirect to pos-auth and receive a JWT via /auth/callback
+ *   - apps/admin/auth is the authorization server (login + /authorize endpoint)
+ *   - Other apps redirect to apps/admin/auth and receive a JWT via /auth/callback
  *   - Each app stores auth data in its own localStorage only
  *
  * This file is kept for backward-compatibility but should not be used

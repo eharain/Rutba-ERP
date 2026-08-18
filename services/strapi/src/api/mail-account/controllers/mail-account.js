@@ -96,8 +96,8 @@ async function applyOwners(strapi, documentId, refs) {
   try {
     await strapi.db.query(UID).update({ where: { documentId }, data: { owners: ids } });
   } catch (e) {
-    // rutba-core's compat query layer rejects relation writes ("scalar cache
-    // columns only") — its documents() handles them. pos-strapi never lands
+    // services/core's compat query layer rejects relation writes ("scalar cache
+    // columns only") — its documents() handles them. services/strapi never lands
     // here, so the proven db.query path stays primary.
     await strapi.documents(UID).update({ documentId, data: { owners: ids } });
   }
@@ -711,7 +711,7 @@ module.exports = createCoreController(UID, ({ strapi }) => {
 
     /**
      * GET /mail-accounts/access-map — the whole estate's access picture
-     * (owners + access_roles per account) for the central rutba-admin app.
+     * (owners + access_roles per account) for the central apps/admin/console app.
      * Passwords/hosts stay out; this is a mapping view, not account admin.
      */
     async listAccess(ctx) {
@@ -746,7 +746,7 @@ module.exports = createCoreController(UID, ({ strapi }) => {
 
     /**
      * POST /mail-accounts/:documentId/access — replace an account's owners
-     * and/or shared access_roles from the central rutba-admin app. Personal
+     * and/or shared access_roles from the central apps/admin/console app. Personal
      * accounts keep exactly one owner; every access_roles key must exist as
      * an active app-role (closing the raw-json validation gap).
      */

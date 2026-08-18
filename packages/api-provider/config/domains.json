@@ -35,13 +35,13 @@
       "accounts_viewer_staff"
     ]
   },
-  "admin": {
+  "console": {
     "name": "Rutba Admin",
     "description": "This instance's admin console: user accounts, app access, app domains, mailbox and notification administration.",
     "roles": [
-      "admin_admin",
-      "admin_manager",
-      "admin_staff"
+      "console_admin",
+      "console_manager",
+      "console_staff"
     ]
   },
   "auth": {
@@ -115,13 +115,13 @@
       "hr_staff"
     ]
   },
-  "inventory": {
+  "control": {
     "name": "Inventory",
     "description": "Warehouse stock, bins, batches, expiry, and reconciliation.",
     "roles": [
-      "inventory_admin",
-      "inventory_manager",
-      "inventory_staff"
+      "control_admin",
+      "control_manager",
+      "control_staff"
     ]
   },
   "mail": {
@@ -151,13 +151,13 @@
       "marketplace_staff"
     ]
   },
-  "order-management": {
+  "orders": {
     "name": "Order Management",
     "description": "Sales order processing, status tracking, and fulfillment.",
     "roles": [
-      "order_admin",
-      "order_manager",
-      "order_staff"
+      "orders_admin",
+      "orders_manager",
+      "orders_staff"
     ]
   },
   "payroll": {
@@ -178,13 +178,13 @@
       "rider_staff"
     ]
   },
-  "sale": {
+  "pos": {
     "name": "Point of Sale",
     "description": "In-store POS sales, checkout, and the cash register.",
     "roles": [
-      "sale_admin",
-      "sale_manager",
-      "sale_staff"
+      "pos_admin",
+      "pos_manager",
+      "pos_staff"
     ]
   },
   "seed": {
@@ -214,30 +214,21 @@
       "stock_staff"
     ]
   },
-  "users": {
-    "name": "User Management (deprecated)",
-    "description": "DEPRECATED alias of the 'admin' domain, kept alive so existing users_* grants keep working. The rutba-users app it belonged to is gone; grant admin_* to new users. Migrating the remaining grants off users_* and retiring this domain is a separate task.",
-    "roles": [
-      "users_admin",
-      "users_manager",
-      "users_staff"
-    ]
-  },
-  "web": {
+  "storefront": {
     "name": "Storefront",
     "description": "Public online storefront browsing and checkout.",
     "roles": [
-      "web_public",
-      "web_user"
+      "storefront_public",
+      "storefront_user"
     ]
   },
-  "web-user": {
+  "portal": {
     "name": "Web Users",
     "description": "Management of registered storefront customer accounts and profiles.",
     "roles": [
-      "webuser_admin",
-      "webuser_manager",
-      "webuser_staff"
+      "portal_admin",
+      "portal_manager",
+      "portal_staff"
     ]
   }
 }

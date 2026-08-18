@@ -31,7 +31,7 @@ truth, where staff actually pack/ship/deliver orders) and **rutba.pk / online**
 
 This spec adds both, reusing the exact architecture the marketplace feature
 already established: a **watermark-polled push job** run by the
-`rutba-marketplace` worker, an **adapter method** per direction, and a
+`apps/sales/marketplace` worker, an **adapter method** per direction, and a
 **service-token-gated `/integration/*` endpoint** on the receiving side. No new
 infrastructure, no webhooks, no message queue — just two more jobs alongside
 the existing `catalog` / `inventory` / `orders` cron jobs.
@@ -46,7 +46,7 @@ Before touching code, read:
   extends. Pay special attention to:
   - §2 "Identity model" — orders are matched via `sale-order.external_order_id`
     (the **online-side** `documentId`) + `channel='rutba'`, set at ingest time
-    in `pos-strapi/src/api/marketplace-account/services/marketplace-account.js`
+    in `services/strapi/src/api/marketplace-account/services/marketplace-account.js`
     `ingestOne` (~lines 24-188).
   - §2 File map — where the adapter/engine/routes for the existing three flows
     live, since the new code sits right next to them.
@@ -57,13 +57,13 @@ Before touching code, read:
   - §4 Operating & observability — `marketplace-sync-log` (`kind` enum) is
     where every sync run's counts/errors are recorded; both new jobs must write
     to it the same way.
-- `pos-strapi/src/api/sale-order/services/sale-order-state-machine.js`
+- `services/strapi/src/api/sale-order/services/sale-order-state-machine.js`
   `executeTransition` (~lines 86-227) — the single chokepoint for order
   side-effects (stock, accounting, workflow audit). Per
   `feedback_order_state_machine_owns_stock_side_effects` (memory), **new side
   effects belong here, not in a controller** — the status push-back trigger
   must hook this function, not duplicate transition logic elsewhere.
-- `rutba-marketplace/lib/engine.js` — `syncOrdersForAccount` (order **pull**,
+- `apps/sales/marketplace/lib/engine.js` — `syncOrdersForAccount` (order **pull**,
   lines ~167-222) is the closest existing analog to the status-push job below;
   copy its shape (fetch → normalize → per-item try/catch → sync-log write).
 
@@ -92,7 +92,7 @@ Before touching code, read:
 
 ### 1.2 New adapter capability
 
-`rutba-marketplace/lib/providers/rutba.js`:
+`apps/sales/marketplace/lib/providers/rutba.js`:
 
 - Flip `capabilities.fulfillment` to `true` once built (currently `false`,
   line ~57, with the comment "No oauth, no fulfillment push in phase 1" right
@@ -104,7 +104,7 @@ Before touching code, read:
 
 ### 1.3 New engine job
 
-`rutba-marketplace/lib/engine.js` — add `syncOrderStatusForAccount` /
+`apps/sales/marketplace/lib/engine.js` — add `syncOrderStatusForAccount` /
 `syncAllOrderStatus`, mirroring `syncOrdersForAccount` (~167-222) but in the
 **push** direction (like `syncInventoryForAccount`, ~516-633, is the closest
 push-shaped analog):
@@ -124,18 +124,18 @@ push-shaped analog):
 5. Advance `account.last_status_synced_at` to the max `updated_at` seen (same
    watermark pattern as `last_orders_synced_at` / `last_inventory_synced_at`).
 
-Wire it into `rutba-marketplace/worker.js` as a new cron job (`status`,
+Wire it into `apps/sales/marketplace/worker.js` as a new cron job (`status`,
 suggested default rule `*/10 * * * *` — more frequent than catalog, since
 customers actively watching "where's my order" care about latency), and add a
 manual `POST /api/accounts/:id/sync-status` endpoint mirroring
 `pages/api/accounts/[id]/sync-catalog.js`, plus a button in
-`rutba-marketplace/pages/accounts.js` next to the existing Catalog/Orders/Stock
+`apps/sales/marketplace/pages/accounts.js` next to the existing Catalog/Orders/Stock
 buttons.
 
-### 1.4 Receiving endpoint (rutba.pk side, `pos-strapi/`)
+### 1.4 Receiving endpoint (rutba.pk side, `services/strapi/`)
 
 New route, same file/pattern as the existing three:
-`pos-strapi/src/api/sale-order/controllers/sale-order.js` +
+`services/strapi/src/api/sale-order/controllers/sale-order.js` +
 `routes/01-custom-sale-order.js` — add `updateStatusFromIntegration` at
 `POST /sale-orders/integration/update-status`, gated `isServiceToken` (same
 guard as `exportMarketplace`).
@@ -161,14 +161,14 @@ Body: `{ external_order_id, status, status_detail? }`. Handler:
 
 ### 1.5 Schema changes
 
-- `pos-strapi/src/api/marketplace-account/content-types/marketplace-account/schema.json`
+- `services/strapi/src/api/marketplace-account/content-types/marketplace-account/schema.json`
   — add `last_status_synced_at` (datetime), matching the existing
   `last_orders_synced_at` / `last_inventory_synced_at` fields.
-- `pos-strapi/src/api/sale-order/content-types/sale-order/schema.json` — add
+- `services/strapi/src/api/sale-order/content-types/sale-order/schema.json` — add
   `marketplace_status_synced_value` (string, nullable) to track what was last
   successfully pushed, so the job can skip no-ops without re-deriving it from
   `marketplace-sync-log`.
-- `pos-strapi/src/api/marketplace-sync-log/content-types/marketplace-sync-log/schema.json`
+- `services/strapi/src/api/marketplace-sync-log/content-types/marketplace-sync-log/schema.json`
   — add `'status'` to the `kind` enum (alongside existing `orders` |
   `inventory` | `catalog`).
 - **Both instances need this schema present and must restart** (same gotcha
@@ -178,12 +178,12 @@ Body: `{ external_order_id, status, status_detail? }`. Handler:
 
 Follow the existing test shape exactly:
 
-- `rutba-marketplace/lib/engine.js`'s new function → add cases to
-  `rutba-marketplace/test/unit.js` (dependency-free, mocked `fetch`) —
+- `apps/sales/marketplace/lib/engine.js`'s new function → add cases to
+  `apps/sales/marketplace/test/unit.js` (dependency-free, mocked `fetch`) —
   no-op skip when status unchanged, successful push advances watermark, a
   failed push doesn't advance the watermark and logs `detail`.
 - Receiving endpoint → add cases to
-  `pos-strapi/tests/marketplace-catalog-ingest.test.js` (or a sibling file if
+  `services/strapi/tests/marketplace-catalog-ingest.test.js` (or a sibling file if
   that one is catalog-specific enough to warrant a separate
   `marketplace-status-sync.test.js`) — valid transition succeeds and runs
   state-machine side effects, illegal transition rejected, unknown
@@ -218,7 +218,7 @@ scratch; treat §2.3 as the concrete proposal, not a discovered fact.
 
 ### 2.3 Schema changes
 
-`pos-strapi/src/api/order-message/content-types/order-message/schema.json` —
+`services/strapi/src/api/order-message/content-types/order-message/schema.json` —
 add, mirroring the `sale-order.channel` / `external_order_id` pattern already
 proven in this codebase:
 
@@ -234,7 +234,7 @@ proven in this codebase:
 ### 2.4 Sync direction and job shape
 
 Two watermark-polled push jobs, one per direction, both living in
-`rutba-marketplace/lib/engine.js` next to `syncOrderStatusForAccount`:
+`apps/sales/marketplace/lib/engine.js` next to `syncOrderStatusForAccount`:
 
 **LAN → rutba.pk** (`syncOrderMessagesUpForAccount`):
 1. Query local `order-message` rows where `sync_origin = 'local'` (i.e.
@@ -282,13 +282,13 @@ new enum value).
 
 ### 2.5 New adapter methods
 
-`rutba-marketplace/lib/providers/rutba.js`:
+`apps/sales/marketplace/lib/providers/rutba.js`:
 - `pushOrderMessage(account, payload)` → `POST /sale-orders/integration/messages`
 - `fetchOrderMessages(account, since)` → `GET /sale-orders/integration/messages?since=`
 
 ### 2.6 New endpoints (both instances need both — this flow is symmetric)
 
-`pos-strapi/src/api/sale-order/controllers/sale-order.js` +
+`services/strapi/src/api/sale-order/controllers/sale-order.js` +
 `routes/01-custom-sale-order.js`, same `isServiceToken` gate as everything
 else under `/integration/*`:
 - `POST /sale-orders/integration/messages` — receive a pushed message (§2.4
@@ -297,10 +297,10 @@ else under `/integration/*`:
   locally-authored (`sync_origin = 'local'`) messages created after `since`,
   for the peer to pull (§2.4 down-sync step 1).
 
-Since both instances run the identical `pos-strapi` codebase, **both routes
+Since both instances run the identical `services/strapi` codebase, **both routes
 exist on both instances automatically** once this ships — no per-instance
 branching needed, only the two engine jobs (running on the LAN-side
-`rutba-marketplace` worker, since that's where the marketplace-account +
+`apps/sales/marketplace` worker, since that's where the marketplace-account +
 worker process live) decide which direction to call.
 
 ### 2.7 Loop prevention
@@ -314,11 +314,11 @@ loops — don't deviate from it.
 
 ### 2.8 Testing
 
-- `rutba-marketplace/test/unit.js` — both directions: push picks up only
+- `apps/sales/marketplace/test/unit.js` — both directions: push picks up only
   `sync_origin='local'` messages since the watermark, dedup on retry (a
   message with an `external_id` that already exists locally is skipped, not
   duplicated), watermark only advances past successfully-synced messages.
-- `pos-strapi/tests/` (new or existing file) — receiving endpoint creates the
+- `services/strapi/tests/` (new or existing file) — receiving endpoint creates the
   message with the correct peer-relative `sync_origin`, rejects a
   message for an unknown `external_order_id`, `GET .../messages?since=` only
   returns `sync_origin='local'` rows and respects the `since` filter.
@@ -331,9 +331,9 @@ loops — don't deviate from it.
    codebase, same commit, no fork.
 2. **Restart both instances** after deploy (enum + new-field schema changes —
    same requirement as the original P1 marketplace rollout).
-3. Bump `rutba-marketplace/lib/providers/rutba.js` `capabilities.fulfillment`
+3. Bump `apps/sales/marketplace/lib/providers/rutba.js` `capabilities.fulfillment`
    to `true` once §1 is live.
-4. New cron jobs need the `rutba-marketplace` **worker** process restarted to
+4. New cron jobs need the `apps/sales/marketplace` **worker** process restarted to
    pick up the new schedule entries (`worker.js`) — same "dead-worker check"
    caveat as existing jobs (§4 of the marketplace doc): a stale
    `last_status_synced_at` / `last_messages_pushed_at` means check the worker

@@ -9,11 +9,11 @@
  * need the vocabulary to do their job — an agent cannot render the legal next stages
  * without reading the workflow, or apply a macro without listing macros.
  *
- * Like `helpdesk-desks.js`, these are Core-owned tables with no pos-strapi
+ * Like `helpdesk-desks.js`, these are Core-owned tables with no services/strapi
  * `schema.json`. The seeder writes `meta.uid` verbatim without resolving it against
  * `strapi.contentTypes`, and Core's route gate builds `ctx.state.route.handler` as
  * `"<uid>.<action>"`, so the UID below is a CONTRACT with
- * rutba-core/src/modules/helpdesk.js: every configuration route it registers must carry
+ * services/core/src/modules/helpdesk.js: every configuration route it registers must carry
  * `uid: 'api::helpdesk-config.helpdesk-config'` or it 403s.
  *
  * One interface per file — the seeder reads `meta.uid` only and ignores a per-method
@@ -179,7 +179,7 @@ export const HelpdeskConfigEndpoints = {
         path: '/helpdesk/catalog',
         action: 'findCatalog',
         method: 'get',
-        apps: ['helpdesk', 'ess', 'web'],
+        apps: ['helpdesk', 'ess', 'storefront'],
         approle: ['admin', 'manager', 'staff', 'user'],
         params: {
             ...(audience !== undefined ? { audience } : {}),
@@ -191,7 +191,7 @@ export const HelpdeskConfigEndpoints = {
         path: `/helpdesk/catalog/${documentId}`,
         action: 'findOneCatalogItem',
         method: 'get',
-        apps: ['helpdesk', 'ess', 'web'],
+        apps: ['helpdesk', 'ess', 'storefront'],
         approle: ['admin', 'manager', 'staff', 'user'],
     }),
 
@@ -230,7 +230,7 @@ export const HelpdeskConfigEndpoints = {
         path: `/helpdesk/catalog/${documentId}/submit`,
         action: 'submitCatalogRequest',
         method: 'post',
-        apps: ['helpdesk', 'ess', 'web'],
+        apps: ['helpdesk', 'ess', 'storefront'],
         approle: ['admin', 'manager', 'staff', 'user'],
         data,
     }),

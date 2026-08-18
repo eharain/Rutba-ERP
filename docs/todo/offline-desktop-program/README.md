@@ -6,7 +6,7 @@
 > greenfield container around code that already exists.
 >
 > **Status update (2026-08-17): no longer specification-only.** The phase-1
-> pass-through bridge is built — [`packages/sync-core`](../../../packages/sync-core/README.md),
+> pass-through bridge is built — [`packages/sync`](../../../packages/sync/README.md),
 > per [`offline-pos-options.md` §13.7](../offline-pos-options.md#137-what-this-replaces);
 > [05](05-sqlite-viability.md) is a completed investigation (2026-08-14) and
 > [06](06-sync-back-granularity.md) is decided. The Electron shell itself is
@@ -53,8 +53,8 @@ Worth stating precisely, because the guard is narrower than it is usually descri
 
 | Seam | How total is it | What guards it |
 |---|---|---|
-| **Origin** (`api-url-resolver.js`) | Near-total for the v1 set. `pos-sale` and `rutba-mail` contain **zero** direct reads of `NEXT_PUBLIC_API_URL`; `rutba-social` has exactly one, in [`pages/api/media-proxy.js:38`](../../../rutba-social/pages/api/media-proxy.js) | Nothing automated |
-| **Transport** (`lib/api.js`) | 5 files repo-wide import axios directly outside `api-provider` / `pos-strapi` / `rutba-core`: [`pos-shared/context/AuthContext.js`](../../../packages/pos-shared/context/AuthContext.js) and 4 under `rutba-web/src/services/`. **None is in the v1 desktop set.** | [`validate-endpoint-usage.mjs`](../../../packages/api-provider/scripts/validate-endpoint-usage.mjs) |
+| **Origin** (`api-url-resolver.js`) | Near-total for the v1 set. `apps/sales/pos` and `apps/content/mail` contain **zero** direct reads of `NEXT_PUBLIC_API_URL`; `apps/content/social` has exactly one, in [`pages/api/media-proxy.js:38`](../../../apps/content/social/pages/api/media-proxy.js) | Nothing automated |
+| **Transport** (`lib/api.js`) | 5 files repo-wide import axios directly outside `api-provider` / `services/strapi` / `services/core`: [`shared/context/AuthContext.js`](../../../packages/shared/context/AuthContext.js) and 4 under `apps/content/storefront/src/services/`. **None is in the v1 desktop set.** | [`validate-endpoint-usage.mjs`](../../../packages/api-provider/scripts/validate-endpoint-usage.mjs) |
 
 > **A correction worth recording.** `validate-endpoint-usage.mjs` is a real CI gate
 > (`npm run validate` in `packages/api-provider`, which its `build` script runs),
@@ -71,8 +71,8 @@ Worth stating precisely, because the guard is narrower than it is usually descri
 > [04 §1](04-server-prerequisites.md#1-bounded-timeout-in-the-axios-seam) would
 > not. Those are the first two calls a cold desktop start makes.
 
-`rutba-web` reads `process.env.NEXT_PUBLIC_API_URL` through its own `apiUrl()` in
-[`src/static/const.ts:2`](../../../rutba-web/src/static/const.ts) and never touches
+`apps/content/storefront` reads `process.env.NEXT_PUBLIC_API_URL` through its own `apiUrl()` in
+[`src/static/const.ts:2`](../../../apps/content/storefront/src/static/const.ts) and never touches
 the resolver. It is the storefront, it is not in the v1 bundle, and it is the one
 app for which the thesis does not currently hold. Recorded so nobody assumes
 otherwise later.
@@ -82,13 +82,13 @@ otherwise later.
 | Surface | Measurement |
 |---|---|
 | Next.js app workspaces in [`package.json`](../../../package.json) | **22** (excluding `packages/*`) |
-| Apps bundled in desktop v1 | **3** — `pos-sale`, `rutba-mail`, `rutba-social` |
+| Apps bundled in desktop v1 | **3** — `apps/sales/pos`, `apps/content/mail`, `apps/content/social` |
 | Descriptor modules in [`api-provider/api/*.js`](../../../packages/api-provider/api) | 181 (179 + 2 `__`-prefixed helpers); 20 more under `api/web/` |
 | …carrying an `offline:` facet today | **0** |
 | axios calls in `packages/api-provider` with a bounded `timeout` | **0** |
-| Files bypassing the transport seam (outside api-provider / pos-strapi / core) | 5 — **0 of them in the v1 set** |
-| DB clients mapped in [`rutba-core/src/config/env.js:108`](../../../rutba-core/src/config/env.js) | **2** (`mysql`→`mysql2`, `postgres`→`pg`) |
-| Unported custom actions in rutba-core | answered `501 NotPortedError` ([`src/http/server.js:284`](../../../rutba-core/src/http/server.js)) |
+| Files bypassing the transport seam (outside api-provider / services/strapi / core) | 5 — **0 of them in the v1 set** |
+| DB clients mapped in [`services/core/src/config/env.js:108`](../../../services/core/src/config/env.js) | **2** (`mysql`→`mysql2`, `postgres`→`pg`) |
+| Unported custom actions in services/core | answered `501 NotPortedError` ([`src/http/server.js:284`](../../../services/core/src/http/server.js)) |
 | Service ports allocated in [`scripts/rutba_apps.sh`](../../../scripts/rutba_apps.sh) | 4000–4023 |
 | `electron` references in any repo `package.json` | **0** |
 | video-maker A/B harness gates | **60** frame comparisons (5 looks × 12 stamps) + **6** sound checks |
@@ -103,7 +103,7 @@ Recorded here so no document below reopens them.
 | 2 | **The desktop IS the launcher.** Reuse `getAppCatalogGroups` / `rankByUsage` / `appUsage.js` from `pos-shared`; the app list comes from the server-owned catalogue. | [admin-console 01](../admin-console-program/01-app-catalogue-entitlements.md) |
 | 3 | **v1 bundles POS, Mail and Studio only.** | [offline-pos-options §12](../offline-pos-options.md#12-amendment-2026-08-13--one-engine-three-apps) |
 | 4 | **The Electron main process hosts the bridge** — no separate Windows service. _(Superseded 2026-08-17: the bridge runs in a `UtilityProcess` inside the Electron app, not the main process — [§13.1](../offline-pos-options.md#131-the-engine-runs-in-a-utilityprocess-not-the-main-process); the installer/lifecycle argument stands.)_ | [offline-pos-options §11](../offline-pos-options.md#11-amendment-2026-08-13--electron-hosts-the-bridge) |
-| 5 | **Local reads come from `rutba-core` against SQLite**, never a second implementation of the domain. | [offline-pos-options §10.1](../offline-pos-options.md#101-shape), §6 |
+| 5 | **Local reads come from `services/core` against SQLite**, never a second implementation of the domain. | [offline-pos-options §10.1](../offline-pos-options.md#101-shape), §6 |
 | 6 | **The replayer replays the captured stock-unit references**, falling back to allocation only when one cannot be honoured. Divisible lines stay product+qty. **The outbox payload carries both shapes.** | [06](06-sync-back-granularity.md) — settles [§10.5.1](../offline-pos-options.md#105-still-open) |
 
 **Rider, inventory and manufacturing are strong later candidates** — connectivity
@@ -124,10 +124,10 @@ explicitly out of scope for now. The four-layer model in
    ([02 §Updates](02-desktop-shell.md#updates)). What it buys — one signed
    artifact, one updater, one bridge, one replica, one session — is worth more
    than independent cadence for three apps that ship from one monorepo anyway.
-3. **No second implementation of the domain.** Local reads are `rutba-core`
+3. **No second implementation of the domain.** Local reads are `services/core`
    answering the app's real routes against SQLite. A hand-written local query
    that duplicates a core service is a defect, not an optimization.
-4. **Reuse the engine that exists.** [`rutba-core/src/platform/events.js`](../../../rutba-core/src/platform/events.js)
+4. **Reuse the engine that exists.** [`services/core/src/platform/events.js`](../../../services/core/src/platform/events.js)
    is already a correct transactional outbox. The replayer is that shape — see
    [01 §The replayer is events.js](01-sync-core.md#the-replayer-is-eventsjs-in-a-different-costume).
 5. **Speak the wire contract, never the database.** Inherited verbatim from
@@ -147,11 +147,11 @@ explicitly out of scope for now. The four-layer model in
 
 | # | Document | What it owns |
 |---|---|---|
-| 1 | [`01-sync-core.md`](01-sync-core.md) | `@rutba/sync-core`: proxy, response cache, replicator, outbox + provisional ids, replayer. The engine, and its four consumers. |
+| 1 | [`01-sync-core.md`](01-sync-core.md) | `@rutba/sync`: proxy, response cache, replicator, outbox + provisional ids, replayer. The engine, and its four consumers. |
 | 2 | [`02-desktop-shell.md`](02-desktop-shell.md) | The Electron container: process shape, the build-time/runtime origin problem, security posture, Electron hazards as release gates, updates, packaging. |
 | 3 | [`03-app-policies.md`](03-app-policies.md) | The four-layer adoption model, and what each of POS / Mail / Studio actually needs. |
 | 4 | [`04-server-prerequisites.md`](04-server-prerequisites.md) | Five small, independently-correct, gating server changes — and the offline-readiness gate. |
-| 5 | [`05-sqlite-viability.md`](05-sqlite-viability.md) | **Measured, not specified.** Does rutba-core actually run on SQLite? What ports, what breaks, and whether the "bridge = rutba-core on SQLite" assumption survives contact with a real database file. |
+| 5 | [`05-sqlite-viability.md`](05-sqlite-viability.md) | **Measured, not specified.** Does services/core actually run on SQLite? What ports, what breaks, and whether the "bridge = services/core on SQLite" assumption survives contact with a real database file. |
 | 6 | [`06-sync-back-granularity.md`](06-sync-back-granularity.md) | **Decision.** What the replayer replays for an offline POS sale — captured unit references, with allocation as the repair. Fixes the outbox payload shape, so it gates D4. |
 
 ## Phases
@@ -159,9 +159,9 @@ explicitly out of scope for now. The four-layer model in
 | Phase | Contents | Size | Depends on | Maps to |
 |---|---|---|---|---|
 | **D0** | Server prerequisites 1–4: bounded timeout, SQLite driver, `Idempotency-Key`, distinguishable 409s | S×4 | — | §8 slice 0, §10.2 phase 0 |
-| **D1** | `@rutba/sync-core` v0: transparent proxy + `/bridge/status` + L1 response cache. Headless, no shell. | M | D0.1 | §10.2 phase 1 |
+| **D1** | `@rutba/sync` v0: transparent proxy + `/bridge/status` + L1 response cache. Headless, no shell. | M | D0.1 | §10.2 phase 1 |
 | **D2** | Desktop shell: launcher, lazy per-app Next servers, **runtime origin injection**, security posture, release gates | L | D1 | §11 (new) |
-| **D3** | rutba-core on SQLite + replicator + local reads. Writes still fail visibly offline. | M | D0.2 | §10.2 phase 2 |
+| **D3** | services/core on SQLite + replicator + local reads. Writes still fail visibly offline. | M | D0.2 | §10.2 phase 2 |
 | **D4** | Outbox + provisional ids + ordered idempotent replay + the queue/conflicts screen in shell chrome. **The hard phase.** | L | D0.3, D0.4, D3 | §10.2 phase 3 |
 | **D5** | Descriptor `offline:` facet + audit gate; per-app L2/L3 policies for POS, Mail, Studio | S + M×3 | D4 | §3, §12 |
 | **D6** | Packaging: electron-builder, signing, electron-updater feed, release-tag pipeline | M | D2 | §10.2 phase 4, minus service supervision |
@@ -206,8 +206,8 @@ apps instead of one.
 - **Contract drift between MySQL and SQLite.** `dbConfig()`'s `decimalNumbers` /
   `dateStrings` options exist specifically for Strapi serialization parity and
   have no SQLite equivalent. The driver map is the easy half.
-  → [04 §2](04-server-prerequisites.md#2-a-sqlite-driver-for-rutba-core).
-- **The 501 ceiling.** An app is only as offline-capable as rutba-core's port of
+  → [04 §2](04-server-prerequisites.md#2-a-sqlite-driver-for-services/core).
+- **The 501 ceiling.** An app is only as offline-capable as services/core's port of
   its routes. An unported custom action answers 501 — offline that is not a
   degraded read, it is a dead feature. This is the real limit on which apps can
   join, and it is measurable today.

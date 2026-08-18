@@ -21,7 +21,7 @@
  *   - Errors on missing critical variables, warns on optional ones
  *   - Splits globals vs PREFIX__VAR app-specific variables
  *   - Passes through PORT from explicit config (PREFIX__PORT) or platform
- *   - Auto-computes CORS_ORIGINS for pos-strapi
+ *   - Auto-computes CORS_ORIGINS for services/strapi
  *   - Spawns <command> with the merged environment
  *
  * Usage:
@@ -31,10 +31,10 @@
  * in the command arguments.
  *
  * Prefix convention:
- *   workspace dir "pos-auth"       → prefix POS_AUTH
- *   workspace dir "rutba-web-user" → prefix RUTBA_WEB_USER
+ *   workspace dir "apps/admin/auth"       → prefix POS_AUTH
+ *   workspace dir "apps/sales/portal" → prefix RUTBA_WEB_USER
  *   Double underscore (__) separates prefix from var name:
- *     POS_STRAPI__PORT=4010  →  PORT=4010  (for pos-strapi only)
+ *     POS_STRAPI__PORT=4010  →  PORT=4010  (for services/strapi only)
  */
 
 const { spawn } = require('child_process');

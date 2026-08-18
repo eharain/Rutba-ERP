@@ -8,8 +8,8 @@ The v1 design spec lives at `SPEC.md`. Where it conflicts with this document, **
 
 - Package name: `api-pro`
 - `strapi.name` (used as the config key and `plugin::api-pro.*` content-type namespace): **`api-pro`**
-- Installed in `pos-strapi` via `"api-pro": "file://../packages/strapi-api-pro"` (symlinked into node_modules)
-- **Do NOT set `resolve:` in `pos-strapi/config/plugins.js`.** Setting it to a directory breaks Strapi 5's server loader (path-doubling: `<plugin>/dist/server/dist/server/index.js`). Setting it to `package.json` breaks the admin loader (which expects a directory). Auto-discovery via the file: dep sidesteps both. The `config: {…}` block applies via `applyUserConfig` regardless.
+- Installed in `services/strapi` via `"api-pro": "file://../packages/strapi-api-pro"` (symlinked into node_modules)
+- **Do NOT set `resolve:` in `services/strapi/config/plugins.js`.** Setting it to a directory breaks Strapi 5's server loader (path-doubling: `<plugin>/dist/server/dist/server/index.js`). Setting it to `package.json` breaks the admin loader (which expects a directory). Auto-discovery via the file: dep sidesteps both. The `config: {…}` block applies via `applyUserConfig` regardless.
 - **Strapi loads from `dist/`, not source.** `package.json` `main` and the exports map's `default` condition point to `./dist/server/index.js`. Any edit under `server/src/` or `admin/src/` is invisible until `npm run build` (or `npm run watch`). Symptom of forgetting: "I changed register.js but my fix didn't take effect." Confirm with `grep -n <symbol> dist/server/index.js`.
 
 ## Layout
@@ -41,7 +41,7 @@ packages/strapi-api-pro/
     ├── index.js                # lifecycle exports
     ├── register.js             # `require('./content-types/app-role')` directly then calls extendUserRelation; do NOT look it up via `strapi.plugin(...).contentType(uid)` (that returns the parsed shape, not module exports)
     ├── bootstrap.js            # LRU cache, strapi.apiPro registry, global interceptor mount, admin permission action registration (`plugin::api-pro.read` / `.write`), syncAll(), lifecycle invalidation hooks
-    ├── config.js               # defaults; pos-strapi overrides headerDomainKey/headerRoleKey/bypassPaths/domains
+    ├── config.js               # defaults; services/strapi overrides headerDomainKey/headerRoleKey/bypassPaths/domains
     ├── destroy.js
     ├── content-types/
     │   ├── app-domain/         # api_pro_app_domains
@@ -85,7 +85,7 @@ npm run build            # strapi-plugin build + ensure-dist-package-json.cjs
 npm run watch            # live rebuild
 
 # From the monorepo root
-npm run dev:strapi       # starts pos-strapi with the plugin loaded
+npm run dev:strapi       # starts services/strapi with the plugin loaded
 # Then visit http://localhost:4010/admin → click the Shield icon "Strapi API Pro"
 ```
 
@@ -122,7 +122,7 @@ npm run dev:strapi       # starts pos-strapi with the plugin loaded
 
 ## Seeding
 
-`pos-strapi/src/seed/api-provider-seed.js` calls `strapi.plugin('api-pro').service('seeder').runFullSeed(strapi)` on every Strapi boot. The seeder reads `@rutba/api-provider/config/{domains,roles}.json` and `@rutba/api-provider/api/*.js` descriptors. Output on a fresh DB: 18 domains, 50 roles, 25 interfaces, 162 methods, 1013 policies.
+`services/strapi/src/seed/api-provider-seed.js` calls `strapi.plugin('api-pro').service('seeder').runFullSeed(strapi)` on every Strapi boot. The seeder reads `@rutba/api-provider/config/{domains,roles}.json` and `@rutba/api-provider/api/*.js` descriptors. Output on a fresh DB: 18 domains, 50 roles, 25 interfaces, 162 methods, 1013 policies.
 
 Re-seed on demand: `POST /api-pro/admin/seed` (button on Domains & Roles page).
 
@@ -130,7 +130,7 @@ See the `../api-provider/` package for the source-of-truth shape and its `api/` 
 
 ## /me/permissions response
 
-Consumed by `pos-shared/context/AuthContext.js` across every ERP frontend app:
+Consumed by `shared/context/AuthContext.js` across every ERP frontend app:
 
 ```js
 {
@@ -182,26 +182,26 @@ Reachable from the **▶ Play** button on every role column in the Method Editor
 
 - **Recorder middleware** — recording-sessions can be started/stopped and filters are persisted on the session, but no Koa middleware writes `recording-entry` rows during a session. The Recordings UI shows this hint when an open session has no entries.
 - **Schema-aware autocomplete** in the QueryBuilders — users type field paths manually. An endpoint exposing `strapi.contentTypes[<uid>].attributes` would let the FiltersBuilder path input become a dropdown.
-- **pos-shared role-selector menu** — the server reads `x-rutba-app-role`, but `pos-shared/context/AuthContext.js` still only sends `x-rutba-app`. Needs a UI menu where the user picks their active role from `rolesByApp[currentApp]` and the client persists/sends the selection.
+- **pos-shared role-selector menu** — the server reads `x-rutba-app-role`, but `shared/context/AuthContext.js` still only sends `x-rutba-app`. Needs a UI menu where the user picks their active role from `rolesByApp[currentApp]` and the client persists/sends the selection.
 - **Recordings → interface conversion** — `services/interfaces.createFromRecordings` creates an empty interface; doesn't yet group session entries by (method, normalized path) and synthesize methods.
 
-## pos-strapi integration contract (load-bearing)
+## services/strapi integration contract (load-bearing)
 
-- `pos-strapi/config/plugins.js` declares `api-pro: { enabled: true, config: {...} }` — NO `resolve` key (auto-discovery handles it).
-- `pos-strapi/src/extensions/users-permissions/strapi-server.js` mounts the plugin's register lifecycle to inject `app_roles` into the user schema and auto-assigns the `web_user` app-role to newly registered users.
-- `pos-strapi/src/index.js` bootstrap calls `strapi.apiPro.registerRoleProvider(...)` with `pos-strapi/src/utils/hr-role-provider.js` to merge `hr_*` team roles into a user's effective permissions.
+- `services/strapi/config/plugins.js` declares `api-pro: { enabled: true, config: {...} }` — NO `resolve` key (auto-discovery handles it).
+- `services/strapi/src/extensions/users-permissions/strapi-server.js` mounts the plugin's register lifecycle to inject `app_roles` into the user schema and auto-assigns the `storefront_user` app-role to newly registered users.
+- `services/strapi/src/index.js` bootstrap calls `strapi.apiPro.registerRoleProvider(...)` with `services/strapi/src/utils/hr-role-provider.js` to merge `hr_*` team roles into a user's effective permissions.
 
 ## Common questions
 
 | Question | Where to look |
 |---|---|
-| Why won't my plugin load? | `pos-strapi/config/plugins.js` must NOT have `resolve:` for api-pro. |
+| Why won't my plugin load? | `services/strapi/config/plugins.js` must NOT have `resolve:` for api-pro. |
 | Why is the sidebar icon missing? | Vite can't cross the symlink for `@strapi/icons`. `admin/src/components/PluginIcon.jsx` must use inline SVG. |
 | Why did my source edit not take effect after restart? | Strapi loads from `dist/`. Run `npm run build` (or `npm run watch`) inside `packages/strapi-api-pro/`. Verify with `grep -n <symbol> dist/server/index.js`. |
 | Why is a plugin admin route returning 401 / 403? | 401 = admin session token problem (rare — Strapi admin auto-refreshes; relogin if needed). 403 = the logged-in admin lacks `plugin::api-pro.read` or `plugin::api-pro.write` for the action. Grant it from Settings → Administration → Roles → [role] → Plugins → API Pro. |
 | Why does the Comparative Method Editor show 0 columns AND "all roles already configured"? | Route ordering trap in `routes/index.js`. Koa-router is first-match — `/policies/method/:i/:m` must be registered BEFORE the generic `/policies/:i/:m/:r`. Otherwise `GET /policies/method/term/list` matches `findOne` with `:interfaceKey='method'` and 404s with "policy not found", leaving the editor with `allRoles=[]`. |
 | Why doesn't the Content Manager User form show `app_roles`? | The runtime relation patch in `content-types/app-role/index.js#extendUserRelation` must actually run. `register.js` MUST `require('./content-types/app-role')` directly — `strapi.plugin(...).contentType(uid)` returns the parsed shape (kind/attributes), not the original module exports, so the helper would be `undefined` and the patch silently no-ops. |
-| Why does Save Assignment return 200 but the role list comes back empty? | `entityService.update('plugin::users-permissions.user', ...)` strips fields it doesn't recognize on Strapi 5.45 (the users-permissions service filters allowed fields). Use `strapi.db.query(USER_UID).update({ where: { id }, data: { app_roles: ids } })` — matches the proven pattern in `pos-strapi/src/extensions/users-permissions/strapi-server.js#ensureWebUserAppRole`. |
+| Why does Save Assignment return 200 but the role list comes back empty? | `entityService.update('plugin::users-permissions.user', ...)` strips fields it doesn't recognize on Strapi 5.45 (the users-permissions service filters allowed fields). Use `strapi.db.query(USER_UID).update({ where: { id }, data: { app_roles: ids } })` — matches the proven pattern in `services/strapi/src/extensions/users-permissions/strapi-server.js#ensureWebUserAppRole`. |
 | How do I add a new admin endpoint? | Add a controller under `server/src/controllers/`, register it in `controllers/index.js`, add a route in `routes/index.js` via `adminRead(method, path, handler)` or `adminWrite(method, path, handler)` (NOT raw route objects — those bypass RBAC). Call it from React with `useFetchClient()` and `get('/api-pro/<path>')`. Rebuild (`npm run build`) for the change to load. |
 | How is runtime enforcement actually wired? | `bootstrap.js` mounts a global Koa middleware. For each non-bypassed path: `request-interceptor.process(ctx, strapi)` resolves the claim, fetches the role's policy, resolves templates, injects into ctx. Denies on `denyByDefault && noPolicy`. |
 | Where do role providers (HR team roles) plug in? | `strapi.apiPro.registerRoleProvider(fn)` — fn receives `(user, { strapi })` and returns extra role-key strings. Called from `me-permissions.js` when building `/me/permissions`. |
@@ -212,7 +212,7 @@ The plugin was developed in its own repository before being vendored into this
 monorepo, so the original short SHAs no longer resolve here. Broadly, in order:
 
 - initial AGP runtime parity + file-based authoring + admin UI
-- pos-strapi wire-up + HR roleProvider + resolve-path fix
+- services/strapi wire-up + HR roleProvider + resolve-path fix
 - seeder + explicit role-claim + paginated admin UI
 - visual builders for policy templates
 - grouped interfaces + comparative method editor + recording filters

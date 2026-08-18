@@ -60,7 +60,7 @@ async function ensureWebUserAppRole(userId) {
   if (!user || user.role?.type !== 'authenticated') return;
 
   const roleRows = await strapi.db.query('plugin::api-pro.app-role').findMany({
-    where: { key: { $in: ['web_user'] }, isActive: true },
+    where: { key: { $in: ['storefront_user'] }, isActive: true },
     select: ['id'],
   });
   const roleIds = (roleRows || []).map((r) => Number(r.id)).filter(Boolean);

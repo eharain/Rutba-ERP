@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { CrmActivitiesEndpoints } from '@rutba/api-provider/endpoints';
-import EnumSelect from '@rutba/pos-shared/components/EnumSelect';
-import FileView from '@rutba/pos-shared/components/FileView';
+import EnumSelect from '@rutba/shared/components/EnumSelect';
+import FileView from '@rutba/shared/components/FileView';
 import ContactPicker from './ContactPicker';
 
 // datetime-local needs "YYYY-MM-DDTHH:mm" in local time.

@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import Layout from "../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import PayslipPrint from "@rutba/pos-shared/components/PayslipPrint";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import PayslipPrint from "@rutba/shared/components/PayslipPrint";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import { PayPayslipsEndpoints } from "@rutba/api-provider/endpoints";
 
 const money = (n) => Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });

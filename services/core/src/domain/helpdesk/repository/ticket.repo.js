@@ -4,7 +4,7 @@
  * Persistence for the ticket aggregate (spec 07 §7.3).
  *
  * The aggregate straddles two ownerships and this file is the only place that
- * knows where the seam runs: contact_tickets belongs to pos-strapi's
+ * knows where the seam runs: contact_tickets belongs to services/strapi's
  * schema.json and is reached through documents(), while helpdesk_desks,
  * helpdesk_resolution_codes and helpdesk_ticket_dedupe are Core-owned, absent
  * from the schema registry, and reached with knex. Every statement calls

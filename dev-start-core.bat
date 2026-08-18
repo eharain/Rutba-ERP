@@ -1,9 +1,9 @@
 @echo off
 REM ============================================================
-REM  Rutba ERP - Dev Environment on rutba-core (no Strapi)
+REM  Rutba ERP - Dev Environment on services/core (no Strapi)
 REM ============================================================
-REM Starts the whole app fleet against rutba-core on :4020 instead of
-REM pos-strapi on :4010. Same database, same wire contract - the apps cannot
+REM Starts the whole app fleet against services/core on :4020 instead of
+REM services/strapi on :4010. Same database, same wire contract - the apps cannot
 REM tell the difference, so long as NEXT_PUBLIC_API_URL in .env.development
 REM points at 4020 (it does; flip that one line to go back to Strapi).
 REM

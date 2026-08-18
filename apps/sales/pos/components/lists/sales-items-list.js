@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { MAX_CUSTOM_QTY, CUSTOM_QTY_WARN } from '@rutba/pos-shared/lib/utils';
+import { MAX_CUSTOM_QTY, CUSTOM_QTY_WARN } from '@rutba/shared/lib/utils';
 import { StraipImageUrl, isImage } from '@rutba/api-provider/lib/api';
-import { useUtil } from '@rutba/pos-shared/context/UtilContext';
+import { useUtil } from '@rutba/shared/context/UtilContext';
 import { isProductPinned, togglePinForStockItem, PINNED_CHANGED_EVENT } from '../../lib/pinnedLists';
 
 /**

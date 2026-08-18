@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import Layout from "../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import EnumSelect from "@rutba/pos-shared/components/EnumSelect";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import { useAuth } from "@rutba/shared/context/AuthContext";
+import EnumSelect from "@rutba/shared/components/EnumSelect";
 import { HrGrievancesEndpoints, HrIncidentReportsEndpoints } from "@rutba/api-provider/endpoints";
 
 const GRIEVANCE_VARIANT = { Open: "warning", UnderReview: "info", Resolved: "success", Closed: "secondary" };

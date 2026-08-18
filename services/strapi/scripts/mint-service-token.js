@@ -16,18 +16,18 @@
  *
  * MUST be run through load-env.js so it reads the same API_TOKEN_SALT and
  * DATABASE_* the dev server uses; the root .env* POS_STRAPI__ values override
- * pos-strapi/.env, and the two can point at different databases. The trailing
- * `--workspace=pos-strapi` is how load-env detects the target prefix; node
+ * services/strapi/.env, and the two can point at different databases. The trailing
+ * `--workspace=services/strapi` is how load-env detects the target prefix; node
  * passes it through to argv harmlessly.
  *
  * Usage (from the repo root):
- *   node scripts/js/load-env.js -- node pos-strapi/scripts/mint-service-token.js --workspace=pos-strapi
+ *   node scripts/js/load-env.js -- node services/strapi/scripts/mint-service-token.js --workspace=services/strapi
  *
  * Flags:
  *   --name=<token name>     token name in Strapi (default: marketplace-engine)
  *   --env-file=<path>       env file to update, repeatable (default: .env.development)
  *   --env-key=<KEY>         env key to write, repeatable
- *                           (default: RUTBA_MARKETPLACE__STRAPI_SERVICE_TOKEN)
+ *                           (default: MARKETPLACE__STRAPI_SERVICE_TOKEN)
  *   --print                 also print the plaintext token to stdout
  *
  * The plaintext key is shown by Strapi exactly once at create/regenerate time —
@@ -46,7 +46,9 @@ process.chdir(APP_DIR);
 
 const { createStrapi, compileStrapi } = require('@strapi/strapi');
 
-const REPO_ROOT = path.resolve(APP_DIR, '..');
+// services/strapi -> repo root: two levels since the P3 restructure moved the
+// backend under services/.
+const REPO_ROOT = path.resolve(APP_DIR, '..', '..');
 
 function parseArgs(argv) {
   const out = { name: 'marketplace-engine', envFiles: [], envKeys: [], print: false };
@@ -60,7 +62,7 @@ function parseArgs(argv) {
     else if (key === 'env-key' && value) out.envKeys.push(value);
   }
   if (!out.envFiles.length) out.envFiles = ['.env.development'];
-  if (!out.envKeys.length) out.envKeys = ['RUTBA_MARKETPLACE__STRAPI_SERVICE_TOKEN'];
+  if (!out.envKeys.length) out.envKeys = ['MARKETPLACE__STRAPI_SERVICE_TOKEN'];
   return out;
 }
 

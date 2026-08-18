@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 // facts, so they live in localStorage rather than on the mail-account row —
 // nothing here is worth a round trip or a schema column.
 
-const MARK_READ_KEY = "rutba-mail.markReadOnOpen";
+const MARK_READ_KEY = "apps/content/mail.markReadOnOpen";
 
 /**
  * Whether opening a message marks it read.

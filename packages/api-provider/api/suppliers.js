@@ -8,7 +8,7 @@ export const SuppliersEndpoints = {
 
     // The todo that used to sit here asked whether supplier really supports
     // draft-publish. It does (draftAndPublish: true in the schema) — but
-    // pos-strapi defines no /suppliers/:id/publish route, so the helper's
+    // services/strapi defines no /suppliers/:id/publish route, so the helper's
     // publish/unpublish pair was unreachable on either server. Dropped until
     // someone actually builds supplier publishing; nothing called them.
     ...draftMethods('suppliers'),
@@ -16,7 +16,7 @@ export const SuppliersEndpoints = {
 
     meta: {
         uid: 'api::supplier.supplier',
-        domains: ['cms', 'order-management', 'stock'],
+        domains: ['cms', 'orders', 'stock'],
         roles: ['admin', 'manager', 'staff']
     },
 
@@ -31,7 +31,7 @@ export const SuppliersEndpoints = {
         action: 'find',
         method: 'get',
         // No caller of its own — falls back to the interface's declared domains.
-        apps: ['stock', 'cms', 'order-management'],
+        apps: ['stock', 'cms', 'orders'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['name:asc'],
@@ -42,7 +42,7 @@ export const SuppliersEndpoints = {
 
     /**
      * Fetch all suppliers — returns one page; callers loop via pagination meta
-     * (see pos-shared/hooks/useProductLookups). `page` is a real parameter:
+     * (see shared/hooks/useProductLookups). `page` is a real parameter:
      * hardcoding page 1 truncated every supplier dropdown at `pageSize`.
      * @param {{ sort?, populate?, page?, pageSize? }} opts
      */
@@ -53,7 +53,7 @@ export const SuppliersEndpoints = {
         // 'purchase' is not a domain key (see config/domains.json) — it granted
         // nothing. 'cms', 'order-management' and 'inventory' render supplier
         // filter dropdowns (ProductPickerTabs, stock-health).
-        apps: ['stock', 'cms', 'order-management', 'inventory', 'social'],
+        apps: ['stock', 'cms', 'orders', 'control', 'social'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['name:asc'],

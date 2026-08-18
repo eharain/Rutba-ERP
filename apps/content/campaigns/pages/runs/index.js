@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Layout from "../../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import { CmpRunsEndpoints } from "@rutba/api-provider/endpoints";
 
 const STATE_BADGE = { Submitting: "secondary", Running: "primary", Completed: "success", Failed: "danger" };

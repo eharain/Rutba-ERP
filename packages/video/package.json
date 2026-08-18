@@ -1,5 +1,5 @@
 {
-  "name": "@rutba/video-maker",
+  "name": "@rutba/video",
   "version": "1.0.0",
   "private": true,
   "description": "Turn a post's still images into a video with its text typed over the top. Browser-engine only — no ffmpeg, no dependencies.",

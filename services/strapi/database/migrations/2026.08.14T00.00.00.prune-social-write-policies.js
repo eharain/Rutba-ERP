@@ -6,7 +6,7 @@
 /**
  * Drop the api-pro policy rows that still grant `social_*` roles the write
  * methods on social-accounts and social-relay-providers, now that managing
- * both moved to the rutba-admin console (`apps: ['admin']` on those methods).
+ * both moved to the apps/admin/console console (`apps: ['admin']` on those methods).
  *
  * Needed because the api-pro seeder only ever upserts: it adds the new
  * admin_* rows but never removes the social_* ones the descriptors stopped

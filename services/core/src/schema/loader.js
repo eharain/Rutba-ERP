@@ -2,12 +2,12 @@
 
 /**
  * Loads content-type and component schemas from their existing homes:
- *   - pos-strapi/src/api/<api>/content-types/<ct>/schema.json   (app CTs)
- *   - pos-strapi/src/components/<category>/<name>.json          (components)
+ *   - services/strapi/src/api/<api>/content-types/<ct>/schema.json   (app CTs)
+ *   - services/strapi/src/components/<category>/<name>.json          (components)
  *   - packages/strapi-api-pro/server/src/content-types/<ct>/schema.json
  *
  * The schema.json files remain the single source of truth shared with
- * pos-strapi for the whole strangler migration (program ground rule 3).
+ * services/strapi for the whole strangler migration (program ground rule 3).
  *
  * Built-in plugin models (users-permissions, upload, admin) are declared
  * here with just enough shape to resolve relation targets and tables.
@@ -23,7 +23,7 @@ function readJson(file) {
 }
 
 function loadApiContentTypes() {
-  const apiRoot = path.join(REPO_ROOT, 'pos-strapi', 'src', 'api');
+  const apiRoot = path.join(REPO_ROOT, 'services/strapi', 'src', 'api');
   const out = [];
   for (const apiName of fs.readdirSync(apiRoot)) {
     const ctRoot = path.join(apiRoot, apiName, 'content-types');
@@ -63,7 +63,7 @@ function loadPluginContentTypes() {
 }
 
 function loadComponents() {
-  const compRoot = path.join(REPO_ROOT, 'pos-strapi', 'src', 'components');
+  const compRoot = path.join(REPO_ROOT, 'services/strapi', 'src', 'components');
   const out = [];
   if (!fs.existsSync(compRoot)) return out;
   for (const category of fs.readdirSync(compRoot)) {
@@ -87,7 +87,7 @@ function loadComponents() {
 }
 
 /**
- * Built-in plugin models rutba-core must know about to resolve relations.
+ * Built-in plugin models services/core must know about to resolve relations.
  * Tables owned by Strapi core/plugins that we read but do not derive.
  */
 const BUILTIN_MODELS = {
@@ -114,7 +114,7 @@ const UP_PRIVATE_ATTRS = new Set([
  */
 function loadUpExtensionUser() {
   const file = path.join(
-    REPO_ROOT, 'pos-strapi', 'src', 'extensions', 'users-permissions',
+    REPO_ROOT, 'services/strapi', 'src', 'extensions', 'users-permissions',
     'content-types', 'user', 'schema.json'
   );
   if (!fs.existsSync(file)) return [];
@@ -155,7 +155,7 @@ function loadUpExtensionUser() {
  */
 function loadUploadPluginModels() {
   const base = path.join(
-    REPO_ROOT, 'pos-strapi', 'node_modules', '@strapi', 'upload',
+    REPO_ROOT, 'services/strapi', 'node_modules', '@strapi', 'upload',
     'dist', 'server', 'content-types'
   );
   const out = [];

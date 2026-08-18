@@ -36,7 +36,7 @@ export function TableCell({ children, align, colSpan, title, onClick, style }) {
 }
 /**
  * Sortable <th> for list-page tables. One canonical implementation used by
- * every "X list" across rutba-cms and pos-stock — replaces the three
+ * every "X list" across apps/content/cms and apps/inventory/stock — replaces the three
  * near-identical local copies (products.js, products-bulk-edit.js, cms
  * products.js) that all rendered slightly different arrows.
  *

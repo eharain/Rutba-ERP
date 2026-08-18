@@ -61,8 +61,8 @@ $rolesRes = Invoke-Api -Method 'GET' -Path '/auth-admin/roles' -Headers $authHea
 Assert-Status -Name 'load roles' -Expected 200 -Result $rolesRes
 $roles = @($rolesRes.data.roles)
 $appRole = $roles | Where-Object { $_.type -eq 'rutba_app_user' } | Select-Object -First 1
-$webRole = $roles | Where-Object { $_.type -eq 'rutba_web_user' } | Select-Object -First 1
-if (-not $appRole -or -not $webRole) { throw 'Missing rutba_app_user or rutba_web_user role' }
+$webRole = $roles | Where-Object { $_.type -eq 'rutba_portal' } | Select-Object -First 1
+if (-not $appRole -or -not $webRole) { throw 'Missing rutba_app_user or rutba_portal role' }
 
 $appRes = Invoke-Api -Method 'GET' -Path '/app-accesses' -Headers $authHeaders
 Assert-Status -Name 'load app-accesses' -Expected 200 -Result $appRes
@@ -75,7 +75,7 @@ function Get-AppId([string]$key) {
 }
 
 $scenarios = @(
-  @{ app='web-user'; role='rutba_web_user'; allow='/sale-orders?pagination[pageSize]=1'; deny='/cms-pages?pagination[pageSize]=1' },
+  @{ app='web-user'; role='rutba_portal'; allow='/sale-orders?pagination[pageSize]=1'; deny='/cms-pages?pagination[pageSize]=1' },
   @{ app='crm'; role='rutba_app_user'; allow='/crm-contacts?pagination[pageSize]=1'; deny='/cms-pages?pagination[pageSize]=1' },
   @{ app='cms'; role='rutba_app_user'; allow='/cms-pages?pagination[pageSize]=1'; deny='/crm-contacts?pagination[pageSize]=1' },
   @{ app='sale'; role='rutba_app_user'; allow='/sales?pagination[pageSize]=1'; deny='/purchases?pagination[pageSize]=1' },
@@ -87,7 +87,7 @@ $suffix = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
 
 foreach ($s in $scenarios) {
   $appId = Get-AppId $s.app
-  $roleId = if ($s.role -eq 'rutba_web_user') { [int]$webRole.id } else { [int]$appRole.id }
+  $roleId = if ($s.role -eq 'rutba_portal') { [int]$webRole.id } else { [int]$appRole.id }
 
   $uName = "proxy.user.$($s.app).$suffix"
   $aName = "proxy.admin.$($s.app).$suffix"

@@ -7,19 +7,19 @@
  * the org-structure half of the Helpdesk permission surface, kept separate from
  * `helpdesk-config.js` (the behaviour half) so the two can be reviewed independently.
  *
- * Desks are a Core-owned table created by rutba-core migrations, so they have no
- * pos-strapi `schema.json` and no Strapi content-type. That is fine here: the api-pro
+ * Desks are a Core-owned table created by services/core migrations, so they have no
+ * services/strapi `schema.json` and no Strapi content-type. That is fine here: the api-pro
  * seeder writes the interface row from `meta.uid` verbatim and never resolves it against
  * `strapi.contentTypes`, and Core's route gate composes `ctx.state.route.handler` as
  * `"<uid>.<action>"` from whatever the module route declares. The UID below is therefore
- * a CONTRACT with rutba-core/src/modules/helpdesk.js — the module's desk routes must
+ * a CONTRACT with services/core/src/modules/helpdesk.js — the module's desk routes must
  * carry `uid: 'api::helpdesk-desk.helpdesk-desk'` or every one of them 403s.
  *
  * The seeder walks descriptors one interface per FILE (it reads `meta.uid` only, never a
  * per-method `uid:` override — the README's claim that methods may override it is stale
  * against the current seeder), and resolves policies on (uid × action × role). Every
  * `action` below is therefore BYTE-IDENTICAL to a handler name in
- * rutba-core/src/modules/helpdesk.js; a near-miss seeds a policy for a route that does
+ * services/core/src/modules/helpdesk.js; a near-miss seeds a policy for a route that does
  * not exist and 403s the one that does.
  *
  * Desk membership, teams and queues are deliberately ABSENT. They are specified in §27.4

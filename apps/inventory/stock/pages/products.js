@@ -1,19 +1,19 @@
 import { useEffect, useState, useCallback, Fragment } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { CircularProgress, SortableTh } from "@rutba/pos-shared/components/Table";
+import { CircularProgress, SortableTh } from "@rutba/shared/components/Table";
 import Layout from "../components/Layout";
-import ProductCard from "@rutba/pos-shared/components/ProductCard";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
+import ProductCard from "@rutba/shared/components/ProductCard";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import PermissionCheck from "@rutba/shared/components/PermissionCheck";
 import { MediaUtilsEndpoints, ProductsEndpoints, StockItemsEndpoints } from "@rutba/api-provider/endpoints";
-import { useProductLookups } from "@rutba/pos-shared/hooks/useProductLookups";
+import { useProductLookups } from "@rutba/shared/hooks/useProductLookups";
 import { fetchProducts } from "@rutba/api-provider/pos";
-import { ProductFilter } from "@rutba/pos-shared/components/filter/product-filter";
-import { useUtil } from "@rutba/pos-shared/context/UtilContext";
-import BulkProductActions from "@rutba/pos-shared/components/BulkProductActions";
-import ListPageLayout, { AddButton } from "@rutba/pos-shared/components/ListPageLayout";
-import ListPagination from "@rutba/pos-shared/components/ListPagination";
+import { ProductFilter } from "@rutba/shared/components/filter/product-filter";
+import { useUtil } from "@rutba/shared/context/UtilContext";
+import BulkProductActions from "@rutba/shared/components/BulkProductActions";
+import ListPageLayout, { AddButton } from "@rutba/shared/components/ListPageLayout";
+import ListPagination from "@rutba/shared/components/ListPagination";
 
 export default function Products() {
     const router = useRouter();

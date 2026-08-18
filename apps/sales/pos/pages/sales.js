@@ -1,16 +1,16 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import Layout from "../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import PermissionCheck from "@rutba/shared/components/PermissionCheck";
 import { fetchSales } from "@rutba/api-provider/pos";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { isAppAdmin, isEffectiveAdmin } from "@rutba/pos-shared/lib/roles";
+import { useAuth } from "@rutba/shared/context/AuthContext";
+import { isAppAdmin, isEffectiveAdmin } from "@rutba/shared/lib/roles";
 import { BranchesEndpoints, SalesEndpoints } from "@rutba/api-provider/endpoints";
-import SaleApi from "@rutba/pos-shared/lib/saleApi";
+import SaleApi from "@rutba/shared/lib/saleApi";
 import Link from "next/link";
-import { useUtil } from "@rutba/pos-shared/context/UtilContext";
-import ListPageLayout, { AddButton } from "@rutba/pos-shared/components/ListPageLayout";
-import ListPagination from "@rutba/pos-shared/components/ListPagination";
+import { useUtil } from "@rutba/shared/context/UtilContext";
+import ListPageLayout, { AddButton } from "@rutba/shared/components/ListPageLayout";
+import ListPagination from "@rutba/shared/components/ListPagination";
 
 const PAYMENT_STATUSES = ["Paid", "Partial", "Unpaid"];
 // Sentinel filter value for "not fully paid" (Unpaid + Partial).

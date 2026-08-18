@@ -1,7 +1,7 @@
 'use strict';
 
 // Marketplace provider adapter registry (app-side). The engine (lib/engine.js)
-// is the only caller; it stays provider-agnostic. See pos-strapi's original
+// is the only caller; it stays provider-agnostic. See services/strapi's original
 // registry for the full interface contract — same shape, minus the `strapi`
 // handle (adapters take `{ account, ... }` and read config from lib/config.js).
 

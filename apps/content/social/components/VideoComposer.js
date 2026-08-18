@@ -14,7 +14,7 @@
  */
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
-import StrapiMediaLibrary from "@rutba/pos-shared/components/StrapiMediaLibrary";
+import StrapiMediaLibrary from "@rutba/shared/components/StrapiMediaLibrary";
 import { MediaUtilsEndpoints } from "@rutba/api-provider/endpoints";
 import { imageItems, ASPECTS } from "../lib/video-maker";
 

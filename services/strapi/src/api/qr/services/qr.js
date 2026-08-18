@@ -8,7 +8,7 @@
  * slug of a CMS page, a CMS page-group, a product-group or a product, or a
  * product's dedicated `qr_code` token. Printing a single URL shape means a
  * code stays valid when the thing behind it is re-modelled, and one QR
- * generator in rutba-cms covers every entity.
+ * generator in apps/content/cms covers every entity.
  *
  * Codes are NOT unique across content types — a "summer-sale" CMS page and a
  * "summer-sale" product-group can coexist — so this returns *every* published
@@ -25,8 +25,8 @@
 
 const { decodeShortCode } = require('@rutba/api-provider/lib/short-code.cjs');
 
-// Storefront route shapes. These mirror rutba-web/src/pages and the CMS-side
-// builders in rutba-cms/lib/cmsPageWebUrl.js — keep the three in step. Paths
+// Storefront route shapes. These mirror apps/content/storefront/src/pages and the CMS-side
+// builders in apps/content/cms/lib/cmsPageWebUrl.js — keep the three in step. Paths
 // are returned host-relative; the caller owns the origin.
 const CMS_PAGE_SEGMENTS = new Set(['shop', 'blog', 'news', 'info']);
 

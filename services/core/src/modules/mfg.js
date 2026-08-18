@@ -1,28 +1,28 @@
 'use strict';
 
 /**
- * Manufacturing tranche — the first module served BY rutba-core (playbook
+ * Manufacturing tranche — the first module served BY services/core (playbook
  * tranche 1, docs/todo/core-server-multitenancy-program/05-module-migration-
  * playbook.md).
  *
  * Zero duplication: every controller, state machine, service, lifecycle and
- * validator is require()d from pos-strapi/src and runs against the compat
+ * validator is require()d from services/strapi/src and runs against the compat
  * `strapi` object. This file only declares WHAT the module contributes:
  *
  *  - custom routes (the Strapi custom actions that were 501 in core), all
- *    `selfAuth`: in pos-strapi these routes are `auth: false` and the
+ *    `selfAuth`: in services/strapi these routes are `auth: false` and the
  *    controllers enforce auth themselves (ensureUser / requireAppRole /
  *    isManufacturingManager) — core mirrors that by skipping the api-pro
- *    interceptor for them, exactly like pos-strapi where the interceptor
+ *    interceptor for them, exactly like services/strapi where the interceptor
  *    skips unauthenticated (never-parsed) requests.
  *  - document-middleware registrations: the mfg-bom KIND-typing validator
- *    (same registration shape as pos-strapi src/index.js) and the DB
+ *    (same registration shape as services/strapi src/index.js) and the DB
  *    lifecycles of every content-type the mfg flows write to. stock-item /
  *    stock-batch / acc-bill / acc-journal-entry lifecycles are registered
  *    here because mfg side effects depend on their invariants (stock counts,
  *    bulk on-hand, vendor-bill GL posting, posted-JE immutability); their
  *    owning tranches will inherit these registrations when they migrate.
- *  - crons: none. The scheduler's mfg slot is deliberately empty — pos-strapi
+ *  - crons: none. The scheduler's mfg slot is deliberately empty — services/strapi
  *    has no manufacturing crons (config/server.js runs social + inventory
  *    tasks only, which belong to their own tranches).
  */
@@ -50,7 +50,7 @@ function uidOf(ct) {
 
 function registerMfgModule() {
   // ── Document middlewares ────────────────────────────────────────────────
-  // mfg-bom KIND typing — same registration as pos-strapi src/index.js.
+  // mfg-bom KIND typing — same registration as services/strapi src/index.js.
   const { validateBomWrite, BOM_UID } = posRequire('api/mfg-bom/bom-typing-validator.js');
   useDocumentMiddleware(async (ctx, next) => {
     if (ctx.uid === BOM_UID && (ctx.action === 'create' || ctx.action === 'update')) {

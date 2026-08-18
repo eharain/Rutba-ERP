@@ -1,17 +1,17 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import { BrandGroupsEndpoints, CategoryGroupsEndpoints, CmsFootersEndpoints, CmsMenusEndpoints, CmsPageGroupsEndpoints, CmsPagesEndpoints, MediaUtilsEndpoints, ProductGroupsEndpoints, SeoMetasEndpoints } from "@rutba/api-provider/endpoints";
-import MarkdownEditor from "@rutba/pos-shared/components/MarkdownEditor";
-import FileView from "@rutba/pos-shared/components/FileView";
+import MarkdownEditor from "@rutba/shared/components/MarkdownEditor";
+import FileView from "@rutba/shared/components/FileView";
 import Link from "next/link";
 import { useToast } from "../../components/Toast";
 import GroupPickerTabs from "../../components/GroupPickerTabs";
 import PagePickerTabs from "../../components/PagePickerTabs";
 import RelationPickerTabs from "../../components/RelationPickerTabs";
-import EnumSelect from "@rutba/pos-shared/components/EnumSelect";
+import EnumSelect from "@rutba/shared/components/EnumSelect";
 import InlineSeoPanel from "../../components/InlineSeoPanel";
 import PageLayoutEditor from "../../components/PageLayoutEditor";
 import { persistSeoMeta } from "../../components/SeoMetaFields";
@@ -54,7 +54,7 @@ const DEFAULT_PRIORITIES = {
 // and the connected product groups. Sections sit on their priority
 // slot; group rows fill the integer indices >= product_groups_priority
 // that no section has claimed, in relation _ord order. Matches the
-// public renderer in rutba-web exactly so the editor preview never lies.
+// public renderer in apps/content/storefront exactly so the editor preview never lies.
 function buildLayoutRows(priorities, groupIds, groupsByDocId) {
     const slots = FIXED_SECTIONS.map(key => ({
         kind: "section",

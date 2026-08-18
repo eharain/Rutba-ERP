@@ -1,14 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
 import Layout from "../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import {
     MailAccountsEndpoints,
     MailServersEndpoints,
     MailTagsEndpoints,
     MailSnippetsEndpoints,
 } from "@rutba/api-provider/endpoints";
-import { APP_URLS } from "@rutba/pos-shared/lib/roles";
+import { APP_URLS } from "@rutba/shared/lib/roles";
 import AccountDialog from "../components/AccountDialog";
 import RichTextArea from "../components/RichTextArea";
 import { useMarkReadOnOpen } from "../components/readingPrefs";

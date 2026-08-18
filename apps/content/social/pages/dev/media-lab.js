@@ -26,11 +26,11 @@
  * a picker no flag can drive honestly.
  */
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import RecorderDialog from "@rutba/pos-shared/components/RecorderDialog";
-import AudioEditorDialog from "@rutba/pos-shared/components/AudioEditorDialog";
-import VideoEditorDialog from "@rutba/pos-shared/components/VideoEditorDialog";
-import { decodeBlob, editContext, encodeWav } from "@rutba/pos-shared/lib/audio-edit";
-import { pickRecordMime } from "@rutba/pos-shared/lib/media-encode";
+import RecorderDialog from "@rutba/shared/components/RecorderDialog";
+import AudioEditorDialog from "@rutba/shared/components/AudioEditorDialog";
+import VideoEditorDialog from "@rutba/shared/components/VideoEditorDialog";
+import { decodeBlob, editContext, encodeWav } from "@rutba/shared/lib/audio-edit";
+import { pickRecordMime } from "@rutba/shared/lib/media-encode";
 
 // ── driving a React UI from inside the page ─────────────────
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

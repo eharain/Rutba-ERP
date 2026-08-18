@@ -1,4 +1,4 @@
-// ESM view of ./short-code.cjs. The implementation is CJS because pos-strapi
+// ESM view of ./short-code.cjs. The implementation is CJS because services/strapi
 // resolves scanned codes from CommonJS service code and a dynamic import there
 // would make an otherwise synchronous lookup async. Everything else in this
 // package is ESM, so it gets this wrapper instead of a second copy of the

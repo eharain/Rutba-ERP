@@ -7,7 +7,7 @@
  *
  * SHARED-STATE DESIGN (this is what makes the flip safe): both servers sign
  * with the same JWT_SECRET and read/write the same `strapi_sessions` rows in
- * the same format, so a token minted by pos-strapi validates on core and vice
+ * the same format, so a token minted by services/strapi validates on core and vice
  * versa, and a session rotated on one side is rotated for both. That means
  * this tranche can run side-by-side with Strapi during the bake instead of
  * needing a big-bang cutover — logged-in users are not signed out by the flip.
@@ -19,12 +19,12 @@
  * service writing the same rows, plugin-store settings read from the same
  * strapi_core_store_settings keys) while still loading the plugin's own yup
  * validators, bcryptjs and the @strapi/utils session helpers from
- * pos-strapi's node_modules — so validation messages and password hashing are
+ * services/strapi's node_modules — so validation messages and password hashing are
  * literally the same code.
  *
- * The pos-strapi users-permissions EXTENSION behaviours are reproduced here
+ * The services/strapi users-permissions EXTENSION behaviours are reproduced here
  * because they are repo code the frontends depend on: register grants the
- * `web_user` app-role to authenticated-role signups and promotes a matching
+ * `storefront_user` app-role to authenticated-role signups and promotes a matching
  * provisional person; OAuth callback promotes too; a successful password
  * reset also confirms the account.
  *
@@ -84,7 +84,7 @@ async function reissueTokensAfterPasswordChange(ctx, user) {
   return ctx.body;
 }
 
-// ── pos-strapi users-permissions extension behaviours ──────────────────────
+// ── services/strapi users-permissions extension behaviours ──────────────────────
 async function ensureWebUserAppRole(userId) {
   if (!userId) return;
   const db = getDb();
@@ -93,7 +93,7 @@ async function ensureWebUserAppRole(userId) {
     .where('l.user_id', userId).first('r.type');
   if (role?.type !== 'authenticated') return;
   const webUser = await db('api_pro_app_roles')
-    .where({ key: 'web_user', is_active: 1 }).first('id');
+    .where({ key: 'storefront_user', is_active: 1 }).first('id');
   if (!webUser) return;
   const existing = await db('up_users_app_roles_lnk')
     .where({ user_id: userId, app_role_id: webUser.id }).first('id');
@@ -119,7 +119,7 @@ function registerAuthModule() {
 
   // auth-admin is repo code → zero-copy, same as every earlier tranche.
   const authAdmin = posRequire(path.join('api', 'auth-admin', 'controllers', 'auth-admin.js'));
-  // user-admin is the carved-out user-management console behind rutba-admin;
+  // user-admin is the carved-out user-management console behind apps/admin/console;
   // auth-admin above is now a re-export of the same controller (alias paths).
   const userAdmin = posRequire(path.join('api', 'user-admin', 'controllers', 'user-admin.js'));
 
@@ -164,7 +164,7 @@ function registerAuthModule() {
       const settings = (await upStore.get('advanced')) || {};
       if (!settings.allow_register) throw new ApplicationError('Register action is currently disabled');
 
-      // pos-strapi config: register.allowedFields = ['displayName','app_roles'].
+      // services/strapi config: register.allowedFields = ['displayName','app_roles'].
       const allowedKeys = ['username', 'password', 'email', 'displayName', 'app_roles'];
       const body = ctx.request.body || {};
       const invalidKeys = Object.keys(body).filter((k) => !allowedKeys.includes(k));
@@ -202,7 +202,7 @@ function registerAuthModule() {
         confirmed: settings.email_confirmation ? 0 : 1,
       });
 
-      // Extension behaviours (pos-strapi src/extensions/users-permissions).
+      // Extension behaviours (services/strapi src/extensions/users-permissions).
       await ensureWebUserAppRole(created.id);
       await promotePersonForRegisteredUser(created.id);
 
@@ -315,7 +315,7 @@ function registerAuthModule() {
       const user = await findUserRow({ reset_password_token: code });
       if (!user) throw new ValidationError('Incorrect code provided');
       await userService.edit(user.id, { resetPasswordToken: null, password });
-      // pos-strapi extension: the reset link proves email ownership, so an
+      // services/strapi extension: the reset link proves email ownership, so an
       // unconfirmed account is promoted to confirmed on a successful reset.
       if (user.confirmed !== 1 && user.confirmed !== true) {
         await userService.edit(user.id, { confirmed: 1, confirmationToken: null });
@@ -404,7 +404,7 @@ function registerAuthModule() {
     { method: 'post', path: '/api/auth-admin/domains', handler: (c) => authAdmin.createDomain(c) },
     { method: 'delete', path: '/api/auth-admin/domains/:id', handler: (c) => authAdmin.deleteDomain(c) },
 
-    // user-admin console (rutba-admin; auth:false in Strapi, requireAppRole
+    // user-admin console (apps/admin/console; auth:false in Strapi, requireAppRole
     // inside). Literal paths before parameterised ones, like the Strapi routes.
     { method: 'get', path: '/api/user-admin/users', handler: (c) => userAdmin.listUsers(c) },
     { method: 'post', path: '/api/user-admin/users', handler: (c) => userAdmin.createUser(c) },

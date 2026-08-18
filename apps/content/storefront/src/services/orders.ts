@@ -3,7 +3,7 @@ import qs from "qs";
 // Source descriptors — synchronous `{ path, method, params }` shapes. The
 // generated proxy under endpoints/ would re-route through the api-provider
 // lib, which uses its own storage JWT (NOT the NextAuth session that
-// rutba-web actually uses). So we use the descriptors for paths/methods
+// apps/content/storefront actually uses). So we use the descriptors for paths/methods
 // only and axios + the session JWT ourselves — same pattern as
 // services/me-addresses.ts.
 import { WebOrdersEndpoints as WebOrdersEndpointsApi } from "@rutba/api-provider/api/web/orders.js";

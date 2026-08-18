@@ -11,7 +11,7 @@ import { listParams, byIdParams } from './__param_builders.js';
 export const SaleAuditLogsEndpoints = {
     meta: {
         uid: 'api::sale-audit-log.sale-audit-log',
-        domains: ['sale'],
+        domains: ['pos'],
         roles: ['admin', 'manager', 'staff'],
     },
 
@@ -20,7 +20,7 @@ export const SaleAuditLogsEndpoints = {
         path: '/sale-audit-logs',
         action: 'find',
         method: 'get',
-        apps: ['sale'],
+        apps: ['pos'],
         approle: ['admin', 'manager'],
         params: listParams(
             { page, pageSize, sort, populate, filters, fields },
@@ -33,7 +33,7 @@ export const SaleAuditLogsEndpoints = {
         path: `/sale-audit-logs/${documentId}`,
         action: 'findOne',
         method: 'get',
-        apps: ['sale'],
+        apps: ['pos'],
         approle: ['admin', 'manager'],
         params: byIdParams({ populate, fields }),
     }),
@@ -44,7 +44,7 @@ export const SaleAuditLogsEndpoints = {
         path: '/sale-audit-logs',
         action: 'create',
         method: 'post',
-        apps: ['sale'],
+        apps: ['pos'],
         approle: ['admin', 'manager', 'staff'],
         data,
     }),
@@ -55,7 +55,7 @@ export const SaleAuditLogsEndpoints = {
         path: '/sale-audit-logs',
         action: 'find',
         method: 'get',
-        apps: ['sale'],
+        apps: ['pos'],
         approle: ['admin', 'manager'],
         params: listParams(
             { sort, populate, fields, filters: { sale: { documentId: { $eq: saleDocId } } }, pageSize: 500 },

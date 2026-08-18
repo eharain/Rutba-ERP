@@ -1,8 +1,8 @@
-# 05 — Does rutba-core actually run on SQLite?
+# 05 — Does services/core actually run on SQLite?
 
 > **Status (2026-08-14): investigation complete, verdict below.** This document
 > de-risks one sentence the whole offline design rests on:
-> *"local reads come from rutba-core run against local SQLite, not from new code"*
+> *"local reads come from services/core run against local SQLite, not from new code"*
 > ([`offline-pos-options.md` §10.1](../offline-pos-options.md)). Phase 2 of the
 > bridge — replicator plus local reads — is built directly on it.
 >
@@ -15,7 +15,7 @@
    and the transactional outbox all work on SQLite. Not one test failed because
    of a SQL-dialect difference.
 2. **The application does not boot, for a reason that has nothing to do with
-   SQLite:** rutba-core has no code that can *create* the 469-table base schema.
+   SQLite:** services/core has no code that can *create* the 469-table base schema.
    It only knows how to *read* a schema Strapi built.
 3. **The §10.1 assumption holds for the code and fails for the data.** It needs
    one added sentence about where the schema comes from. The cheapest fix
@@ -32,7 +32,7 @@ rather than re-implementing anything.
 Every run below used a scratch database outside the repo. No repo schema was
 modified — as scoped.
 
-**One environment note that is itself a finding.** `npm --prefix rutba-core
+**One environment note that is itself a finding.** `npm --prefix services/core
 install` fails on this machine: npm auto-runs `node-gyp rebuild` for
 `better-sqlite3` (it has a `binding.gyp` and no `install` script), and node-gyp
 cannot find a usable Python. But **better-sqlite3 13.0.3 ships prebuilt binaries
@@ -44,7 +44,7 @@ inside the tarball** — `prebuilds/win32-x64.node` and seven siblings — and
 
 
 ```bash
-npm --prefix rutba-core install --ignore-scripts
+npm --prefix services/core install --ignore-scripts
 ```
 
 That matters for [02 §Updates](02-desktop-shell.md#updates): the desktop bundle
@@ -72,7 +72,7 @@ because of what the surrounding comment says it is for.
 [migrate] created core_events
 [migrate] created core_event_deliveries
 [migrate] up 001-core-events ok in 27ms
-[migrate] failed: contact_tickets does not exist — this migration extends the live pos-strapi table
+[migrate] failed: contact_tickets does not exist — this migration extends the live services/strapi table
 ```
 
 **001-core-events — the transactional outbox — applies perfectly on SQLite.**
@@ -88,20 +88,20 @@ AUTOINCREMENT risk is handled by knex), and MySQL's index length prefixes — th
 invalid SQLite.
 
 Migration 010 then fails because `contact_tickets` does not exist. **6 of the 11
-migrations reference tables pos-strapi owns.** This is a *dependency* failure,
+migrations reference tables services/strapi owns.** This is a *dependency* failure,
 not a dialect failure — and it is the whole story of this investigation.
 
 ## 3. The structural finding: core cannot create the base schema
 
 This is the one that matters.
 
-- The **only** `createTable` in all of `rutba-core/src/` is the migrations
-  ledger itself ([`migrations.js:104`](../../../rutba-core/src/platform/migrations.js)).
+- The **only** `createTable` in all of `services/core/src/` is the migrations
+  ledger itself ([`migrations.js:104`](../../../services/core/src/platform/migrations.js)).
 - `src/schema/registry.js` exports exactly `buildRegistry` and
   `ENTITY_STANDARD_COLUMNS`. It *derives table and column names* so the
   `documents()` shim can query a database that already exists. It emits no DDL.
 - The migrations README states the design directly: everything outside
-  core-owned tables "is still derived from pos-strapi's `schema.json` files".
+  core-owned tables "is still derived from services/strapi's `schema.json` files".
 
 So a fresh SQLite file after the full migration chain contains **4 tables**
 (`core_migrations`, `core_events`, `core_event_deliveries`, `sqlite_sequence`) —
@@ -144,10 +144,10 @@ Every script was run against its own fresh copy of the migrated file:
   (`no such table: products`), `smoke-platform` (`branches`), `smoke-workflow`
   (`workflows`), `smoke-writes` (`orders`). Same root cause as §3.
 - **Blocked by this worktree's environment (15):** `src/auth/up.js:40` loads
-  `bcryptjs` and `@strapi/utils` out of `pos-strapi/node_modules`, which a
+  `bcryptjs` and `@strapi/utils` out of `services/strapi/node_modules`, which a
   worktree does not have. **This is not a SQLite failure** and is reported as
-  such. It is, separately, a packaging constraint worth recording: **rutba-core
-  has a hard runtime dependency on pos-strapi's `node_modules` tree**, which an
+  such. It is, separately, a packaging constraint worth recording: **services/core
+  has a hard runtime dependency on services/strapi's `node_modules` tree**, which an
   Electron bundle shipping core would have to satisfy.
 - **Self-skipped (1):** `smoke-sla` guards on `contact_tickets` and skips
   cleanly.
@@ -310,10 +310,10 @@ SQLite.** String and boolean forms return identical rows.
 | 3 | `validate-schema.js` can't run (information_schema) | **Fix** | Days: a SQLite branch over `sqlite_master`/`PRAGMA table_info` |
 | 4 | `migrate.js` prints `database: undefined` | **Fix** | Minutes |
 | 5 | `check-sqlite.js` note #3 says FKs are off; they are on | **Fix (doc)** | Minutes |
-| 6 | Hard dependency on `pos-strapi/node_modules` | **Packaging** | Must be solved for Electron regardless of database |
+| 6 | Hard dependency on `services/strapi/node_modules` | **Packaging** | Must be solved for Electron regardless of database |
 | 7 | Pool of one serializes all access | **Accepted trade** | None — correct for a single till, latency-bound only |
 
-## 7. Does "bridge = rutba-core on SQLite" hold?
+## 7. Does "bridge = services/core on SQLite" hold?
 
 **Yes for the code. Not, as written, for the data.**
 
@@ -323,7 +323,7 @@ without new code. The four dialect risks that could have been design-breaking �
 DDL transactionality, ALS under a single-writer lock, the filter dialect, raw SQL
 portability — all came back clean or better than MySQL.
 
-What the sentence omits is that rutba-core is a **reader** of a schema it does
+What the sentence omits is that services/core is a **reader** of a schema it does
 not own. On the server that is invisible. On a fresh till it is the whole
 problem: there is no Strapi to build the tables, and core cannot build them
 itself.
@@ -335,16 +335,16 @@ comes from. That question had no owner before this document.
 
 So §10.1 needs one added sentence, not a rewrite:
 
-> Local reads come from rutba-core run against local SQLite, not from new code —
-> **against a schema baseline generated by pos-strapi, because core derives table
+> Local reads come from services/core run against local SQLite, not from new code —
+> **against a schema baseline generated by services/strapi, because core derives table
 > names but never creates tables.**
 
 ### Alternatives, and what they cost
 
-**A. Generate the baseline with pos-strapi itself — recommended.**
-`pos-strapi/config/database.js:4` already reads
+**A. Generate the baseline with services/strapi itself — recommended.**
+`services/strapi/config/database.js:4` already reads
 `env('DATABASE_CLIENT', 'sqlite')` — **SQLite is its default client**, and the
-`sqlite` connection block is fully configured. Boot pos-strapi once against an
+`sqlite` connection block is fully configured. Boot services/strapi once against an
 empty SQLite file in CI, let Strapi's own schema builder create all 469 tables,
 and ship the resulting file as the replica baseline.
 *Cost:* one CI job and a published artefact. *Benefit:* keeps a single schema
@@ -378,13 +378,13 @@ a replicator that the tables underneath it were never verified.
 ## 8. Reproducing this
 
 ```bash
-npm --prefix rutba-core install --ignore-scripts
+npm --prefix services/core install --ignore-scripts
 ```
 
 ```bash
-RUTBA_CORE__DATABASE_CLIENT=sqlite RUTBA_CORE__DATABASE_FILENAME=/tmp/x.sqlite node rutba-core/scripts/migrate.js up
+CORE__DATABASE_CLIENT=sqlite CORE__DATABASE_FILENAME=/tmp/x.sqlite node services/core/scripts/migrate.js up
 ```
 
 ```bash
-npm --prefix rutba-core run check:sqlite
+npm --prefix services/core run check:sqlite
 ```

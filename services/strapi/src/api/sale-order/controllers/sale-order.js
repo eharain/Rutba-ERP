@@ -119,7 +119,7 @@ async function dispatchLabel(ctx, strapi, { returnMode }) {
 
 /**
  * Verify the authenticated user can access customer order views.
- * Allows rutba_web_user and rutba_app_user.
+ * Allows rutba_portal and rutba_app_user.
  * Returns the full user record or null (after sending 403).
  */
 async function requireOrderAccessUser(ctx, strapi, user) {
@@ -128,7 +128,7 @@ async function requireOrderAccessUser(ctx, strapi, user) {
         populate: { role: { select: ['type'] } },
     });
     const roleType = fullUser?.role?.type;
-    const allowed = roleType === 'rutba_web_user' || roleType === 'rutba_app_user' || roleType === 'authenticated';
+    const allowed = roleType === 'rutba_portal' || roleType === 'rutba_app_user' || roleType === 'authenticated';
     if (!fullUser || !allowed) {
         ctx.forbidden('Only authenticated web/app users can access this resource.');
         return null;
@@ -455,15 +455,15 @@ module.exports = factories.createCoreController(
             // before committing. Free shipping is OR'd across all live
             // offers and wipes the delivery cost when granted.
             //
-            // Staff entering an order in rutba-order-management may nominate a
+            // Staff entering an order in apps/sales/orders may nominate a
             // specific live offer per line, or a manual price with a reason.
             // That's gated on ACTUAL app-role membership read from the DB, not
             // on merely being logged in — this route is auth:false so the token
             // above could belong to any storefront customer.
             //
             // `domains` here matches app-role KEY PREFIXES, not the keys in
-            // domains.json. The order-management domain's roles are order_admin
-            // /order_manager/order_staff, so the prefix is 'order' — passing
+            // domains.json. The order-management domain's roles are orders_admin
+            // /orders_manager/orders_staff, so the prefix is 'order' — passing
             // 'order-management' matches nothing and silently denies every
             // order-management user.
             const allowManualPricing = await hasAppRole(strapi, ctx.state.user?.id, {
@@ -965,7 +965,7 @@ module.exports = factories.createCoreController(
             // storefront customer holds. Without this gate a customer could
             // rewrite the line items of ANY order by documentId.
             // 'order' is the app-role key prefix for the order-management
-            // domain (order_admin/order_manager/order_staff) — see the note on
+            // domain (orders_admin/orders_manager/orders_staff) — see the note on
             // the create path above.
             const user = await requireAppRole(ctx, strapi, {
                 domains: ['order', 'sale', 'delivery'],
@@ -1050,8 +1050,8 @@ module.exports = factories.createCoreController(
 
         // ── POST /sale-orders/:documentId/record-payment ─────────────────────
         // Records a payment collection event against an order. Used by:
-        //   - Staff in rutba-order-management when a courier hands over cash
-        //   - Riders in rutba-rider when they collect COD at the door
+        //   - Staff in apps/sales/orders when a courier hands over cash
+        //   - Riders in apps/sales/rider when they collect COD at the door
         //
         // Always sets payment_verification_status = 'unverified' so the
         // accounts team has a clear inbox of cash-drops to reconcile. A
@@ -1359,7 +1359,7 @@ module.exports = factories.createCoreController(
             if (!accessUser) return;
 
             const roleType = accessUser.role?.type;
-            const webUserFilter = roleType === 'rutba_web_user' || roleType === 'authenticated'
+            const webUserFilter = roleType === 'rutba_portal' || roleType === 'authenticated'
                 ? { owners: { id: { $eq: user.id } } }
                 : null;
 
@@ -1444,9 +1444,9 @@ module.exports = factories.createCoreController(
             // Ownership check only for storefront users — staff (rutba_app_user)
             // can view any order, that's the whole point of order-management.
             // `authenticated` is the default role assigned by users-permissions
-            // for fresh signups before they're upgraded to rutba_web_user, so
+            // for fresh signups before they're upgraded to rutba_portal, so
             // those still get the ownership filter applied for safety.
-            if (accessUser.role?.type === 'rutba_web_user' || accessUser.role?.type === 'authenticated') {
+            if (accessUser.role?.type === 'rutba_portal' || accessUser.role?.type === 'authenticated') {
                 const isOwner = (order.owners || []).some((o) => o.id === user.id);
                 if (!isOwner) return ctx.forbidden('You can only view your own orders.');
             }

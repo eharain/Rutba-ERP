@@ -11,7 +11,7 @@ export const NotificationPreferencesEndpoints = {
 
     meta: {
         uid: 'api::notification-preference.notification-preference',
-        domains: ['admin', 'users'],
+        domains: ['console'],
         roles: ['admin', 'manager', 'staff'],
     },
 
@@ -20,7 +20,7 @@ export const NotificationPreferencesEndpoints = {
         path: '/notification-preferences',
         action: 'find',
         method: 'get',
-        apps: ['admin', 'users'],
+        apps: ['console'],
         approle: ['admin', 'manager', 'staff'],
         params: { ...(userId ? { userId } : {}) },
     }),
@@ -30,7 +30,7 @@ export const NotificationPreferencesEndpoints = {
         path: '/notification-preferences',
         action: 'create',
         method: 'post',
-        apps: ['admin', 'users'],
+        apps: ['console'],
         approle: ['admin', 'manager', 'staff'],
         data,
     }),
@@ -39,7 +39,7 @@ export const NotificationPreferencesEndpoints = {
         path: `/notification-preferences/${documentId}`,
         action: 'update',
         method: 'put',
-        apps: ['admin', 'users'],
+        apps: ['console'],
         approle: ['admin', 'manager', 'staff'],
         data,
     }),
@@ -49,7 +49,7 @@ export const NotificationPreferencesEndpoints = {
         path: `/notification-preferences/${documentId}`,
         action: 'delete',
         method: 'delete',
-        apps: ['admin', 'users'],
+        apps: ['console'],
         approle: ['admin', 'manager', 'staff'],
     }),
 

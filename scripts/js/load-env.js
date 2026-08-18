@@ -21,26 +21,29 @@
  *   - Errors on missing critical variables, warns on optional ones
  *   - Splits globals vs PREFIX__VAR app-specific variables
  *   - Passes through PORT from explicit config (PREFIX__PORT) or platform
- *   - Auto-computes CORS_ORIGINS for pos-strapi
+ *   - Auto-computes CORS_ORIGINS for services/strapi
  *   - Spawns <command> with the merged environment
  *
  * Usage:
  *   node scripts/load-env.js -- <command> [args...]
  *
- * The target app is auto-detected from --workspace=<dir> or --prefix <dir>
- * in the command arguments.
+ * The target app is auto-detected from --workspace=<target> or --prefix
+ * <target> in the command arguments, where <target> may be a package name,
+ * a workspace path or a bare key.
  *
- * Prefix convention:
- *   workspace dir "pos-auth"       → prefix POS_AUTH
- *   workspace dir "rutba-web-user" → prefix RUTBA_WEB_USER
+ * The env prefix is looked up in config/apps.manifest.json — it is stored per
+ * service, not derived from the path:
+ *   "@rutba/auth" / "apps/admin/auth" / "auth"  → prefix AUTH
+ *   "@rutba/portal" / "apps/sales/portal"       → prefix PORTAL
  *   Double underscore (__) separates prefix from var name:
- *     POS_STRAPI__PORT=4010  →  PORT=4010  (for pos-strapi only)
+ *     POS_STRAPI__PORT=4010  →  PORT=4010  (for services/strapi only)
  */
 console.log('Time Now' , new Date().toISOString());
 const { spawn } = require('child_process');
 const {
   resolveAllVariables,
   getAppPrefixes,
+  resolveEnvPrefix,
   splitVariables,
   validateVariables,
   buildEnvForApp,
@@ -78,7 +81,19 @@ if (!targetDir) {
   process.exit(1);
 }
 
-const targetPrefix = targetDir.toUpperCase().replace(/-/g, '_');
+// The --workspace= / --prefix argument may be a package name (@rutba/pos), a
+// workspace path (apps/sales/pos) or a bare key (pos) — npm accepts all three.
+// Only the manifest knows which env block each one belongs to, so resolve
+// through it rather than upper-casing whatever npm was handed.
+const targetPrefix = resolveEnvPrefix(targetDir);
+if (!targetPrefix) {
+  console.error(
+    `[env] Could not resolve an env prefix for "${targetDir}".\n` +
+    `  It must match a package name, workspace path or key in ` +
+    `config/apps.manifest.json.`
+  );
+  process.exit(1);
+}
 const allPrefixes = getAppPrefixes();
 
 // ── 1. Resolve variables (file mode or env-var mode) ───────

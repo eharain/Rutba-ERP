@@ -7,7 +7,7 @@ import {
     PRINT_SETTING_LIMITS,
     clampPrintSetting,
     clampPrintSettings
-} from '@rutba/pos-shared/context/UtilContext';
+} from '@rutba/shared/context/UtilContext';
 
 const SaleInvoicePrint = ({ sale, items, totals, onClose  }) => {
     const { invoicePrintSettings, setInvoicePrintSettings, getBranchPrintSettings, saveBranchPrintSettings } = useUtil();

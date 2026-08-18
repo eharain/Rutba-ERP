@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * The api-pro policy seeder, running inside rutba-core.
+ * The api-pro policy seeder, running inside services/core.
  *
  * `packages/api-provider/api/*.js` is the contract; the `api_pro_*` tables are
  * its runtime mirror. Core reads its entire route table from that mirror

@@ -100,7 +100,7 @@ export async function fetchProducts(filters, page, rowsPerPage, sort) {
         updatedFrom: filters.updatedFrom,
         updatedTo: filters.updatedTo,
         publishState: filters.publishState,
-        // "Without social posts" (rutba-social) — see ProductsEndpoints.list.
+        // "Without social posts" (apps/content/social) — see ProductsEndpoints.list.
         noSocialPosts: filters.noSocialPosts,
         sort,
     });

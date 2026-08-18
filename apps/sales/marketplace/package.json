@@ -1,5 +1,5 @@
 {
-  "name": "rutba-marketplace",
+  "name": "@rutba/marketplace",
   "version": "0.1.0",
   "private": true,
   "scripts": {

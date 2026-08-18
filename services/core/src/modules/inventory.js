@@ -7,7 +7,7 @@
  * tranche 7; this module owns only the replenishment + expiry surface.
  *
  * Zero-copy, same model as tranches 1–3: controllers/services are require()d
- * from pos-strapi/src and run against the compat strapi. All routes are
+ * from services/strapi/src and run against the compat strapi. All routes are
  * `auth: false` in Strapi with manual gates in the controllers (ensureUser /
  * requireAppRole / isReplenishManager) → `selfAuth` here.
  *
@@ -16,10 +16,10 @@
  * and bulk_quantity_on_hand) are already registered by the mfg module;
  * stock-alert / reorder-policy / purchase have no lifecycle files.
  *
- * Crons: the two inventory tasks are read from pos-strapi's own
+ * Crons: the two inventory tasks are read from services/strapi's own
  * config/inventory-cron-tasks.js (zero-copy) and registered with the core
  * scheduler. They stay DORMANT unless RUTBA_CORE_CRONS=1 — at the tranche
- * flip they start here and are simultaneously removed from pos-strapi's
+ * flip they start here and are simultaneously removed from services/strapi's
  * config/server.js merge (never run in both servers).
  */
 
@@ -27,7 +27,7 @@ const { posRequire } = require('../compat/strapi');
 const { registerCron } = require('../platform/cron');
 
 function registerInventoryModule() {
-  // ── Crons (zero-copy from pos-strapi config) ────────────────────────────
+  // ── Crons (zero-copy from services/strapi config) ────────────────────────────
   const buildInventoryCronTasks = posRequire('../config/inventory-cron-tasks.js');
   for (const [name, t] of Object.entries(buildInventoryCronTasks())) {
     registerCron(name, t.options.rule, () => t.task({ strapi: global.strapi }));

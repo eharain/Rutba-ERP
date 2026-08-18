@@ -2,12 +2,12 @@
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Layout from '../../components/Layout';
-import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
+import ProtectedRoute from '@rutba/shared/components/ProtectedRoute';
 import { BranchesEndpoints, StockHelpersEndpoints, StockItemsEndpoints, ProductsEndpoints, CategoriesEndpoints, BrandsEndpoints, SuppliersEndpoints, fetchProducts, saveProduct, loadProduct } from '@rutba/api-provider/endpoints';
-import { useUtil } from '@rutba/pos-shared/context/UtilContext';
-import { printStorage } from '@rutba/pos-shared/lib/printStorage';
-import { getBranch } from '@rutba/pos-shared/lib/utils';
-import ProductPageShell, { buildStockProductTabs } from '@rutba/pos-shared/components/product/ProductPageShell';
+import { useUtil } from '@rutba/shared/context/UtilContext';
+import { printStorage } from '@rutba/shared/lib/printStorage';
+import { getBranch } from '@rutba/shared/lib/utils';
+import ProductPageShell, { buildStockProductTabs } from '@rutba/shared/components/product/ProductPageShell';
 
 /**
  * Generate a short barcode prefix from a product name.

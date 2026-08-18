@@ -3,8 +3,8 @@ title Rutba ERP - Development Environment
 color 0A
 
 REM ── Which backend serves the API ──────────────────────────────────────────
-REM   dev-start.bat          pos-strapi on 4010  (default)
-REM   dev-start.bat core     rutba-core on 4020, no Strapi
+REM   dev-start.bat          services/strapi on 4010  (default)
+REM   dev-start.bat core     services/core on 4020, no Strapi
 REM
 REM Both serve the same wire contract against the same database, so the apps
 REM do not care which is up. They DO need NEXT_PUBLIC_API_URL in
@@ -52,7 +52,7 @@ start "%API_TITLE%" cmd /k "cd /d "%~dp0" && npm run %API_SCRIPT%"
 timeout /t 3 /nobreak >nul
 
 echo [2/24] Starting Rutba Web...
-start "Rutba Web" cmd /k "cd /d "%~dp0" && npm run dev:web"
+start "Rutba Web" cmd /k "cd /d "%~dp0" && npm run dev:storefront"
 
 echo [3/24] Starting Auth Portal...
 start "Auth Portal" cmd /k "cd /d "%~dp0" && npm run dev:auth"
@@ -61,13 +61,13 @@ echo [4/24] Starting Stock Management...
 start "Stock Management" cmd /k "cd /d "%~dp0" && npm run dev:stock"
 
 echo [5/24] Starting Point of Sale...
-start "Point of Sale" cmd /k "cd /d "%~dp0" && npm run dev:sale"
+start "Point of Sale" cmd /k "cd /d "%~dp0" && npm run dev:pos"
 
 echo [6/24] Starting Web User...
-start "Web User" cmd /k "cd /d "%~dp0" && npm run dev:web-user"
+start "Web User" cmd /k "cd /d "%~dp0" && npm run dev:portal"
 
 echo [7/24] Starting Order Management...
-start "Order Management" cmd /k "cd /d "%~dp0" && npm run dev:order-management"
+start "Order Management" cmd /k "cd /d "%~dp0" && npm run dev:orders"
 
 echo [8/24] Starting Rider...
 start "Rider" cmd /k "cd /d "%~dp0" && npm run dev:rider"
@@ -97,7 +97,7 @@ echo [16/24] Starting Manufacturing...
 start "Manufacturing" cmd /k "cd /d "%~dp0" && npm run dev:manufacturing"
 
 echo [17/24] Starting Inventory...
-start "Inventory" cmd /k "cd /d "%~dp0" && npm run dev:inventory"
+start "Inventory" cmd /k "cd /d "%~dp0" && npm run dev:control"
 
 echo [18/24] Starting Seed Control...
 start "Seed Control" cmd /k "cd /d "%~dp0" && npm run dev:seed"
@@ -109,7 +109,7 @@ echo [20/24] Starting Mail...
 start "Mail" cmd /k "cd /d "%~dp0" && npm run dev:mail"
 
 echo [21/24] Starting Rutba Admin...
-start "Rutba Admin" cmd /k "cd /d "%~dp0" && npm run dev:admin"
+start "Rutba Admin" cmd /k "cd /d "%~dp0" && npm run dev:console"
 
 echo [22/24] Starting Helpdesk...
 start "Helpdesk" cmd /k "cd /d "%~dp0" && npm run dev:helpdesk"

@@ -2,9 +2,9 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import Layout from "../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { useUtil } from "@rutba/pos-shared/context/UtilContext";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import { useAuth } from "@rutba/shared/context/AuthContext";
+import { useUtil } from "@rutba/shared/context/UtilContext";
 import { ReturnRequestsEndpoints } from "@rutba/api-provider/endpoints/index.js";
 import { useToast } from "../components/Toast";
 

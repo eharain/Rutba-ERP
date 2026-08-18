@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import Layout from "../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
 import AppAccessGate from "../components/AppAccessGate";
-import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
+import PermissionCheck from "@rutba/shared/components/PermissionCheck";
 import { MailServersEndpoints } from "@rutba/api-provider/endpoints";
 
 const EMPTY = {

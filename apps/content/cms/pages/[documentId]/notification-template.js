@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import { NotificationTemplatesEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 import { useToast } from "../../components/Toast";
 
-// Mirrors the trigger_event enum in pos-strapi notification-template schema.json.
+// Mirrors the trigger_event enum in services/strapi notification-template schema.json.
 // "none" means the template is driven by the notification engine's event_name
 // instead — leaving it on a sale-order trigger makes it fire on real orders.
 const TRIGGER_EVENTS = [

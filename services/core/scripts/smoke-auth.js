@@ -6,8 +6,8 @@
  * MARKER-ONLY: the smoke registers its own ${MARK}@example.test user and
  * deletes it (plus its sessions, person row and app-role links) at the end.
  *
- *  A. register: creates the user, grants web_user, promotes a matching
- *     PROVISIONAL person (the pos-strapi extension behaviours), returns
+ *  A. register: creates the user, grants storefront_user, promotes a matching
+ *     PROVISIONAL person (the services/strapi extension behaviours), returns
  *     jwt + refreshToken + user with no private fields
  *  B. login: wrong password 400 with Strapi's message; correct password
  *     mints a session; blocked/unconfirmed gates
@@ -20,7 +20,7 @@
  *  F. change-password: wrong current 400, success re-issues and invalidates
  *     prior sessions
  *  G. CROSS-SERVER: the session row core wrote is in the exact shape Strapi
- *     writes (same columns/format), and a token minted the way pos-strapi
+ *     writes (same columns/format), and a token minted the way services/strapi
  *     mints one validates on core — the shared-secret/shared-table contract
  *     that makes the flip non-disruptive
  *  H. auth-admin gate (x-rutba-app + auth admin role required)
@@ -112,8 +112,8 @@ async function main() {
 
     const webUserGrant = userId && await db('up_users_app_roles_lnk as l')
       .join('api_pro_app_roles as r', 'r.id', 'l.app_role_id')
-      .where({ 'l.user_id': userId, 'r.key': 'web_user' }).first('l.id');
-    check('register granted the web_user app-role (extension behaviour)',
+      .where({ 'l.user_id': userId, 'r.key': 'storefront_user' }).first('l.id');
+    check('register granted the storefront_user app-role (extension behaviour)',
       Boolean(webUserGrant));
 
     const promoted = await documents(PERSON_UID).findOne({
@@ -266,14 +266,14 @@ async function main() {
       && coreRow.origin === 'users-permissions' && coreRow.type === 'refresh',
       JSON.stringify(coreRow && [coreRow.session_id.length, coreRow.origin, coreRow.type]));
 
-    // A token minted the way pos-strapi mints one (same secret, same payload
+    // A token minted the way services/strapi mints one (same secret, same payload
     // shape, validated against strapi_sessions) must authenticate on core.
     const strapiStyle = jwtLib.sign(
       { userId: String(userId), sessionId: coreRow.session_id, type: 'access' },
       get('JWT_SECRET'), { expiresIn: '10m' }
     );
     const meCross = await req('GET', '/api/users/me', strapiStyle);
-    check('a pos-strapi-shaped access token authenticates on core',
+    check('a services/strapi-shaped access token authenticates on core',
       meCross.status === 200 && meCross.body.email === EMAIL,
       `status ${meCross.status}`);
 

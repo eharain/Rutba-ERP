@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 
-import { useUtil } from '@rutba/pos-shared/context/UtilContext';
-import SaleApi from '@rutba/pos-shared/lib/saleApi';
-import { MAX_CUSTOM_QTY, CUSTOM_QTY_WARN } from '@rutba/pos-shared/lib/utils';
+import { useUtil } from '@rutba/shared/context/UtilContext';
+import SaleApi from '@rutba/shared/lib/saleApi';
+import { MAX_CUSTOM_QTY, CUSTOM_QTY_WARN } from '@rutba/shared/lib/utils';
 import { StraipImageUrl, isImage } from '@rutba/api-provider/lib/api';
 // Straight from the model — these are pure storage helpers, so there's no
 // reason for the search box to pull in the whole quick-add panel for them.

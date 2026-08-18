@@ -4,7 +4,7 @@ import engine from '../../../lib/engine';
 // ?state&code; the engine verifies the nonce in `state`, exchanges the code,
 // and stores the tokens in Strapi. Returns a tiny popup-closer page.
 function popupHtml({ ok, message }) {
-  const payload = JSON.stringify({ source: 'rutba-marketplace-oauth', ok, message });
+  const payload = JSON.stringify({ source: 'apps/sales/marketplace-oauth', ok, message });
   return `<!doctype html><html><head><meta charset="utf-8"><title>Connecting…</title></head>
 <body style="font-family:system-ui;padding:2rem;text-align:center">
 <p>${ok ? '✅ Connected. You can close this window.' : '❌ ' + (message || 'Connection failed')}</p>

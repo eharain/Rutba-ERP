@@ -7,7 +7,7 @@
  * Centralises the common config that every Next.js app in the monorepo needs:
  *   • NEXT_BUILD_OUTPUT  →  output   (conditional — omitted when env var is absent)
  *   • Default image remotePatterns derived from NEXT_PUBLIC_API_URL
- *   • transpilePackages: ['@rutba/pos-shared']
+ *   • transpilePackages: ['@rutba/shared']
  *
  * BUILD_DEST_DIR is NOT mapped to distDir because Next.js/Turbopack forbids
  * distDir outside the project directory.  Instead, run-app.js copies the
@@ -73,7 +73,7 @@ function createNextConfig(overrides = {}) {
   const base = {
     reactStrictMode: true,
     ...(process.env.NEXT_BUILD_OUTPUT ? { output: process.env.NEXT_BUILD_OUTPUT } : {}),
-    transpilePackages: ['@rutba/pos-shared', '@rutba/api-provider'],
+    transpilePackages: ['@rutba/shared', '@rutba/api-provider'],
     images: {
       remotePatterns: generateRemotePatterns(DEFAULT_IMAGE_URLS),
     },
@@ -86,7 +86,7 @@ function createNextConfig(overrides = {}) {
 
   // images — deep-merge (override replaces individual keys)
   if (images !== undefined) {
-    // Allow images: false to remove the section entirely (e.g. pos-auth)
+    // Allow images: false to remove the section entirely (e.g. apps/admin/auth)
     if (images === false) {
       delete merged.images;
     } else {

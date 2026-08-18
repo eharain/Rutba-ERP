@@ -2,7 +2,7 @@
  * SeedEndpoints — the guarded seed control surface.
  *
  * Anchored on api::seed-run.seed-run (the audit content-type) so api-pro can
- * attach method policies; served by src/api/seed-run in pos-strapi. Domain
+ * attach method policies; served by src/api/seed-run in services/strapi. Domain
  * `seed`; run is admin-only, status/history readable by the whole seed domain.
  */
 export const SeedEndpoints = {

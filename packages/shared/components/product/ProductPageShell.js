@@ -2,7 +2,7 @@ import Link from "next/link";
 import { MediaUtilsEndpoints } from "@rutba/api-provider/endpoints";
 
 /**
- * Unified shell for every per-product page across pos-stock and rutba-cms.
+ * Unified shell for every per-product page across apps/inventory/stock and apps/content/cms.
  *
  * Provides a single back link, identity header (logo, name, SKU, barcode,
  * stock badge, status pill), action slot, alert region and a tab strip
@@ -161,7 +161,7 @@ export default function ProductPageShell({
 }
 
 /**
- * Standard tab definitions for the pos-stock per-product pages.
+ * Standard tab definitions for the apps/inventory/stock per-product pages.
  * Pass `documentId` and (optionally) `onNavigate` for dirty-state-aware
  * navigation. If `onNavigate(href)` returns a Promise that resolves to true,
  * the click is considered handled and default navigation is suppressed.

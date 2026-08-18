@@ -1,13 +1,13 @@
 # Payroll Module — Implementation Spec
 
 > **Status (2026-06): ✅ Built.** The payroll engine ships in
-> `pos-strapi/src/api/pay-payroll-run/services/pay-payroll-run.js`
+> `services/strapi/src/api/pay-payroll-run/services/pay-payroll-run.js`
 > (`processRun` / `previewRun` / `cancelRun` / `markPayslipPaid`) and handles
 > salaried, piece-rate, hybrid, and daily-wage workers in one run, with
 > unpaid-leave proration, adjustments (advances/loans/bonuses/penalties), and GL
 > accrual-on-process + payout-on-pay. Statutory deductions shipped **generalized**
 > as the configurable `pay-deduction-rule` engine (`_computeStatutory` /
-> `_slabAmount`). `rutba-payroll` (:4008) has all pages (structures, employee
+> `_slabAmount`). `apps/finance/payroll` (:4008) has all pages (structures, employee
 > profiles, runs, payslips, adjustments, deduction-rules). This spec is retained
 > for design rationale; §1 and §10 are updated inline. **Still open:** §7.3
 > production-labour capitalization (waits on mfg→GL wiring).
@@ -27,7 +27,7 @@
 > endpoints, and frontend are built.
 
 > **Update (2026-06): ✅ Built.** The engine lives in
-> `pos-strapi/src/api/pay-payroll-run/services/pay-payroll-run.js` and replaces
+> `services/strapi/src/api/pay-payroll-run/services/pay-payroll-run.js` and replaces
 > the core-service stub: `processRun` (compute payslips for the period across
 > salaried / piece-rate / hybrid / daily-wage, apply unpaid-leave proration and
 > adjustments, lock contributing `mfg-task`s, post the GL accrual), `previewRun`
@@ -45,7 +45,7 @@
 > the standalone `pay-payslip-line` content type §4.1 proposed. Same fields,
 > embedded on `pay-payslip`.
 >
-> `rutba-payroll` (:4008) has all pages: `salary-structures`,
+> `apps/finance/payroll` (:4008) has all pages: `salary-structures`,
 > `employee-profiles`, `payroll-runs`, `payslips`, `adjustments`,
 > `deduction-rules`. **Still open:** §7.3 production-labour capitalization
 > (interim model — all labour expensed to `6300` — is in place; the switch waits
@@ -62,7 +62,7 @@ The table below records the *original* skeletal state (pre-2026-06 build):
 | `mfg-task` (piece-rate source) | **Fully working**: `piece_rate` + `amount` snapshotted on approval, `status`, `approved_at`, `payroll_locked`, `employee`, `worker`, `payslip`. `resolvePieceRate` in `mfg-task-state-machine.js`. |
 | `hr-employee` | `salary_structure` relation exists. **No** compensation, bank, pay-type, or statutory fields on the employee. `user` ↔ UP user (`inversedBy: hr_employee`). |
 | api-provider descriptors (`pay-*`) | Stubs (e.g. `pay-payroll-runs.js` exports only `list`, `meta: { domains:['payroll'] }`, **no `meta.uid`, no roles**). |
-| `rutba-payroll` (:4008) | Empty Next.js skeleton. |
+| `apps/finance/payroll` (:4008) | Empty Next.js skeleton. |
 | `6300 Payroll Expense` ledger account | Seeded (sub_type "Payroll Expense"). **No `PAYROLL_EXPENSE` mapping key, no Salaries Payable account.** |
 
 ---
@@ -75,9 +75,9 @@ Build payroll end-to-end:
 2. Apply **unpaid leave**, **adjustments** (advances/loans/bonuses/penalties),
    and **statutory deductions**.
 3. **Post** to the accounting GL (accrual on process, settlement on payout).
-4. Expose **api-pro-conformant** endpoints and the **`rutba-payroll`** frontend.
+4. Expose **api-pro-conformant** endpoints and the **`apps/finance/payroll`** frontend.
 5. Preserve the **salary-data privacy wall**: sensitive comp lives in `pay-*`
-   entities behind a `payroll` role, **not** on `hr-employee` (which `rutba-hr`
+   entities behind a `payroll` role, **not** on `hr-employee` (which `apps/people/hr`
    reads broadly).
 
 Out of scope (note as dependencies): full manufacturing-accounting GL wiring (WIP
@@ -92,7 +92,7 @@ Out of scope (note as dependencies): full manufacturing-accounting GL wiring (WI
   everything off `hr-employee`.
 - **Resolve employee from the logged-in user** via `user.hr_employee` (the
   `inversedBy` on `hr-employee.user`) for self-service ("my payslips").
-- **Keep compensation OFF `hr-employee`.** Because `rutba-hr` (and its broad
+- **Keep compensation OFF `hr-employee`.** Because `apps/people/hr` (and its broad
   roles) read employee records, putting salary/bank there would leak it. Instead,
   per-employee pay data lives on a new **`pay-employee-profile`** (§4.1) gated by
   the `payroll` role + `apps: ['payroll']`. The only HR↔pay link is the existing
@@ -101,7 +101,7 @@ Out of scope (note as dependencies): full manufacturing-accounting GL wiring (WI
 
 Roles: **`payroll_admin`** (everything), **`payroll_manager`** (create/preview/
 approve/process runs, not config), **employee** (self-service read of own
-payslips, surfaced in `rutba-hr`/portal, *not* in the payroll admin app).
+payslips, surfaced in `apps/people/hr`/portal, *not* in the payroll admin app).
 
 ---
 
@@ -418,11 +418,11 @@ fire on the status change.
 
 ---
 
-## 9. Frontend — `rutba-payroll` (:4008)
+## 9. Frontend — `apps/finance/payroll` (:4008)
 
 Reuse the shared app shell + `RoleSwitcher`; reuse the money/period components
-built for `rutba-accounts`. **Admin payroll stays in this app** (behind the wall);
-**employee self-service "my payslips"** is surfaced in `rutba-hr` or the user
+built for `apps/finance/accounts`. **Admin payroll stays in this app** (behind the wall);
+**employee self-service "my payslips"** is surfaced in `apps/people/hr` or the user
 portal via `/pay-payslips/my-payslips`, not here.
 
 | Page | Purpose |
@@ -452,7 +452,7 @@ calls `previewRun` so the user sees numbers before anything posts.
    `markPaid`, task locking, leave + adjustments. Posts all labor to `6300`.
 3. ✅ **API + permissions** (§8): descriptors with `meta.uid`, verb-whitelist fix,
    CUSTOM_ACTIONS, scaffolded clients.
-4. ✅ **`rutba-payroll` frontend** (§9): structures, profiles, run wizard, payslip print.
+4. ✅ **`apps/finance/payroll` frontend** (§9): structures, profiles, run wizard, payslip print.
 5. ✅ **Statutory deductions** (tax/EOBI/PF) + reports + bank transfer file —
    shipped **generalized** as the configurable `pay-deduction-rule` engine
    (`_computeStatutory` / `_slabAmount`: flat / percent / slab, employee +
@@ -469,4 +469,4 @@ calls `previewRun` so the user sees numbers before anything posts.
 | P2 | Production-labor accounting | **Interim (expense to `6300`) now**; switch to capitalization (§7.3) when manufacturing posts to the GL |
 | P3 | Comp data location | **`pay-employee-profile`** (behind the wall), not on `hr-employee` |
 | P4 | Statutory deductions in v1 | ~~Defer to Phase 5~~ → ✅ **shipped** (Phase 5) as the generalized `pay-deduction-rule` engine (flat/percent/slab, employee+employer) |
-| P5 | Self-service payslips surface | **`rutba-hr`/portal** via `my-payslips`, keep admin payroll in `rutba-payroll` |
+| P5 | Self-service payslips surface | **`apps/people/hr`/portal** via `my-payslips`, keep admin payroll in `apps/finance/payroll` |

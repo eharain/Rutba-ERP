@@ -1,9 +1,9 @@
 import Layout from "../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
-import { useCart } from "@rutba/pos-shared/context/CartContext";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import PermissionCheck from "@rutba/shared/components/PermissionCheck";
+import { useCart } from "@rutba/shared/context/CartContext";
 import CartItem from "../components/CartItem";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import { SalesEndpoints, SaleItemsEndpoints } from "@rutba/api-provider/endpoints/index.js";
 
 export default function Cart() {

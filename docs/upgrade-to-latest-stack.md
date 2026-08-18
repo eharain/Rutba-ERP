@@ -1,6 +1,6 @@
 # Rutba ERP — upgrade to latest stack (parity with TrustList as of 2026-07-01)
 
-<!-- verify-docs: planned rutba-web/src/app/globals.css packages/ui/tailwind-preset.js -->
+<!-- verify-docs: planned apps/content/storefront/src/app/globals.css packages/ui/tailwind-preset.js -->
 <!-- Targets of the Tailwind 4 migration this playbook describes. -->
 
 Concrete playbook for bringing every workspace to the same versions TrustList
@@ -8,8 +8,8 @@ was just brought to, plus what to watch for based on what actually broke there.
 
 Rutba ERP is *ahead* of where TrustList started — already on Next 16.2.1 +
 React 19.2.4 — so most of this is patch bumps, one Tailwind 4 migration (only
-`rutba-web` uses Tailwind), and a Strapi minor bump. **No `middleware.ts` →
-`proxy.ts` rename needed** — `rutba-web/src/proxy.ts` already exists. **No
+`apps/content/storefront` uses Tailwind), and a Strapi minor bump. **No `middleware.ts` →
+`proxy.ts` rename needed** — `apps/content/storefront/src/proxy.ts` already exists. **No
 `webpack:` config to remove** — all 16 Next apps already opt out of Turbopack
 via `next dev --webpack`.
 
@@ -22,17 +22,17 @@ via `next dev --webpack`.
 | `react` / `react-dom`       | root                        | `19.2.4`   | `19.2.7`  | patch       |
 | `marked`                    | root                        | `^17.0.5`  | `^18.0.5` | major       |
 | `eslint`                    | root                        | `^9.39.4`  | `^10.6.0` | major       |
-| `@strapi/strapi` (+plugins) | `pos-strapi`                | `5.45.1`   | `5.49.0`  | minor       |
-| `stripe` (Node SDK)         | `pos-strapi`                | `^21.0.1`  | `^22.3.0` | major       |
-| `mysql2`                    | `pos-strapi`                | `3.20.0`   | `3.22.5`  | patch       |
-| `react` / `react-dom`       | `pos-strapi` (admin bundle) | `^18.3.1`  | KEEP 18   | do not bump |
-| `typescript`                | `rutba-web`                 | `^5.9.3`   | `^6.0.3`  | major       |
-| `tailwindcss`               | `rutba-web`                 | `^3.4.19`  | `^4.3.2`  | major       |
-| `@types/node`               | `rutba-web`                 | `^22.0.0`  | `^26.1.0` | major       |
-| `@types/react`              | `rutba-web`                 | `^19.2.14` | `^19.2.17`| patch       |
+| `@strapi/strapi` (+plugins) | `services/strapi`                | `5.45.1`   | `5.49.0`  | minor       |
+| `stripe` (Node SDK)         | `services/strapi`                | `^21.0.1`  | `^22.3.0` | major       |
+| `mysql2`                    | `services/strapi`                | `3.20.0`   | `3.22.5`  | patch       |
+| `react` / `react-dom`       | `services/strapi` (admin bundle) | `^18.3.1`  | KEEP 18   | do not bump |
+| `typescript`                | `apps/content/storefront`                 | `^5.9.3`   | `^6.0.3`  | major       |
+| `tailwindcss`               | `apps/content/storefront`                 | `^3.4.19`  | `^4.3.2`  | major       |
+| `@types/node`               | `apps/content/storefront`                 | `^22.0.0`  | `^26.1.0` | major       |
+| `@types/react`              | `apps/content/storefront`                 | `^19.2.14` | `^19.2.17`| patch       |
 
 **Do not bump these** (verified pitfalls, not oversights):
-- `pos-strapi` → keep `react@18`, `react-router-dom@6`, `styled-components@6`.
+- `services/strapi` → keep `react@18`, `react-router-dom@6`, `styled-components@6`.
   Strapi 5 admin bundles its own React and pins its admin ecosystem
   internally. Forcing v19 / v7 fragments the tree and can break the admin
   panel. Strapi has an open RFC for React 19 support — wait for it.
@@ -55,11 +55,11 @@ Bump these in `package.json` and commit as one:
 "react": "19.2.7",
 "react-dom": "19.2.7",
 "eslint-config-next": "16.2.9",
-"mysql2": "3.22.5"   // move to pos-strapi if not at root
+"mysql2": "3.22.5"   // move to services/strapi if not at root
 ```
 
 ```json
-// pos-strapi/package.json
+// services/strapi/package.json
 "@strapi/strapi": "5.49.0",
 "@strapi/plugin-users-permissions": "5.49.0",
 "@strapi/provider-email-nodemailer": "5.49.0",
@@ -67,7 +67,7 @@ Bump these in `package.json` and commit as one:
 ```
 
 ```json
-// rutba-web/package.json  (devDependencies)
+// apps/content/storefront/package.json  (devDependencies)
 "@types/react": "^19.2.17",
 "@types/react-dom": "^19.2.3"
 ```
@@ -75,9 +75,9 @@ Bump these in `package.json` and commit as one:
 Then `npm install --legacy-peer-deps` from repo root, build every workspace,
 commit.
 
-### Step 2 — TypeScript 6 (rutba-web only)
+### Step 2 — TypeScript 6 (apps/content/storefront only)
 
-`typescript ^5.9.3 → ^6.0.3` in `rutba-web/package.json`.
+`typescript ^5.9.3 → ^6.0.3` in `apps/content/storefront/package.json`.
 
 **Watch for:** TS 6 narrows Buffer's element-type generic — `new Response(buf, ...)` or `new NextResponse(buf, ...)` calls in Node runtime routes fail to type-check. Fix pattern (matches what TrustList did):
 
@@ -89,15 +89,15 @@ return new NextResponse(buf as unknown as BodyInit, { headers: ... });
 Grep first, then bump:
 
 ```
-grep -rn "new NextResponse(buf\|new Response(buf" rutba-web/src
+grep -rn "new NextResponse(buf\|new Response(buf" apps/content/storefront/src
 ```
 
-### Step 3 — Tailwind CSS 4 (rutba-web only)
+### Step 3 — Tailwind CSS 4 (apps/content/storefront only)
 
-Only `rutba-web` has Tailwind. Use the **hybrid path** — bump to v4 but keep
+Only `apps/content/storefront` has Tailwind. Use the **hybrid path** — bump to v4 but keep
 the legacy JS config via `@config`. Zero token / theme rewrites.
 
-**a.** In `rutba-web/package.json`:
+**a.** In `apps/content/storefront/package.json`:
 
 ```json
 "tailwindcss": "^4.3.2",
@@ -106,7 +106,7 @@ the legacy JS config via `@config`. Zero token / theme rewrites.
 // keep tailwind.config.ts unchanged
 ```
 
-**b.** Rewrite `rutba-web/postcss.config.js`:
+**b.** Rewrite `apps/content/storefront/postcss.config.js`:
 
 ```js
 module.exports = {
@@ -118,7 +118,7 @@ module.exports = {
 
 The new plugin bundles vendor prefixing; drop the `autoprefixer` line.
 
-**c.** In `rutba-web/src/app/globals.css` (or wherever the `@tailwind`
+**c.** In `apps/content/storefront/src/app/globals.css` (or wherever the `@tailwind`
 directives live), replace this:
 
 ```css
@@ -145,7 +145,7 @@ Root-level bump. `marked` v13+ made `.parse()` async by default. Grep for
 usages first:
 
 ```
-grep -rn "from 'marked'" rutba-web/src pos-strapi/src
+grep -rn "from 'marked'" apps/content/storefront/src services/strapi/src
 ```
 
 If you find `marked.parse(input)`, either pass `{ async: false }` explicitly
@@ -155,7 +155,7 @@ in a plain synchronous helper, use `{ async: false }`. TrustList's shared
 
 ### Step 5 — Strapi-side Stripe SDK 21 → 22
 
-`pos-strapi/package.json`: `"stripe": "^22.3.0"`.
+`services/strapi/package.json`: `"stripe": "^22.3.0"`.
 
 **Watch for:** the SDK is called as `Stripe(key)` without `new` in TrustList's
 adapter — that continued to work at v22. If your Rutba adapter uses `new
@@ -177,14 +177,14 @@ Delete `"lint": "next lint"` scripts from every workspace: Next 16 removed
 `next lint`. Replace with `eslint .` (or drop the script until a real
 project-wide flat config is authored).
 
-### Step 7 — @types/node 22 → 26 (rutba-web only)
+### Step 7 — @types/node 22 → 26 (apps/content/storefront only)
 
 Straight bump. `@types/node` tracks upstream Node — v26 works fine against
 the Node 22 LTS runtime the workspace targets. No code changes expected.
 
 ## 3. What NOT to do (learned from TrustList)
 
-- **Don't bump `react-router-dom` in `pos-strapi` to v7.** Strapi 5.49 pins
+- **Don't bump `react-router-dom` in `services/strapi` to v7.** Strapi 5.49 pins
   6.30.4 across its admin ecosystem (@strapi/admin, @strapi/content-manager,
   @strapi/content-type-builder, @strapi/i18n, etc.) — a direct v7 dep
   fragments the tree.
@@ -216,11 +216,11 @@ Every build must be **✓ Compiled successfully**. TS errors surface here;
 runtime issues do not.
 
 Then start the app and click through the golden path. Non-negotiable checks:
-- Login (`pos-auth`)
+- Login (`apps/admin/auth`)
 - Any page that renders markdown (v18 async change)
-- Any Stripe surface in `pos-strapi` (webhook, checkout, refund)
-- rutba-web product grid + checkout + cart (Tailwind 4 visual regressions)
-- Strapi admin panel (`pos-strapi` served) — most likely to surface Strapi
+- Any Stripe surface in `services/strapi` (webhook, checkout, refund)
+- apps/content/storefront product grid + checkout + cart (Tailwind 4 visual regressions)
+- Strapi admin panel (`services/strapi` served) — most likely to surface Strapi
   5.49 quirks
 
 ## 5. Rollback per commit
@@ -234,32 +234,32 @@ upgrade without touching the others. Order matches the numbered steps above.
 cd D:/Rutba/ERP
 
 # Step 1 — safe patches
-# (hand-edit the versions in root + pos-strapi + rutba-web per §2 step 1)
+# (hand-edit the versions in root + services/strapi + apps/content/storefront per §2 step 1)
 npm install --legacy-peer-deps
 npm run build:strapi && npm run build:web && npm run build:auth
 git commit -am "chore: bump Next/React patches, Strapi 5.45→5.49, mysql2"
 
 # Step 2 — TS 6
-# (edit rutba-web/package.json → typescript ^6.0.3)
+# (edit apps/content/storefront/package.json → typescript ^6.0.3)
 npm install --legacy-peer-deps
 npm run build:web    # fix any Buffer→BodyInit cast issues
-git commit -am "chore: TypeScript 5.9 → 6.0.3 in rutba-web"
+git commit -am "chore: TypeScript 5.9 → 6.0.3 in apps/content/storefront"
 
 # Step 3 — Tailwind 4
-# (edit rutba-web/package.json + postcss.config.js + globals.css per §2 step 3)
+# (edit apps/content/storefront/package.json + postcss.config.js + globals.css per §2 step 3)
 npm install --legacy-peer-deps
 npm run build:web    # visual verify before merging
-git commit -am "chore: migrate rutba-web to Tailwind 4 (hybrid @config path)"
+git commit -am "chore: migrate apps/content/storefront to Tailwind 4 (hybrid @config path)"
 
 # Step 4 — marked 18
 # (edit root/package.json → marked ^18.0.5)
-grep -rn "from 'marked'" rutba-web/src pos-strapi/src
+grep -rn "from 'marked'" apps/content/storefront/src services/strapi/src
 npm install --legacy-peer-deps
 npm run build:web && npm run build:strapi
 git commit -am "chore: marked 17 → 18"
 
 # Step 5 — Stripe SDK
-# (edit pos-strapi/package.json → stripe ^22.3.0)
+# (edit services/strapi/package.json → stripe ^22.3.0)
 npm install --legacy-peer-deps
 npm run build:strapi
 git commit -am "chore: Strapi-side stripe 21 → 22"
@@ -271,10 +271,10 @@ npm install --legacy-peer-deps
 git commit -am "chore: eslint 9 → 10, drop dead next lint scripts"
 
 # Step 7 — @types/node
-# (edit rutba-web/package.json → @types/node ^26.1.0)
+# (edit apps/content/storefront/package.json → @types/node ^26.1.0)
 npm install --legacy-peer-deps
 npm run build:web
-git commit -am "chore: @types/node 22 → 26 in rutba-web"
+git commit -am "chore: @types/node 22 → 26 in apps/content/storefront"
 ```
 
 ## 7. Reference — what a TrustList commit series looks like

@@ -50,7 +50,7 @@ async function sreq(method, path, { query, body } = {}) {
     });
     const err = new Error(
       `[strapi] ${method} ${path} — no service token configured. ` +
-      'Set RUTBA_MARKETPLACE__STRAPI_SERVICE_TOKEN and restart.'
+      'Set MARKETPLACE__STRAPI_SERVICE_TOKEN and restart.'
     );
     err.status = 401;
     throw err;

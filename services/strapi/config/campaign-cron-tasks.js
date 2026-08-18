@@ -1,6 +1,6 @@
 'use strict';
 
-// Campaign background jobs (rutba-campaigns spec §4.8). Wired into
+// Campaign background jobs (apps/content/campaigns spec §4.8). Wired into
 // config/server.js behind CAMPAIGNS_CRON_ENABLED — the env flag every .env
 // file has declared since Phase 0, consumed here for the first time.
 //

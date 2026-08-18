@@ -8,14 +8,14 @@ export const MediaLibraryEndpoints = {
         // 'admin' pairs with the same grant on UploadEndpoints: FileView reads
         // back the file it just uploaded through MediaLibraryEndpoints.file(),
         // so granting upload without this leaves the picker half-working.
-        domains: ['admin', 'cms', 'social', 'stock'],
+        domains: ['console', 'cms', 'social', 'stock'],
         roles: ['admin', 'manager', 'staff'],
     },
 
     // Every descriptor here spells out `action`, and the value is the media-library
     // controller's handler name — `folderTree`, not `foldersTree`. That name is
-    // what both backends put in the route handler api-pro parses (pos-strapi via
-    // `media-library.<handler>`, rutba-core via the module route's `action`), so a
+    // what both backends put in the route handler api-pro parses (services/strapi via
+    // `media-library.<handler>`, services/core via the module route's `action`), so a
     // policy seeded under any other spelling is never found and the route 403s.
     // Nothing infers it: these method names are not verb-shaped, so the seeder's
     // name-based action guess returns null and skips them entirely.
@@ -35,8 +35,8 @@ export const MediaLibraryEndpoints = {
     renameFolder: (id, data) => ({ path: `/media-library/folders/${id}`, action: 'renameFolder', method: 'put', data }),
     deleteFolder: (id) => ({ path: `/media-library/folders/${id}`, action: 'deleteFolder', method: 'delete' }),
     updateFileInfo: (id, data) => ({ path: `/media-library/files/${id}`, action: 'updateFileInfo', method: 'put', data }),
-    // Second name for the upload route rutba-cms/pages/media.js and
-    // rutba-social/pages/media.js call. Same path, same handler as
+    // Second name for the upload route apps/content/cms/pages/media.js and
+    // apps/content/social/pages/media.js call. Same path, same handler as
     // uploadToFolder above — so it declares the same action and the seeder
     // treats it as the alias it is rather than minting a second policy.
     uploadFile: (data) => ({ path: '/media-library/upload', action: 'uploadToFolder', method: 'post', data }),

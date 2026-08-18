@@ -27,7 +27,7 @@ This is the only group with real code at risk. 12 git worktrees still exist unde
 |---|---|---|
 | `amazing-sanderson-bf725c` | `claude/amazing-sanderson-bf725c` | `ccb4ea3` hr: matrix reporting lines, drag-to-reparent, cutover gate — **13+ files** incl. `hr-reporting-lines` API, `OrgChart.js` (+272), hr-employee controller (+238) |
 | `modest-chaplygin-c5e1db` | `claude/modest-chaplygin-c5e1db` | `4b4efe3` crm: typed activity timeline + saved-segment engine — new `crm-activities` / `crm-segments` APIs, `docs/todo/crm-core-buildout.md` (+267) |
-| `practical-einstein-51edee` | `claude/practical-einstein-51edee` | `07405b0` api-pro: seed `submit*` endpoints, stop core 500ing on a scalar populate — `seeder.js`, `up-permissions-seed.js`, `rutba-core/src/documents/index.js` |
+| `practical-einstein-51edee` | `claude/practical-einstein-51edee` | `07405b0` api-pro: seed `submit*` endpoints, stop core 500ing on a scalar populate — `seeder.js`, `up-permissions-seed.js`, `services/core/src/documents/index.js` |
 | `serene-yonath-2a1b69` | `claude/serene-yonath-2a1b69` | `c4c3080` roadmap: multi-region fiscalization — `docs/todo/fiscalization-multi-region.md` (+155), ROADMAP 0.1 |
 
 Roadmap item 0.1 (fiscalization) is flagged **legally mandatory** — the phased PK
@@ -37,7 +37,7 @@ mandate completed 31 Dec 2025.
 
 | Worktree | State |
 |---|---|
-| `admiring-gates-f25116` | **Staged, uncommitted**: `EnumSelect.js` + `use-enum-values.js` moved `rutba-cms` → `packages/pos-shared`, 5 pages rewired. Follow-up flagged: with `none` selectable, neither editor exposes `event_name`, so a newly-created `none` row is unroutable by either engine. |
+| `admiring-gates-f25116` | **Staged, uncommitted**: `EnumSelect.js` + `use-enum-values.js` moved `apps/content/cms` → `packages/shared`, 5 pages rewired. Follow-up flagged: with `none` selectable, neither editor exposes `event_name`, so a newly-created `none` row is unroutable by either engine. |
 | `quirky-mcclintock-6a1c13` | 77 real diff lines — sale-order controller/notification/integration-sync, return state machine, marketplace-account; `sale-order/lifecycles.js` **deleted** |
 | `cranky-lovelace-78cd75` | 15 real diff lines in `sale-order.js` controller |
 | `magical-wilbur-94c504` | untracked `docs/todo/offline-pos-options.md` (the offline-POS options doc) |
@@ -45,7 +45,7 @@ mandate completed 31 Dec 2025.
 
 ### 1c. Main repo `dev`
 
-9 modified + 1 untracked (`rutba-social/pages/videos.js`) — the video-studio /
+9 modified + 1 untracked (`apps/content/social/pages/videos.js`) — the video-studio /
 social work in flight. Uncommitted at session start today.
 
 **Action:** decide per worktree — cherry-pick to `dev`, or discard. Nothing should be
@@ -60,7 +60,7 @@ Backend code that exists but is not live. Cheap to clear, easy to forget.
 - **strapi-api-pro `dist/` rebuild** — `dist/` is what Strapi loads and it is gitignored (2026-08-05)
 - **Strapi restart** for `force_closed` columns on registers (2026-08-04)
 - **Strapi restart + reseed api-pro** for the `stock-alert` CT and new routes (2026-07-25)
-- **rutba-marketplace rebuild** on `192.168.0.46` — `lib/strapi.js` is server-side, used by worker + API routes; pos-strapi only needs a restart (2026-08-04)
+- **apps/sales/marketplace rebuild** on `192.168.0.46` — `lib/strapi.js` is server-side, used by worker + API routes; services/strapi only needs a restart (2026-08-04)
 - **LAN box dev deploy still pending** — carries the social/backend change (2026-08-11)
 - **Live MySQL migration + full `next build`** for warehouse→branch consolidation — never run on the live box (2026-07-18)
 - **TrustList Strapi restart** — seat-guard, cms-group schema, billing changes (2026-08-11)

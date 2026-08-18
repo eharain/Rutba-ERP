@@ -8,7 +8,7 @@ export const CrmLeadsEndpoints = {
 
     meta: {
         uid: 'api::crm-lead.crm-lead',
-        domains: ['crm', 'sale'],
+        domains: ['crm', 'pos'],
         roles: ['admin', 'manager', 'staff']
     },
 

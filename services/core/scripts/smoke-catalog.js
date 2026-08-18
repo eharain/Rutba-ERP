@@ -164,7 +164,7 @@ async function main() {
       `status ${enums.status}`);
     // PARITY QUIRK (upstream): the route supplies only :name, but the handler
     // reads ctx.params.fieldType too and 400s when it is absent — so this
-    // endpoint always 400s on pos-strapi as well. Core reproduces it exactly.
+    // endpoint always 400s on services/strapi as well. Core reproduces it exactly.
     const fields = await req('GET', '/api/validator/content-type-fields/product', token);
     check('validator content-type-fields reproduces the upstream 400',
       fields.status === 400

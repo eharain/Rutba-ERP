@@ -1,4 +1,4 @@
-import SharedSidebar from "@rutba/pos-shared/components/Sidebar";
+import SharedSidebar from "@rutba/shared/components/Sidebar";
 
 // The tenant's admin console, grown out of the rutba-users carve-out. Sections
 // land per the admin-console program (docs/todo/admin-console-program/): app
@@ -12,7 +12,7 @@ const SECTIONS = [
     { href: "/site-settings", label: "Site Settings", icon: "fa-sliders" },
     { href: "/mailboxes", label: "Mailboxes", icon: "fa-envelope" },
     { href: "/email-servers", label: "Email Servers", icon: "fa-server" },
-    // Integrations. rutba-social keeps read-only views of both; connecting,
+    // Integrations. apps/content/social keeps read-only views of both; connecting,
     // editing and deleting live here — enforced by apps: ['admin'] on the
     // write methods of the social-accounts / social-relay-providers descriptors.
     { href: "/social-accounts", label: "Social Accounts", icon: "fa-share-nodes" },
@@ -24,5 +24,5 @@ const SECTIONS = [
 ];
 
 export default function Sidebar() {
-    return <SharedSidebar sections={SECTIONS} storageKey="rutba-admin-sidebar-pinned" />;
+    return <SharedSidebar sections={SECTIONS} storageKey="apps/admin/console-sidebar-pinned" />;
 }

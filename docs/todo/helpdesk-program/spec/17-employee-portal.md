@@ -9,12 +9,12 @@
 One place for employees to ask the business for something — IT, HR, facilities, payroll,
 transport, maintenance — and to see where the request has got to and who it is sitting with.
 
-**Host:** `rutba-ess` (:4015), with a link from `rutba-hr` (:4006) for staff who hold a
+**Host:** `apps/people/ess` (:4015), with a link from `apps/people/hr` (:4006) for staff who hold a
 helpdesk role.
 
 ## 17.2 What exists and what changes
 
-Today `rutba-ess/pages/tickets.js` and `rutba-hr/pages/tickets.js` are two near-duplicate
+Today `apps/people/ess/pages/tickets.js` and `apps/people/hr/pages/tickets.js` are two near-duplicate
 ~166-line pages: a submit form with a **hardcoded** `["IT","HR","Facilities"]` array, a "my
 tickets" table, and a "team tickets" table with a Resolve button. They call
 `ContactTicketsEndpoints.listMine / submitInternal / listTeam / resolve`.

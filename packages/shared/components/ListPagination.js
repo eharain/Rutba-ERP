@@ -2,7 +2,7 @@ import React from 'react';
 
 /**
  * Compact pagination strip — replaces both the hand-rolled Bootstrap
- * pagination in rutba-cms and the Material-UI TablePagination in pos
+ * pagination in apps/content/cms and the Material-UI TablePagination in pos
  * apps. Single source of truth for "X to Y of Z" + page-size selector +
  * prev/next + jump-to-page.
  *

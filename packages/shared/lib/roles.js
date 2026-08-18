@@ -15,9 +15,9 @@
 export const APP_URLS = { 
     auth:      process.env.NEXT_PUBLIC_AUTH_URL      || 'http://localhost:4003',
     stock:     process.env.NEXT_PUBLIC_STOCK_URL     || 'http://localhost:4001',
-    sale:      process.env.NEXT_PUBLIC_SALE_URL      || 'http://localhost:4002',
-    'web-user': process.env.NEXT_PUBLIC_WEB_USER_URL || 'http://localhost:4004',
-    'order-management': process.env.NEXT_PUBLIC_ORDER_MANAGEMENT_URL || 'http://localhost:4013',
+    pos:      process.env.NEXT_PUBLIC_POS_URL      || 'http://localhost:4002',
+    'portal': process.env.NEXT_PUBLIC_PORTAL_URL || 'http://localhost:4004',
+    'orders': process.env.NEXT_PUBLIC_ORDERS_URL || 'http://localhost:4013',
     rider:     process.env.NEXT_PUBLIC_RIDER_URL     || 'http://localhost:4012',
     crm:       process.env.NEXT_PUBLIC_CRM_URL       || 'http://localhost:4005',
     hr:        process.env.NEXT_PUBLIC_HR_URL        || 'http://localhost:4006',
@@ -28,22 +28,22 @@ export const APP_URLS = {
     social:    process.env.NEXT_PUBLIC_SOCIAL_URL    || 'http://localhost:4011',
     manufacturing: process.env.NEXT_PUBLIC_MANUFACTURING_URL || 'http://localhost:4014',
     marketplace:   process.env.NEXT_PUBLIC_MARKETPLACE_URL   || 'http://localhost:4016',
-    inventory:     process.env.NEXT_PUBLIC_INVENTORY_URL     || 'http://localhost:4017',
+    control:     process.env.NEXT_PUBLIC_CONTROL_URL     || 'http://localhost:4017',
     seed:          process.env.NEXT_PUBLIC_SEED_URL          || 'http://localhost:4018',
     campaigns:     process.env.NEXT_PUBLIC_CAMPAIGNS_URL     || 'http://localhost:4019',
     mail:          process.env.NEXT_PUBLIC_MAIL_URL          || 'http://localhost:4021',
-    admin:         process.env.NEXT_PUBLIC_ADMIN_URL         || 'http://localhost:4022',
+    console:         process.env.NEXT_PUBLIC_CONSOLE_URL         || 'http://localhost:4022',
     helpdesk:      process.env.NEXT_PUBLIC_HELPDESK_URL      || 'http://localhost:4023',
-    web:       process.env.NEXT_PUBLIC_WEB_URL       || 'http://localhost:4000',
+    storefront:       process.env.NEXT_PUBLIC_STOREFRONT_URL       || 'http://localhost:4000',
 };
 
 /** All recognised app keys */
 // NOTE: the 'users' app key is deliberately absent. rutba-users was replaced by
-// rutba-admin ('admin'); the backend 'users' DOMAIN stays alive as a deprecated
+// apps/admin/console ('admin'); the backend 'users' DOMAIN stays alive as a deprecated
 // alias for existing users_* grants, but there is no longer a frontend to launch,
 // and a dead launcher tile is worse than none. These are different registries —
 // see packages/api-provider/config/domains.json.
-const VALID_APP_KEYS = ['stock', 'sale', 'auth', 'web-user', 'order-management', 'rider', 'crm', 'hr', 'ess', 'accounts', 'payroll', 'cms', 'social', 'manufacturing', 'marketplace', 'inventory', 'seed', 'campaigns', 'mail', 'admin', 'helpdesk'];
+const VALID_APP_KEYS = ['stock', 'pos', 'auth', 'portal', 'orders', 'rider', 'crm', 'hr', 'ess', 'accounts', 'payroll', 'cms', 'social', 'manufacturing', 'marketplace', 'control', 'seed', 'campaigns', 'mail', 'console', 'helpdesk'];
 
 /**
  * App categories — the ordered taxonomy used to arrange the growing
@@ -53,11 +53,11 @@ const VALID_APP_KEYS = ['stock', 'sale', 'auth', 'web-user', 'order-management',
  */
 export const APP_CATEGORIES = [
     { key: 'sales',     label: 'Sales & Customers',      icon: 'fa-solid fa-cart-shopping', color: '#10b981' }, // emerald
-    { key: 'inventory', label: 'Inventory & Production', icon: 'fa-solid fa-warehouse',     color: '#3b82f6' }, // blue
+    { key: 'control', label: 'Inventory & Production', icon: 'fa-solid fa-warehouse',     color: '#3b82f6' }, // blue
     { key: 'people',    label: 'People',                 icon: 'fa-solid fa-users',         color: '#ec4899' }, // pink
     { key: 'finance',   label: 'Finance & Payroll',      icon: 'fa-solid fa-coins',         color: '#f59e0b' }, // amber
     { key: 'content',   label: 'Content & Channels',     icon: 'fa-solid fa-bullhorn',      color: '#8b5cf6' }, // violet
-    { key: 'admin',     label: 'Administration',         icon: 'fa-solid fa-gear',          color: '#64748b' }, // slate
+    { key: 'console',     label: 'Administration',         icon: 'fa-solid fa-gear',          color: '#64748b' }, // slate
 ];
 
 /**
@@ -69,11 +69,11 @@ export const APP_CATEGORIES = [
  */
 export const APP_META = {
     auth:       { group: 'admin',     icon: 'fa-solid fa-right-to-bracket',   label: 'Sign-In & SSO',      description: 'Single sign-on, login and session portal',    border: 'border-dark',      color: 'text-dark' },
-    admin:      { group: 'admin',     icon: 'fa-solid fa-sliders',            label: 'Rutba Admin',        description: 'Users, roles, app access, app domains, mailbox and notification administration', border: 'border-dark', color: 'text-dark' },
+    console:      { group: 'admin',     icon: 'fa-solid fa-sliders',            label: 'Rutba Admin',        description: 'Users, roles, app access, app domains, mailbox and notification administration', border: 'border-dark', color: 'text-dark' },
     stock:      { group: 'inventory', icon: 'fa-solid fa-boxes-stacked',      label: 'Stock Management',   description: 'Products, purchases, inventory',              border: 'border-primary',   color: 'text-primary' },
-    sale:       { group: 'sales',     icon: 'fa-solid fa-cash-register',      label: 'Point of Sale',      description: 'Sales, cart, returns, reports',               border: 'border-success',   color: 'text-success' },
-    'web-user': { group: 'sales',     icon: 'fa-solid fa-bag-shopping',       label: 'Web Orders',         description: 'Track customer orders, delivery status, and returns', border: 'border-info',      color: 'text-info' },
-    'order-management': { group: 'sales', icon: 'fa-solid fa-truck-fast',     label: 'Order Management',   description: 'Customer orders, delivery offers, riders, and notifications', border: 'border-warning', color: 'text-warning' },
+    pos:       { group: 'sales',     icon: 'fa-solid fa-cash-register',      label: 'Point of Sale',      description: 'Sales, cart, returns, reports',               border: 'border-success',   color: 'text-success' },
+    'portal': { group: 'sales',     icon: 'fa-solid fa-bag-shopping',       label: 'Web Orders',         description: 'Track customer orders, delivery status, and returns', border: 'border-info',      color: 'text-info' },
+    'orders': { group: 'sales', icon: 'fa-solid fa-truck-fast',     label: 'Order Management',   description: 'Customer orders, delivery offers, riders, and notifications', border: 'border-warning', color: 'text-warning' },
     rider:      { group: 'sales',     icon: 'fa-solid fa-motorcycle',         label: 'Rider App',          description: 'Delivery offers, active deliveries, history, and profile', border: 'border-primary',   color: 'text-primary' },
     crm:        { group: 'sales',     icon: 'fa-solid fa-handshake',          label: 'CRM',                description: 'Contacts, leads, activities',                 border: 'border-warning',   color: 'text-warning' },
     hr:         { group: 'people',    icon: 'fa-solid fa-users',              label: 'Human Resources',    description: 'Employees, departments, attendance, leave',   border: 'border-secondary', color: 'text-secondary' },
@@ -84,12 +84,12 @@ export const APP_META = {
     social:     { group: 'content',   icon: 'fa-solid fa-share-nodes',        label: 'Social Media',       description: 'Posts, replies, multi-platform publishing',   border: 'border-info',      color: 'text-info' },
     manufacturing: { group: 'inventory', icon: 'fa-solid fa-industry',        label: 'Manufacturing',      description: 'Work orders, bundles, production, piece-rate payroll', border: 'border-primary',   color: 'text-primary' },
     marketplace:   { group: 'sales',  icon: 'fa-solid fa-store',              label: 'Marketplace',        description: 'Daraz & channel accounts, order/inventory sync', border: 'border-warning',   color: 'text-warning' },
-    inventory:  { group: 'inventory', icon: 'fa-solid fa-warehouse',          label: 'Inventory Management', description: 'Warehouses, bins, stock levels, transfers, counts, reordering', border: 'border-primary',   color: 'text-primary' },
+    control:  { group: 'inventory', icon: 'fa-solid fa-warehouse',          label: 'Inventory Management', description: 'Warehouses, bins, stock levels, transfers, counts, reordering', border: 'border-primary',   color: 'text-primary' },
     seed:       { group: 'admin',     icon: 'fa-solid fa-seedling',           label: 'Seeding',            description: 'Run system, reference and backfill seeds', border: 'border-success',   color: 'text-success' },
     campaigns:  { group: 'content',   icon: 'fa-solid fa-envelope-open-text', label: 'Campaigns',          description: 'Email templates, audiences, campaigns, delivery reporting', border: 'border-purple',    color: 'text-purple' },
     mail:       { group: 'content',   icon: 'fa-solid fa-envelope',           label: 'Mail',               description: 'Personal and shared inboxes over live IMAP',  border: 'border-info',      color: 'text-info' },
     helpdesk:   { group: 'sales',     icon: 'fa-solid fa-headset',            label: 'Helpdesk',           description: 'Support desks, tickets, SLAs, service catalog, knowledge base', border: 'border-info',      color: 'text-info' },
-    web:        { group: 'content',   icon: 'fa-solid fa-globe',              label: 'Storefront',         description: 'Public customer-facing website',              border: 'border-info',      color: 'text-info', public: true },
+    storefront:        { group: 'content',   icon: 'fa-solid fa-globe',              label: 'Storefront',         description: 'Public customer-facing website',              border: 'border-info',      color: 'text-info', public: true },
 };
 
 /**

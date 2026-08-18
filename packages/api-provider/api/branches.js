@@ -8,7 +8,7 @@ export const BranchesEndpoints = {
 
     meta: {
         uid: 'api::branch.branch',
-        domains: ['accounts', 'accounts-ap', 'accounts-ar', 'accounts-viewer', 'hr', 'sale', 'social', 'stock', 'inventory'],
+        domains: ['accounts', 'accounts-ap', 'accounts-ar', 'accounts-viewer', 'hr', 'pos', 'social', 'stock', 'control'],
         roles: ['admin', 'manager', 'staff']
     },
 
@@ -25,7 +25,7 @@ export const BranchesEndpoints = {
             path: '/branches',
             action: 'find',
             method: 'get',
-            apps: ['accounts', 'accounts-ap', 'accounts-ar', 'accounts-viewer', 'hr', 'sale', 'social', 'stock', 'inventory'],
+            apps: ['accounts', 'accounts-ap', 'accounts-ar', 'accounts-viewer', 'hr', 'pos', 'social', 'stock', 'control'],
             approle: ['admin', 'manager', 'staff'],
             params: {
                 populate: ['logo', 'gallery', 'currency', { categories: { populate: ['logo', 'gallery'] } }],
@@ -46,7 +46,7 @@ export const BranchesEndpoints = {
         path: '/branches',
         action: 'find',
         method: 'get',
-        apps: ['accounts', 'accounts-ap', 'accounts-ar', 'accounts-viewer', 'hr', 'sale', 'social', 'stock', 'inventory'],
+        apps: ['accounts', 'accounts-ap', 'accounts-ar', 'accounts-viewer', 'hr', 'pos', 'social', 'stock', 'control'],
         approle: ['admin', 'manager', 'staff'],
         params: listParams(
             { page, pageSize, sort, populate, filters, fields },
@@ -58,7 +58,7 @@ export const BranchesEndpoints = {
         path: '/branches',
         action: 'find',
         method: 'get',
-        apps: ['accounts', 'accounts-ap', 'accounts-ar', 'accounts-viewer', 'hr', 'sale', 'social', 'stock', 'inventory', 'manufacturing'],
+        apps: ['accounts', 'accounts-ap', 'accounts-ar', 'accounts-viewer', 'hr', 'pos', 'social', 'stock', 'control', 'manufacturing'],
         approle: ['admin', 'manager', 'staff'],
         params: listParams(
             { page, pageSize, sort, populate, filters, fields },
@@ -70,7 +70,7 @@ export const BranchesEndpoints = {
         path: `/branches/${documentId}`,
         action: 'findOne',
         method: 'get',
-        apps: ['accounts', 'accounts-ap', 'accounts-ar', 'accounts-viewer', 'hr', 'sale', 'social', 'stock', 'inventory'],
+        apps: ['accounts', 'accounts-ap', 'accounts-ar', 'accounts-viewer', 'hr', 'pos', 'social', 'stock', 'control'],
         approle: ['admin', 'manager', 'staff'],
         params: byIdParams(
             { populate, fields },
@@ -86,7 +86,7 @@ export const BranchesEndpoints = {
         path: `/branches/${documentId}`,
         action: 'update',
         method: 'put',
-        apps: ['accounts', 'accounts-ap', 'accounts-ar', 'accounts-viewer', 'hr', 'sale', 'social', 'stock', 'inventory'],
+        apps: ['accounts', 'accounts-ap', 'accounts-ar', 'accounts-viewer', 'hr', 'pos', 'social', 'stock', 'control'],
         approle: ['admin'],
         data,
     }),
@@ -100,7 +100,7 @@ export const BranchesEndpoints = {
         path: '/branches',
         action: 'create',
         method: 'post',
-        apps: ['accounts', 'accounts-ap', 'accounts-ar', 'accounts-viewer', 'hr', 'sale', 'social', 'stock', 'inventory'],
+        apps: ['accounts', 'accounts-ap', 'accounts-ar', 'accounts-viewer', 'hr', 'pos', 'social', 'stock', 'control'],
         approle: ['admin'],
         data,
     }),
@@ -113,7 +113,7 @@ export const BranchesEndpoints = {
         path: `/branches/${documentId}`,
         action: 'delete',
         method: 'delete',
-        apps: ['accounts', 'accounts-ap', 'accounts-ar', 'accounts-viewer', 'hr', 'sale', 'social', 'stock', 'inventory'],
+        apps: ['accounts', 'accounts-ap', 'accounts-ar', 'accounts-viewer', 'hr', 'pos', 'social', 'stock', 'control'],
         approle: ['admin'],
     }),
 

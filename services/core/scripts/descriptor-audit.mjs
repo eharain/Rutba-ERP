@@ -4,7 +4,7 @@
  *
  * Every app talks to the backend through packages/api-provider descriptors,
  * so that package is the real list of APIs in use. route-audit.js compares
- * core against pos-strapi's whole route surface (which includes ~192
+ * core against services/strapi's whole route surface (which includes ~192
  * auto-generated CRUD routes api-pro denies anyway); this one compares core
  * against what the FRONTENDS ACTUALLY CALL.
  *
@@ -14,7 +14,7 @@
  * shapes; anything still unresolved is reported so it can never be silently
  * dropped from the count.
  *
- * Usage: node rutba-core/scripts/descriptor-audit.mjs [--verbose]
+ * Usage: node services/core/scripts/descriptor-audit.mjs [--verbose]
  * Exit 0 only when every descriptor endpoint is served by core.
  */
 
@@ -195,7 +195,7 @@ async function main() {
   }
 
   const matchCore = buildMatcher([...coreRoutes.keys()]);
-  // Does pos-strapi serve it either? If not, the descriptor is drifted (or
+  // Does services/strapi serve it either? If not, the descriptor is drifted (or
   // relies on a caller-supplied method) — that is not a core gap.
   const { collectStrapiRoutes } = require('./route-audit.js');
   const strapiRoutes = collectStrapiRoutes();

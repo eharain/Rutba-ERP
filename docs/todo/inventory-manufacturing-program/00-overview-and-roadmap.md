@@ -9,13 +9,13 @@
 > foundation they all sit on, the dependency graph, the recommended sequencing, and the
 > cross-cutting conventions every epic must honour.
 
-Authored: 2026-07-10. **Status: largely BUILT** (backends + the `rutba-inventory` app
+Authored: 2026-07-10. **Status: largely BUILT** (backends + the `apps/inventory/control` app
 shell) on branch `inventory-mfg-foundation` — see [Implementation status
 (as-built)](#implementation-status-as-built) below. Decisions locked with the user
 (2026-07-10):
 
-1. **Inventory app packaging** → new dedicated `rutba-inventory` app (port **4017**), own
-   `inventory` domain. `pos-stock` (4001) stays for POS-adjacent stock entry.
+1. **Inventory app packaging** → new dedicated `apps/inventory/control` app (port **4017**), own
+   `inventory` domain. `apps/inventory/stock` (4001) stays for POS-adjacent stock entry.
 2. **Location model depth** → full **Warehouse → Storage-Location/Bin** hierarchy.
 3. **Expiry/batch** → **per-unit `expiry_date` on the stock unit (optional; not all products
    have expiry, and each unit may differ), optional batch grouping, FEFO at sale**, expiry
@@ -29,11 +29,11 @@ shell) on branch `inventory-mfg-foundation` — see [Implementation status
 
 | # | Epic | Owning app(s) | Status | Spec |
 |---|------|---------------|--------|------|
-| 1 | Manufacturing product-types, recipes, multi-output, auto-consume | `rutba-manufacturing` + `pos-strapi/mfg-*` | ✅ **Built** (backend) | [epic-1-manufacturing-product-types.md](epic-1-manufacturing-product-types.md) |
-| 2 | Inventory Management app (warehouses/bins, stock ledger, transfers, adjustments, valuation) | **new `rutba-inventory`** + `pos-strapi/inventory-*` | ✅ **Built** (core; deferrals) | [epic-2-inventory-management-app.md](epic-2-inventory-management-app.md) |
-| 3 | Stock reconciliation + cycle counts | `rutba-inventory` + `pos-strapi/stock-item` | 🟡 **Partial** | [epic-3-stock-reconciliation-cycle-counts.md](epic-3-stock-reconciliation-cycle-counts.md) |
-| 4 | Reordering / replenishment | `rutba-inventory` + `pos-strapi` | ✅ **Built** (core; deferrals) | [epic-4-reordering-replenishment.md](epic-4-reordering-replenishment.md) |
-| 5 | Product expiry / batch / FEFO | `pos-strapi` + `pos-sale`/`rutba-web` + `rutba-inventory` | ✅ **Built** | [epic-5-product-expiry-batch-fefo.md](epic-5-product-expiry-batch-fefo.md) |
+| 1 | Manufacturing product-types, recipes, multi-output, auto-consume | `apps/inventory/manufacturing` + `services/strapi/mfg-*` | ✅ **Built** (backend) | [epic-1-manufacturing-product-types.md](epic-1-manufacturing-product-types.md) |
+| 2 | Inventory Management app (warehouses/bins, stock ledger, transfers, adjustments, valuation) | **new `apps/inventory/control`** + `services/strapi/inventory-*` | ✅ **Built** (core; deferrals) | [epic-2-inventory-management-app.md](epic-2-inventory-management-app.md) |
+| 3 | Stock reconciliation + cycle counts | `apps/inventory/control` + `services/strapi/stock-item` | 🟡 **Partial** | [epic-3-stock-reconciliation-cycle-counts.md](epic-3-stock-reconciliation-cycle-counts.md) |
+| 4 | Reordering / replenishment | `apps/inventory/control` + `services/strapi` | ✅ **Built** (core; deferrals) | [epic-4-reordering-replenishment.md](epic-4-reordering-replenishment.md) |
+| 5 | Product expiry / batch / FEFO | `services/strapi` + `apps/sales/pos`/`apps/content/storefront` + `apps/inventory/control` | ✅ **Built** | [epic-5-product-expiry-batch-fefo.md](epic-5-product-expiry-batch-fefo.md) |
 
 ---
 
@@ -42,7 +42,7 @@ shell) on branch `inventory-mfg-foundation` — see [Implementation status
 > Verified against live code on branch `inventory-mfg-foundation` (2026-07-11). This
 > section supersedes the "Starting state" baseline further down, which records the
 > *pre-build* state at program authoring. A ✅ here means the **backend** is built and
-> load-only verified; frontends are the `rutba-inventory` app shell (screens below) and
+> load-only verified; frontends are the `apps/inventory/control` app shell (screens below) and
 > are esbuild-verified but not all click-through-verified.
 
 ### Foundation (F1–F5)
@@ -57,14 +57,14 @@ shell) on branch `inventory-mfg-foundation` — see [Implementation status
 
 ### Per-epic
 
-- **Epic 1 — Manufacturing (✅ built, backend).** No `mfg-product-type`/`mfg-recipe` CT — the recipe layer is `product.kind` (classifier) + `mfg-bom` with a repeatable **`outputs[]`** component (`mfg.bom-output`: primary/co_product/by_product/scrap + `cost_share_pct`) + **`mfg-production-template`** (reusable product-type recipe → instantiated into a versioned BOM via `POST /mfg-production-templates/:id/instantiate`). WO state machine does multi-output receipt with cost-share normalization, `autoConsumeInputs` on completion (serialized→`Reduced`, bulk→FEFO `mfg-material-issue`), and track_mode routing. Kind-typing enforced by document-service middleware `bom-typing-validator.js`. *Deferred:* dedicated `rutba-manufacturing` template/BOM builder UI.
-- **Epic 2 — Inventory app (✅ built core; deferrals).** Foundation + two-sided `stock-transfer` (Draft→InTransit→Received, `transitions.js`), `stock-adjustment` (posts loss GL Dr `SHRINKAGE_EXPENSE` / Cr INVENTORY, idempotent), specific-identification valuation report, and the full `rutba-inventory` app. *Deferred:* transfer-line CT + `from_location`, adjustment approval workflow + reason-code CT + bulk signed-qty path, movement/ageing reports, put-away screen.
+- **Epic 1 — Manufacturing (✅ built, backend).** No `mfg-product-type`/`mfg-recipe` CT — the recipe layer is `product.kind` (classifier) + `mfg-bom` with a repeatable **`outputs[]`** component (`mfg.bom-output`: primary/co_product/by_product/scrap + `cost_share_pct`) + **`mfg-production-template`** (reusable product-type recipe → instantiated into a versioned BOM via `POST /mfg-production-templates/:id/instantiate`). WO state machine does multi-output receipt with cost-share normalization, `autoConsumeInputs` on completion (serialized→`Reduced`, bulk→FEFO `mfg-material-issue`), and track_mode routing. Kind-typing enforced by document-service middleware `bom-typing-validator.js`. *Deferred:* dedicated `apps/inventory/manufacturing` template/BOM builder UI.
+- **Epic 2 — Inventory app (✅ built core; deferrals).** Foundation + two-sided `stock-transfer` (Draft→InTransit→Received, `transitions.js`), `stock-adjustment` (posts loss GL Dr `SHRINKAGE_EXPENSE` / Cr INVENTORY, idempotent), specific-identification valuation report, and the full `apps/inventory/control` app. *Deferred:* transfer-line CT + `from_location`, adjustment approval workflow + reason-code CT + bulk signed-qty path, movement/ageing reports, put-away screen.
 - **Epic 3 — Reconciliation & cycle counts (🟡 partial).** Cache reconcile + drift jobs (maintenance screen) done. `stock-count` exists but v1: Draft/Posted/Cancelled only, `inv.count-line` component (product/system_qty/counted_qty — no batch/location/variance fields), Post flips shortages directly to `Lost` (not via stock-adjustment, no count-side GL). *Not built:* freeze/snapshot/blind/scan-tally/review lifecycle, batch/location-aware lines, post-as-adjustment, orphan-reconcile UI.
 - **Epic 4 — Reordering (✅ built core; deferrals).** `reorder-policy` CT (MinMax/ReorderPoint/ParLevel/Manual, min/max/safety, source Purchase/Manufacture/Transfer), `getReorderSuggestions` engine (on-hand/on-order/projected + `product.reorder_level` fallback + pack rounding), `generatePurchases`/`generateWorkOrders`, and the reorder dashboard. *Not built:* `generateTransfers` (source=Transfer), persisted `reorder-suggestion` CT, scheduled low-stock alert cron, open-WO qty folded into projected.
 - **Epic 5 — Expiry/batch/FEFO (✅ built).** `stock-batch` + per-unit `expiry_date`/`batch`, product `is_perishable`/`shelf_life_days`/`expiry_alert_days`, FEFO in `allocateSellableUnits` (opened-first → earliest-expiry, nulls last), daily `inventoryExpirySweep` cron + `POST /stock-items/sweep-expired`, `GET /stock-items/expiring`, and the expiry/batches screens. *Gap:* no independent hard checkout block-expired guard beyond the sweep having flipped units out of `InStock`.
 - **Divisible stock** (added on top of this program) — one discrete item sold in N sub-units; see [../../features/divisible-stock.md](../../features/divisible-stock.md).
 
-### `rutba-inventory` app screens (`rutba-inventory/pages/`)
+### `apps/inventory/control` app screens (`apps/inventory/control/pages/`)
 
 `index` (landing) · `warehouses` (warehouse + bin-tree editor) · `stock-levels` (per-product/warehouse on-hand grid) · `transfers` (two-sided dispatch/receive) · `adjustments` (write-off/damage/lost/expired + GL) · `valuation` (by warehouse) · `counts` (cycle counts) · `batches` (batch CRUD + status) · `expiry` (expiring-soon + run sweep) · `reorder` (suggestions → generate purchases/WOs) · `maintenance` (idempotent reconcile jobs).
 
@@ -209,7 +209,7 @@ Recommended order (each is independently shippable behind the one before it):
 2. **Epic 5 (expiry/batch/FEFO)** — small once F3 exists; high user value; unblocks
    perishable selling and gives Epic 1 the batch concept to reuse.
 3. **Epic 2 (rest)** — transfers (two-sided), adjustments, valuation report, the
-   `rutba-inventory` app UI.
+   `apps/inventory/control` app UI.
 4. **Epic 3 (reconciliation + cycle counts)** — depends on stock-levels + adjustments.
 5. **Epic 4 (reordering)** — depends on stock-levels + purchase flow; consumes expiry for
    perishable min-stock.
@@ -221,20 +221,20 @@ Recommended order (each is independently shippable behind the one before it):
 
 ---
 
-## The new `rutba-inventory` app — registration checklist
+## The new `apps/inventory/control` app — registration checklist
 
 Owned by Epic 2. Per `[[project_registering_new_erp_app_checklist]]`, a new app needs all
 of the following or it silently won't appear / redirects out:
 
-1. **Workspace** — add `rutba-inventory` to root `package.json` workspaces +
+1. **Workspace** — add `apps/inventory/control` to root `package.json` workspaces +
    `dev:/build:/start:inventory` scripts.
-2. **Env** — `NEXT_PUBLIC_INVENTORY_URL` + `RUTBA_INVENTORY__PORT=4017` in `.env.development`
+2. **Env** — `NEXT_PUBLIC_CONTROL_URL` + `CONTROL__PORT=4017` in `.env.development`
    (and prod env). Next free port is **4017**.
-3. **Client registry** — `packages/pos-shared/lib/roles.js`: add `inventory` to `APP_URLS`,
+3. **Client registry** — `packages/shared/lib/roles.js`: add `inventory` to `APP_URLS`,
    `VALID_APP_KEYS`, and `APP_META` (icon/label/description).
 4. **Server domain** — `packages/api-provider/config/domains.json`: `"inventory"` key with
-   roles `inventory_admin/manager/staff` (+ optional `inventory_viewer`).
-5. **Auth callback** — `pages/auth/callback.js` re-exporting `@rutba/pos-shared/components/AuthCallback`
+   roles `control_admin/manager/staff` (+ optional `inventory_viewer`).
+5. **Auth callback** — `pages/auth/callback.js` re-exporting `@rutba/shared/components/AuthCallback`
    with an empty `getServerSideProps`.
 6. **App skeleton** — Layout + ProtectedRoute + `useAuth()`, Bootstrap, matching the other
    rutba-* apps.

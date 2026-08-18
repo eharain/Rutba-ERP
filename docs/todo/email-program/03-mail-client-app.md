@@ -1,7 +1,7 @@
-# Email Program — The `rutba-mail` App (:4021)
+# Email Program — The `apps/content/mail` App (:4021)
 
-Next.js pages app, skeleton copied from `rutba-campaigns`/`rutba-inventory`.
-Port **4021** (next free after `rutba-core` :4020 — verified in
+Next.js pages app, skeleton copied from `apps/content/campaigns`/`apps/inventory/control`.
+Port **4021** (next free after `services/core` :4020 — verified in
 `scripts/rutba_apps.sh`). Domain key **`mail`**, roles
 `mail_admin` / `mail_manager` / `mail_staff`.
 
@@ -40,16 +40,16 @@ Port **4021** (next free after `rutba-core` :4020 — verified in
 
 ## Registration checklist (all seven points — miss one and it silently fails)
 
-1. `packages/pos-shared/lib/roles.js` — `APP_URLS.mail` (:4021),
+1. `packages/shared/lib/roles.js` — `APP_URLS.mail` (:4021),
    `VALID_APP_KEYS` + `'mail'`, `APP_META.mail`.
-2. `rutba-mail/pages/auth/callback.js` re-exporting
-   `@rutba/pos-shared` AuthCallback.
+2. `apps/content/mail/pages/auth/callback.js` re-exporting
+   `@rutba/shared` AuthCallback.
 3. `packages/api-provider/config/domains.json` — `mail` domain +
    `mail_admin/manager/staff`; same keys in `config/roles.json`.
 4. `scripts/rutba_apps.sh` — `RUTBA_SERVICES` + `RUTBA_SVC_CMD` +
    `RUTBA_SVC_DESC` + `RUTBA_SVC_PORT[rutba_mail]=4021`.
 5. Root `package.json` (workspace + `dev:mail`/`start:mail`/`build:mail`),
-   `.env.*` (`RUTBA_MAIL__PORT=4021`, `NEXT_PUBLIC_MAIL_URL`, `MAIL_CRED_KEY`,
+   `.env.*` (`MAIL__PORT=4021`, `NEXT_PUBLIC_MAIL_URL`, `MAIL_CRED_KEY`,
    `MAIL_*` knobs), `scripts/js/env-config.js` GLOBAL_VARS, `Dockerfile` +
    `docker-compose.yml`, `dev-start.bat`.
 6. **Full Strapi restart** after adding the URL — CORS origins are baked at

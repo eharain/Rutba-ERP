@@ -4,14 +4,14 @@ import { listParams, byIdParams } from './__param_builders.js';
 export const DeliveryMethodsEndpoints = {
     meta: {
         uid: 'api::delivery-method.delivery-method',
-        domains: ['cms', 'order-management', 'web', 'web-user'],
+        domains: ['cms', 'orders', 'storefront', 'portal'],
         roles: ['admin', 'manager', 'staff', 'public', 'user'],
     },
 
     // The todo that used to sit here asked whether delivery-method has
-    // draft-publish. It does not (draftAndPublish: false), and pos-strapi has
+    // draft-publish. It does not (draftAndPublish: false), and services/strapi has
     // no publish route for it — so the helper's publish/unpublish pair could
-    // never resolve. updateDraft stays (rutba-cms/pages/delivery-methods.js
+    // never resolve. updateDraft stays (apps/content/cms/pages/delivery-methods.js
     // uses it); the inline create/update below still override the rest.
     ...draftMethods('delivery-methods'),
     ...standard('delivery-methods'),
@@ -19,7 +19,7 @@ export const DeliveryMethodsEndpoints = {
         path: '/delivery-methods',
         action: 'find',
         method: 'get',
-        apps: ['cms', 'order-management', 'web', 'web-user'],
+        apps: ['cms', 'orders', 'storefront', 'portal'],
         approle: ['admin', 'manager', 'staff', 'public', 'user'],
         params: listParams(
             { page, pageSize, sort, populate, filters, fields },
@@ -31,7 +31,7 @@ export const DeliveryMethodsEndpoints = {
         path: `/delivery-methods/${documentId}`,
         action: 'findOne',
         method: 'get',
-        apps: ['cms', 'order-management', 'web', 'web-user'],
+        apps: ['cms', 'orders', 'storefront', 'portal'],
         approle: ['admin', 'manager', 'staff', 'public', 'user'],
         params: byIdParams({ populate, fields }),
     }),
@@ -47,7 +47,7 @@ export const DeliveryMethodsEndpoints = {
         path: `/delivery-methods/${documentId}`,
         action: 'findOne',
         method: 'get',
-        apps: ['cms', 'order-management', 'web', 'web-user'],
+        apps: ['cms', 'orders', 'storefront', 'portal'],
         approle: ['admin', 'manager', 'staff', 'public', 'user'],
         params: byIdParams({ populate, fields }, {}, { status: 'published' }),
     }),

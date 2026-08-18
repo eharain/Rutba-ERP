@@ -4,7 +4,7 @@ import { listParams, byIdParams } from './__param_builders.js';
 export const CmsFootersEndpoints = {
     meta: {
         uid: 'api::cms-footer.cms-footer',
-        domains: ['cms', 'web', 'web-user'],
+        domains: ['cms', 'storefront', 'portal'],
         roles: ['admin', 'manager', 'staff', 'public', 'user'],
     },
 

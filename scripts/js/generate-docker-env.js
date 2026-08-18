@@ -18,7 +18,7 @@
  * Output (.env.docker):
  *   - All NEXT_PUBLIC_* globals (for build args + client env)
  *   - POS_STRAPI__* stripped → STRAPI_* (DATABASE_CLIENT, etc.)
- *   - RUTBA_WEB__* stripped → WEB_* (NEXTAUTH_SECRET, etc.)
+ *   - STOREFRONT__* stripped → WEB_* (NEXTAUTH_SECRET, etc.)
  *   - PORT_<APP> from explicit PREFIX__PORT config
  *   - CORS_ORIGINS auto-computed
  *
@@ -119,7 +119,7 @@ lines.push(`CORS_ORIGINS=${corsOrigins.join(',')}`);
 
 // Web runtime vars
 if (Object.keys(webVars).length) {
-  lines.push('', '# --- Rutba Web runtime (RUTBA_WEB__ stripped) ---');
+  lines.push('', '# --- Rutba Web runtime (STOREFRONT__ stripped) ---');
   for (const [k, v] of Object.entries(webVars)) {
     lines.push(`WEB_${k}=${v}`);
   }

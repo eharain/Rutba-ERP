@@ -3,16 +3,16 @@
 /**
  * Core-owned SQL migration runner (helpdesk program prerequisite P7).
  *
- * rutba-core derives every table it knows about from pos-strapi's schema.json
+ * services/core derives every table it knows about from services/strapi's schema.json
  * files (src/schema/), and scripts/validate-schema.js asserts that derivation
- * still matches the live database. That registry stays pos-strapi-owned until a
+ * still matches the live database. That registry stays services/strapi-owned until a
  * module is ready to hand its tables over. Helpdesk is the first module to do
  * that, so its NEW tables need a mechanism the registry cannot provide — this
  * one. Tables created here are deliberately invisible to the schema registry,
  * to documents() and to Strapi admin; repositories on them use knex directly.
  *
  * Migrations NEVER run at boot — src/index.js does not require this file. Core
- * shares a database with a live pos-strapi, so a schema change is an explicit,
+ * shares a database with a live services/strapi, so a schema change is an explicit,
  * operator-timed act: `node scripts/migrate.js up`.
  *
  * Three constraints shape everything below.

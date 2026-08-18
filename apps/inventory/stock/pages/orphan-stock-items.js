@@ -1,10 +1,10 @@
 import { useEffect, useState, useRef, useMemo } from "react";
 import Layout from "../components/Layout";
 import ProductPickerModal from "../components/ProductPickerModal";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
 import { StockItemsEndpoints, ProductsEndpoints } from "@rutba/api-provider/endpoints/index.js";
-import ListPageLayout from "@rutba/pos-shared/components/ListPageLayout";
-import ListPagination from "@rutba/pos-shared/components/ListPagination";
+import ListPageLayout from "@rutba/shared/components/ListPageLayout";
+import ListPagination from "@rutba/shared/components/ListPagination";
 
 const STATUS_OPTIONS = [
     "InStock", "Sold", "Received", "Reserved",

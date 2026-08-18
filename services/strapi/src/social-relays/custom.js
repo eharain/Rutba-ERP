@@ -9,7 +9,7 @@
 //
 //   POST {api_url}
 //     Authorization: Bearer {api_key}      (omitted when no key is set)
-//     { source: 'rutba-social', event: 'publish',
+//     { source: 'apps/content/social', event: 'publish',
 //       post: { id, title, body, tags },
 //       platforms: ['facebook', …],
 //       media: { imageUrls, videoUrls } }
@@ -25,7 +25,7 @@ const PROVIDER = 'custom';
 const ALL_PLATFORMS = ['facebook', 'instagram', 'x', 'linkedin', 'tiktok', 'youtube', 'whatsapp'];
 
 function headers(relay) {
-  const h = { 'X-Rutba-Source': 'rutba-social' };
+  const h = { 'X-Rutba-Source': 'apps/content/social' };
   if (relay.api_key) h.Authorization = `Bearer ${relay.api_key}`;
   return h;
 }
@@ -80,7 +80,7 @@ module.exports = {
 
   async publishPost({ relay, post, media, platforms }) {
     const payload = {
-      source: 'rutba-social',
+      source: 'apps/content/social',
       event: 'publish',
       post: {
         id: post.documentId,

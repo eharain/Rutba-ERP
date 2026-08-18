@@ -56,7 +56,7 @@ const check = (name, ok, detail) => {
 
 /** A real PNG, generated with the same sharp Strapi uses. */
 async function makePng(dir, name, size = 1200) {
-  const sharp = require(path.join(__dirname, '..', '..', 'pos-strapi', 'node_modules', 'sharp'));
+  const sharp = require(path.join(__dirname, '..', '..', '..', 'services/strapi', 'node_modules', 'sharp'));
   const file = path.join(dir, name);
   await sharp({
     create: { width: size, height: Math.round(size * 0.75), channels: 3, background: { r: 30, g: 90, b: 160 } },
@@ -86,7 +86,7 @@ async function main() {
     check('provider initialises (local backend)', providerOk, providerErr);
 
     const uploadsDir = path.join(
-      path.resolve(path.join(__dirname, '..', '..', 'pos-strapi'), get('PUBLIC_DIR', './public')),
+      path.resolve(path.join(__dirname, '..', '..', '..', 'services/strapi'), get('PUBLIC_DIR', './public')),
       'uploads'
     );
 
@@ -230,7 +230,7 @@ async function main() {
 
     console.log('\nG. the repo call sites that needed the plugin');
     // media-library's service and the media controller's folder service are the
-    // two places pos-strapi code reaches for strapi.plugin('upload') — they are
+    // two places services/strapi code reaches for strapi.plugin('upload') — they are
     // why uploads blocked the migration, so exercise them directly rather than
     // through their api-pro-gated routes.
     const folder = await global.strapi.plugin('upload').service('folder')

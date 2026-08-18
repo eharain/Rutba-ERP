@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { SaleOrdersEndpoints, ReturnRequestsEndpoints } from "@rutba/api-provider/endpoints/index.js";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import SaleOrderLabel from "../../components/print/SaleOrderLabel";
 
 // Print page for shipping / return labels. Same shape as
-// pos-sale/pages/print-invoice.js — fetch data, render the React label,
+// apps/sales/pos/pages/print-invoice.js — fetch data, render the React label,
 // auto-trigger window.print() once the page settles. Pop-up blockers
 // behave because this is a same-origin navigation initiated by a click in
 // the parent app, not a programmatic window.open of a foreign URL.

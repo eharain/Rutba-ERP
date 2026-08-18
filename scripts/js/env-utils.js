@@ -58,33 +58,54 @@ function parseEnvFile(filePath) {
  * @returns {{ dir: string, prefix: string }[]}
  */
 function getAppDirs() {
-  const pkg = JSON.parse(
-    fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')
+  // config/apps.manifest.json is the single source of truth for identity.
+  // Deriving the prefix from the directory name only worked while every
+  // workspace sat at the repo root and was named after its env block; under
+  // apps/<category>/<name> the leaf name and the env prefix are independent
+  // facts, and "SERVICES/STRAPI__PORT" is not an environment variable.
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(ROOT, 'config', 'apps.manifest.json'), 'utf8')
   );
-  const dirs = [];
-  for (const ws of pkg.workspaces || []) {
-    if (ws.includes('*')) {
-      const base = ws.replace(/\/?\*$/, '');
-      const fullBase = path.join(ROOT, base);
-      if (fs.existsSync(fullBase)) {
-        for (const entry of fs.readdirSync(fullBase, { withFileTypes: true })) {
-          if (entry.isDirectory()) dirs.push(entry.name);
-        }
-      }
-    } else {
-      dirs.push(ws);
-    }
+  const seen = new Set();
+  const apps = [];
+  for (const svc of manifest.services || []) {
+    if (!svc.envPrefix || seen.has(svc.envPrefix)) continue;
+    seen.add(svc.envPrefix);
+    apps.push({ dir: svc.key, prefix: svc.envPrefix, workspace: svc.workspace });
   }
-  // pos-strapi is not in workspaces but is a launchable app
-  dirs.push('pos-strapi');
-  return dirs.map((d) => ({
-    dir: d,
-    prefix: d.toUpperCase().replace(/-/g, '_'),
-  }));
+  return apps;
 }
 
 function getAppPrefixes() {
   return getAppDirs().map((a) => a.prefix);
+}
+
+/**
+ * Resolves whatever npm was handed (--workspace= / --prefix) to an env prefix.
+ * Accepts a package name (@rutba/pos), a workspace path (apps/sales/pos, with
+ * either slash style, trailing slash optional) or a bare key (pos).
+ *
+ * @param {string} target
+ * @returns {string|null} the env prefix, or null when nothing matches
+ */
+function resolveEnvPrefix(target) {
+  if (!target) return null;
+  const norm = (s) => String(s).replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+  const want = norm(target);
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(ROOT, 'config', 'apps.manifest.json'), 'utf8')
+  );
+  for (const svc of manifest.services || []) {
+    if (!svc.envPrefix) continue;
+    if (
+      norm(svc.npm || '') === want ||
+      norm(svc.workspace || '') === want ||
+      norm(svc.key || '') === want
+    ) {
+      return svc.envPrefix;
+    }
+  }
+  return null;
 }
 
 // ── resolve variables (two-mode) ───────────────────────────
@@ -261,11 +282,11 @@ function validateVariables(globals, appVars, allPrefixes, opts = {}) {
  *
  * PORT is only set when explicitly configured:
  *   - process.env.PORT (platform/host override — always wins)
- *   - PREFIX__PORT in config files (e.g. POS_AUTH__PORT=4003)
+ *   - PREFIX__PORT in config files (e.g. AUTH__PORT=4003)
  * No PORT is derived from URLs or invented automatically.
  *
  * @param {Object}  opts
- * @param {string}  opts.targetDir       Workspace directory name (e.g. 'pos-auth')
+ * @param {string}  opts.targetDir       Workspace directory name (e.g. 'apps/admin/auth')
  * @param {string}  opts.targetPrefix    Env prefix (e.g. 'POS_AUTH')
  * @param {Object<string,string>} opts.globals    Global variables
  * @param {Object<string,Object<string,string>>} opts.appVars  Per-prefix vars
@@ -316,7 +337,7 @@ function buildEnvForApp(opts) {
     }
   }
 
-  // ── CORS_ORIGINS for pos-strapi ─────────────────────────
+  // ── CORS_ORIGINS for services/strapi ─────────────────────────
   if (targetPrefix === 'POS_STRAPI') {
     const strapiPort = envForApp.PORT || '4010';
     const strapiOrigins = [
@@ -364,6 +385,7 @@ module.exports = {
   parseEnvFile,
   getAppDirs,
   getAppPrefixes,
+  resolveEnvPrefix,
   resolveAllVariables,
   splitVariables,
   validateVariables,

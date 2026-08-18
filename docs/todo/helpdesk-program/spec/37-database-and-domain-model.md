@@ -12,7 +12,7 @@ platform decision that has to be made before any of it is written.
 ## 37.2 Domain layer
 
 ```
-rutba-core/src/domain/helpdesk/
+services/core/src/domain/helpdesk/
   ticket.service.js          TicketService        create, transition, assign, merge, split, link
   message.service.js         MessageService       thread read model + append + redaction
   sla.service.js             SLAService           targets, business time, pause, sweep
@@ -25,7 +25,7 @@ rutba-core/src/domain/helpdesk/
   desk.service.js            DeskService          configuration
   repository/                data access, tenant- and permission-scoped
   policy/                    entitlement checks, one place
-rutba-core/src/modules/helpdesk.js    routes + event subscriptions only
+services/core/src/modules/helpdesk.js    routes + event subscriptions only
 ```
 
 **Rules.**
@@ -42,8 +42,8 @@ rutba-core/src/modules/helpdesk.js    routes + event subscriptions only
 ## 37.3 Persistence reality (D2 — decide before building)
 
 Core is a **strangler**: it serves the same descriptor contract from the same database, deriving
-tables from pos-strapi's `schema.json` files. The program's standing rule is that `schema.json`
-stays pos-strapi-owned until a module's migration hands its tables to SQL migrations —
+tables from services/strapi's `schema.json` files. The program's standing rule is that `schema.json`
+stays services/strapi-owned until a module's migration hands its tables to SQL migrations —
 and `validate-schema` must exit clean, because the shim is only correct while the registry's
 derivation matches the live schema.
 
@@ -51,7 +51,7 @@ Helpdesk is greenfield, which forces the question early.
 
 | Option | Pros | Cons |
 |---|---|---|
-| **A. All tables via pos-strapi `schema.json`** | Zero platform work; Strapi admin sees the data; `validate-schema` stays clean | A Core-native module depends on the app Core is replacing. Every new table needs a Strapi content-type that nothing uses |
+| **A. All tables via services/strapi `schema.json`** | Zero platform work; Strapi admin sees the data; `validate-schema` stays clean | A Core-native module depends on the app Core is replacing. Every new table needs a Strapi content-type that nothing uses |
 | **B. All tables via Core SQL migrations** | Genuinely Core-native; Helpdesk becomes the migration pilot | Requires building the migration runner (P7); tables invisible to the shim's registry and to Strapi admin |
 | **C. Hybrid (recommended)** | `contact_tickets` stays in `schema.json` (it already exists and legacy routes depend on it); **new** helpdesk tables ship as Core migrations | Two mechanisms during the transition — but that is what a strangler is |
 

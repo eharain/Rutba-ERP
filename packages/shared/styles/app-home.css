@@ -664,7 +664,7 @@ a.app-tile:focus-visible .app-tile-go {
    ───────────────────────────────────────────────────────────── */
 
 /* Fixed, not just full-height: pages nest ProtectedRoute on both sides of
-   <Layout> (compare rutba-crm/pages/index.js with rutba-admin/pages/
+   <Layout> (compare apps/sales/crm/pages/index.js with apps/admin/console/pages/
    mailboxes.js), so an in-flow gate would render *below* the app chrome on
    half of them — showing a signed-out visitor a sidebar they can't use.
    Covering the viewport makes the nesting order irrelevant. z-index clears

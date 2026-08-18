@@ -8,7 +8,7 @@ export const StockBatchesEndpoints = {
 
     meta: {
         uid: 'api::stock-batch.stock-batch',
-        domains: ['stock', 'inventory', 'manufacturing'],
+        domains: ['stock', 'control', 'manufacturing'],
         roles: ['admin', 'manager', 'staff'],
     },
 
@@ -18,7 +18,7 @@ export const StockBatchesEndpoints = {
             path: '/stock-batches',
             action: 'find',
             method: 'get',
-            apps: ['inventory', 'stock'],
+            apps: ['control', 'stock'],
             approle: ['admin', 'manager', 'staff'],
             params: {
                 filters: {
@@ -39,7 +39,7 @@ export const StockBatchesEndpoints = {
         path: `/stock-batches/${documentId}`,
         action: 'findOne',
         method: 'get',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             populate: { product: true, supplier: true, branch: true, stock_items: true },
@@ -50,7 +50,7 @@ export const StockBatchesEndpoints = {
         path: '/stock-batches',
         action: 'create',
         method: 'post',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager', 'staff'],
         data,
     }),
@@ -59,7 +59,7 @@ export const StockBatchesEndpoints = {
         path: `/stock-batches/${documentId}`,
         action: 'update',
         method: 'put',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager'],
         data,
     }),
@@ -68,7 +68,7 @@ export const StockBatchesEndpoints = {
         path: `/stock-batches/${documentId}`,
         action: 'delete',
         method: 'delete',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager'],
     }),
 
@@ -76,13 +76,13 @@ export const StockBatchesEndpoints = {
      * Admin reconcile — rebuild every product.bulk_quantity_on_hand from the live
      * sum of Active batch quantity_remaining. Route is auth:false + admin-gated in
      * the controller (mirrors stock-items/recompute-product-stock).
-     * Handler: pos-strapi/src/api/stock-batch/controllers/recompute-product-bulk.js
+     * Handler: services/strapi/src/api/stock-batch/controllers/recompute-product-bulk.js
      */
     recomputeProductBulk: () => ({
         path: '/stock-batches/recompute-product-bulk',
         action: 'create',
         method: 'post',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin'],
         // Serial walk of every product, summing its Active batches and writing
         // back — the bulk-quantity twin of recomputeProductStock, and the same

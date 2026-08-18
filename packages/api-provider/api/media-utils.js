@@ -1,7 +1,7 @@
 import { IMAGE_URL, StraipImageUrl, isImage, isPDF, isVideo } from '../lib/api.js';
 
 export const MediaUtilsEndpoints = {
-    meta: { domains: ['cms', 'order-management', 'social', 'stock'] },
+    meta: { domains: ['cms', 'orders', 'social', 'stock'] },
 
     imageBaseUrl: () => IMAGE_URL,
     strapiImageUrl: (file) => StraipImageUrl(file),

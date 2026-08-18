@@ -9,7 +9,7 @@
  * Strapi diffs desired-vs-live DDL at boot and applies it immediately
  * (including destructive drops), this tool emits a migration DRAFT for review.
  * It is the Phase-2/3 schema-maintenance mechanism from the program docs: once
- * a module is served by rutba-core, its schema changes ship as one commit —
+ * a module is served by services/core, its schema changes ship as one commit —
  * schema.json edit + the generated (reviewed) migration.
  *
  *   node scripts/schema-diff.js [--filter <substr>] [--name <slug>] [--print]
@@ -19,7 +19,7 @@
  *   --name    migration slug (default schema_sync)
  *   --print   print the migration to stdout instead of writing a file
  *
- * Output: rutba-core/migrations/<utc-ts>_<name>.js. Additive changes are
+ * Output: services/core/migrations/<utc-ts>_<name>.js. Additive changes are
  * active; DESTRUCTIVE statements (drop column/table for extras) are emitted
  * COMMENTED OUT — un-commenting them is an explicit reviewer decision.
  * A clean diff writes nothing and exits 0.

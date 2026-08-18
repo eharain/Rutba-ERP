@@ -1,7 +1,7 @@
 # Epic 3 — Stock Reconciliation & Cycle Counts
 
 > 🟡 **Status: PARTIALLY BUILT** — branch `inventory-mfg-foundation`. Cache reconcile + drift
-> jobs (the `rutba-inventory` maintenance screen) are done, and a **v1 `stock-count`** exists
+> jobs (the `apps/inventory/control` maintenance screen) are done, and a **v1 `stock-count`** exists
 > (Draft/Posted/Cancelled; `inv.count-line` = product/system_qty/counted_qty; Post flips shortages
 > directly to `Lost`). **Not built:** the richer count lifecycle (freeze/snapshot/blind/scan-tally/
 > review/recount), batch/location-aware count lines, posting variances **as stock-adjustments**
@@ -13,7 +13,7 @@
 > new capability — **physical cycle counts / stock-takes** that book variances as adjustments
 > with a full audit trail.
 
-Owning app: `rutba-inventory` (count UI) + `pos-strapi` (`stock-count` CT, reconcile
+Owning app: `apps/inventory/control` (count UI) + `services/strapi` (`stock-count` CT, reconcile
 services). Depends on: Foundation F1/F2 (locations + stock-level) and Epic 2 Phase 3
 (stock-adjustment, the write path for variances). Complements: Epic 4 (accurate counts feed
 reorder).
@@ -41,7 +41,7 @@ them in the inventory app and adds a "reconcile orphan → attach/merge" flow.
 
 ## Data model — cycle counts
 
-**`stock-count`** (`pos-strapi/src/api/stock-count/…`):
+**`stock-count`** (`services/strapi/src/api/stock-count/…`):
 | field | type | notes |
 |-------|------|-------|
 | `count_number` | uid | |
@@ -106,7 +106,7 @@ it emits adjustments, keeping one GL/inventory chokepoint.
   corrected, not just a count.
 - Reuse existing `orphanGroups`/`orphanGroupItems` for the orphan-reconcile screen.
 
-## Frontend surface (`rutba-inventory`)
+## Frontend surface (`apps/inventory/control`)
 
 - **Cache reconcile** — button to run `recompute` + a drift report table (extends the
   existing admin trigger with visibility).

@@ -16,7 +16,7 @@ import MergeFieldBar from "./MergeFieldBar";
 // declares a `^0.21.2` peer. Bumping GrapesJS past 0.21.x means checking the
 // preset still loads, or replacing it with our own block set.
 
-// Mirrors MERGE_TOKEN in pos-strapi cmp-template service — kept in sync by hand;
+// Mirrors MERGE_TOKEN in services/strapi cmp-template service — kept in sync by hand;
 // this copy only drives the live badge, the server recomputes on save.
 const MERGE_TOKEN = /\{\{\s*([a-zA-Z_][\w.]*)\s*\}\}/g;
 const RESERVED = new Set(["accept_url", "decline_url", "confirm_url", "cta_url", "unsubscribe_url", "list_unsubscribe"]);

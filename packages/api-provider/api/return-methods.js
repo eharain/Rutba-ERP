@@ -8,7 +8,7 @@ import { listParams, byIdParams } from './__param_builders.js';
 export const ReturnMethodsEndpoints = {
     meta: {
         uid: 'api::return-method.return-method',
-        domains: ['order-management', 'sale', 'web'],
+        domains: ['orders', 'pos', 'storefront'],
         roles: ['admin', 'manager', 'staff', 'public', 'user'],
     },
 
@@ -16,7 +16,7 @@ export const ReturnMethodsEndpoints = {
         path: '/return-methods',
         action: 'find',
         method: 'get',
-        apps: ['order-management', 'sale', 'web'],
+        apps: ['orders', 'pos', 'storefront'],
         approle: ['admin', 'manager', 'staff', 'public', 'user'],
         params: listParams(
             { page, pageSize, sort, populate, filters, fields },
@@ -28,7 +28,7 @@ export const ReturnMethodsEndpoints = {
         path: `/return-methods/${documentId}`,
         action: 'findOne',
         method: 'get',
-        apps: ['order-management', 'sale', 'web'],
+        apps: ['orders', 'pos', 'storefront'],
         approle: ['admin', 'manager', 'staff', 'public', 'user'],
         params: byIdParams({ populate, fields }),
     }),
@@ -37,7 +37,7 @@ export const ReturnMethodsEndpoints = {
         path: '/return-methods',
         action: 'create',
         method: 'post',
-        apps: ['order-management'],
+        apps: ['orders'],
         approle: ['admin', 'manager'],
         data,
     }),
@@ -46,7 +46,7 @@ export const ReturnMethodsEndpoints = {
         path: `/return-methods/${documentId}`,
         action: 'update',
         method: 'put',
-        apps: ['order-management'],
+        apps: ['orders'],
         approle: ['admin', 'manager'],
         data,
     }),

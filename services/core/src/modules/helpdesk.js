@@ -4,7 +4,7 @@
  * Helpdesk module wiring (spec 27 API, spec 28 §28.7 subscriptions).
  *
  * Unlike every other module in this directory, nothing here is a ported
- * pos-strapi controller — Helpdesk is Core-native, so this file is the HTTP and
+ * services/strapi controller — Helpdesk is Core-native, so this file is the HTTP and
  * event EDGE of a module whose behaviour lives entirely in
  * src/domain/helpdesk/*.service.js. Handlers resolve the actor, unpack the
  * request, call one service method and shape the envelope. When a handler in
@@ -61,7 +61,7 @@
  *
  * LEGACY COMPATIBILITY (F13). The seven `/api/contact-tickets/*` routes are
  * reimplemented here over TicketService and MessageService and are the same
- * verb+path pairs src/modules/crm.js registers over the pos-strapi controller.
+ * verb+path pairs src/modules/crm.js registers over the services/strapi controller.
  * server.js mounts module routes in registry order and the FIRST claim on a
  * verb+path wins, so `registerHelpdeskModule()` must stay ahead of
  * `registerCrmModule()` in modules/index.js — see the note there. crm.js is

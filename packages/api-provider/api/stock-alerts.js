@@ -13,7 +13,7 @@ export const StockAlertsEndpoints = {
 
     meta: {
         uid: 'api::stock-alert.stock-alert',
-        domains: ['inventory', 'stock'],
+        domains: ['control', 'stock'],
         roles: ['admin', 'manager', 'staff'],
     },
 
@@ -32,7 +32,7 @@ export const StockAlertsEndpoints = {
             path: '/stock-alerts',
             action: 'find',
             method: 'get',
-            apps: ['inventory', 'stock'],
+            apps: ['control', 'stock'],
             approle: ['admin', 'manager', 'staff'],
             params: {
                 filters: {
@@ -54,7 +54,7 @@ export const StockAlertsEndpoints = {
         path: `/stock-alerts/${documentId}`,
         action: 'findOne',
         method: 'get',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             populate: { product: true, branch: true, policy: true, acknowledged_by: true, dismissed_by: true },
@@ -66,7 +66,7 @@ export const StockAlertsEndpoints = {
         path: `/stock-alerts/${documentId}/acknowledge`,
         action: 'create',
         method: 'post',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager', 'staff'],
         data: {},
     }),
@@ -76,7 +76,7 @@ export const StockAlertsEndpoints = {
         path: `/stock-alerts/${documentId}/dismiss`,
         action: 'create',
         method: 'post',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager'],
         data: { ...(notes ? { notes } : {}) },
     }),
@@ -86,7 +86,7 @@ export const StockAlertsEndpoints = {
         path: '/stock-alerts/run-now',
         action: 'create',
         method: 'post',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager'],
         data: {},
     }),

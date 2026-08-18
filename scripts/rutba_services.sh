@@ -70,8 +70,8 @@ _validate_svc() {
 
 # Project directory a service runs out of, derived from its npm invocation so
 # the registry stays a single list instead of two that drift:
-#   "run start --workspace=rutba-crm"   -> rutba-crm
-#   "--prefix pos-strapi run start"     -> pos-strapi   (not a workspace)
+#   "run start --workspace=apps/sales/crm"   -> apps/sales/crm
+#   "--prefix services/strapi run start"     -> services/strapi   (not a workspace)
 # Empty for anything that matches neither form.
 _svc_workspace_dir() {
     local cmd="${SVC_CMD[$1]:-}" rest
@@ -212,10 +212,10 @@ start_services() {
         # Start the API backend first - every other app talks to it. WHICH unit
         # that is depends on RUTBA_BACKEND, so it cannot be named literally:
         # under RUTBA_BACKEND=core write_all_units has just retired the
-        # rutba_pos_strapi unit, and `systemctl start` on a unit that no longer
+        # rutba_strapi unit, and `systemctl start` on a unit that no longer
         # exists is a hard failure that aborts the whole deploy (set -e).
         local backend_started=0 known
-        for backend_svc in rutba_pos_strapi rutba_core; do
+        for backend_svc in rutba_strapi rutba_core; do
             known=0
             for svc in "${SERVICES[@]}"; do
                 [ "$svc" = "$backend_svc" ] && { known=1; break; }
@@ -231,7 +231,7 @@ start_services() {
         fi
         for svc in "${SERVICES[@]}"; do
             case "$svc" in
-                rutba_pos_strapi|rutba_core) continue ;;
+                rutba_strapi|rutba_core) continue ;;
             esac
             # No unit = write_all_units skipped it (app not in this build).
             # Starting it anyway would just log a warning per deploy forever.
@@ -539,10 +539,10 @@ show_usage() {
     echo "  Examples:"
     echo "    sudo bash $0 status"
     echo "    sudo bash $0 restart"
-    echo "    sudo bash $0 restart rutba_web"
+    echo "    sudo bash $0 restart rutba_storefront"
     echo "    sudo bash $0 rebuild"
-    echo "    sudo bash $0 logs rutba_pos_strapi 100"
-    echo "    sudo bash $0 tail rutba_pos_strapi"
+    echo "    sudo bash $0 logs rutba_strapi 100"
+    echo "    sudo bash $0 tail rutba_strapi"
     echo "    sudo bash $0 tail"
     echo "    sudo bash $0 diagnose"
     echo ""

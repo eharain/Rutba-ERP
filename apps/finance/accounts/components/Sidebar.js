@@ -1,4 +1,4 @@
-import SharedSidebar from "@rutba/pos-shared/components/Sidebar";
+import SharedSidebar from "@rutba/shared/components/Sidebar";
 
 const SECTIONS = [
     { href: "/chart-of-accounts", label: "Chart of Accounts", icon: "fa-sitemap" },
@@ -9,5 +9,5 @@ const SECTIONS = [
 ];
 
 export default function Sidebar() {
-    return <SharedSidebar sections={SECTIONS} storageKey="rutba-accounts-sidebar-pinned" />;
+    return <SharedSidebar sections={SECTIONS} storageKey="apps/finance/accounts-sidebar-pinned" />;
 }

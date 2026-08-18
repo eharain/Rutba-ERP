@@ -165,7 +165,7 @@ open:
   Azure, ElevenLabs, OpenAI) and nothing. Urdu quality varies a lot between
   them, and this catalogue is bilingual.
 - **Where it runs.** A key in the browser is a key published. It wants a
-  route in rutba-core (like the media proxy) that holds the credential and
+  route in services/core (like the media proxy) that holds the credential and
   returns audio, which is a small server change but a real one.
 - **What it costs per video**, since the poster generates unattended in
   batches and a per-character bill is easy to run up without noticing.

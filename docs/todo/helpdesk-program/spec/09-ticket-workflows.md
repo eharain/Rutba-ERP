@@ -11,7 +11,7 @@ serve it — as a **shared platform capability**, not a helpdesk fork.
 
 ## 9.2 The existing engine
 
-`pos-strapi/src/utils/workflow-engine.js` with the `api::workflow` entity:
+`services/strapi/src/utils/workflow-engine.js` with the `api::workflow` entity:
 
 - A `Workflow` targets an `entity_uid`, is `is_active` / `is_default`, and holds repeatable
   `stages` and `transitions` components.
@@ -32,7 +32,7 @@ zero-copy. Helpdesk is the second consumer and the first Core-native one.
 
 | # | Change | Why |
 |---|---|---|
-| W1 | **Promote to `rutba-core/src/platform/workflow.js`** | Core is the primary backend; a platform capability must not live in a strangled app's utils folder |
+| W1 | **Promote to `services/core/src/platform/workflow.js`** | Core is the primary backend; a platform capability must not live in a strangled app's utils folder |
 | W2 | **Role gating on transitions** — `allowed_roles` per transition | Helpdesk needs "only a manager may cancel". Currently transitions have no role concept |
 | W3 | **Required-field guards** — `requires: []` | "Resolution note mandatory" must be engine-enforced, not re-implemented per module |
 | W4 | **Guard expressions** — declarative conditions | "Cannot resolve while an approval is pending" |

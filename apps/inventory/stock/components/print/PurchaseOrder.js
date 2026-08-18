@@ -1,5 +1,5 @@
 import React from 'react';
-import { useUtil } from '@rutba/pos-shared/context/UtilContext';
+import { useUtil } from '@rutba/shared/context/UtilContext';
 
 /**
  * PurchaseOrder — printable A4 purchase-order document. Buyer (our company /

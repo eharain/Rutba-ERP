@@ -38,7 +38,7 @@ _Date: 2026-07-10. Consolidates [market-strategy](./market-strategy/README.md) (
 ④Platform       (design tenancy)    (tenancy spike)       multi-tenancy,        app marketplace,
  (SaaS)                                                   onboarding, billing,  per-tenant theming,
                                                           tenant admin          white-label
-⑤Growth         CRM core buildout   rutba-campaigns,      +more channels/       PLM + SRM (apparel),
+⑤Growth         CRM core buildout   apps/content/campaigns,      +more channels/       PLM + SRM (apparel),
  modules        (timeline+segments) CRM pipeline,         regions, private      agent-commerce (MCP),
                                     Amazon+eBay           Drive/sharing         social/marketplace depth
                                     marketplace conn.
@@ -53,8 +53,8 @@ Make tenant #1 credible and legal before selling anything. Half-built internals 
 | # | Item | Track | Why now / gate | Depends on | Size |
 |---|------|-------|----------------|-----------|------|
 | 0.1 | **FBR Digital Invoicing** — PRAL API (DI v1.12), IRN + verifiable QR on every invoice, sandbox cert, 6-yr archive, 18% GST, offline buffer | ① | **Legally mandatory** (phased mandate completed 31 Dec 2025); can't invoice compliantly in PK without it | sale/sale-order posting | L |
-| 0.2 | **Local digital payments** — Raast + JazzCash + Easypaisa + QR acceptance at POS/checkout | ① | 88–92% of PK retail is digital; merchant acceptance is the national gap; cuts COD returns | pos-sale, checkout | M |
-| 0.3 | **Offline-first POS hardening** — graceful degrade + reconcile-on-reconnect | ① | Table stakes for every PK POS; intermittent connectivity is the norm | pos-sale | M |
+| 0.2 | **Local digital payments** — Raast + JazzCash + Easypaisa + QR acceptance at POS/checkout | ① | 88–92% of PK retail is digital; merchant acceptance is the national gap; cuts COD returns | apps/sales/pos, checkout | M |
+| 0.3 | **Offline-first POS hardening** — graceful degrade + reconcile-on-reconnect | ① | Table stakes for every PK POS; intermittent connectivity is the norm | apps/sales/pos | M |
 | 0.4 | **Finish accounting posting wiring** — web/cash/purchase/payroll → GL — **✅ done (2026-08-10)**. Web/COD, cash-register and the payroll run already posted; the real gaps were elsewhere: purchase bills expensed goods instead of capitalizing them, purchase-return never posted, `SHRINKAGE_EXPENSE` was resolved but never seeded (so every inventory loss was silently absent), advances were paid out with no debit to `EMPLOYEE_ADVANCES`, and the posting endpoints were gated on a `permission_roles` relation that has no schema — always empty, so only super-admins could reach them. Covered by `smoke-accounting-gl.js` on both servers. See [accounting-completion-spec](./accounting-completion-spec.md) | ② | Books must be trustworthy before Rutba is the system of record | acc-* (mostly built) | M |
 | 0.5 | **Payroll engine** — ~~replace the stub~~ **mostly built** (2026-08-06): processRun/previewRun, attendance-driven daily wage, unpaid-leave deduction, statutory calc, GL accrual + payout posting. Remaining gap: **overtime is not wired** — `hr-overtime-rule` exists but the engine never reads it, and hr-attendance stores no hours | ② | rutba.pk payroll no longer blocked; overtime is the last calc gap | pay-*, hr-* | S |
 | 0.6 ✅ | **CRM core buildout** — typed activity timeline + saved-segment engine (from CRM plan §5.1/5.3). _Shipped — see [crm-core-buildout.md](./crm-core-buildout.md). Also completed contact-unification Phase 1C.1 (`crm-contact` → `person`), which the segment engine sits on, and wired `cmp-audience.source = 'segment'` so campaigns resolve through it._ | ⑤ | Highest-ROI additive work; feeds H1 campaigns | crm-* (exists) | M |
@@ -69,13 +69,13 @@ Close the gaps every competitor already fills (AI, analytics) and turn on the Wh
 
 | # | Item | Track | Why / gate | Depends on | Size |
 |---|------|-------|-----------|-----------|------|
-| 1.1 | **AI copilot MVP** — NL query over sales/inventory/finance; draft descriptions; smart reorder hints. Claude-first, model-agnostic layer, **AI included (not paywalled)**. Aim for automated **synthesis** (generate the report/plan), not just Q&A — the "AI-OS" frame (cf. KeychainOS) | ③ | Rutba ships zero AI while every rival ships copilots — the single biggest competitive gap | pos-strapi data, analytics (1.2) | L |
+| 1.1 | **AI copilot MVP** — NL query over sales/inventory/finance; draft descriptions; smart reorder hints. Claude-first, model-agnostic layer, **AI included (not paywalled)**. Aim for automated **synthesis** (generate the report/plan), not just Q&A — the "AI-OS" frame (cf. KeychainOS) | ③ | Rutba ships zero AI while every rival ships copilots — the single biggest competitive gap | services/strapi data, analytics (1.2) | L |
 | 1.2 | **Analytics / BI layer** (`rutba-analytics`) — cross-module dashboards, replenishment forecast, financial-exception detection | ③ | No analytics app exists (RANALYTICS gap); also powers CRM dashboards & the copilot | Strapi data | L |
-| 1.3 | **WhatsApp commerce** — catalog, order-taking, order/shipping notifications, post-sale funnels | ②/⑤ | Core South-Asia channel, not a side feature | notification svc, rutba-social | M |
-| 1.4 | **`rutba-campaigns`** — email template studio + audiences + campaigns over Rutba-MTA | ⑤ | Rutba-MTA (send engine) already ported; this is the tenant UI | Rutba-MTA, CRM segments (0.6) | M |
+| 1.3 | **WhatsApp commerce** — catalog, order-taking, order/shipping notifications, post-sale funnels | ②/⑤ | Core South-Asia channel, not a side feature | notification svc, apps/content/social | M |
+| 1.4 | **`apps/content/campaigns`** — email template studio + audiences + campaigns over Rutba-MTA | ⑤ | Rutba-MTA (send engine) already ported; this is the tenant UI | Rutba-MTA, CRM segments (0.6) | M |
 | 1.5 | **CRM pipeline** — opportunity/deal/stage/kanban (net-new; RightApp only faked it) | ⑤ | Completes CRM to competitive standard | CRM core (0.6) | M |
 | 1.6 | **Tracked email-on-activity** — CRM ↔ Rutba-MTA opens/clicks | ⑤ | Ties CRM + campaigns + analytics together | 1.2, 1.4 | S |
-| 1.7 | **Marketplace connector framework + Amazon + eBay** — generalize the existing provider-adapter (Daraz done) into a channel-connector layer; add **Amazon SP-API** and **eBay Sell API**: listing/catalog sync, order ingest, inventory + price push, settlement reconciliation, per-account region config | ②/⑤ | Omnichannel selling is table stakes (Cin7/Shopify lead with it); multiplies reach per region and rides the multi-country/regional seeding layer already being built | rutba-marketplace + worker (exist), product catalog, marketplace-* CTs | L |
+| 1.7 | **Marketplace connector framework + Amazon + eBay** — generalize the existing provider-adapter (Daraz done) into a channel-connector layer; add **Amazon SP-API** and **eBay Sell API**: listing/catalog sync, order ingest, inventory + price push, settlement reconciliation, per-account region config | ②/⑤ | Omnichannel selling is table stakes (Cin7/Shopify lead with it); multiplies reach per region and rides the multi-country/regional seeding layer already being built | apps/sales/marketplace + worker (exist), product catalog, marketplace-* CTs | L |
 
 **H1 exit gate:** a demo of Rutba shows an AI copilot, live dashboards, and WhatsApp+email marketing — i.e. it no longer looks a generation behind Odoo/Zoho/Shopify.
 
@@ -87,7 +87,7 @@ rutba.pk works single-tenant; selling to tenant #2 needs the platform layer. Thi
 
 | # | Item | Track | Why / gate | Depends on | Size |
 |---|------|-------|-----------|-----------|------|
-| 2.1 | **Multi-tenancy** — org/tenant model + data isolation in pos-strapi. **Decided: database-per-tenant, forever** (not row-scoping) — see [core-server-multitenancy-program](core-server-multitenancy-program/README.md) ground rule 4 | ④ | Cannot serve a 2nd customer without it; reuses api-pro claim/role machinery. Db-per-tenant is what isolation, per-customer backup/restore/offboarding and PK data-residency all depend on | pos-strapi, api-pro | XL |
+| 2.1 | **Multi-tenancy** — org/tenant model + data isolation in services/strapi. **Decided: database-per-tenant, forever** (not row-scoping) — see [core-server-multitenancy-program](core-server-multitenancy-program/README.md) ground rule 4 | ④ | Cannot serve a 2nd customer without it; reuses api-pro claim/role machinery. Db-per-tenant is what isolation, per-customer backup/restore/offboarding and PK data-residency all depend on | services/strapi, api-pro | XL |
 | 2.2 | **Self-serve onboarding** — signup → setup wizard (business type, branches, tax, import products/customers) → live in minutes | ④ | Time-to-value is where Rutba beats $40K-implementation incumbents | 2.1, bulk-import | M |
 | 2.3 | **Subscription billing + metering** — plans, seats/branches, usage limits, invoicing, dunning | ④ | No revenue mechanism today | 2.1, payments (0.2) | L |
 | 2.4 | **Tenant admin console** — org profile, users↔app entitlements, branches, tax/locale, branding | ④ | Tenants must self-administer | 2.1 | M |

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Layout from "../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import { MarketplaceAccountsEndpoints } from "@rutba/api-provider/endpoints";
 import { useToast } from "../components/Toast";
 import { appGet, appPost } from "../components/appClient";
@@ -93,7 +93,7 @@ export default function AccountsPage() {
         const onMessage = (e) => {
             if (e.origin !== window.location.origin) return;
             const d = e.data;
-            if (!d || d.source !== "rutba-marketplace-oauth") return;
+            if (!d || d.source !== "apps/sales/marketplace-oauth") return;
             if (d.ok) { toast(`Connected ${d.message || ""}`.trim(), "success"); loadAccounts(); }
             else { toast(d.message || "Connection failed.", "danger"); }
         };
@@ -208,7 +208,7 @@ export default function AccountsPage() {
                 const w = 640, h = 760;
                 const left = window.screenX + (window.outerWidth - w) / 2;
                 const top = window.screenY + (window.outerHeight - h) / 2;
-                const popup = window.open(url, "rutba-marketplace-oauth", `width=${w},height=${h},left=${left},top=${top}`);
+                const popup = window.open(url, "apps/sales/marketplace-oauth", `width=${w},height=${h},left=${left},top=${top}`);
                 if (!popup) toast("Popup blocked — allow popups, then click Connect again.", "warning");
                 return;
             }

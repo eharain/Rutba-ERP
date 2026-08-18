@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import Layout from "../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import { SaleOffersEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
-import ListPageLayout, { AddButton } from "@rutba/pos-shared/components/ListPageLayout";
-import ListPagination from "@rutba/pos-shared/components/ListPagination";
+import ListPageLayout, { AddButton } from "@rutba/shared/components/ListPageLayout";
+import ListPagination from "@rutba/shared/components/ListPagination";
 import ExcelIO from "../components/ExcelIO";
 
 // Server-side coerceForSchema (cms-bulk controller) converts string cells

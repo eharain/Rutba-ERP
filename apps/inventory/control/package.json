@@ -1,5 +1,5 @@
 {
-  "name": "rutba-inventory",
+  "name": "@rutba/control",
   "version": "0.1.0",
   "private": true,
   "scripts": {

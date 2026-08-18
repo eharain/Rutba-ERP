@@ -372,7 +372,7 @@ export function AuthProvider({ children }) {
     }, []);
 
     /**
-     * Login with credentials (used only in pos-auth's login page).
+     * Login with credentials (used only in apps/admin/auth's login page).
      * Strapi refresh-mode returns { jwt, refreshToken, user }.
      * @param {string} identifier
      * @param {string} password

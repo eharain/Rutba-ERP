@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { printStorage } from "@rutba/pos-shared/lib/printStorage";
+import { printStorage } from "@rutba/shared/lib/printStorage";
 import { QrExportSource, QrImage, useQrDownload } from "./QrCode";
 import {
     QR_KINDS,

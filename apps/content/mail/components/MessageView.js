@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import {
     MailAccountsEndpoints,
     MailContactsEndpoints,

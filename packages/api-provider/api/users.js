@@ -1,11 +1,11 @@
 /**
  * UsersEndpoints
- * Central user administration behind the rutba-admin app (:4022) — user CRUD,
+ * Central user administration behind the apps/admin/console app (:4022) — user CRUD,
  * the per-domain access matrix, bulk access assignment, the precise per-role
  * editor, and sanitized directory/employee feeds for pickers in other apps.
  *
  * 'users' rides alongside 'admin' in every apps/domains array here as a
- * DEPRECATED alias: rutba-admin replaced rutba-users and claims
+ * DEPRECATED alias: apps/admin/console replaced rutba-users and claims
  * X-Rutba-App: admin, but existing users_* grants must keep working until
  * they are migrated off. Retiring the users domain is a separate task.
  *
@@ -21,7 +21,7 @@
 export const UsersEndpoints = {
 
     meta: {
-        domains: ['admin', 'users', 'hr'],
+        domains: ['console', 'hr'],
         roles: ['admin', 'manager'],
     },
 
@@ -30,7 +30,7 @@ export const UsersEndpoints = {
         path: '/user-admin/users',
         action: 'listUsers',
         method: 'get',
-        apps: ['admin', 'users'],
+        apps: ['console'],
         approle: ['admin'],
     }),
 
@@ -38,7 +38,7 @@ export const UsersEndpoints = {
         path: `/user-admin/users/${id}`,
         action: 'getUser',
         method: 'get',
-        apps: ['admin', 'users'],
+        apps: ['console'],
         approle: ['admin'],
     }),
 
@@ -51,7 +51,7 @@ export const UsersEndpoints = {
         path: '/user-admin/users',
         action: 'createUser',
         method: 'post',
-        apps: ['admin', 'users'],
+        apps: ['console'],
         approle: ['admin'],
         data,
     }),
@@ -61,7 +61,7 @@ export const UsersEndpoints = {
         path: `/user-admin/users/${id}`,
         action: 'updateUser',
         method: 'put',
-        apps: ['admin', 'users'],
+        apps: ['console'],
         approle: ['admin'],
         data,
     }),
@@ -70,7 +70,7 @@ export const UsersEndpoints = {
         path: `/user-admin/users/${id}`,
         action: 'deleteUser',
         method: 'delete',
-        apps: ['admin', 'users'],
+        apps: ['console'],
         approle: ['admin'],
     }),
 
@@ -84,7 +84,7 @@ export const UsersEndpoints = {
         path: '/user-admin/users/bulk-access',
         action: 'setBulkAccess',
         method: 'post',
-        apps: ['admin', 'users'],
+        apps: ['console'],
         approle: ['admin'],
         // The access matrix saves every edited user in one request, and each user
         // is a role reconcile plus a claim-cache invalidation. A whole-department
@@ -102,7 +102,7 @@ export const UsersEndpoints = {
         path: `/user-admin/users/${id}/app-roles`,
         action: 'setAppRoles',
         method: 'put',
-        apps: ['admin', 'users'],
+        apps: ['console'],
         approle: ['admin'],
         data: { role_keys: roleKeys },
     }),
@@ -118,7 +118,7 @@ export const UsersEndpoints = {
         path: '/user-admin/invites',
         action: 'createInvite',
         method: 'post',
-        apps: ['admin', 'users'],
+        apps: ['console'],
         approle: ['admin'],
         data,
     }),
@@ -128,7 +128,7 @@ export const UsersEndpoints = {
         path: `/user-admin/users/${id}/invite`,
         action: 'sendInvite',
         method: 'post',
-        apps: ['admin', 'users'],
+        apps: ['console'],
         approle: ['admin'],
         data: {},
     }),
@@ -143,7 +143,7 @@ export const UsersEndpoints = {
         path: `/user-admin/users/${id}/mailbox`,
         action: 'createMailbox',
         method: 'post',
-        apps: ['admin', 'users'],
+        apps: ['console'],
         approle: ['admin'],
         data: {
             ...(serverId ? { serverId } : {}),
@@ -159,13 +159,13 @@ export const UsersEndpoints = {
     /**
      * Sanitized minimal projection (id/username/email/displayName/status) for
      * link pickers — deliberately no roles or domains. Open to hr managers so
-     * the employee↔user picker works from rutba-hr.
+     * the employee↔user picker works from apps/people/hr.
      */
     listDirectory: () => ({
         path: '/user-admin/directory',
         action: 'listDirectory',
         method: 'get',
-        apps: ['admin', 'users', 'hr'],
+        apps: ['console', 'hr'],
         approle: ['admin', 'manager'],
     }),
 
@@ -174,7 +174,7 @@ export const UsersEndpoints = {
         path: '/user-admin/employees',
         action: 'listEmployees',
         method: 'get',
-        apps: ['admin', 'users'],
+        apps: ['console'],
         approle: ['admin', 'manager'],
     }),
 
@@ -183,7 +183,7 @@ export const UsersEndpoints = {
         path: '/user-admin/roles',
         action: 'listRoles',
         method: 'get',
-        apps: ['admin', 'users'],
+        apps: ['console'],
         approle: ['admin'],
     }),
 

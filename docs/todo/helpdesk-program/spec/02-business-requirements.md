@@ -141,7 +141,7 @@ not a configuration choice.
 
 ## 2.5 Assumptions
 
-1. Rutba Core is the runtime; pos-strapi continues to serve unported legacy routes during the
+1. Rutba Core is the runtime; services/strapi continues to serve unported legacy routes during the
    strangler migration and remains the JWT issuer until Phase 7 of the Core program.
 2. Users, roles, claims and app access remain owned by api-pro; Helpdesk defines no identities.
 3. The `person` contact-unification graph is the canonical "who is this human" resolver.
@@ -154,12 +154,12 @@ not a configuration choice.
 | Dependency | Owner | Risk if unmet |
 |---|---|---|
 | Core event bus (P1) | Core platform | No cross-module ticket creation; §13 and §28 degrade to polling |
-| Workflow service promotion (P2) | Core platform | Lifecycle stays pos-strapi-coupled |
-| Core-owned migrations (P7) | Core platform | New tables must go through pos-strapi `schema.json` |
+| Workflow service promotion (P2) | Core platform | Lifecycle stays services/strapi-coupled |
+| Core-owned migrations (P7) | Core platform | New tables must go through services/strapi `schema.json` |
 | Business calendar data | HR | SLA cannot honour working hours (RULE-8) |
 | Rutba-MTA inbound | Infra | Email channel drops from launch scope |
 | WhatsApp Business API | Roadmap H1 | WhatsApp channel slips |
-| `rutba-helpdesk` app registration (:4023) | This program | No agent surface |
+| `apps/sales/helpdesk` app registration (:4023) | This program | No agent surface |
 
 ---
 

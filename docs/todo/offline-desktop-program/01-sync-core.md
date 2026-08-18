@@ -1,16 +1,16 @@
-# 01 — `@rutba/sync-core`
+# 01 — `@rutba/sync`
 
 > **Status: specification only.** The engine described in
 > [`offline-pos-options.md` §§1–5 and §10.1](../offline-pos-options.md#101-shape),
 > extracted into a package with a name. Those sections are the design; this
 > document says what the package is, what it reuses, and who consumes it.
 
-The bridge is **`rutba-core` run against local SQLite, plus four bridge-specific
-parts** — [§10.1](../offline-pos-options.md#101-shape). `@rutba/sync-core` is
+The bridge is **`services/core` run against local SQLite, plus four bridge-specific
+parts** — [§10.1](../offline-pos-options.md#101-shape). `@rutba/sync` is
 those four parts, packaged so the host is a detail:
 
 ```
-                     ┌──────────────── @rutba/sync-core ────────────────┐
+                     ┌──────────────── @rutba/sync ────────────────┐
 app (unchanged) ────►│ proxy ──► response cache ──► outbox ──► replayer │────► upstream API
                      │              ▲                    ▲              │      (:4010 / :4020)
                      │              │                    │              │
@@ -18,11 +18,11 @@ app (unchanged) ────►│ proxy ──► response cache ──► outb
                      │              │                                   │
                      └──────────────┼───────────────────────────────────┘
                                     ▼
-                        rutba-core on SQLite  ← local reads answer real routes
+                        services/core on SQLite  ← local reads answer real routes
 ```
 
 Everything above the dashed line is app-agnostic. Everything below it is
-`rutba-core` doing what it already does, against a different Knex client.
+`services/core` doing what it already does, against a different Knex client.
 
 ## The five parts
 
@@ -86,7 +86,7 @@ The delta-snapshot protocol from the reverted 0.3 build carries over
 
 - [ ] Cursor per collection on `updatedAt`, plus tombstones for deletes — the
       same two mechanisms the CMS sync engine needs
-      ([06 §Change detection](../core-server-multitenancy-program/06-plugin-replacement-map.md#replacement-rutba-core-content-sync-module-or-standalone-worker)).
+      ([06 §Change detection](../core-server-multitenancy-program/06-plugin-replacement-map.md#replacement-services/core-content-sync-module-or-standalone-worker)).
       Decide per collection in a manifest; do not invent a third scheme.
 - [ ] Backpressure: a replicator that saturates a 3G link during trading hours is
       a worse outage than the one it prevents.
@@ -127,7 +127,7 @@ rather than guessed at.
 
 ## The replayer is `events.js` in a different costume
 
-**Do not invent this.** [`rutba-core/src/platform/events.js`](../../../rutba-core/src/platform/events.js)
+**Do not invent this.** [`services/core/src/platform/events.js`](../../../services/core/src/platform/events.js)
 (606 lines, tables `core_events` and `core_event_deliveries`) is already a correct
 transactional outbox, and its docblock enumerates exactly the properties the
 replayer needs:
@@ -217,14 +217,14 @@ guarantee, or the rule that sync never touches the database directly.
 
 ## Package boundary
 
-- [ ] `@rutba/sync-core` depends on `@rutba/api-provider` (for descriptors) and
+- [ ] `@rutba/sync` depends on `@rutba/api-provider` (for descriptors) and
       on nothing Electron-specific. It must be runnable headless — that is what
       makes D1 testable before D2 exists, and what makes D7's LAN host a
       deployment choice rather than a port.
 - [ ] Storage is an adapter interface with **one** implementation (SQLite) in v1.
       The in-browser tier was dropped precisely so there is one storage adapter;
       do not add a second speculatively.
-- [ ] `rutba-core` is a peer, not a bundled dependency. The bridge starts it; it
+- [ ] `services/core` is a peer, not a bundled dependency. The bridge starts it; it
       does not vendor it.
 - [ ] Keep it a **workspace package**, unpublished, until a second repo needs it.
       Every npm publish is ongoing overhead, and the only consumers today are in
@@ -237,7 +237,7 @@ the engine rather than on the shell or the server. They are listed, not resolved
 
 1. **Sync-back granularity** ([§10.5.1](../offline-pos-options.md#105-still-open)) —
    the biggest remaining design decision inside D4. See
-   [03 §POS](03-app-policies.md#pos--pos-sale).
+   [03 §POS](03-app-policies.md#pos--apps/sales/pos).
 2. **Replay after token expiry** — resolved in mechanism by
    [§10.3a(2)/(3)](../offline-pos-options.md#103a-authentication-and-replay-identity);
    the service credential and its four guards are what the engine must implement.

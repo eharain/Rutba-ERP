@@ -26,30 +26,30 @@ GL stays in Strapi because sale lives there.
 1. [ ] **Inventory**: list the module's descriptors, routes, controllers, services,
        lifecycles, crons, and every cross-module call in/out (grep `api::<module>`
        across `src/api`). Output: a one-page migration sheet in this folder.
-2. [ ] **Record goldens**: contract suite `record` for the module against pos-strapi on
+2. [ ] **Record goldens**: contract suite `record` for the module against services/strapi on
        the fixture DB (full auth matrix × routes).
-3. [ ] **Port**: copy controllers/services into rutba-core; swap `strapi.documents`/
+3. [ ] **Port**: copy controllers/services into services/core; swap `strapi.documents`/
        `db.query` to the shim (mostly mechanical); port lifecycles onto the document-
        middleware hook or inline them; port cron entries; register routes from the same
        descriptors.
-4. [ ] **Verify offline**: contract suite `verify` against rutba-core on a snapshot
+4. [ ] **Verify offline**: contract suite `verify` against services/core on a snapshot
        copy of the DB → deep-equal. Fix shim gaps found here (they feed 3.3's tests).
 5. [ ] **Schema handover**: generate the module's baseline SQL migration (current DDL
        as migration 0); from now on schema changes for this module are SQL migrations.
        Strapi keeps the schema.json (never delete it — destructive auto-sync risk);
        lint rule/CI check that migrated modules' schema.json files stay frozen.
-6. [ ] **Flip**: Caddy routes the module's path prefixes to rutba-core (tenant-by-
+6. [ ] **Flip**: Caddy routes the module's path prefixes to services/core (tenant-by-
        tenant, canary ring first). Strapi's copies of those routes get a guard that
        503s if hit (catches routing mistakes loudly).
 7. [ ] **Bake**: 1–2 weeks with error-rate/latency comparison vs baseline; revert =
        route flip back (schema unchanged, so revert is safe within the bake window —
        hold module schema changes until bake ends).
-8. [ ] **Delete**: remove the module's controllers/services/lifecycles from pos-strapi
+8. [ ] **Delete**: remove the module's controllers/services/lifecycles from services/strapi
        (schema.json stays). Update the module's migration sheet to "done".
 
 ## Phase 4 exit criteria (first module = playbook proof)
 
-- mfg tranche live on rutba-core for rutba.pk + demo tenant, contract-clean, one bake
+- mfg tranche live on services/core for rutba.pk + demo tenant, contract-clean, one bake
   cycle completed, and the playbook doc amended with everything that surprised you.
   Only then schedule tranche 2 — the first module sets the real per-module cost, which
   sizes the rest of the program honestly.
@@ -62,5 +62,5 @@ GL stays in Strapi because sale lives there.
       points there).
 - [ ] `entityService` call sites (71, legacy): migrate to shim-`documents` during their
       module's port — do not build an entityService shim.
-- [ ] Naming: retire "pos-strapi" from integration docs in favor of "tenant backend" so
+- [ ] Naming: retire "services/strapi" from integration docs in favor of "tenant backend" so
       contracts stop implying the implementation.

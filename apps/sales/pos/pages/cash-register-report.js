@@ -2,11 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Layout from "../components/Layout";
 import CloseRegisterModal from "../components/CloseRegisterModal";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
 import { AppContextEndpoints, CashRegistersEndpoints } from "@rutba/api-provider/endpoints/index.js";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { isAppAdmin, isActiveManagerRole, isEffectiveAdmin } from "@rutba/pos-shared/lib/roles";
-import { useUtil } from "@rutba/pos-shared/context/UtilContext";
+import { useAuth } from "@rutba/shared/context/AuthContext";
+import { isAppAdmin, isActiveManagerRole, isEffectiveAdmin } from "@rutba/shared/lib/roles";
+import { useUtil } from "@rutba/shared/context/UtilContext";
 
 /**
  * Cash Register Report

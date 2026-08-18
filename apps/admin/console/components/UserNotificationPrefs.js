@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import EnumSelect from "@rutba/pos-shared/components/EnumSelect";
-import { useEnumValues } from "@rutba/pos-shared/lib/use-enum-values";
+import EnumSelect from "@rutba/shared/components/EnumSelect";
+import { useEnumValues } from "@rutba/shared/lib/use-enum-values";
 import { NotificationPreferencesEndpoints } from "@rutba/api-provider/endpoints";
 
 const humanize = (s) => String(s).replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());

@@ -8,10 +8,10 @@
  * media library, notifications, content-sync, the seeder console, or the
  * shared utils. scripts/descriptor-audit.mjs surfaced them by measuring core
  * against what packages/api-provider actually calls — the authoritative list
- * of APIs in use — rather than against pos-strapi's whole route surface.
+ * of APIs in use — rather than against services/strapi's whole route surface.
  *
  * This module closes that gap. Zero-copy like tranches 1–7: every handler is
- * require()d from pos-strapi source and run against the compat strapi.
+ * require()d from services/strapi source and run against the compat strapi.
  *
  * Contents:
  *  - PUBLIC STOREFRONT CATALOG (auth:false): products public list/search/
@@ -172,7 +172,7 @@ function registerCatalogModule() {
     { method: 'get', path: '/api/acc-journal-entries/reports/ar-aging', uid: JOURNAL, action: 'arAging', handler: (c) => journal.arAging(c) },
     { method: 'get', path: '/api/acc-journal-entries/reports/ap-aging', uid: JOURNAL, action: 'apAging', handler: (c) => journal.apAging(c) },
     // `:documentId`, not `:id` — the ported controller reads ctx.params.documentId
-    // (as pos-strapi's route declares). Under `:id` it read undefined and the
+    // (as services/strapi's route declares). Under `:id` it read undefined and the
     // handler died on "findOne requires a documentId", so generate-bill never
     // actually worked on core.
     { method: 'post', path: '/api/purchases/:documentId/generate-bill', uid: PURCHASE, action: 'generateBill', handler: (c) => purchase.generateBill(c) },

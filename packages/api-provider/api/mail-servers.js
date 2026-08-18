@@ -2,7 +2,7 @@
  * MailServersEndpoints
  * Registered mail-server admin endpoints (mailcow-type first, e.g. the
  * company server behind https://mail.trustlist.uk/admin/). Managed from the
- * rutba-admin app: registering a server here is what lets "assign an email to
+ * apps/admin/console app: registering a server here is what lets "assign an email to
  * this user" provision the mailbox automatically. The admin API key is posted
  * as plaintext `api_key`, stored encrypted server-side, and never returned;
  * a blank api_key on update keeps the stored key.
@@ -14,7 +14,7 @@ export const MailServersEndpoints = {
 
     meta: {
         uid: 'api::mail-server.mail-server',
-        domains: ['admin', 'users', 'mail'],
+        domains: ['console', 'mail'],
         roles: ['admin'],
     },
 
@@ -26,7 +26,7 @@ export const MailServersEndpoints = {
         path: '/mail-servers',
         action: 'find',
         method: 'get',
-        apps: ['admin', 'users', 'mail'],
+        apps: ['console', 'mail'],
         approle: ['admin'],
         params: listParams({ page, pageSize, sort, populate, fields, filters }, { sort: ['name:asc'] }),
     }),
@@ -35,7 +35,7 @@ export const MailServersEndpoints = {
         path: `/mail-servers/${documentId}`,
         action: 'findOne',
         method: 'get',
-        apps: ['admin', 'users'],
+        apps: ['console'],
         approle: ['admin'],
         params: byIdParams({ populate, fields }),
     }),
@@ -45,7 +45,7 @@ export const MailServersEndpoints = {
         path: '/mail-servers',
         action: 'create',
         method: 'post',
-        apps: ['admin', 'users'],
+        apps: ['console'],
         approle: ['admin'],
         data,
     }),
@@ -54,7 +54,7 @@ export const MailServersEndpoints = {
         path: `/mail-servers/${documentId}`,
         action: 'update',
         method: 'put',
-        apps: ['admin', 'users'],
+        apps: ['console'],
         approle: ['admin'],
         data,
     }),
@@ -63,7 +63,7 @@ export const MailServersEndpoints = {
         path: `/mail-servers/${documentId}`,
         action: 'delete',
         method: 'delete',
-        apps: ['admin', 'users'],
+        apps: ['console'],
         approle: ['admin'],
     }),
 
@@ -77,7 +77,7 @@ export const MailServersEndpoints = {
         path: '/mail-servers/validate',
         action: 'validateServer',
         method: 'post',
-        apps: ['admin', 'users'],
+        apps: ['console'],
         approle: ['admin'],
         data: {
             ...(documentId ? { documentId } : {}),

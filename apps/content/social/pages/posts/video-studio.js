@@ -18,16 +18,16 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import { useRouter } from "next/router";
 import Link from "next/link";
 import Layout from "../../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import {
     MediaUtilsEndpoints, SocialPostsEndpoints, UploadEndpoints,
     SiteSettingEndpoints, SocialAudioTracksEndpoints, SocialVideoTemplatesEndpoints,
 } from "@rutba/api-provider/endpoints";
 import { useToast } from "../../components/Toast";
-import useUnsavedGuard from "@rutba/pos-shared/hooks/useUnsavedGuard";
-import StrapiMediaLibrary from "@rutba/pos-shared/components/StrapiMediaLibrary";
-import RecorderDialog from "@rutba/pos-shared/components/RecorderDialog";
+import useUnsavedGuard from "@rutba/shared/hooks/useUnsavedGuard";
+import StrapiMediaLibrary from "@rutba/shared/components/StrapiMediaLibrary";
+import RecorderDialog from "@rutba/shared/components/RecorderDialog";
 import { RangeRow, TrackBrowser, TimingRows, LookRows, FrameRows } from "../../components/InspectorRows";
 import { onsetTimes, snapEdges, edgesFromLengths, lengthsFromEdges } from "../../lib/beats";
 import { draftStoryboard, withoutDraft } from "../../lib/storyboard";
@@ -62,7 +62,7 @@ const FOCAL_PRESETS = [
 
 const urlPath = (u) => { try { return new URL(u, "http://x").pathname; } catch { return u; } };
 
-const SETTINGS_KEY = "rutba-social-video-studio";
+const SETTINGS_KEY = "apps/content/social-video-studio";
 const FETCH_PAGE = 50;
 const MAX_PAGES = 20;
 

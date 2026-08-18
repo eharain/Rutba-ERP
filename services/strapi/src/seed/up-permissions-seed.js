@@ -69,7 +69,7 @@ const CUSTOM_ACTIONS = {
     'setBulkFlags', 'removeBulkMessages', 'transferBulkMessages', 'setTags',
     'setMailboxPassword',
   ],
-  // Mail-server registry (rutba-admin): controller re-checks admin/mail admin.
+  // Mail-server registry (apps/admin/console): controller re-checks admin/mail admin.
   'api::mail-server.mail-server': ['validateServer'],
   'api::mail-message.mail-message': [
     'createLink', 'removeLink', 'assignMessage', 'setTriageStatus',

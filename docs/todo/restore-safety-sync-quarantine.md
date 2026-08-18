@@ -27,7 +27,7 @@ restored peer URL happens to point at the live host.
 content-sync-pro already has an `instanceId` — but it is stored in the **plugin
 store, i.e. in the database** (`server/src/services/config.js:142`). It is used
 during pairing, not as a runtime guard. A restore copies it verbatim, so the
-target's identity becomes the source's identity. pos-strapi has no env-based
+target's identity becomes the source's identity. services/strapi has no env-based
 instance identity at all.
 
 **The governing principle: an instance's identity must live somewhere a database
@@ -114,7 +114,7 @@ weak signals — log them for diagnosis, do not quarantine on them alone.
 
 #### Other engines
 
-`DATABASE_CLIENT` defaults to `sqlite` (`pos-strapi/config/database.js:4`), so
+`DATABASE_CLIENT` defaults to `sqlite` (`services/strapi/config/database.js:4`), so
 the resolver needs a per-engine strategy rather than assuming MySQL:
 
 - **mysql / mysql2** — `SELECT @@server_uuid` (MySQL 8). Note **MariaDB does not

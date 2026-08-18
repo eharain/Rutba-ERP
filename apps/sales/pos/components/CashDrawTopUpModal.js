@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useUtil } from '@rutba/pos-shared/context/UtilContext';
+import { useUtil } from '@rutba/shared/context/UtilContext';
 import { CashRegisterTransactionEndpoints } from '@rutba/api-provider/endpoints/index.js';
 
 /**

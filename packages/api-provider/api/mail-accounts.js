@@ -1,7 +1,7 @@
 /**
  * MailAccountsEndpoints
  * Connected mailboxes (personal + shared) and the live-IMAP surface behind the
- * rutba-mail client. Nothing message-shaped is persisted — folders and
+ * apps/content/mail client. Nothing message-shaped is persisted — folders and
  * messages are read live from the mail server; only accounts are rows
  * (import-on-demand, docs/todo/email-program/).
  *
@@ -15,7 +15,7 @@ export const MailAccountsEndpoints = {
 
     meta: {
         uid: 'api::mail-account.mail-account',
-        domains: ['mail', 'admin', 'users'],
+        domains: ['mail', 'console'],
         roles: ['admin', 'manager', 'staff'],
     },
 
@@ -324,7 +324,7 @@ export const MailAccountsEndpoints = {
         path: `/mail-accounts/${documentId}/mailbox-password`,
         action: 'setMailboxPassword',
         method: 'post',
-        apps: ['mail', 'admin', 'users'],
+        apps: ['mail', 'console'],
         approle: ['admin', 'manager', 'staff'],
         data: {},
     }),
@@ -350,7 +350,7 @@ export const MailAccountsEndpoints = {
         path: '/mail-accounts/access-map',
         action: 'listAccess',
         method: 'get',
-        apps: ['mail', 'admin', 'users'],
+        apps: ['mail', 'console'],
         approle: ['admin', 'manager'],
     }),
 
@@ -362,7 +362,7 @@ export const MailAccountsEndpoints = {
         path: `/mail-accounts/${documentId}/access`,
         action: 'setAccess',
         method: 'post',
-        apps: ['mail', 'admin', 'users'],
+        apps: ['mail', 'console'],
         approle: ['admin'],
         data: {
             ...(owners !== undefined ? { owners } : {}),

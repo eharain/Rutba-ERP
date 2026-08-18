@@ -1,8 +1,8 @@
 import React from 'react';
-import { useUtil } from '@rutba/pos-shared/context/UtilContext';
+import { useUtil } from '@rutba/shared/context/UtilContext';
 import BarcodeDisplay from './BarcodeDisplay';
 import { QRCodeSVG } from 'qrcode.react';
-import { marked } from '@rutba/pos-shared/lib/marked.esm.js';
+import { marked } from '@rutba/shared/lib/marked.esm.js';
 
 const SaleInvoice = ({ sale, items, totals, printerSettings, branchPrintOverrides }) => { 
     const { currency, branch, user, invoicePrintSettings, getBranchPrintSettings } = useUtil();

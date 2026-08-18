@@ -2,20 +2,20 @@
 
 Status: **built and verified 2026-08-17.** The first P1 deliverable from the
 [program plan](README.md): the api-pro descriptor seeder now runs inside
-rutba-core, so a descriptor change reaches the route table with no Strapi
+services/core, so a descriptor change reaches the route table with no Strapi
 process alive.
 
 ## Why this one first
 
 [§1.2](README.md) named it "the hardest residual dependency". Core reads its
 **entire** route table out of `api_pro_interfaces` / `api_pro_interface_methods`
-([server.js:87](../../../rutba-core/src/http/server.js)), and api-pro answers
+([server.js:87](../../../services/core/src/http/server.js)), and api-pro answers
 every authorization question from `api_pro_method_policies` — but only
 `packages/strapi-api-pro/server/src/services/seeder.js` could write those rows,
 and it cannot run outside a Strapi process: it resolves content-type uids
 through `strapi.contentTypes` and writes through `strapi.db.query`. Core's
 compat layer has no `db.query(...).create` at all
-([strapi.js:248](../../../rutba-core/src/compat/strapi.js)), so "just call the
+([strapi.js:248](../../../services/core/src/compat/strapi.js)), so "just call the
 plugin's seeder through compat" was never an option.
 
 Everything else in P1 is easier once this lands, because every other task can
@@ -23,24 +23,24 @@ be developed with Strapi stopped.
 
 ## What shipped
 
-[rutba-core/src/policy/](../../../rutba-core/src/policy/) — the beginning of the
+[services/core/src/policy/](../../../services/core/src/policy/) — the beginning of the
 `src/policy/` decomposition P1 calls for, so the plugin wrapper has somewhere to
 retire into during P2:
 
 | File | Role |
 |---|---|
-| [descriptors.js](../../../rutba-core/src/policy/descriptors.js) | contract → endpoint list. No database, no Strapi. |
-| [scope.js](../../../rutba-core/src/policy/scope.js) | the scope shorthand → the four template columns. |
-| [seeder.js](../../../rutba-core/src/policy/seeder.js) | endpoint list ↔ tables: plan, then write. |
-| [checkpoint.js](../../../rutba-core/src/policy/checkpoint.js) | boot fast path. |
-| [tokens.js](../../../rutba-core/src/policy/tokens.js) | API-token minting, in Strapi's formats. |
+| [descriptors.js](../../../services/core/src/policy/descriptors.js) | contract → endpoint list. No database, no Strapi. |
+| [scope.js](../../../services/core/src/policy/scope.js) | the scope shorthand → the four template columns. |
+| [seeder.js](../../../services/core/src/policy/seeder.js) | endpoint list ↔ tables: plan, then write. |
+| [checkpoint.js](../../../services/core/src/policy/checkpoint.js) | boot fast path. |
+| [tokens.js](../../../services/core/src/policy/tokens.js) | API-token minting, in Strapi's formats. |
 
-Plus [scripts/seed-policy.js](../../../rutba-core/scripts/seed-policy.js) (CLI),
-[scripts/api-token.js](../../../rutba-core/scripts/api-token.js) (CLI),
-[scripts/smoke-policy.js](../../../rutba-core/scripts/smoke-policy.js) (the
+Plus [scripts/seed-policy.js](../../../services/core/scripts/seed-policy.js) (CLI),
+[scripts/api-token.js](../../../services/core/scripts/api-token.js) (CLI),
+[scripts/smoke-policy.js](../../../services/core/scripts/smoke-policy.js) (the
 proof), migration
-[021-policy-seed-checkpoint](../../../rutba-core/migrations/021-policy-seed-checkpoint.js),
-and a boot hook in [src/index.js](../../../rutba-core/src/index.js).
+[021-policy-seed-checkpoint](../../../services/core/migrations/021-policy-seed-checkpoint.js),
+and a boot hook in [src/index.js](../../../services/core/src/index.js).
 
 The inference rules — action, uid, grant expansion, the alias-dedup pass, the
 scope vocabulary — are **ported unchanged**. They decide which role may call
@@ -51,7 +51,7 @@ which route, so a "cleaner" rule that disagrees by one endpoint is a silent 403.
 1. **It diffs instead of upserting.** The Strapi seeder issues a findOne plus an
    update for every one of ~6,300 rows on each run — which is why it carries
    retry logic for pool exhaustion
-   ([api-provider-seed.js:39](../../../pos-strapi/src/seed/api-provider-seed.js)).
+   ([api-provider-seed.js:39](../../../services/strapi/src/seed/api-provider-seed.js)).
    Core computes the desired state, reads the current state in six queries, and
    writes only what differs. The steady state writes nothing, and the plan can
    be printed before it runs (`--dry-run`).
@@ -136,8 +136,8 @@ of the known "narrowing does not revoke" gap. Pruning them is a revocation, so
 it is left as an explicit operator action:
 
 ```bash
-npm --prefix rutba-core run seed:policy -- --dry-run --verbose   # read the list first
-npm --prefix rutba-core run seed:policy -- --prune
+npm --prefix services/core run seed:policy -- --dry-run --verbose   # read the list first
+npm --prefix services/core run seed:policy -- --prune
 ```
 
 ## API-token minting
@@ -165,5 +165,5 @@ zero rows — and api-pro, not the token's action list, is what scopes access he
   through the compat layer. Moving them into `src/policy/` is P2 work, and this
   port exists partly to give them a destination.
 - **The Policy Editor is still a Strapi-admin screen.** Re-homing it into
-  `rutba-admin` is its own P1 bullet.
+  `apps/admin/console` is its own P1 bullet.
 - **Nothing was pruned.** The 54 stale rows are reported, not removed.

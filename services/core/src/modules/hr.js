@@ -5,7 +5,7 @@
  *
  * Same zero-copy porting model as mfg (see ./mfg.js): controllers, the
  * leave-request state machine, the payroll engine service, lifecycles and the
- * HR role provider are require()d from pos-strapi source and run against the
+ * HR role provider are require()d from services/strapi source and run against the
  * compat strapi.
  *
  * Auth model differs from mfg: most HR/pay custom routes are AUTHENTICATED
@@ -21,14 +21,14 @@
  * REST handlers as prototype, and the routes below claim the core verb+path
  * ahead of the seeded table so the override actually serves the route.
  *
- * Crons: workflowSlaSweep (zero-copy from pos-strapi's
+ * Crons: workflowSlaSweep (zero-copy from services/strapi's
  * config/workflow-cron-tasks.js — scans every SLA-configured
  * api::workflow.workflow for overdue stages; domain-agnostic, registered here
  * only because this tranche is where the workflow-engine's first real
  * consumer, hr-leave-request, lives) and hrBirthdayCheck (zero-copy from
- * pos-strapi's config/hr-cron-tasks.js — daily birthday notification sweep).
+ * services/strapi's config/hr-cron-tasks.js — daily birthday notification sweep).
  * Both stay DORMANT unless RUTBA_CORE_CRONS=1 — at the tranche flip they
- * start here and must be simultaneously removed from pos-strapi's
+ * start here and must be simultaneously removed from services/strapi's
  * config/server.js merge (never run in both).
  */
 
@@ -45,7 +45,7 @@ function ctrl(apiName, strapi) {
 }
 
 // Sub-entities that only need the repeated "list/create/update/delete MY OWN
-// rows" shape (hr-self-owned-crud.js factory in pos-strapi) — one controller
+// rows" shape (hr-self-owned-crud.js factory in services/strapi) — one controller
 // instance + 4 routes each, no bespoke logic to hand-port per entity.
 const SELF_OWNED_ENTITIES = [
   'hr-emergency-contact', 'hr-bank-account', 'hr-family-member', 'hr-education',
@@ -96,7 +96,7 @@ function registerHrModule() {
     posRequire('api/return-request/content-types/return-request/lifecycles.js')
   );
 
-  // ── Crons (zero-copy from pos-strapi config) ────────────────────────────
+  // ── Crons (zero-copy from services/strapi config) ────────────────────────────
   const buildWorkflowCronTasks = posRequire('../config/workflow-cron-tasks.js');
   for (const [name, t] of Object.entries(buildWorkflowCronTasks())) {
     registerCron(name, t.options.rule, () => t.task({ strapi: global.strapi }));
@@ -107,7 +107,7 @@ function registerHrModule() {
   }
 
   // ── /me/permissions parity: HR team-role + ESS role providers ───────────
-  // pos-strapi registers these in bootstrap; me-permissions merges provider
+  // services/strapi registers these in bootstrap; me-permissions merges provider
   // roles per request.
   const { resolveHrRolesForUser } = posRequire('utils/hr-role-provider.js');
   strapi.apiPro.registerRoleProvider(resolveHrRolesForUser);

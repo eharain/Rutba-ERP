@@ -1,6 +1,6 @@
 // Customer-facing return-request surface for the storefront. Calls go
 // through the public-`webApi` client (X-Rutba-App: web baked in) per
-// project_api_provider_web_public_client. Routes hit the same controllers
+// project_api_provider_storefront_public_client. Routes hit the same controllers
 // as the staff surface but rely on the controller's ownership gate to
 // keep buyers from seeing each other's returns.
 

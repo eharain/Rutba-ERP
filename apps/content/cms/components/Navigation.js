@@ -1,4 +1,4 @@
-import Topbar from "@rutba/pos-shared/components/Topbar";
+import Topbar from "@rutba/shared/components/Topbar";
 
 const SECONDARY = [
     { href: "/products",       label: "Products",   icon: "fa-tag",          variant: "primary"   },

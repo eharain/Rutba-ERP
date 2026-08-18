@@ -6,7 +6,7 @@
 > Focuses on implementation detail: schemas, engine logic, integration code, edge cases.
 
 > **Status (2026-06): ✅ Built.** The engine ships in
-> `pos-strapi/src/api/acc-journal-entry/services/accounting.js`
+> `services/strapi/src/api/acc-journal-entry/services/accounting.js`
 > (`createAndPost` / `reverse` / `reverseBySource` / `findBySource` /
 > `findOpenPeriod` / `generateEntryNumber`), with `account-resolver.js`,
 > `tax-calculator.js`, and `reports.js` alongside it. Posting is wired into
@@ -2614,15 +2614,15 @@ function round2(n) { return Math.round(n * 100) / 100; }
 > (14, 15, 17–20) — most of which the top-of-file banner marks as aspirational
 > (reporting derives from `acc-journal-line`, so snapshot tables are not needed).
 > Verify any phase by grepping for the relevant service call site:
->   `grep -rE "createAndPost|api::acc-journal-entry" pos-strapi/src/api/<entity>/`
+>   `grep -rE "createAndPost|api::acc-journal-entry" services/strapi/src/api/<entity>/`
 
 | Phase | Scope | Priority | Status |
 |-------|-------|----------|--------|
-| **1** | Enhanced `acc-account` schema + seed CoA + `acc-account-mapping` | 🔴 Critical | ✓ schemas in `pos-strapi/src/api/acc-account/`, `acc-account-mapping/` |
+| **1** | Enhanced `acc-account` schema + seed CoA + `acc-account-mapping` | 🔴 Critical | ✓ schemas in `services/strapi/src/api/acc-account/`, `acc-account-mapping/` |
 | **2** | `acc-journal-line` entity + redesigned `acc-journal-entry` header | 🔴 Critical | ✓ both content types present |
-| **3** | Accounting service (`createAndPost`, `reverse`, `findOpenPeriod`) | 🔴 Critical | ✓ `pos-strapi/src/api/acc-journal-entry/services/accounting.js` exports all of these plus `generateEntryNumber` and `reverseBySource` |
+| **3** | Accounting service (`createAndPost`, `reverse`, `findOpenPeriod`) | 🔴 Critical | ✓ `services/strapi/src/api/acc-journal-entry/services/accounting.js` exports all of these plus `generateEntryNumber` and `reverseBySource` |
 | **4** | `acc-fiscal-period` entity + period validation | 🔴 Critical | ✓ content type present; `findOpenPeriod` consulted from the engine |
-| **5** | POS Sale integration (checkout.js hook) | 🔴 Critical | ✓ `pos-strapi/src/api/sale/controllers/checkout.js` + `cancel.js` call `createAndPost` / reversal |
+| **5** | POS Sale integration (checkout.js hook) | 🔴 Critical | ✓ `services/strapi/src/api/sale/controllers/checkout.js` + `cancel.js` call `createAndPost` / reversal |
 | **6** | Sale Return integration (lifecycle hook) | 🔴 Critical | ✓ `sale-return/content-types/sale-return/lifecycles.js` posts `source_type: 'Sale Return'` (idempotent via `findBySource`) |
 | **7** | Cash Register open/close integration | 🟡 High | ✓ `cash-register/controllers/cash-register.js` posts `Cash Register Open` / `Cash Register Close` incl. short/over variance |
 | **8** | Purchase Receipt integration | 🟡 High | ✓ via `purchase/controllers/purchase.js` `generateBill` → `acc-bill` (AP posts on Draft→Received) |

@@ -16,7 +16,7 @@ breaks, and report honestly when it does.
 - `POST /contact-tickets/:id/sla-breach` — a client tells the server it breached. If no client
   calls it, nothing happens.
 - A **real, generic sweep already exists**: `workflowSlaSweep`
-  (`pos-strapi/config/workflow-cron-tasks.js`, every 15 minutes) calls
+  (`services/strapi/config/workflow-cron-tasks.js`, every 15 minutes) calls
   `workflow.sweepOverdueStages()`, which scans active SLA-configured workflows and fires a
   deduped `workflow.sla_breach` event per overdue entity. **Flags only — never auto-transitions.**
   It is a no-op until a workflow sets `sla_hours` on a transition.

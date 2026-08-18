@@ -9,7 +9,7 @@
  *
  *   .next/standalone/
  *   ├── node_modules/              ← shared runtime deps (next, react, …)
- *   └── <workspace>/               ← e.g. "rutba-web"
+ *   └── <workspace>/               ← e.g. "apps/content/storefront"
  *       ├── server.js
  *       └── .next/                 ← server chunks & manifests
  *
@@ -22,7 +22,7 @@
  *   4. Copies public/               → standalone/public/
  *   5. Removes the now-empty <workspace>/ directory
  *
- * Usage (from the workspace root, e.g. rutba-web/):
+ * Usage (from the workspace root, e.g. apps/content/storefront/):
  *   node ../scripts/js/flatten-standalone.js
  *
  * The script auto-detects the workspace name from package.json.
@@ -34,7 +34,7 @@
 const fs = require('fs');
 const path = require('path');
 
-// The working directory is the workspace root (e.g. rutba-web/)
+// The working directory is the workspace root (e.g. apps/content/storefront/)
 const WS_ROOT = process.cwd();
 const STANDALONE = path.join(WS_ROOT, '.next', 'standalone');
 

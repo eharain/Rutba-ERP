@@ -20,7 +20,7 @@ const REPO = path.resolve(PKG, '..', '..');
 const BASELINE_REF = process.env.AB_BASELINE_REF || '90e15fa';
 
 const baselinePath = path.join(HARNESS, 'baseline.js');
-const src = execSync(`git show ${BASELINE_REF}:packages/video-maker/index.js`, { cwd: REPO, maxBuffer: 16e6 });
+const src = execSync(`git show ${BASELINE_REF}:packages/video/index.js`, { cwd: REPO, maxBuffer: 16e6 });
 fs.writeFileSync(baselinePath, src);
 console.log(`baseline.js <- ${BASELINE_REF} (${src.length} bytes)`);
 

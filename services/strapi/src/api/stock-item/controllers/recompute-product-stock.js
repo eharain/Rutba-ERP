@@ -20,7 +20,7 @@ const { requireAppRole } = require('../../../utils/require-admin');
 module.exports = {
   async run(ctx) {
     // Scoped to the three domains whose UIs actually expose this button —
-    // rutba-inventory/maintenance, pos-stock/products and rutba-cms/products,
+    // apps/inventory/control/maintenance, apps/inventory/stock/products and apps/content/cms/products,
     // matching StockItemsEndpoints.recomputeProductStock's declared
     // apps: ['inventory','stock','cms']. The broad "any *_admin" match this
     // replaced also handed the job to hr_admin, social_admin and friends.

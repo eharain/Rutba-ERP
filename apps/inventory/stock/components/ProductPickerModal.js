@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, Fragment } from "react";
 import { fetchProducts, ProductsEndpoints, BrandsEndpoints, CategoriesEndpoints, SuppliersEndpoints, TermTypesEndpoints, PurchasesEndpoints } from "@rutba/api-provider/endpoints";
-import SearchableSelect from "@rutba/pos-shared/components/SearchableSelect";
+import SearchableSelect from "@rutba/shared/components/SearchableSelect";
 
 export default function ProductPickerModal({ show, onClose, onSelect, title }) {
     const [results, setResults] = useState([]);

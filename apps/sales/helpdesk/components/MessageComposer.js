@@ -29,7 +29,7 @@ const SHELL = {
 
 /** Draft keys are per user as well as per ticket — a shared desk machine must not leak drafts. */
 function draftKey(documentId, userId) {
-    return `rutba-helpdesk:draft:${userId || "anon"}:${documentId}`;
+    return `apps/sales/helpdesk:draft:${userId || "anon"}:${documentId}`;
 }
 
 function apiError(err) {

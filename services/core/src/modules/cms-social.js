@@ -7,7 +7,7 @@
  * provider adapters, webhooks, crons).
  *
  * Zero-copy, same model as tranches 1–4: controllers/services are require()d
- * from pos-strapi source and run against the compat strapi. This is the
+ * from services/strapi source and run against the compat strapi. This is the
  * draft/publish tranche — every CT here except social-account/social-reply is
  * D&P, and the publish/unpublish/discard-draft triads run through the shim's
  * graph-clone publish machinery (discardDraft added for this tranche).
@@ -31,10 +31,10 @@
  * core fires lifecycles only on documents() create/update/delete. Both hooks
  * are idempotent (ensure-if-missing / clear-others), so drift is benign.
  *
- * Crons: the three social tasks are read from pos-strapi's own
+ * Crons: the three social tasks are read from services/strapi's own
  * config/cron-tasks.js (zero-copy) with the same env-tunable rules as
- * pos-strapi's config/server.js. DORMANT unless RUTBA_CORE_CRONS=1 — at the
- * tranche flip remove buildSocialCronTasks from pos-strapi config/server.js
+ * services/strapi's config/server.js. DORMANT unless RUTBA_CORE_CRONS=1 — at the
+ * tranche flip remove buildSocialCronTasks from services/strapi config/server.js
  * in the SAME deploy (never dual-run: double cron = double provider publishes).
  */
 
@@ -68,7 +68,7 @@ function registerCmsSocialModule() {
     posRequire('api/site-setting/content-types/site-setting/lifecycles.js')
   );
 
-  // ── Crons (zero-copy from pos-strapi config, same env-tunable rules) ────
+  // ── Crons (zero-copy from services/strapi config, same env-tunable rules) ────
   const buildSocialCronTasks = posRequire('../config/cron-tasks.js');
   const socialTasks = buildSocialCronTasks({
     publishRule: envGet('SOCIAL_CRON_PUBLISH_RULE', '* * * * *'),

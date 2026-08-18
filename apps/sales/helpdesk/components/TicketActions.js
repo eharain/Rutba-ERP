@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { HelpdeskTicketsEndpoints, HelpdeskConfigEndpoints } from "@rutba/api-provider/endpoints";
-import { useEnumValues } from "@rutba/pos-shared/lib/use-enum-values";
+import { useEnumValues } from "@rutba/shared/lib/use-enum-values";
 
 function apiError(err) {
     const res = err && err.response;

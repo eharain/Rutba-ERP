@@ -14,7 +14,7 @@ ERP creates mailboxes and aliases instead of an admin clicking the mailcow UI.
 > `mail-account.provisionAccount()`:
 > - **rutba-users**: user page / Mailboxes → `POST /user-admin/users/:id/mailbox`
 >   (assign an address to a user; target user becomes owner).
-> - **rutba-mail** Settings → Provision (mail_admin): `POST
+> - **apps/content/mail** Settings → Provision (mail_admin): `POST
 >   /mail-accounts/provision`, now registry-aware (server + domain selects,
 >   `access_roles` for shared; caller becomes owner).
 > The registry also powers **BYO prefill**: `GET
@@ -24,9 +24,9 @@ ERP creates mailboxes and aliases instead of an admin clicking the mailcow UI.
 > for the whole estate live in rutba-users (`access-map` + `setAccess`;
 > access_roles keys are validated against active app-roles on EVERY write
 > path, including BYO create/update). Core parity: these email-config routes
-> are registered in `rutba-core/src/modules/user-mgmt.js`.
+> are registered in `services/core/src/modules/user-mgmt.js`.
 
-## Client — `pos-strapi/src/utils/mailcow-client.js`
+## Client — `services/strapi/src/utils/mailcow-client.js`
 
 mta-client-shaped: base URL + `X-API-Key`, every call AbortController-bounded,
 errors thrown as `MailcowError {status, code}`. Every op takes an optional

@@ -14,14 +14,14 @@
  * Usage:
  *   node scripts/generate-app-env.js                      # all apps, auto-detect env
  *   node scripts/generate-app-env.js production            # all apps, explicit env
- *   node scripts/generate-app-env.js production pos-auth   # single app, explicit env
- *   node scripts/generate-app-env.js -- pos-auth           # single app, auto-detect env
+ *   node scripts/generate-app-env.js production apps/admin/auth   # single app, explicit env
+ *   node scripts/generate-app-env.js -- apps/admin/auth           # single app, auto-detect env
  *
  * Output:
- *   .env.<environment>.pos-auth
- *   .env.<environment>.pos-stock
- *   .env.<environment>.pos-strapi
- *   .env.<environment>.rutba-web
+ *   .env.<environment>.apps/admin/auth
+ *   .env.<environment>.apps/inventory/stock
+ *   .env.<environment>.services/strapi
+ *   .env.<environment>.apps/content/storefront
  *   … (one file per app)
  */
 

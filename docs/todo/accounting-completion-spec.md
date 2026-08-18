@@ -3,9 +3,9 @@
 > **Status (2026-08): roadmap 0.4 closed.** A re-audit of every `acc-*` call
 > site found that §4.1–§4.3 were genuinely done, but five gaps this table had
 > not recorded. All are now fixed and covered by
-> `pos-strapi/scripts/smoke-accounting-gl.js` +
-> `rutba-core/scripts/smoke-accounting-gl.js` (both run against the dev DB;
-> pos-strapi's also drives HTTP when a server is listening):
+> `services/strapi/scripts/smoke-accounting-gl.js` +
+> `services/core/scripts/smoke-accounting-gl.js` (both run against the dev DB;
+> services/strapi's also drives HTTP when a server is listening):
 >
 > | Was broken | Now |
 > |---|---|
@@ -22,7 +22,7 @@
 
 > **Status (2026-06): ✅ Largely built.** The posting wiring (§4.1–§4.4),
 > ledger additions (§3), and reporting layer (§5) all shipped, and the
-> `rutba-accounts` frontend (§6) covers dashboard, chart-of-accounts,
+> `apps/finance/accounts` frontend (§6) covers dashboard, chart-of-accounts,
 > journal-entries, invoices, expenses, and reports. The §1.2 gap table and the
 > §6 page list below are updated inline; this spec is retained for design
 > rationale. **Still open:** the Bills, Banking & Registers, and Tax & Periods
@@ -39,7 +39,7 @@
 > (design) and [`docs/todo/accounting-engine-implementation.md`](./accounting-engine-implementation.md)
 > (detail). This document does **not** repeat them — it reconciles them with the
 > *actual* build state and specifies the unfinished work: posting wiring,
-> reporting layer, and the `rutba-accounts` frontend.
+> reporting layer, and the `apps/finance/accounts` frontend.
 > **Sibling:** [`payroll-module-implementation.md`](./payroll-module-implementation.md)
 > — payroll posts into this ledger; see its "Accounting Bridge" section.
 
@@ -78,7 +78,7 @@ wired. Build to the **actual** state below, not the doc's aspirational COA.
 | **Purchase → bill is manual** | No auto-generation of `acc-bill` when a `purchase` is received; payables depend on someone hand-keying a bill. | ✅ **DONE** — `purchase/controllers/purchase.js` `generateBill` creates an `acc-bill` from the received purchase and sets it Received so the existing lifecycle posts AP. |
 | **POS sale-return does not post** | Refunds/exchanges don't reverse revenue/COGS. (Architecture doc §10.2–10.3 designed it; not wired.) | ✅ **DONE** — `sale-return/content-types/sale-return/lifecycles.js` posts `source_type: 'Sale Return'` (idempotent via `findBySource`). |
 | **No reporting endpoints** | Trial balance, P&L, balance sheet, cash flow, AR/AP aging — none exist as APIs. | ✅ **DONE** — `acc-journal-entry/services/reports.js` + `routes/acc-journal-entry.js` expose `reports/{trial-balance,income-statement,balance-sheet,cash-flow,ar-aging,ap-aging}`. |
-| **No frontend** | `rutba-accounts` (:4007) is an empty skeleton. | ⏳ **Mostly built** — dashboard, chart-of-accounts, journal-entries, invoices, expenses, reports shipped (§6). Open: Bills, Banking & Registers, Tax & Periods. |
+| **No frontend** | `apps/finance/accounts` (:4007) is an empty skeleton. | ⏳ **Mostly built** — dashboard, chart-of-accounts, journal-entries, invoices, expenses, reports shipped (§6). Open: Bills, Banking & Registers, Tax & Periods. |
 
 ### 1.3 Discrepancies to be aware of (build differs from the docs)
 
@@ -334,17 +334,17 @@ Suggested endpoints (descriptor methods named with whitelisted verbs):
 
 ---
 
-## 6. Frontend — `rutba-accounts` (:4007)
+## 6. Frontend — `apps/finance/accounts` (:4007)
 
 Two-app topology (privilege wall around payroll): this app holds **accounting
-only**; payroll lives in `rutba-payroll`. The shared surface between them is the
+only**; payroll lives in `apps/finance/payroll`. The shared surface between them is the
 ledger — an accountant *sees* payroll's journal entries here (drill-down) but
 cannot open the payroll app.
 
 Reuse the standard app shell + `RoleSwitcher` convention. Build money/account/
-period components once (shared location) since `rutba-payroll` needs the same.
+period components once (shared location) since `apps/finance/payroll` needs the same.
 
-> **Status (2026-06):** ✅ pages exist in `rutba-accounts/pages/`; ⏳ pages are
+> **Status (2026-06):** ✅ pages exist in `apps/finance/accounts/pages/`; ⏳ pages are
 > the remaining frontend work.
 
 | Page | Purpose | State |
@@ -372,7 +372,7 @@ SaleInvoicePrint).
    single biggest revenue gap.
 2. **Sale-return + cash-register posting** (§4.2, §4.3) — closes the cash loop.
 3. **Reporting layer** (§5) — makes the ledger legible.
-4. **`rutba-accounts` frontend** (§6) — ship the module.
+4. **`apps/finance/accounts` frontend** (§6) — ship the module.
 5. **Purchase→bill** (§4.4) — payables automation.
 
 Payroll posting into this ledger is specified separately in

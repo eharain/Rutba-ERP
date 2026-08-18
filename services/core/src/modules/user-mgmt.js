@@ -5,7 +5,7 @@
  * registry, mail-account access mapping, notification preferences.
  *
  * Same zero-copy porting model as crm/hr — controllers are require()d from
- * pos-strapi source and run against the compat strapi. Without this module,
+ * services/strapi source and run against the compat strapi. Without this module,
  * core served these CTs through the GENERIC seeded-route handlers, which is
  * actively wrong here:
  *  - mail-server: the generic create path silently drops the plaintext
@@ -51,7 +51,7 @@ function registerUserMgmtModule() {
 
     // ── mail-account access mapping (rutba-users estate views) ────────────
     { method: 'get', path: '/api/mail-accounts/access-map', uid: ACC, action: 'listAccess', handler: (c) => mailAccount.listAccess(c) },
-    // Email-configuration seam shared with rutba-mail: registry-fed connect
+    // Email-configuration seam shared with apps/content/mail: registry-fed connect
     // defaults + provision (explicit serverId → domain-matched registry →
     // MAILCOW_* env, delegating to mail-account.provisionAccount).
     { method: 'get', path: '/api/mail-accounts/server-defaults', uid: ACC, action: 'getServerDefaults', handler: (c) => mailAccount.getServerDefaults(c) },

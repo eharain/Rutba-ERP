@@ -10,13 +10,13 @@
  * send an Origin header, which is why the smokes and contract-diff — all of
  * them node-side — stayed green while login was broken in a real browser.
  *
- * Parity with pos-strapi (config/middlewares.js → strapi::cors):
- *   - the same @koa/cors that @strapi/core wraps, loaded out of pos-strapi
+ * Parity with services/strapi (config/middlewares.js → strapi::cors):
+ *   - the same @koa/cors that @strapi/core wraps, loaded out of services/strapi
  *   - matchOrigin ported verbatim from @strapi/core/dist/middlewares/cors.js
  *   - the same allowlist, header list, methods, credentials and max-age
  *
- * Origin allowlist: pos-strapi receives CORS_ORIGINS ready-made because
- * scripts/js/load-env.js computes it and spawns the process with it. rutba-core
+ * Origin allowlist: services/strapi receives CORS_ORIGINS ready-made because
+ * scripts/js/load-env.js computes it and spawns the process with it. services/core
  * starts directly, so it computes the same list the same way — every URL-valued
  * variable in the active .env file, minus its own origin, with localhost and
  * 127.0.0.1 treated as interchangeable. An explicit CORS_ORIGINS (docker, prod)
@@ -26,10 +26,10 @@
 const path = require('path');
 const { loadVars, get } = require('../config/env');
 
-const POS_ROOT = path.join(__dirname, '..', '..', '..', 'pos-strapi');
+const POS_ROOT = path.join(__dirname, '..', '..', '..', '..', 'services/strapi');
 const koaCors = require(path.join(POS_ROOT, 'node_modules', '@koa', 'cors'));
 
-// Same list pos-strapi allows. The apps send X-Rutba-App and X-Rutba-App-Role
+// Same list services/strapi allows. The apps send X-Rutba-App and X-Rutba-App-Role
 // on every request; a header missing here fails the preflight, not the request,
 // so the symptom is an opaque CORS error rather than a 4xx.
 const ALLOWED_HEADERS = [

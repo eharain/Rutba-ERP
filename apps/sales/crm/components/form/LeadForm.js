@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { CustomersEndpoints, CrmLeadsEndpoints, CrmContactsEndpoints } from '@rutba/api-provider/endpoints';
-import EnumSelect from '@rutba/pos-shared/components/EnumSelect';
+import EnumSelect from '@rutba/shared/components/EnumSelect';
 import ContactPicker from './ContactPicker';
 
 export default function LeadForm({ lead, contact: presetContact, onSaved, onCancel }) {

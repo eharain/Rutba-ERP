@@ -1,7 +1,7 @@
 /**
  * The shared renderer, wired to this app's media transport.
  *
- * The renderer itself lives in @rutba/video-maker so the Rutba Social Poster
+ * The renderer itself lives in @rutba/video so the Rutba Social Poster
  * can run the exact same code — see that package's README. It is imported by
  * path rather than by package name: these packages are private and never
  * published, and a bare specifier would need a workspace symlink that only
@@ -11,9 +11,9 @@
  * thing: media has to travel through /api/media-proxy, because a canvas that
  * has drawn a cross-origin image is tainted and cannot be recorded at all.
  */
-import { configureMediaFetch } from "../../packages/video-maker/index.js";
+import { configureMediaFetch } from "../../../../packages/video/index.js";
 
-export * from "../../packages/video-maker/index.js";
+export * from "../../../../packages/video/index.js";
 
 // The proxy refuses hosts it has not been told serve our media. Music tracks
 // are the exception — a library of FOREIGN urls is the point of the feature —

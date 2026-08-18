@@ -1,4 +1,4 @@
-import SharedSidebar from "@rutba/pos-shared/components/Sidebar";
+import SharedSidebar from "@rutba/shared/components/Sidebar";
 
 // Feature sections land here as the Inventory epics ship (warehouses, stock by
 // location, transfers, adjustments, counts, reordering). For now the app has a
@@ -21,5 +21,5 @@ const SECTIONS = [
 ];
 
 export default function Sidebar() {
-    return <SharedSidebar sections={SECTIONS} storageKey="rutba-inventory-sidebar-pinned" />;
+    return <SharedSidebar sections={SECTIONS} storageKey="apps/inventory/control-sidebar-pinned" />;
 }

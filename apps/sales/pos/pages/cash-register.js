@@ -2,10 +2,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import Layout from "../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { useUtil } from "@rutba/pos-shared/context/UtilContext";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { isAppAdmin } from "@rutba/pos-shared/lib/roles";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import { useUtil } from "@rutba/shared/context/UtilContext";
+import { useAuth } from "@rutba/shared/context/AuthContext";
+import { isAppAdmin } from "@rutba/shared/lib/roles";
 import { CashRegistersEndpoints, PaymentsEndpoints, CashRegisterTransactionEndpoints, AppContextEndpoints } from "@rutba/api-provider/endpoints/index.js";
 
 const EXPIRY_HOURS = 20;

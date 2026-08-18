@@ -3,12 +3,12 @@ import React, { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import Layout from "../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
 import { BranchesEndpoints, StockHelpersEndpoints, StockItemsEndpoints } from "@rutba/api-provider/endpoints/index.js";
-import { useUtil } from "@rutba/pos-shared/context/UtilContext";
+import { useUtil } from "@rutba/shared/context/UtilContext";
 import { loadProduct, searchStockItems } from "@rutba/api-provider/pos";
-import ListPageLayout from "@rutba/pos-shared/components/ListPageLayout";
-import ListPagination from "@rutba/pos-shared/components/ListPagination";
+import ListPageLayout from "@rutba/shared/components/ListPageLayout";
+import ListPagination from "@rutba/shared/components/ListPagination";
 
 export default function StockItemsPage() {
     const router = useRouter();

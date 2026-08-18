@@ -48,7 +48,7 @@ module.exports = createCoreService('api::sale-order.sale-order', ({ strapi }) =>
    * sale-offer resolver whether the supplied `source_group_id` still grants
    * a discount.
    *
-   * Staff entering an order by hand (rutba-order-management) have no group
+   * Staff entering an order by hand (apps/sales/orders) have no group
    * click-context, so a line may instead nominate its discount explicitly:
    *
    *   discount_source: 'offer'                → sale_offer: <offer documentId>.

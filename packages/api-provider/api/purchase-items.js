@@ -8,7 +8,7 @@ export const PurchaseItemsEndpoints = {
 
     meta: {
         uid: 'api::purchase-item.purchase-item',
-        domains: ['stock', 'inventory'],
+        domains: ['stock', 'control'],
         roles: ['admin', 'manager', 'staff']
     },
 
@@ -24,7 +24,7 @@ export const PurchaseItemsEndpoints = {
         path: '/purchase-items',
         action: 'find',
         method: 'get',
-        apps: ['stock', 'inventory'],
+        apps: ['stock', 'control'],
         approle: ['admin', 'manager', 'staff'],
         params: listParams(
             { page, pageSize, sort, populate, filters, fields },
@@ -40,7 +40,7 @@ export const PurchaseItemsEndpoints = {
         path: '/purchase-items',
         action: 'create',
         method: 'post',
-        apps: ['stock', 'inventory'],
+        apps: ['stock', 'control'],
         approle: ['admin', 'manager', 'staff'],
         data,
     }),
@@ -65,7 +65,7 @@ export const PurchaseItemsEndpoints = {
         path: `/purchase-items/${documentId}`,
         action: 'update',
         method: 'put',
-        apps: ['stock', 'inventory'],
+        apps: ['stock', 'control'],
         approle: ['admin', 'manager'],
         data,
     }),
@@ -73,7 +73,7 @@ export const PurchaseItemsEndpoints = {
     /**
      * Delete a purchase item by documentId.
      *
-     * todo: speculative stub — added because pos-stock/pages/[documentId]/purchase.js
+     * todo: speculative stub — added because apps/inventory/stock/pages/[documentId]/purchase.js
      * needs to remove items from an open purchase. Confirm the Strapi controller
      * actually accepts DELETE on this route (the content type's policies may block
      * mid-flow deletion). If blocked, switch to a soft-delete or disconnect pattern.
@@ -82,7 +82,7 @@ export const PurchaseItemsEndpoints = {
         path: `/purchase-items/${documentId}`,
         action: 'delete',
         method: 'delete',
-        apps: ['stock', 'inventory'],
+        apps: ['stock', 'control'],
         approle: ['admin', 'manager'],
     }),
 

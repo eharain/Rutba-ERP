@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * The rutba-users → rutba-admin cutover: every holder of a `users_*` OR
+ * The rutba-users → apps/admin/console cutover: every holder of a `users_*` OR
  * `auth_*` app-role additively gets the matching `admin_*` role.
  *
  * ── Why `auth_*` too, and not just `users_*` ──────────────────────────────
@@ -22,7 +22,7 @@
  *
  * ── Why this has to exist ─────────────────────────────────────────────────
  * A user's access is stored as `up_users_app_roles_lnk` rows pointing at role
- * keys. rutba-admin replaced rutba-users and claims `X-Rutba-App: admin`, and
+ * keys. apps/admin/console replaced rutba-users and claims `X-Rutba-App: admin`, and
  * api-pro resolves that claim by checking the caller holds a role whose domain
  * is `admin` — which nobody did before this ran. Without the backfill, deleting
  * rutba-users locks every administrator out of the admin console, with no UI
@@ -43,7 +43,7 @@
  * `Auto-seeded role '<key>' (level=…, domain=…)` description,
  * admin_role_code = key) so the next real seed upserts over them instead of
  * duplicating. Same trick, same reason, as
- * rutba-core/scripts/grant-full-access.js `syncDeclaredRoles`.
+ * services/core/scripts/grant-full-access.js `syncDeclaredRoles`.
  *
  * Which levels map to which is read from @rutba/api-provider rather than
  * hardcoded: the pairing rule is "same level, source domain → admin domain",
@@ -240,7 +240,7 @@ async function applyAdminDomainGrants(knex) {
 
     // ── 3. the grants themselves ───────────────────────────────────────────
     // Two source domains map onto the SAME target role (users_admin and
-    // auth_admin both → admin_admin), so `already` is re-read from the table
+    // auth_admin both → console_admin), so `already` is re-read from the table
     // inside the loop rather than cached up front: the second pair has to see
     // what the first one just inserted, or a user holding both would get a
     // duplicate link row.

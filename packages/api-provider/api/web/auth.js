@@ -1,5 +1,5 @@
 export const WebAuthEndpoints = {
-  meta: { domains: ['web'] },
+  meta: { domains: ['storefront'] },
 
   localSignIn: (data) => ({ path: '/auth/local', method: 'post', data }),
   localRegister: (data) => ({ path: '/auth/local/register', method: 'post', data }),
@@ -15,6 +15,6 @@ export const WebAuthEndpoints = {
   resetPassword: (data) => ({ path: '/auth/reset-password', method: 'post', data }),
   // Re-send the account-verification email for an as-yet unconfirmed address.
   // Body: { email }. Requires email_confirmation enabled + the public role
-  // granted `auth.sendEmailConfirmation` (see pos-strapi bootstrap).
+  // granted `auth.sendEmailConfirmation` (see services/strapi bootstrap).
   sendEmailConfirmation: (data) => ({ path: '/auth/send-email-confirmation', method: 'post', data }),
 };

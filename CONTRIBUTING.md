@@ -7,12 +7,12 @@ Thank you for your interest in contributing to Rutba ERP! We welcome contributio
 Rutba ERP is an **npm workspaces monorepo** containing multiple Next.js 16 apps and a Strapi 5 backend. Before contributing, please review the [root README](README.md) for the full workspace layout and port assignments.
 
 Key directories:
-- `packages/pos-shared/` — shared library (components, context, utilities)
-- `pos-auth/`, `pos-stock/`, `pos-sale/` — core POS apps
-- `rutba-web/` — customer-facing storefront (TypeScript, Tailwind CSS)
-- `rutba-crm/`, `rutba-hr/`, `rutba-ess/`, `rutba-accounts/`, `rutba-payroll/`, `rutba-manufacturing/`, `rutba-inventory/` — business management apps
-- `rutba-order-management/`, `rutba-rider/`, `rutba-cms/`, `rutba-social/`, `rutba-web-user/`, `rutba-marketplace/` — operations, content & channel apps
-- `pos-strapi/` — Strapi 5 API backend
+- `packages/shared/` — shared library (components, context, utilities)
+- `apps/admin/auth/`, `apps/inventory/stock/`, `apps/sales/pos/` — core POS apps
+- `apps/content/storefront/` — customer-facing storefront (TypeScript, Tailwind CSS)
+- `apps/sales/crm/`, `apps/people/hr/`, `apps/people/ess/`, `apps/finance/accounts/`, `apps/finance/payroll/`, `apps/inventory/manufacturing/`, `apps/inventory/control/` — business management apps
+- `apps/sales/orders/`, `apps/sales/rider/`, `apps/content/cms/`, `apps/content/social/`, `apps/sales/portal/`, `apps/sales/marketplace/` — operations, content & channel apps
+- `services/strapi/` — Strapi 5 API backend
 
 ## How to Contribute
 

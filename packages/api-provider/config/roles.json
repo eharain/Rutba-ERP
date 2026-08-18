@@ -11,17 +11,17 @@
     "level": "staff",
     "domain": "accounts"
   },
-  "admin_admin": {
+  "console_admin": {
     "level": "admin",
-    "domain": "admin"
+    "domain": "console"
   },
-  "admin_manager": {
+  "console_manager": {
     "level": "manager",
-    "domain": "admin"
+    "domain": "console"
   },
-  "admin_staff": {
+  "console_staff": {
     "level": "staff",
-    "domain": "admin"
+    "domain": "console"
   },
   "ap_admin": {
     "level": "admin",
@@ -151,17 +151,17 @@
     "level": "staff",
     "domain": "hr"
   },
-  "inventory_admin": {
+  "control_admin": {
     "level": "admin",
-    "domain": "inventory"
+    "domain": "control"
   },
-  "inventory_manager": {
+  "control_manager": {
     "level": "manager",
-    "domain": "inventory"
+    "domain": "control"
   },
-  "inventory_staff": {
+  "control_staff": {
     "level": "staff",
-    "domain": "inventory"
+    "domain": "control"
   },
   "mail_admin": {
     "level": "admin",
@@ -199,17 +199,17 @@
     "level": "staff",
     "domain": "marketplace"
   },
-  "order_admin": {
+  "orders_admin": {
     "level": "admin",
-    "domain": "order-management"
+    "domain": "orders"
   },
-  "order_manager": {
+  "orders_manager": {
     "level": "manager",
-    "domain": "order-management"
+    "domain": "orders"
   },
-  "order_staff": {
+  "orders_staff": {
     "level": "staff",
-    "domain": "order-management"
+    "domain": "orders"
   },
   "payroll_admin": {
     "level": "admin",
@@ -235,17 +235,17 @@
     "level": "staff",
     "domain": "rider"
   },
-  "sale_admin": {
+  "pos_admin": {
     "level": "admin",
-    "domain": "sale"
+    "domain": "pos"
   },
-  "sale_manager": {
+  "pos_manager": {
     "level": "manager",
-    "domain": "sale"
+    "domain": "pos"
   },
-  "sale_staff": {
+  "pos_staff": {
     "level": "staff",
-    "domain": "sale"
+    "domain": "pos"
   },
   "seed_admin": {
     "level": "admin",
@@ -283,36 +283,24 @@
     "level": "staff",
     "domain": "stock"
   },
-  "users_admin": {
-    "level": "admin",
-    "domain": "users"
-  },
-  "users_manager": {
-    "level": "manager",
-    "domain": "users"
-  },
-  "users_staff": {
-    "level": "staff",
-    "domain": "users"
-  },
-  "web_public": {
+  "storefront_public": {
     "level": "public",
-    "domain": "web"
+    "domain": "storefront"
   },
-  "web_user": {
+  "storefront_user": {
     "level": "user",
-    "domain": "web"
+    "domain": "storefront"
   },
-  "webuser_admin": {
+  "portal_admin": {
     "level": "admin",
-    "domain": "web-user"
+    "domain": "portal"
   },
-  "webuser_manager": {
+  "portal_manager": {
     "level": "manager",
-    "domain": "web-user"
+    "domain": "portal"
   },
-  "webuser_staff": {
+  "portal_staff": {
     "level": "staff",
-    "domain": "web-user"
+    "domain": "portal"
   }
 }

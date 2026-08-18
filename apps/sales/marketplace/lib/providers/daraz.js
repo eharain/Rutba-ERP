@@ -2,7 +2,7 @@
 
 // Daraz provider adapter (Daraz Open Platform — the Lazada engine), app-side.
 //
-// Ported from pos-strapi/src/marketplace-providers/daraz.js. Same signing +
+// Ported from services/strapi/src/marketplace-providers/daraz.js. Same signing +
 // REST surface; the `strapi` handle is gone (config from env via base, logging
 // via console). Methods take `{ account, ... }`.
 
@@ -382,7 +382,7 @@ module.exports = {
     setupSteps: [
       'Register an app on the Daraz Open Platform under the category above and wait for it to move from Inactive to approved.',
       'Whitelist the callback URL shown below in the app dashboard — it must match exactly, including scheme and any port.',
-      'Put the App Key and App Secret in the server env (RUTBA_MARKETPLACE__DARAZ_APP_KEY / _APP_SECRET), or enter them on this form for a per-account override.',
+      'Put the App Key and App Secret in the server env (MARKETPLACE__DARAZ_APP_KEY / _APP_SECRET), or enter them on this form for a per-account override.',
       'Set the account Region to the Daraz country site the seller account belongs to — it selects the regional API host.',
       'Save the account, then click Connect to authorize. The seller approves in the popup and the tokens are stored on the account.',
     ],
@@ -390,7 +390,7 @@ module.exports = {
     troubleshooting: [
       {
         symptom: 'Connect fails, or the token exchange 404s / returns a non-zero code that looks like bad credentials.',
-        fix: 'Daraz serves the auth gateway on a host of its own. Set RUTBA_MARKETPLACE__DARAZ_TOKEN_HOST to the host in their current docs; it defaults to the regional business host, so no other call changes.',
+        fix: 'Daraz serves the auth gateway on a host of its own. Set MARKETPLACE__DARAZ_TOKEN_HOST to the host in their current docs; it defaults to the regional business host, so no other call changes.',
       },
       {
         symptom: 'Orders arrive but line items show as "SKU …" with no product linked.',

@@ -4,7 +4,7 @@
 > wiring on both sale surfaces are complete and load-only verified.
 > Commits: `c4360c8` (model), `a3e51e1` (allocation), `1bf549b` (release),
 > `0f899d1` (order-management sale wiring), `569b26e` (intake UI), `ac99d9d`
-> (product toggle + order-fulfilment sell UI), `cfb60ed` (pos-sale checkout).
+> (product toggle + order-fulfilment sell UI), `cfb60ed` (apps/sales/pos checkout).
 
 ## The problem
 
@@ -63,9 +63,9 @@ When `units_sold` reaches `sellable_units` the item **depletes** and flips
 
 Two shapes carry the sold portion, one per sale surface:
 
-- **Order line** (`order.order-product-item` component, used by `rutba-order-management`):
+- **Order line** (`order.order-product-item` component, used by `apps/sales/orders`):
   `sellable_qty` (decimal) + `allocations` (json).
-- **Sale item** (`api::sale-item.sale-item`, used by `pos-sale`):
+- **Sale item** (`api::sale-item.sale-item`, used by `apps/sales/pos`):
   `sellable_qty` (decimal) + `allocations` (json). `quantity` stays an integer
   (kept at 1 — one line); the real fractional portion lives in `sellable_qty`.
 
@@ -134,8 +134,8 @@ stock-item lifecycle on any `units_sold` / `status` / `product` / `archived` cha
 
 | Method / path | Handler | Used by |
 |---|---|---|
-| `POST /sale-orders\|orders/:documentId/attach-divisible` | `sale-order.attachDivisible` → `attachDivisibleToLine` | rutba-order-management (order fulfilment) |
-| `POST /stock-items/sell-units` | `sell-units.run` → `stock-item.sellDivisibleUnits` | pos-sale (immediate checkout) |
+| `POST /sale-orders\|orders/:documentId/attach-divisible` | `sale-order.attachDivisible` → `attachDivisibleToLine` | apps/sales/orders (order fulfilment) |
+| `POST /stock-items/sell-units` | `sell-units.run` → `stock-item.sellDivisibleUnits` | apps/sales/pos (immediate checkout) |
 
 Both are `auth:false` routes with manual auth (mirroring the other custom
 stock-item endpoints) and funnel into the same engine. Descriptors:
@@ -150,13 +150,13 @@ hold. The mirror is release:
 - **Order management**: the sale-order state machine calls
   `releaseDivisibleForOrder` on **CANCELLED / RETURNED**, reading each line's
   stored `allocations` json.
-- **pos-sale**: allocation happens **only when the sale is paid** (drafts reserve
+- **apps/sales/pos**: allocation happens **only when the sale is paid** (drafts reserve
   nothing, matching the whole-item path). Returns run through the existing
   sale-return flow.
 
 ## Two POS surfaces, one engine
 
-### rutba-order-management — order fulfilment (PreparationStage)
+### apps/sales/orders — order fulfilment (PreparationStage)
 
 `StockItemPicker` **infers** divisibility from the units (`sellable_units > 1`, no
 dependency on the flag being populated) and switches to sell-by-portion mode: a
@@ -165,7 +165,7 @@ roll/box, warns on FEFO skip), plus Remaining and Unit-price columns.
 `PreparationStage.handleSellUnits` → `attachDivisible`, surfacing the allocation
 warning as a toast.
 
-### pos-sale — immediate checkout
+### apps/sales/pos — immediate checkout
 
 The domain model does the work additively:
 
@@ -184,7 +184,7 @@ The domain model does the work additively:
   on paid (skipping the whole-unit connect / Sold flip), throwing a clear
   "only N available" error if short.
 
-### Intake (pos-stock)
+### Intake (apps/inventory/stock)
 
 The product edit form has a **"Divisible (sold in units)"** checkbox. Once set, the
 Generate / Scan intake screens expose a **"Sellable units / item"** field that
@@ -198,9 +198,9 @@ sale-item linking, `product.sellable_quantity` recompute, and the insufficient
 (409, no-mutation) guard.
 
 **Not yet click-through-verified** (the UI is esbuild-parse-verified but needs a
-live run): mark a product divisible in pos-stock, generate a roll with e.g. 50
-units, then sell a fractional portion — in an order via rutba-order-management, and
-in an immediate sale via pos-sale.
+live run): mark a product divisible in apps/inventory/stock, generate a roll with e.g. 50
+units, then sell a fractional portion — in an order via apps/sales/orders, and
+in an immediate sale via apps/sales/pos.
 
 ## Known limitations / follow-ups
 

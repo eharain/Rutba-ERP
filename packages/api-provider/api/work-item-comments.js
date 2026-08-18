@@ -10,7 +10,7 @@ export const WorkItemCommentsEndpoints = {
 
     meta: {
         uid: 'api::work-item-comment.work-item-comment',
-        domains: ['mail', 'manufacturing', 'order-management', 'crm'],
+        domains: ['mail', 'manufacturing', 'orders', 'crm'],
         roles: ['admin', 'manager', 'staff'],
     },
 
@@ -18,7 +18,7 @@ export const WorkItemCommentsEndpoints = {
         path: '/work-item-comments',
         action: 'find',
         method: 'get',
-        apps: ['mail', 'manufacturing', 'order-management', 'crm'],
+        apps: ['mail', 'manufacturing', 'orders', 'crm'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             filters: {
@@ -36,7 +36,7 @@ export const WorkItemCommentsEndpoints = {
         path: '/work-item-comments',
         action: 'create',
         method: 'post',
-        apps: ['mail', 'manufacturing', 'order-management', 'crm'],
+        apps: ['mail', 'manufacturing', 'orders', 'crm'],
         approle: ['admin', 'manager', 'staff'],
         data,
     }),

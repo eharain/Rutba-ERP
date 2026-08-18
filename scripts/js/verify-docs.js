@@ -34,7 +34,7 @@
  *   repository, records of code that was deliberately deleted. Each is marked
  *   in the doc that makes the claim, with an HTML comment:
  *
- *     <!-- verify-docs: planned rutba-core/src/platform/ai.js scripts/contract-tests/** -->
+ *     <!-- verify-docs: planned services/core/src/platform/ai.js scripts/contract-tests/** -->
  *     <!-- verify-docs: external server/src/**  a810890 -->
  *
  *   Six words, each naming a situation that actually recurs here:
@@ -64,7 +64,7 @@
  *
  * KNOWN LIMIT: the app-relative fallback accepts a path that resolves under
  * any app root, so a doc citing `scripts/hostinger/deploy.js` and meaning the
- * repo root is satisfied by rutba-web-user/scripts/hostinger/deploy.js. Links
+ * repo root is satisfied by apps/sales/portal/scripts/hostinger/deploy.js. Links
  * are stricter (they must resolve exactly as written, the way GitHub reads
  * them), which is what caught that particular case.
  *
@@ -144,13 +144,13 @@ const TOP_LEVEL = new Set(
 
 /**
  * App/package roots, for the app-relative fallback. Docs routinely cite
- * `src/http/auth.js` meaning rutba-core/src/http/auth.js, or `src/seed/data`
- * meaning pos-strapi's — the reader has the app in mind from the surrounding
+ * `src/http/auth.js` meaning services/core/src/http/auth.js, or `src/seed/data`
+ * meaning services/strapi's — the reader has the app in mind from the surrounding
  * prose. Without this rule the check reports well over fifty phantom failures
  * and gets switched off within a week.
  */
 const APP_ROOTS = (() => {
-  const roots = new Set(['pos-strapi', 'rutba-core']);
+  const roots = new Set(['services/strapi', 'services/core']);
   let pkg = {};
   try { pkg = JSON.parse(readFile(path.join(ROOT, 'package.json')) || '{}'); } catch { /* keep going */ }
   for (const ws of pkg.workspaces || []) {
@@ -233,9 +233,9 @@ const existsAt = (p) => {
  * Index of everything git tracks, plus every directory implied by it. This is
  * what powers the app-relative fallback: docs elide the app prefix constantly,
  * because the surrounding prose already established which app is being
- * discussed. `src/http/auth.js` means rutba-core's, `src/seed/data` means
- * pos-strapi's, and `sale-order/services/sale-order-state-machine.js` means
- * the one under pos-strapi/src/api/. Resolving only against the repo root
+ * discussed. `src/http/auth.js` means services/core's, `src/seed/data` means
+ * services/strapi's, and `sale-order/services/sale-order-state-machine.js` means
+ * the one under services/strapi/src/api/. Resolving only against the repo root
  * reports well over a hundred of these as broken and buries the real ones.
  */
 const { execFileSync } = require('child_process');
@@ -300,7 +300,7 @@ function resolveCited(cited, docRelPath) {
 
   if (clean.includes('*')) {
     // A glob gets the same app-relative courtesy as a literal path:
-    // `content-types/*/lifecycles.js` means pos-strapi/src/api/*/content-types/*/…
+    // `content-types/*/lifecycles.js` means services/strapi/src/api/*/content-types/*/…
     if (globExists(`**/${clean}`)) return { path: `**/${clean}`, how: 'suffix-glob' };
   } else {
     const hit = suffixMatch(clean, isDir);
@@ -507,7 +507,7 @@ for (const abs of DOCS) {
     const spans = [];
     if (!inFence[i]) for (const m of line.matchAll(/`([^`\n]+)`/g)) spans.push(m[1]);
     // Link text carries the same claims as backticks —
-    // `[pos-strapi/src/index.js:109](../pos-strapi/src/index.js#L109)`.
+    // `[services/strapi/src/index.js:109](../services/strapi/src/index.js#L109)`.
     if (!inFence[i]) {
       for (const m of line.matchAll(/\[([^\]\n]+)\]\([^)\n]*\)/g)) {
         if (m[1].includes('/') && !/\s/.test(m[1])) spans.push(m[1]);
@@ -544,7 +544,7 @@ for (const abs of DOCS) {
           where: at(i),
           cited,
           // Mirror the resolution ladder: a doc may cite `.api-pro/` meaning
-          // pos-strapi's runtime dir, which .gitignore covers even though the
+          // services/strapi's runtime dir, which .gitignore covers even though the
           // bare name at the repo root means nothing.
           candidates: [cited, app2 && `${app2}/${cited}`, `${path.posix.dirname(docRel)}/${cited}`,
             ...APP_ROOTS.map((a) => `${a}/${cited}`)]
@@ -602,10 +602,10 @@ for (const abs of DOCS) {
 
       // Only judge a port *against* the app named beside it when the number was
       // bare — that is, when proximity is the only reason we read it as a port
-      // at all. An explicit `:4018` or `RUTBA_SEED__PORT=4018` is a deliberate
+      // at all. An explicit `:4018` or `SEED__PORT=4018` is a deliberate
       // statement about some other service that merely shares a line with an
-      // app name ("the seed app on :4018 seeds pos-strapi"), and treating that
-      // as a claim about pos-strapi is how proximity rules earn their bad name.
+      // app name ("the seed app on :4018 seeds services/strapi"), and treating that
+      // as a claim about services/strapi is how proximity rules earn their bad name.
       if (named.length === 1 && signal.startsWith('named')) {
         const [token, want] = named[0];
         if (want !== '-' && port !== want && cited.size === 1) {
@@ -675,7 +675,7 @@ for (const abs of DOCS) {
 // ── 5. Whole-repo checks ───────────────────────────────────
 
 // -- paths that git ignores are not broken doc claims ------------------------
-// `pos-strapi/.env`, `.next/standalone/` and `pos-strapi/logs/` are all cited
+// `services/strapi/.env`, `.next/standalone/` and `services/strapi/logs/` are all cited
 // correctly; they simply do not exist in a clean checkout. One batched
 // check-ignore call settles every one of them.
 if (pendingPathFailures.length) {

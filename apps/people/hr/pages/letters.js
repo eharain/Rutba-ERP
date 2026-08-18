@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import Layout from "../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import EnumSelect from "@rutba/pos-shared/components/EnumSelect";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import EnumSelect from "@rutba/shared/components/EnumSelect";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import {
     HrLetterTemplatesEndpoints,
     HrGeneratedDocumentsEndpoints,

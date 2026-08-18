@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../../components/Layout';
-import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
+import ProtectedRoute from '@rutba/shared/components/ProtectedRoute';
 import PurchaseReceiveList from '../../components/lists/purchase-receive-list';
 import { fetchPurchaseByIdDocumentIdOrPO } from '@rutba/api-provider/pos';
 

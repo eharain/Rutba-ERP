@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
-import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
+import ProtectedRoute from '@rutba/shared/components/ProtectedRoute';
 import { PurchasesEndpoints } from '@rutba/api-provider/endpoints/index.js';
 import StockEntryForm from '../components/stock-entry/StockEntryForm';
 import StockEntryHeader from '../components/stock-entry/StockEntryHeader';

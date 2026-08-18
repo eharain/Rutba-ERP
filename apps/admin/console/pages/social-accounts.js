@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Layout from "../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import PermissionCheck from "@rutba/shared/components/PermissionCheck";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import { SocialAccountsEndpoints } from "@rutba/api-provider/endpoints";
 import { API_URL } from "@rutba/api-provider/lib/api";
 import { useToast } from "../components/Toast";
@@ -328,7 +328,7 @@ export default function AccountsPage() {
         const onMessage = (e) => {
             if (apiOrigin && e.origin !== apiOrigin && e.origin !== window.location.origin) return;
             const d = e.data;
-            if (!d || d.source !== "rutba-social-oauth") return;
+            if (!d || d.source !== "apps/content/social-oauth") return;
             if (d.ok) {
                 toast(`Connected ${d.message || ""}`.trim(), "success");
                 loadAccounts();
@@ -349,7 +349,7 @@ export default function AccountsPage() {
             const w = 600, h = 720;
             const left = window.screenX + (window.outerWidth - w) / 2;
             const top = window.screenY + (window.outerHeight - h) / 2;
-            const popup = window.open(url, "rutba-social-oauth", `width=${w},height=${h},left=${left},top=${top}`);
+            const popup = window.open(url, "apps/content/social-oauth", `width=${w},height=${h},left=${left},top=${top}`);
             if (!popup || popup.closed || typeof popup.closed === "undefined") {
                 toast("Popup blocked — allow popups for this site, then click Connect again.", "warning");
             }

@@ -20,11 +20,11 @@
 const GLOBAL_VARS = [
   { key: 'NEXT_PUBLIC_API_URL',              severity: 'error', description: 'Strapi API base URL' },
   { key: 'NEXT_PUBLIC_IMAGE_URL',            severity: 'error', description: 'Strapi media base URL' },
-  { key: 'NEXT_PUBLIC_WEB_URL',              severity: 'error', description: 'Public storefront URL' },
+  { key: 'NEXT_PUBLIC_STOREFRONT_URL',              severity: 'error', description: 'Public storefront URL' },
   { key: 'NEXT_PUBLIC_AUTH_URL',             severity: 'error', description: 'Auth portal URL' },
   { key: 'NEXT_PUBLIC_STOCK_URL',            severity: 'error', description: 'Stock app URL' },
-  { key: 'NEXT_PUBLIC_SALE_URL',             severity: 'error', description: 'Sale app URL' },
-  { key: 'NEXT_PUBLIC_WEB_USER_URL',         severity: 'error', description: 'Web User portal URL' },
+  { key: 'NEXT_PUBLIC_POS_URL',             severity: 'error', description: 'Sale app URL' },
+  { key: 'NEXT_PUBLIC_PORTAL_URL',         severity: 'error', description: 'Web User portal URL' },
   { key: 'NEXT_PUBLIC_CRM_URL',              severity: 'error', description: 'CRM app URL' },
   { key: 'NEXT_PUBLIC_HR_URL',               severity: 'error', description: 'HR app URL' },
   { key: 'NEXT_PUBLIC_ESS_URL',              severity: 'warn',  description: 'Employee Self-Service (ESS) portal URL' },
@@ -33,15 +33,15 @@ const GLOBAL_VARS = [
   { key: 'NEXT_PUBLIC_CMS_URL',              severity: 'error', description: 'CMS app URL' },
   { key: 'NEXT_PUBLIC_SOCIAL_URL',           severity: 'error', description: 'Social app URL' },
   { key: 'NEXT_PUBLIC_RIDER_URL',            severity: 'warn',  description: 'Rider app URL' },
-  { key: 'NEXT_PUBLIC_ORDER_MANAGEMENT_URL', severity: 'warn',  description: 'Order Management app URL' },
+  { key: 'NEXT_PUBLIC_ORDERS_URL', severity: 'warn',  description: 'Order Management app URL' },
   { key: 'NEXT_PUBLIC_MANUFACTURING_URL',    severity: 'warn',  description: 'Manufacturing app URL' },
   { key: 'NEXT_PUBLIC_MARKETPLACE_URL',      severity: 'warn',  description: 'Marketplace app URL' },
-  { key: 'NEXT_PUBLIC_INVENTORY_URL',        severity: 'warn',  description: 'Inventory Management app URL' },
+  { key: 'NEXT_PUBLIC_CONTROL_URL',        severity: 'warn',  description: 'Inventory Management app URL' },
   { key: 'NEXT_PUBLIC_SEED_URL',             severity: 'warn',  description: 'Seeding control app URL' },
   { key: 'NEXT_PUBLIC_CAMPAIGNS_URL',        severity: 'warn',  description: 'Campaigns app URL' },
   { key: 'NEXT_PUBLIC_HELPDESK_URL',         severity: 'warn',  description: 'Helpdesk app URL' },
   { key: 'NEXT_PUBLIC_MAIL_URL',             severity: 'warn',  description: 'Mail app URL' },
-  { key: 'NEXT_PUBLIC_ADMIN_URL',            severity: 'warn',  description: 'Rutba Admin console URL' },
+  { key: 'NEXT_PUBLIC_CONSOLE_URL',            severity: 'warn',  description: 'Rutba Admin console URL' },
   { key: 'NEXT_PUBLIC_IMAGE_HOST_PROTOCOL',  severity: 'error', description: 'Image host protocol (http/https)' },
   { key: 'NEXT_PUBLIC_IMAGE_HOST_NAME',      severity: 'error', description: 'Image host name' },
   { key: 'NEXT_PUBLIC_IMAGE_HOST_PORT',      severity: 'error', description: 'Image host port' },
@@ -93,13 +93,13 @@ const APP_VARS = {
     { key: 'UP_IDLE_REFRESH_TOKEN_LIFESPAN', severity: 'warn',  default: '30d',  description: 'Idle refresh token lifespan' },
   ],
 
-  // rutba-core reads the repo-root .env files directly (rutba-core/src/config/env.js)
+  // services/core reads the repo-root .env files directly (services/core/src/config/env.js)
   // and resolves shared keys through the POS_STRAPI__ fallback, so it needs no
   // duplicate DATABASE_*/JWT_SECRET entries here. PORT is the exception: it is
   // deliberately core-owned and must never inherit POS_STRAPI__PORT (4010).
   RUTBA_CORE: [
     { key: 'PORT',              severity: 'warn', default: '4020', description: 'Core API listen port' },
-    { key: 'RUTBA_CORE_CRONS',  severity: 'warn', description: 'Set to 1 to run scheduled tasks here. Leave unset while pos-strapi still schedules the same jobs — never run both.' },
+    { key: 'RUTBA_CORE_CRONS',  severity: 'warn', description: 'Set to 1 to run scheduled tasks here. Leave unset while services/strapi still schedules the same jobs — never run both.' },
     { key: 'RUTBA_CORE_EMAIL',  severity: 'warn', default: 'send', description: 'Outbound mail mode: send | log | off' },
     { key: 'RUTBA_CORE_LOG',    severity: 'warn', description: 'Request logging: requests | errors | off. Defaults to requests in development, errors elsewhere.' },
   ],

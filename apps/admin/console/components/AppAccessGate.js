@@ -1,5 +1,5 @@
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { canAccessApp } from "@rutba/pos-shared/lib/roles";
+import { useAuth } from "@rutba/shared/context/AuthContext";
+import { canAccessApp } from "@rutba/shared/lib/roles";
 
 /**
  * Renders children only if the current user has access to the given app key.

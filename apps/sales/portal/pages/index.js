@@ -1,6 +1,6 @@
 import Layout from "../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import AppHome, { AppHomeGrid, AppHomeTile, AppHomeSection } from "@rutba/pos-shared/components/AppHome";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import AppHome, { AppHomeGrid, AppHomeTile, AppHomeSection } from "@rutba/shared/components/AppHome";
 import Link from "next/link";
 
 const SECTIONS = [

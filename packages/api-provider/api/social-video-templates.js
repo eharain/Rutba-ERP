@@ -4,7 +4,7 @@ import { listParams } from './__param_builders.js';
  * SocialVideoTemplatesEndpoints
  *
  * Named looks for generated social videos: each row is a layer stack plus
- * renderer options for @rutba/video-maker. The Video Studio lets users pick
+ * renderer options for @rutba/video. The Video Studio lets users pick
  * and save them; the Social Poster resolves a post's `video_settings` (or the
  * `is_default` row) so an unattended render produces exactly the picture the
  * studio previewed. That parity is the whole point of storing these

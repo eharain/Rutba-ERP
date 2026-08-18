@@ -12,7 +12,7 @@
  */
 
 // Ensures the site-setting singleType has a published row so consumers
-// (especially rutba-web's storefront, which fetches this on every page render)
+// (especially apps/content/storefront's storefront, which fetches this on every page render)
 // don't 404 on a fresh DB. Schema defaults fill in everything; only site_name
 // is required. Idempotent — bails if a published row already exists, promotes a
 // draft if that's all we have, creates from scratch only when nothing exists.
@@ -142,7 +142,7 @@ async function ensureUsersPermissionsEmailConfirmation(strapi) {
         String(process.env.EMAIL_CONFIRMATION ?? 'true').toLowerCase() === 'true';
     const webUrl = (
         process.env.WEB_URL ||
-        process.env.NEXT_PUBLIC_WEB_URL ||
+        process.env.NEXT_PUBLIC_STOREFRONT_URL ||
         'https://rutba.pk'
     ).replace(/\/+$/, '');
     const redirection = `${webUrl}/login?confirmed=1`;
@@ -200,7 +200,7 @@ async function ensureUsersPermissionsEmailConfirmation(strapi) {
 }
 
 // The anonymous storefront reads seo_meta as a populated relation on products
-// (rutba-web product pages render meta title/description/og-image from it).
+// (apps/content/storefront product pages render meta title/description/og-image from it).
 // Without a public-role find grant, api-pro's relation stripping removes it
 // from every response, so the pages silently fall back to raw names.
 async function ensurePublicSeoMetaReadGrant(strapi) {

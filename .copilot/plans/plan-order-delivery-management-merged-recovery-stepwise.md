@@ -12,8 +12,8 @@
   - `notification-service`
   - `easypost-service`
 - Order/rider custom controllers and routes created.
-- Email plugin config added in `pos-strapi/config/plugins.js`.
-- `rutba-web` checkout delivery method flow mostly wired (shipping info -> method selection, selected method affects total, payload fields added).
+- Email plugin config added in `services/strapi/config/plugins.js`.
+- `apps/content/storefront` checkout delivery method flow mostly wired (shipping info -> method selection, selected method affects total, payload fields added).
 
 ### Major Remaining Gaps
 1. Backend stabilization
@@ -27,18 +27,18 @@
    - Confirm E2E create-order flow with new delivery fields for own-rider and courier/easypost paths.
 
 4. Customer tracking + messaging surfaces
-   - `rutba-web` tracking page is still missing.
-   - `rutba-web-user` order tracking/detail enhancements are pending.
+   - `apps/content/storefront` tracking page is still missing.
+   - `apps/sales/portal` order tracking/detail enhancements are pending.
 
 5. CMS operational UI
    - Missing pages: riders, delivery-methods, delivery-zones, notification-templates.
    - Orders page extensions for assignment/status actions pending.
 
 6. Rider app workspace
-   - `rutba-rider` workspace not yet created.
+   - `apps/sales/rider` workspace not yet created.
 
 7. Infra wiring
-   - Root workspace scripts, `packages/pos-shared/lib/roles.js`, hostinger config, and Docker wiring for rider app not completed.
+   - Root workspace scripts, `packages/shared/lib/roles.js`, hostinger config, and Docker wiring for rider app not completed.
 
 8. International shipping completion
    - EasyPost service exists, but full operational flow and fallback behavior validation remains pending.
@@ -57,7 +57,7 @@
 - Enforce customer/rider/staff role checks per endpoint purpose.
 - **STOP after Step 2. Do not proceed without explicit approval.**
 
-### Step 3 — Finalize checkout E2E in `rutba-web`
+### Step 3 — Finalize checkout E2E in `apps/content/storefront`
 - Validate shipping-info -> delivery-method -> place-order flow.
 - Ensure totals, delivery selection state, and payload are correct.
 - **STOP after Step 3. Do not proceed without explicit approval.**
@@ -67,17 +67,17 @@
 - Confirm non-rider methods create order cleanly.
 - **STOP after Step 4. Do not proceed without explicit approval.**
 
-### Step 5 — Complete customer tracking + messaging UI in `rutba-web`
+### Step 5 — Complete customer tracking + messaging UI in `apps/content/storefront`
 - Add order tracking page.
 - Bind status timeline, rider details, and message thread.
 - **STOP after Step 5. Do not proceed without explicit approval.**
 
-### Step 6 — Complete `rutba-web-user` order detail/tracking enhancements
+### Step 6 — Complete `apps/sales/portal` order detail/tracking enhancements
 - Add status badges, tracking links, and detail timeline.
 - Show rider contact/message access when applicable.
 - **STOP after Step 6. Do not proceed without explicit approval.**
 
-### Step 7 — Build CMS delivery operations pages (`rutba-cms`)
+### Step 7 — Build CMS delivery operations pages (`apps/content/cms`)
 - Implement Riders, Delivery Methods, Delivery Zones, Notification Templates pages.
 - Extend Orders page for assignment/status operations.
 - **STOP after Step 7. Do not proceed without explicit approval.**
@@ -91,7 +91,7 @@
 - Validate rate retrieval, order linkage, and fallback behavior.
 - **STOP after Step 9. Do not proceed without explicit approval.**
 
-### Step 10 — Create `rutba-rider` MVP workspace + API integration
+### Step 10 — Create `apps/sales/rider` MVP workspace + API integration
 - Scaffold workspace and auth.
 - Implement offers list/detail, deliveries, status updates, messaging.
 - **STOP after Step 10. Do not proceed without explicit approval.**

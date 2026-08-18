@@ -21,7 +21,7 @@ One file per Strapi resource (roughly one per content-type), kebab-cased to matc
 - `hr-employees.js` â†’ `/hr-employees`
 - `cms-pages.js` â†’ `/cms-pages`
 
-`web/` is a sub-folder for **public web endpoints** (no auth) â€” kept separate so `pos-strapi/config/plugins.js` can auto-derive `bypassPaths` from this subset only.
+`web/` is a sub-folder for **public web endpoints** (no auth) â€” kept separate so `services/strapi/config/plugins.js` can auto-derive `bypassPaths` from this subset only.
 
 `index.js` re-exports all sibling files.
 
@@ -40,7 +40,7 @@ export const CashRegisterTransactionEndpoints = {
 
   meta: {
     uid: 'api::cash-register-transaction.cash-register-transaction',
-    domains: ['accounts', 'sale', 'accounts-ar', 'accounts-ap'],
+    domains: ['accounts', 'pos', 'accounts-ar', 'accounts-ap'],
     roles: ['admin', 'manager', 'staff']
   },
 
@@ -51,7 +51,7 @@ export const CashRegisterTransactionEndpoints = {
     path: '/cash-register-transactions',
     action: 'create',
     method: 'post',
-    apps: ['sale'],                          // domains where this method is callable
+    apps: ['pos'],                          // domains where this method is callable
     approle: ['admin', 'manager', 'staff'],  // role LEVELS allowed (filtered by domain via roles.json)
     data,
   }),
@@ -60,7 +60,7 @@ export const CashRegisterTransactionEndpoints = {
     path: '/cash-register-transactions',
     action: 'find',
     method: 'get',
-    apps: ['sale'],
+    apps: ['pos'],
     approle: ['admin', 'manager', 'staff'],
     params: {
       filters: { cash_register: { documentId: { $eq: registerDocumentId } } },
@@ -122,7 +122,7 @@ const ROLE_SCOPES = {
 list: () => ({
   path: '/cash-registers',
   action: 'find',
-  apps: ['sale'],
+  apps: ['pos'],
   approle: ['admin', 'manager', 'staff'],
   scope: ROLE_SCOPES,
   params: { ... },
@@ -174,12 +174,12 @@ For each method, the seeder computes `grants` (the role keys to write policies f
 4. The resulting set of role keys gets one policy row each in `api_pro_method_policies`.
 
 Example for the `byRegister` descriptor above:
-- `apps: ['sale']`
+- `apps: ['pos']`
 - `approle: ['admin', 'manager', 'staff']`
-- `domains.json['sale'].roles = ['sale_admin', 'sale_manager', 'sale_staff']`
+- `domains.json['sale'].roles = ['pos_admin', 'pos_manager', 'pos_staff']`
 - All three roles are at levels admin/manager/staff respectively â†’ all three roles get a policy row.
 
-For a method with `apps: ['accounts', 'sale']` and `approle: ['admin']`, only the `_admin` role keys from BOTH domains get policy rows.
+For a method with `apps: ['accounts', 'pos']` and `approle: ['admin']`, only the `_admin` role keys from BOTH domains get policy rows.
 
 ## What the seeder writes
 
@@ -215,11 +215,11 @@ The build-resources walker skips paths beginning with `/upload` (Strapi's media 
 1. Create `api/<resource>.js`. Follow the shape above.
 2. Add an export to `api/index.js` if other consumers import from there.
 3. From the package: `npm run scaffold:endpoint-providers` â€” generates the corresponding client wrapper under `providers/generated/client/`.
-4. Restart `pos-strapi` (or hit `POST /api-pro/admin/seed`) to seed the new interface/methods/policies into the plugin's DB.
+4. Restart `services/strapi` (or hit `POST /api-pro/admin/seed`) to seed the new interface/methods/policies into the plugin's DB.
 
 ## Quirks to remember
 
 - Files are ESM. The seeder (CJS) loads them with `import(pathToFileURL(...))`. Node prints `MODULE_TYPELESS_PACKAGE_JSON` warnings â€” harmless.
-- `meta.uid` must exist in `strapi.contentTypes`. If the UID doesn't resolve, the seeder skips that method silently (logged as a warning). Add the content-type to pos-strapi first, then add the descriptor file.
+- `meta.uid` must exist in `strapi.contentTypes`. If the UID doesn't resolve, the seeder skips that method silently (logged as a warning). Add the content-type to services/strapi first, then add the descriptor file.
 - `apps` and `approle` arrays are CASE-SENSITIVE and must match `config/domains.json` / role levels exactly.
 - Helper / non-endpoint functions in a file (anything whose name doesn't match the regex above) are also fine to define â€” they just won't be picked up by the seeder. Use this for internal `buildPayload`-style helpers.

@@ -66,10 +66,10 @@ Define these layouts for rendering a product group on the shop page:
 
 ## Execution Steps (Sequential)
 
-### Phase 1: Strapi Schema Changes (pos-strapi)
+### Phase 1: Strapi Schema Changes (services/strapi)
 
 **Step 1 — Add `layout` and `priority` fields to product-group schema**
-- File: `pos-strapi/src/api/product-group/content-types/product-group/schema.json`
+- File: `services/strapi/src/api/product-group/content-types/product-group/schema.json`
 - Add `layout` field: enumeration with values `hero-slider`, `grid-4`, `grid-6`, `carousel`, `banner-single`, `list`. Default: `grid-4`.
 - Add `priority` field: integer, default `0`.
 - (Optional, recommended) Add editor defaults for the new group toolbar:
@@ -78,10 +78,10 @@ Define these layouts for rendering a product group on the shop page:
   - `enable_view_toggle`: boolean (default: `true`)
 - After editing, restart Strapi so the DB migration runs.
 
-### Phase 2: CMS Changes (rutba-cms)
+### Phase 2: CMS Changes (apps/content/cms)
 
 **Step 2 — Update product-group edit form to include layout and priority fields**
-- File: `rutba-cms/pages/[documentId]/product-group.js`
+- File: `apps/content/cms/pages/[documentId]/product-group.js`
 - Add a `<select>` dropdown for `layout` with all 6 layout options.
 - Add a number `<input>` for `priority`.
 - (If Step 1 optional fields are added) Add fields for `default_sort`, `enable_sort_dropdown`, and `enable_view_toggle`.
@@ -89,20 +89,20 @@ Define these layouts for rendering a product group on the shop page:
 - Load both from the fetched group data.
 
 **Step 3 — Update product-groups list page to show layout and priority columns**
-- File: `rutba-cms/pages/product-groups.js`
+- File: `apps/content/cms/pages/product-groups.js`
 - Add "Layout" and "Priority" columns to the table/list.
 - Sort groups by priority by default.
 
 **Step 4 — Update CMS page edit form: remove brand_groups and category_groups pickers for shop pages**
-- File: Locate the CMS page editor (likely `rutba-cms/pages/[documentId]/cms-page.js` or similar)
+- File: Locate the CMS page editor (likely `apps/content/cms/pages/[documentId]/cms-page.js` or similar)
 - For `page_type === 'shop'`, hide/remove the brand groups and category groups relation pickers.
 - Keep product_groups and hero_product_groups pickers.
 - (Optional: merge hero_product_groups into product_groups — a group with `hero-slider` layout replaces the hero concept.)
 
-### Phase 3: Web Frontend Changes (rutba-web)
+### Phase 3: Web Frontend Changes (apps/content/storefront)
 
 **Step 5 — Update TypeScript types for product groups**
-- File: `rutba-web/src/types/api/cms-page.ts`
+- File: `apps/content/storefront/src/types/api/cms-page.ts`
 - Add `layout` and `priority` fields to `CmsProductGroupInterface`.
   ```ts
   layout?: 'hero-slider' | 'grid-4' | 'grid-6' | 'carousel' | 'banner-single' | 'list';
@@ -116,7 +116,7 @@ Define these layouts for rendering a product group on the shop page:
   ```
 
 **Step 6 — Build the custom `<ScrollSlider>` primitive component**
-- File: `rutba-web/src/components/ui/scroll-slider.tsx` (new)
+- File: `apps/content/storefront/src/components/ui/scroll-slider.tsx` (new)
 - A reusable, zero-dependency slider/carousel built with:
   - `overflow-x: auto` + `scroll-snap-type: x mandatory` on the container.
   - `scroll-snap-align: start` on each child.
@@ -129,7 +129,7 @@ Define these layouts for rendering a product group on the shop page:
 - This single component replaces ALL Swiper usage across the shop page.
 
 **Step 7 — Build the shared `<GroupHeader>` + controls (sort dropdown + view toggle)**
-- File: `rutba-web/src/components/cms/layouts/GroupHeader.tsx` (new)
+- File: `apps/content/storefront/src/components/cms/layouts/GroupHeader.tsx` (new)
 - Renders the product group heading + optional subtitle/excerpt consistently across all layouts.
 - Also renders an optional right-side toolbar:
   - Sort dropdown
@@ -142,7 +142,7 @@ Define these layouts for rendering a product group on the shop page:
 - Keeps typography and spacing identical for every section.
 
 **Step 8 — Create individual layout components for each product group layout type**
-- File: `rutba-web/src/components/cms/layouts/` (new directory)
+- File: `apps/content/storefront/src/components/cms/layouts/` (new directory)
 - Create one component per layout:
   - `HeroSliderLayout.tsx` — full-width `<ScrollSlider autoPlay={5000} showDots>` with large product images. Each slide is a Link to the product. No Swiper.
   - `Grid4Layout.tsx` — 4-col grid (`grid-cols-2 md:grid-cols-3 lg:grid-cols-4`) of ProductCards.
@@ -159,7 +159,7 @@ Define these layouts for rendering a product group on the shop page:
 - All use consistent `container-fluid` width and section padding.
 
 **Step 9 — Create a layout resolver/renderer component**
-- File: `rutba-web/src/components/cms/ProductGroupRenderer.tsx` (new)
+- File: `apps/content/storefront/src/components/cms/ProductGroupRenderer.tsx` (new)
 - Takes a `CmsProductGroupInterface` and renders the correct layout component based on `group.layout`.
 - Default fallback to `grid-4`.
 - Wraps each layout in a consistent section container with alternating background if desired.
@@ -169,7 +169,7 @@ Define these layouts for rendering a product group on the shop page:
   - and passes state into `<GroupHeader>` and the selected layout.
 
 **Step 10 — Refactor `cms-page-content.tsx` to use the new layout system**
-- File: `rutba-web/src/components/cms/cms-page-content.tsx`
+- File: `apps/content/storefront/src/components/cms/cms-page-content.tsx`
 - Replace the current separate hero / brandGroups / categoryGroups / productGroups rendering with:
   1. Combine `hero_product_groups` and `product_groups` into one array.
   2. Sort by `priority` (ascending).
@@ -179,30 +179,30 @@ Define these layouts for rendering a product group on the shop page:
 - The page structure becomes: Background → Excerpt → [Sorted Product Groups] → Content → Gallery → Related Pages.
 
 **Step 11 — Remove Swiper from other shop-related components**
-- File: `rutba-web/src/components/home/hero-slider.tsx` — Refactor to use `<ScrollSlider>` instead of Swiper (if this component is used on shop pages). If it's only used on the homepage and not part of this redesign, leave it for a separate cleanup.
-- File: `rutba-web/src/components/brands/index.tsx` — If BrandSwiper is used on shop pages, refactor. Otherwise mark for future cleanup.
+- File: `apps/content/storefront/src/components/home/hero-slider.tsx` — Refactor to use `<ScrollSlider>` instead of Swiper (if this component is used on shop pages). If it's only used on the homepage and not part of this redesign, leave it for a separate cleanup.
+- File: `apps/content/storefront/src/components/brands/index.tsx` — If BrandSwiper is used on shop pages, refactor. Otherwise mark for future cleanup.
 - Goal: No Swiper imports remain in any shop-page-related code path.
 
 **Step 12 — Update the shop index page (`/shop`)**
-- File: `rutba-web/src/pages/shop/index.tsx`
+- File: `apps/content/storefront/src/pages/shop/index.tsx`
 - Currently this lists CMS pages as cards. Decide:
   - **Option A**: Keep as-is (shop index lists sub-pages, each sub-page renders groups). No change needed.
   - **Option B**: Make `/shop` itself render product groups from a single "main shop" CMS page. Requires fetching a designated CMS page.
 - Recommend **Option A** for now (no change to index). The layout changes only affect `[slug].tsx` detail pages.
 
 **Step 13 — Update the CMS pages service to populate layout and priority on product groups**
-- File: `rutba-web/src/services/cms-pages.ts`
+- File: `apps/content/storefront/src/services/cms-pages.ts`
 - Ensure the API call to fetch CMS page detail populates `product_groups.layout`, `product_groups.priority` (and same for `hero_product_groups`).
 - Check the `populate` parameter in the Strapi query.
 
-**Step 14 — (Optional) Remove `swiper` package from rutba-web** — ⚠️ **STILL OPEN.** `"swiper": "^10.3.1"` is still listed in `rutba-web/package.json`, and homepage components still import it: `src/components/home/hero-slider.tsx`, `src/components/home/collection-list.tsx`, and `src/components/brands/index.tsx`. The shop-page path was migrated off Swiper, but these homepage/brand components were not, so the package cannot be uninstalled yet.
-- If after steps 10-11 no remaining code imports from `swiper`, run `npm uninstall swiper` in the `rutba-web` workspace.
+**Step 14 — (Optional) Remove `swiper` package from apps/content/storefront** — ⚠️ **STILL OPEN.** `"swiper": "^10.3.1"` is still listed in `apps/content/storefront/package.json`, and homepage components still import it: `src/components/home/hero-slider.tsx`, `src/components/home/collection-list.tsx`, and `src/components/brands/index.tsx`. The shop-page path was migrated off Swiper, but these homepage/brand components were not, so the package cannot be uninstalled yet.
+- If after steps 10-11 no remaining code imports from `swiper`, run `npm uninstall swiper` in the `apps/content/storefront` workspace.
 - Keep `@radix-ui/react-slider` — that's a UI slider (range input), not a carousel.
 
 ### Phase 4: CMS Authoring UX — Easier Product Group Creation & Bulk Add
 
 **Step 15 — Add bulk "Add All" buttons to ProductPickerTabs for categories, brands, suppliers**
-- File: `rutba-cms/components/ProductPickerTabs.js`
+- File: `apps/content/cms/components/ProductPickerTabs.js`
 - In the "All Products" tab, next to each filter dropdown (Brand, Category, Supplier), add an **"Add All"** button that:
   1. Fetches **all** product `documentId`s matching the current filter (not just the current page) using a dedicated unpaginated or high-limit API call.
   2. Calls `onToggle` for each product not already in `selectedProductIds`, effectively bulk-adding the entire filtered set.
@@ -211,7 +211,7 @@ Define these layouts for rendering a product group on the shop page:
 - Add a summary line at the top of the Connected tab: "X products selected" with a small "Clear All" link.
 
 **Step 16 — Add a "Quick Add" tab/section for browsing by Category and Brand trees**
-- File: `rutba-cms/components/ProductPickerTabs.js` (extend) or new `rutba-cms/components/BulkProductPicker.js`
+- File: `apps/content/cms/components/ProductPickerTabs.js` (extend) or new `apps/content/cms/components/BulkProductPicker.js`
 - Add a third tab: **"Quick Add"** that shows:
   - A list of all **categories** as collapsible sections. Each category row shows the category name, product count, and an **"Add All from [Category]"** button.
   - Below categories, a list of all **brands** with the same pattern: brand name, count, **"Add All from [Brand]"** button.
@@ -219,7 +219,7 @@ Define these layouts for rendering a product group on the shop page:
 - This allows creating a product group like "All Perfumes" or "All Nike Products" in one click instead of manually selecting hundreds of products.
 
 **Step 17 — Streamline product-group creation flow in CMS**
-- File: `rutba-cms/pages/[documentId]/product-group.js`
+- File: `apps/content/cms/pages/[documentId]/product-group.js`
 - Reorder the form so the most important fields come first: **Name → Layout → Priority** at the top in a compact row.
 - Move Display Settings (default_sort, enable_sort_dropdown, enable_view_toggle) into a collapsible "Advanced Settings" section so they don't clutter the initial creation experience.
 - Add placeholder/helper text to fields: e.g., Layout dropdown shows "Choose how products display", Priority input shows "Lower = appears first on page".
@@ -228,18 +228,18 @@ Define these layouts for rendering a product group on the shop page:
 ### Phase 5: Product Group Paging & Detail Page
 
 **Step 18 — Add Strapi custom endpoint for paginated product-group detail by slug**
-- File: `pos-strapi/src/api/product-group/controllers/product-group.js`
-- File: `pos-strapi/src/api/product-group/routes/01-custom-product-group.js`
+- File: `services/strapi/src/api/product-group/controllers/product-group.js`
+- File: `services/strapi/src/api/product-group/routes/01-custom-product-group.js`
 - Add `GET /product-groups/by-slug/:slug` route that returns product group metadata + paginated products.
 - Accepts query params: `page` (default 1), `pageSize` (default 24, max 100), `sort`.
 - Uses knex to query the products link table for counting and pagination.
 
 **Step 19 — Create web service for fetching product-group with pagination**
-- File: `rutba-web/src/services/product-groups.ts` (new)
+- File: `apps/content/storefront/src/services/product-groups.ts` (new)
 - `getProductGroupBySlug(slug, page, pageSize)` → returns `{ data, meta: { pagination } }`.
 
 **Step 20 — Create dedicated product-group detail page**
-- File: `rutba-web/src/pages/product-groups/[slug].tsx` (new)
+- File: `apps/content/storefront/src/pages/product-groups/[slug].tsx` (new)
 - Full page at `/product-groups/[slug]` with SSR.
 - Shows cover image hero, group name, excerpt, content.
 - Product grid with pagination controls (page numbers, prev/next).
@@ -248,10 +248,10 @@ Define these layouts for rendering a product group on the shop page:
 - URL-synced page/pageSize via shallow routing.
 
 **Step 21 — Add "View All" link to inline product group sections**
-- File: `rutba-web/src/components/cms/layouts/GroupHeader.tsx`
+- File: `apps/content/storefront/src/components/cms/layouts/GroupHeader.tsx`
 - Add `viewAllHref` and `totalProducts` optional props.
 - Render a "View All (N) →" link next to the group heading.
-- File: `rutba-web/src/components/cms/ProductGroupRenderer.tsx`
+- File: `apps/content/storefront/src/components/cms/ProductGroupRenderer.tsx`
 - Add `maxInlineProducts` prop (default 12).
 - If group has more products than the limit, slice to limit and pass `viewAllHref` to `GroupHeader`.
 - Links to `/product-groups/{slug}`.
@@ -259,52 +259,52 @@ Define these layouts for rendering a product group on the shop page:
 ### Phase 6: Refinements & UX Polish
 
 **Step 22 — Add `max_inline_products` field to product-group schema**
-- File: `pos-strapi/src/api/product-group/content-types/product-group/schema.json`
+- File: `services/strapi/src/api/product-group/content-types/product-group/schema.json`
 - Add `max_inline_products` field: integer, default `12`.
 - Controls how many products are shown inline on a CMS page before showing a "View All" link.
-- File: `rutba-cms/pages/[documentId]/product-group.js` — add input in Advanced Settings.
-- File: `rutba-web/src/types/api/cms-page.ts` — add `max_inline_products?: number` to `CmsProductGroupInterface`.
-- File: `rutba-web/src/components/cms/ProductGroupRenderer.tsx` — use `group.max_inline_products` (fallback 12) to limit displayed products inline.
+- File: `apps/content/cms/pages/[documentId]/product-group.js` — add input in Advanced Settings.
+- File: `apps/content/storefront/src/types/api/cms-page.ts` — add `max_inline_products?: number` to `CmsProductGroupInterface`.
+- File: `apps/content/storefront/src/components/cms/ProductGroupRenderer.tsx` — use `group.max_inline_products` (fallback 12) to limit displayed products inline.
 
 **Step 23 — Hero slider: show multiple product images per slide**
-- File: `rutba-web/src/components/cms/layouts/HeroSliderLayout.tsx`
+- File: `apps/content/storefront/src/components/cms/layouts/HeroSliderLayout.tsx`
 - Each slide should display multiple images from the product's gallery/logo (not just one image per slide), matching the previous Swiper-based hero behavior.
 - Use image panels within each slide to show product gallery images side-by-side.
 
 **Step 24 — Add CMS page section priority fields**
-- File: `pos-strapi/src/api/cms-page/content-types/cms-page/schema.json`
+- File: `services/strapi/src/api/cms-page/content-types/cms-page/schema.json`
 - Add integer fields: `excerpt_priority` (default 2), `featured_image_priority` (default 0), `content_priority` (default 98), `gallery_priority` (default 100), `related_pages_priority` (default 102).
 - These control where page-owned sections (excerpt, featured image, content, gallery, related pages) appear relative to product groups in the priority-sorted rendering order.
-- File: `rutba-cms/pages/[documentId]/cms-page.js` — add priority inputs to Settings sidebar.
-- File: `rutba-web/src/types/api/cms-page.ts` — add priority fields to `CmsPageDetailInterface`.
+- File: `apps/content/cms/pages/[documentId]/cms-page.js` — add priority inputs to Settings sidebar.
+- File: `apps/content/storefront/src/types/api/cms-page.ts` — add priority fields to `CmsPageDetailInterface`.
 
 **Step 25 — Unified priority-ordered page rendering**
-- File: `rutba-web/src/components/cms/cms-page-content.tsx`
+- File: `apps/content/storefront/src/components/cms/cms-page-content.tsx`
 - Build a unified `sections` array that includes both product groups and page-owned sections (featured image, excerpt, content, gallery, related pages), each with their priority.
 - Sort all sections by priority ascending and render in that order.
 - This replaces the old fixed-order rendering (hero → excerpt → groups → content → gallery → related pages).
 
 **Step 26 — Remove dedicated hero slider section from CMS pages**
 - The old `hero_product_groups` relation is no longer used as a separate section. Any product group with `layout: 'hero-slider'` automatically renders as a slider in priority order alongside other groups.
-- File: `rutba-cms/pages/[documentId]/cms-page.js` — remove the Hero Slider card/picker.
-- File: `rutba-web/src/components/cms/cms-page-content.tsx` — merge `hero_product_groups` into `product_groups` (backward compat), with `product_groups` taking precedence for deduplication.
+- File: `apps/content/cms/pages/[documentId]/cms-page.js` — remove the Hero Slider card/picker.
+- File: `apps/content/storefront/src/components/cms/cms-page-content.tsx` — merge `hero_product_groups` into `product_groups` (backward compat), with `product_groups` taking precedence for deduplication.
 
 **Step 27 — Conditional slider rendering on public pages**
-- File: `rutba-web/src/components/cms/cms-page-content.tsx`
+- File: `apps/content/storefront/src/components/cms/cms-page-content.tsx`
 - The slider/hero section should only render when a CMS page actually contains a product group whose `layout` is `hero-slider`. No group with that layout = no slider on the page.
 - This is enforced naturally by the unified priority-ordered rendering: only groups present on the page are rendered, and each renders per its own layout field.
 
 **Step 28 — Upgrade CMS page editor: Product Groups & Related Pages pickers**
-- File: `rutba-cms/components/GroupPickerTabs.js` (**New**)
-- File: `rutba-cms/components/PagePickerTabs.js` (**New**)
-- File: `rutba-cms/pages/[documentId]/cms-page.js`
+- File: `apps/content/cms/components/GroupPickerTabs.js` (**New**)
+- File: `apps/content/cms/components/PagePickerTabs.js` (**New**)
+- File: `apps/content/cms/pages/[documentId]/cms-page.js`
 - Replace the simple chip-button sections for Product Groups and Related Pages with tabbed picker components that match the `ProductPickerTabs` UX:
   - **Connected** tab: shows selected items with count badge, "Clear All" button.
   - **All** tab: searchable list of all available items with toggle buttons.
   - Each item shows metadata badges (layout/priority for groups, page_type for pages) and a link to open the item's editor.
 
 **Step 29 — Make Quick Add searchable in ProductPickerTabs**
-- File: `rutba-cms/components/ProductPickerTabs.js`
+- File: `apps/content/cms/components/ProductPickerTabs.js`
 - Add search inputs to the Quick Add tab so categories and brands are filterable/searchable.
 - Show product counts per category/brand.
 
@@ -327,33 +327,33 @@ Define these layouts for rendering a product group on the shop page:
 
 | File | Action |
 |---|---|
-| `pos-strapi/src/api/product-group/content-types/product-group/schema.json` | Add `layout` enum + `priority` integer |
-| `rutba-cms/pages/[documentId]/product-group.js` | Add layout dropdown + priority input |
-| `rutba-cms/pages/product-groups.js` | Show layout/priority in list |
-| `rutba-cms/pages/[documentId]/cms-page.js` (or similar) | Remove brand/category group pickers for shop |
-| `rutba-web/src/types/api/cms-page.ts` | Add layout/priority to interface |
-| `rutba-web/src/components/ui/scroll-slider.tsx` | **New** — custom CSS scroll-snap slider primitive |
-| `rutba-web/src/components/cms/layouts/GroupHeader.tsx` | **New** — shared group heading component |
-| `rutba-web/src/components/cms/layouts/HeroSliderLayout.tsx` | **New** — hero slider layout |
-| `rutba-web/src/components/cms/layouts/Grid4Layout.tsx` | **New** — 4-col grid layout |
-| `rutba-web/src/components/cms/layouts/Grid6Layout.tsx` | **New** — 6-col grid layout |
-| `rutba-web/src/components/cms/layouts/CarouselLayout.tsx` | **New** — horizontal carousel layout |
-| `rutba-web/src/components/cms/layouts/BannerSingleLayout.tsx` | **New** — single product banner layout |
-| `rutba-web/src/components/cms/layouts/ListLayout.tsx` | **New** — vertical product list layout |
-| `rutba-web/src/components/cms/ProductGroupRenderer.tsx` | **New** — layout resolver |
-| `rutba-web/src/components/cms/cms-page-content.tsx` | Refactor to use layout system, remove Swiper |
-| `rutba-web/src/services/cms-pages.ts` | Ensure populate includes new fields |
-| `rutba-cms/components/ProductPickerTabs.js` | Add bulk "Add All" buttons, "Quick Add" tab, "Remove All" |
-| `rutba-cms/pages/[documentId]/product-group.js` | Streamline creation form layout and field ordering |
-| `pos-strapi/src/api/product-group/controllers/product-group.js` | Add `findBySlug` paginated action |
-| `pos-strapi/src/api/product-group/routes/01-custom-product-group.js` | Add `by-slug/:slug` route |
-| `rutba-web/src/services/product-groups.ts` | **New** — product group detail service with pagination |
-| `rutba-web/src/pages/product-groups/[slug].tsx` | **New** — dedicated product group page with pagination |
-| `rutba-web/src/components/cms/layouts/GroupHeader.tsx` | Add `viewAllHref` + `totalProducts` props |
-| `rutba-web/src/components/cms/ProductGroupRenderer.tsx` | Add `maxInlineProducts` prop, limit inline, pass View All link |
-| `pos-strapi/src/api/cms-page/content-types/cms-page/schema.json` | Add section priority integer fields |
-| `rutba-cms/components/GroupPickerTabs.js` | **New** — tabbed product group picker for CMS page editor |
-| `rutba-cms/components/PagePickerTabs.js` | **New** — tabbed related pages picker for CMS page editor |
+| `services/strapi/src/api/product-group/content-types/product-group/schema.json` | Add `layout` enum + `priority` integer |
+| `apps/content/cms/pages/[documentId]/product-group.js` | Add layout dropdown + priority input |
+| `apps/content/cms/pages/product-groups.js` | Show layout/priority in list |
+| `apps/content/cms/pages/[documentId]/cms-page.js` (or similar) | Remove brand/category group pickers for shop |
+| `apps/content/storefront/src/types/api/cms-page.ts` | Add layout/priority to interface |
+| `apps/content/storefront/src/components/ui/scroll-slider.tsx` | **New** — custom CSS scroll-snap slider primitive |
+| `apps/content/storefront/src/components/cms/layouts/GroupHeader.tsx` | **New** — shared group heading component |
+| `apps/content/storefront/src/components/cms/layouts/HeroSliderLayout.tsx` | **New** — hero slider layout |
+| `apps/content/storefront/src/components/cms/layouts/Grid4Layout.tsx` | **New** — 4-col grid layout |
+| `apps/content/storefront/src/components/cms/layouts/Grid6Layout.tsx` | **New** — 6-col grid layout |
+| `apps/content/storefront/src/components/cms/layouts/CarouselLayout.tsx` | **New** — horizontal carousel layout |
+| `apps/content/storefront/src/components/cms/layouts/BannerSingleLayout.tsx` | **New** — single product banner layout |
+| `apps/content/storefront/src/components/cms/layouts/ListLayout.tsx` | **New** — vertical product list layout |
+| `apps/content/storefront/src/components/cms/ProductGroupRenderer.tsx` | **New** — layout resolver |
+| `apps/content/storefront/src/components/cms/cms-page-content.tsx` | Refactor to use layout system, remove Swiper |
+| `apps/content/storefront/src/services/cms-pages.ts` | Ensure populate includes new fields |
+| `apps/content/cms/components/ProductPickerTabs.js` | Add bulk "Add All" buttons, "Quick Add" tab, "Remove All" |
+| `apps/content/cms/pages/[documentId]/product-group.js` | Streamline creation form layout and field ordering |
+| `services/strapi/src/api/product-group/controllers/product-group.js` | Add `findBySlug` paginated action |
+| `services/strapi/src/api/product-group/routes/01-custom-product-group.js` | Add `by-slug/:slug` route |
+| `apps/content/storefront/src/services/product-groups.ts` | **New** — product group detail service with pagination |
+| `apps/content/storefront/src/pages/product-groups/[slug].tsx` | **New** — dedicated product group page with pagination |
+| `apps/content/storefront/src/components/cms/layouts/GroupHeader.tsx` | Add `viewAllHref` + `totalProducts` props |
+| `apps/content/storefront/src/components/cms/ProductGroupRenderer.tsx` | Add `maxInlineProducts` prop, limit inline, pass View All link |
+| `services/strapi/src/api/cms-page/content-types/cms-page/schema.json` | Add section priority integer fields |
+| `apps/content/cms/components/GroupPickerTabs.js` | **New** — tabbed product group picker for CMS page editor |
+| `apps/content/cms/components/PagePickerTabs.js` | **New** — tabbed related pages picker for CMS page editor |
 
 ---
 
@@ -382,7 +382,7 @@ Review of what is implemented so far across Phases 1–7 and the site-settings l
 **A1. Server-render priority-ordered sections (SSR/ISR)**
 - Problem: `ProductGroupRenderer` and `cms-page-content.tsx` compute the unified priority `sections` array client-side. This delays first meaningful paint and hurts SEO/LCP on heavy CMS pages.
 - Change: Compute the unified, priority-sorted sections array during SSR in the page file (`pages/[slug].tsx`, `pages/shop/[slug].tsx`, `pages/product-groups/[slug].tsx`) and pass a flat `sections` prop into the renderer. Keep per-group sort/view state client-side.
-- Files: `rutba-web/src/pages/[slug].tsx`, `rutba-web/src/components/cms/cms-page-content.tsx`, `rutba-web/src/components/cms/ProductGroupRenderer.tsx`.
+- Files: `apps/content/storefront/src/pages/[slug].tsx`, `apps/content/storefront/src/components/cms/cms-page-content.tsx`, `apps/content/storefront/src/components/cms/ProductGroupRenderer.tsx`.
 
 **A2. Image optimization across layouts**
 - Problem: Several layout components use `<img>` with `IMAGE_URL + ...` directly. That bypasses Next.js image optimization (no responsive `srcset`, no lazy priority tuning).
@@ -392,7 +392,7 @@ Review of what is implemented so far across Phases 1–7 and the site-settings l
 **A3. `ScrollSlider` accessibility & polish**
 - Problem: The custom slider primitive replaces Swiper but likely lacks ARIA semantics, keyboard support, and reduced-motion handling.
 - Change: Add `role="region"` + `aria-roledescription="carousel"`, slide `aria-label="N of M"`, keyboard arrow navigation, focus-visible ring on prev/next, `prefers-reduced-motion` to disable autoplay, and pause-on-hover/focus for autoplay hero.
-- Files: `rutba-web/src/components/ui/scroll-slider.tsx`.
+- Files: `apps/content/storefront/src/components/ui/scroll-slider.tsx`.
 
 **A4. Per-group URL-synced sort & view mode**
 - Problem: Sort and view mode are local state only; they reset on navigation and aren't shareable.
@@ -402,17 +402,17 @@ Review of what is implemented so far across Phases 1–7 and the site-settings l
 **A5. `useSiteSettings` SSR hydration**
 - Problem: The hook uses React Query with `staleTime: Infinity`, but since it fetches on the client, each first visit briefly renders with defaults (flash of fallback branding / `Rutba.pk`).
 - Change: Fetch site settings once in `getStaticProps`/`getServerSideProps` at the top-level layout (or via `_app.tsx` with `getInitialProps` only for this one request) and hydrate the React Query cache on the client.
-- Files: `rutba-web/src/pages/_app.tsx`, `rutba-web/src/hooks/use-site-settings.ts`, `rutba-web/src/services/site-settings.ts`.
+- Files: `apps/content/storefront/src/pages/_app.tsx`, `apps/content/storefront/src/hooks/use-site-settings.ts`, `apps/content/storefront/src/services/site-settings.ts`.
 
 **A6. Remove remaining `Rutba.pk` / hardcoded branding**
 - Problem: `site_name` default is still hardcoded as `"Rutba.pk"` in the Strapi schema and in frontend fallbacks. Some `alt` texts, open-graph tags, and JSON-LD may still reference it.
-- Change: Audit `rutba-web/src` for remaining string literals (`Rutba`, `Rutba.pk`, hardcoded phone numbers, email). Route them all through `useSiteSettings` and add `site_email`, `site_phone`, `site_address`, `og_default_image` to the `site-setting` schema.
-- Files: `pos-strapi/src/api/site-setting/content-types/site-setting/schema.json`, `rutba-cms/pages/site-settings.js`, `rutba-web/src/services/site-settings.ts`, footer/header/meta components.
+- Change: Audit `apps/content/storefront/src` for remaining string literals (`Rutba`, `Rutba.pk`, hardcoded phone numbers, email). Route them all through `useSiteSettings` and add `site_email`, `site_phone`, `site_address`, `og_default_image` to the `site-setting` schema.
+- Files: `services/strapi/src/api/site-setting/content-types/site-setting/schema.json`, `apps/content/cms/pages/site-settings.js`, `apps/content/storefront/src/services/site-settings.ts`, footer/header/meta components.
 
 **A7. Skeleton loading for product groups**
 - Problem: When `useQuery` loads product data, groups briefly render empty sections causing layout shift.
 - Change: Add lightweight skeleton card/list placeholders to each layout component keyed off a `loading?: boolean` prop.
-- Files: All `rutba-web/src/components/cms/layouts/*Layout.tsx`.
+- Files: All `apps/content/storefront/src/components/cms/layouts/*Layout.tsx`.
 
 ### B. Web Frontend — SEO & Meta
 
@@ -424,19 +424,19 @@ Review of what is implemented so far across Phases 1–7 and the site-settings l
 **B2. Sitemap & robots driven by CMS**
 - Problem: No clear CMS-driven sitemap for pages + product groups + products.
 - Change: Add `pages/sitemap.xml.ts` that queries Strapi for all published cms-pages, product-groups (by slug), and products; emit XML. Add `robots.txt` derived from site settings (indexable flag).
-- Files: New `rutba-web/src/pages/sitemap.xml.ts`, new `rutba-web/src/pages/robots.txt.ts`.
+- Files: New `apps/content/storefront/src/pages/sitemap.xml.ts`, new `apps/content/storefront/src/pages/robots.txt.ts`.
 
 ### C. CMS Authoring UX
 
 **C1. Auto-slug with collision check on product-group create**
 - Problem: `handleSave` for new group uses `name.toLowerCase().replace(/\s+/g, "-")`, which ignores punctuation/non-ASCII and doesn't check for collisions.
 - Change: Normalize via a shared `slugify()` helper (strip accents, remove non-alphanum, collapse dashes); before save, query `/product-groups?filters[slug][$eq]=...` and append `-2`, `-3` on collision.
-- Files: `rutba-cms/pages/[documentId]/product-group.js`, new `rutba-cms/lib/slugify.js` or reuse one from `pos-shared`.
+- Files: `apps/content/cms/pages/[documentId]/product-group.js`, new `apps/content/cms/lib/slugify.js` or reuse one from `pos-shared`.
 
 **C2. Draft/published diff badge**
 - Problem: Editors can see Published vs Draft but can't see if the draft differs from the published version.
 - Change: On load, compare draft vs published JSON (ignoring timestamps) and show a "Unpublished changes" badge with a "View changes" modal listing changed fields.
-- Files: `rutba-cms/pages/[documentId]/product-group.js`, `cms-page.js`, `cms-footer.js`, `site-settings.js`.
+- Files: `apps/content/cms/pages/[documentId]/product-group.js`, `cms-page.js`, `cms-footer.js`, `site-settings.js`.
 
 **C3. Autosave draft every 30s**
 - Problem: Large product-group edits (hundreds of products) risk loss if the tab closes.
@@ -449,31 +449,31 @@ Review of what is implemented so far across Phases 1–7 and the site-settings l
 - Files: all CMS editor pages (product-group, cms-page, cms-footer, site-settings).
 
 **C5. Bulk operations on product-groups list**
-- Problem: `rutba-cms/pages/product-groups.js` likely doesn't support multi-select bulk publish/unpublish/delete/reorder by priority.
+- Problem: `apps/content/cms/pages/product-groups.js` likely doesn't support multi-select bulk publish/unpublish/delete/reorder by priority.
 - Change: Add row checkboxes, a bulk action bar (Publish, Unpublish, Delete, Set Priority Range), and drag-to-reorder priority with optimistic update.
-- Files: `rutba-cms/pages/product-groups.js`.
+- Files: `apps/content/cms/pages/product-groups.js`.
 
 **C6. Product-group preview link**
 - Problem: No quick way to preview how a group will render for a given layout without opening the public web app and navigating there manually.
-- Change: Add a "Preview" button on the product-group edit page that opens `rutba-web`'s `/product-groups/{slug}?preview=1` in a new tab, passing a draft token.
-- Files: `rutba-cms/pages/[documentId]/product-group.js`, `rutba-web/src/pages/product-groups/[slug].tsx` (accept `preview` query + draft populate).
+- Change: Add a "Preview" button on the product-group edit page that opens `apps/content/storefront`'s `/product-groups/{slug}?preview=1` in a new tab, passing a draft token.
+- Files: `apps/content/cms/pages/[documentId]/product-group.js`, `apps/content/storefront/src/pages/product-groups/[slug].tsx` (accept `preview` query + draft populate).
 
 ### D. Strapi / Backend
 
 **D1. Proper populate strategy on public endpoints**
 - Problem: CMS page and product-group fetches on the web use broad `populate` arrays which over-fetch and can be slow. No field-level selection.
 - Change: Introduce explicit `populate` objects (Strapi v5 granular populate) per endpoint that only load the fields each layout actually needs (e.g., `products.logo`, `products.price`, `products.slug`, omit description/content from list queries).
-- Files: `rutba-web/src/services/cms-pages.ts`, `rutba-web/src/services/product-groups.ts`, `rutba-web/src/services/site-settings.ts`.
+- Files: `apps/content/storefront/src/services/cms-pages.ts`, `apps/content/storefront/src/services/product-groups.ts`, `apps/content/storefront/src/services/site-settings.ts`.
 
 **D2. Cache CMS responses at the edge**
 - Problem: Strapi hits on every request for relatively static content.
 - Change: Set `Cache-Control: s-maxage=60, stale-while-revalidate=600` on custom controllers (cms-page detail, product-group by-slug, site-setting, cms-footer). Combine with Next.js ISR for page-level caching.
-- Files: custom controllers in `pos-strapi/src/api/*/controllers/*.js`.
+- Files: custom controllers in `services/strapi/src/api/*/controllers/*.js`.
 
 **D3. Site-setting record bootstrap**
 - Problem: The singleType fails to save the first time if the record doesn't exist (needed the `PUT` without `?status=draft` fix). This is fragile.
-- Change: Add a `bootstrap` step in `pos-strapi/src/index.js` that creates a default site-setting record on first start if missing, using defaults from the schema.
-- Files: `pos-strapi/src/index.js` (or a dedicated bootstrap script).
+- Change: Add a `bootstrap` step in `services/strapi/src/index.js` that creates a default site-setting record on first start if missing, using defaults from the schema.
+- Files: `services/strapi/src/index.js` (or a dedicated bootstrap script).
 
 **D4. Consistent publish/unpublish/discard routes on singleTypes**
 - Problem: Collection types use `/{plural}/{documentId}/publish`; the new site-setting uses `/site-setting/publish` (no documentId, controller resolves internally). The asymmetry is confusing.
@@ -483,29 +483,29 @@ Review of what is implemented so far across Phases 1–7 and the site-settings l
 **D5. Input validation on custom endpoints**
 - Problem: `product-group.findBySlug` paginated action accepts `page`/`pageSize` from query without explicit bounds enforcement beyond a documented max.
 - Change: Add zod/strapi `validateQuery` schema (int coercion, min/max, allowed `sort` enum) and return `400` on invalid input.
-- Files: `pos-strapi/src/api/product-group/controllers/product-group.js`.
+- Files: `services/strapi/src/api/product-group/controllers/product-group.js`.
 
 ### E. Architecture & Code Health
 
 **E1. Shared type generation from Strapi schema**
-- Problem: TypeScript interfaces in `rutba-web/src/types/api/*.ts` are hand-maintained and can drift from Strapi schemas.
+- Problem: TypeScript interfaces in `apps/content/storefront/src/types/api/*.ts` are hand-maintained and can drift from Strapi schemas.
 - Change: Introduce `strapi-plugin-ts-types` or a small codegen script that reads `schema.json` files and emits matching interfaces. Commit the generated file.
-- Files: new script in `pos-strapi/scripts/generate-ts-types.js`; consumer imports in `rutba-web/src/types/api/`.
+- Files: new script in `services/strapi/scripts/generate-ts-types.js`; consumer imports in `apps/content/storefront/src/types/api/`.
 
 **E2. Split `cms-page-content.tsx`**
 - Problem: That file likely has grown large (unified sections array, group map, page-owned section rendering). Hard to reason about.
 - Change: Extract: (a) `useCmsPageSections` hook that returns the sorted sections, (b) `PageOwnedSection` renderer (excerpt/featured/content/gallery/related), leaving the main component as pure composition.
-- Files: `rutba-web/src/components/cms/cms-page-content.tsx`, new `rutba-web/src/components/cms/useCmsPageSections.ts`, new `rutba-web/src/components/cms/PageOwnedSection.tsx`.
+- Files: `apps/content/storefront/src/components/cms/cms-page-content.tsx`, new `apps/content/storefront/src/components/cms/useCmsPageSections.ts`, new `apps/content/storefront/src/components/cms/PageOwnedSection.tsx`.
 
 **E3. Consolidate picker components**
 - Problem: `ProductPickerTabs`, `GroupPickerTabs`, `PagePickerTabs` share a lot of UI (Connected/All tabs, search, chip list, counts). Likely divergent small details.
 - Change: Extract a generic `<EntityPickerTabs entities, selectedIds, renderItem, searchFields, filters />` primitive, and make the three existing components thin wrappers that configure it.
-- Files: new `rutba-cms/components/EntityPickerTabs.js`; refactor the three existing pickers.
+- Files: new `apps/content/cms/components/EntityPickerTabs.js`; refactor the three existing pickers.
 
 **E4. Testing coverage**
 - Problem: No mention of tests for layout resolver, priority sorting, slider behavior, or picker logic.
-- Change: Add a small vitest/jest setup to `rutba-web` and snapshot-test `ProductGroupRenderer` for each layout; unit-test the priority sort combining groups + page-owned sections.
-- Files: new `rutba-web/vitest.config.ts` (or `jest.config.js`), tests under `rutba-web/src/**/*.test.tsx`.
+- Change: Add a small vitest/jest setup to `apps/content/storefront` and snapshot-test `ProductGroupRenderer` for each layout; unit-test the priority sort combining groups + page-owned sections.
+- Files: new `apps/content/storefront/vitest.config.ts` (or `jest.config.js`), tests under `apps/content/storefront/src/**/*.test.tsx`.
 
 ### F. Future Feature Candidates
 
@@ -528,11 +528,11 @@ Review of what is implemented so far across Phases 1–7 and the site-settings l
 
 ## G. Offer Entity Architecture (Implemented)
 
-> **Correction (verified against code).** The entity is **`api::sale-offer.sale-offer`** — *not* `api::offer.offer`. There is no `api::offer.offer` / `pos-strapi/src/api/offer/` in the repo. Paths below are corrected to the `sale-offer` API. The singular name is `sale-offer`, plural `sale-offers`, displayName "Sales Offer".
+> **Correction (verified against code).** The entity is **`api::sale-offer.sale-offer`** — *not* `api::offer.offer`. There is no `api::offer.offer` / `services/strapi/src/api/offer/` in the repo. Paths below are corrected to the `sale-offer` API. The singular name is `sale-offer`, plural `sale-offers`, displayName "Sales Offer".
 
 Offers are a first-class Strapi entity (`api::sale-offer.sale-offer`) that can be linked uniformly to **product groups**, **CMS pages**, and **categories** via `manyToMany` relations.
 
-### Schema: `pos-strapi/src/api/sale-offer/content-types/sale-offer/schema.json`
+### Schema: `services/strapi/src/api/sale-offer/content-types/sale-offer/schema.json`
 
 | Field | Type | Notes |
 |---|---|---|
@@ -561,8 +561,8 @@ const activeOffer = (entity.offers ?? []).find(o => {
 ```
 
 ### CMS management
-- **List page**: `rutba-cms/pages/sale-offers.js` — shows all offers with status (Active/Upcoming/Expired/Inactive), linked entity counts, and publish state.
-- **Editor page**: `rutba-cms/pages/[documentId]/sale-offer.js` — full editor with entity pickers for product groups, CMS pages, and categories. (A `rutba-cms/pages/new/sale-offer.js` create-shim also exists.)
+- **List page**: `apps/content/cms/pages/sale-offers.js` — shows all offers with status (Active/Upcoming/Expired/Inactive), linked entity counts, and publish state.
+- **Editor page**: `apps/content/cms/pages/[documentId]/sale-offer.js` — full editor with entity pickers for product groups, CMS pages, and categories. (A `apps/content/cms/pages/new/sale-offer.js` create-shim also exists.)
 - **Navigation**: Offers link added under Content dropdown.
 
 ### Migration from group-level offers

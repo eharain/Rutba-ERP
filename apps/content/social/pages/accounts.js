@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Layout from "../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import PermissionCheck from "@rutba/shared/components/PermissionCheck";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import { SocialAccountsEndpoints } from "@rutba/api-provider/endpoints";
 import { API_URL } from "@rutba/api-provider/lib/api";
 import { useToast } from "../components/Toast";
 import { PlatformBadge } from "../components/PlatformBadge";
-import { APP_URLS } from "@rutba/pos-shared/lib/roles";
+import { APP_URLS } from "@rutba/shared/lib/roles";
 
 
 // Platforms with NO posting API on our side (no provider adapter) — they can
@@ -58,7 +58,7 @@ export default function AccountsPage() {
 
     // providerStatus is deliberately NOT fetched here any more: it only ever fed
     // the create/edit form's key-entry fields, and that form moved to the
-    // rutba-admin console. Keeping the call would be a request per page load
+    // apps/admin/console console. Keeping the call would be a request per page load
     // whose result nothing renders.
 
 
@@ -78,7 +78,7 @@ export default function AccountsPage() {
         const onMessage = (e) => {
             if (apiOrigin && e.origin !== apiOrigin && e.origin !== window.location.origin) return;
             const d = e.data;
-            if (!d || d.source !== "rutba-social-oauth") return;
+            if (!d || d.source !== "apps/content/social-oauth") return;
             if (d.ok) {
                 toast(`Connected ${d.message || ""}`.trim(), "success");
                 loadAccounts();

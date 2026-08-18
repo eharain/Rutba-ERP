@@ -7,7 +7,7 @@ export const ReorderPoliciesEndpoints = {
 
     meta: {
         uid: 'api::reorder-policy.reorder-policy',
-        domains: ['inventory', 'stock'],
+        domains: ['control', 'stock'],
         roles: ['admin', 'manager', 'staff'],
     },
 
@@ -15,7 +15,7 @@ export const ReorderPoliciesEndpoints = {
         path: '/reorder-policies',
         action: 'find',
         method: 'get',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             filters: {
@@ -32,7 +32,7 @@ export const ReorderPoliciesEndpoints = {
         path: `/reorder-policies/${documentId}`,
         action: 'findOne',
         method: 'get',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager', 'staff'],
         params: { populate: { product: true, branch: true, preferred_supplier: true, source_branch: true } },
     }),
@@ -41,7 +41,7 @@ export const ReorderPoliciesEndpoints = {
         path: '/reorder-policies',
         action: 'create',
         method: 'post',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager'],
         data,
     }),
@@ -50,7 +50,7 @@ export const ReorderPoliciesEndpoints = {
         path: `/reorder-policies/${documentId}`,
         action: 'update',
         method: 'put',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager'],
         data,
     }),
@@ -59,7 +59,7 @@ export const ReorderPoliciesEndpoints = {
         path: `/reorder-policies/${documentId}`,
         action: 'delete',
         method: 'delete',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager'],
     }),
 
@@ -71,7 +71,7 @@ export const ReorderPoliciesEndpoints = {
         path: `/reorder-policies/suggestions${branchDocId ? `?branch=${branchDocId}` : ''}`,
         action: 'find',
         method: 'get',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager', 'staff'],
     }),
 
@@ -84,7 +84,7 @@ export const ReorderPoliciesEndpoints = {
         path: '/reorder-policies/generate-purchases',
         action: 'create',
         method: 'post',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager'],
         data: body,
     }),
@@ -98,7 +98,7 @@ export const ReorderPoliciesEndpoints = {
         path: '/reorder-policies/generate-work-orders',
         action: 'create',
         method: 'post',
-        apps: ['inventory', 'manufacturing'],
+        apps: ['control', 'manufacturing'],
         approle: ['admin', 'manager'],
         data: body,
     }),

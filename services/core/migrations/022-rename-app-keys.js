@@ -26,7 +26,7 @@
  * `interfaceKey:method:roleKey` composite). Those are not patched here, because
  * the seeder owns them: after this migration, run
  *
- *     npm --prefix rutba-core run seed:policy -- --prune
+ *     npm --prefix services/core run seed:policy -- --prune
  *
  * which mints the policies for the new role keys and removes the old ones. The
  * seeder is the single writer of those rows; hand-patching them here would put
@@ -66,7 +66,7 @@ const ROLE_RENAMES = [
   ['admin_staff', 'console_staff'],
 ];
 
-// The `users` domain is an alias left over from rutba-users, which rutba-admin
+// The `users` domain is an alias left over from rutba-users, which apps/admin/console
 // replaced. Measured 2026-08-18: users_admin, users_manager and users_staff are
 // held by ZERO users, so dropping them revokes nothing. Verified again at run
 // time below — if anyone holds one by then, the migration leaves them alone and
@@ -117,7 +117,7 @@ module.exports = {
       }
     }
 
-    console.log('[022] now run: npm --prefix rutba-core run seed:policy -- --prune');
+    console.log('[022] now run: npm --prefix services/core run seed:policy -- --prune');
   },
 
   async down(knex) {
@@ -128,6 +128,6 @@ module.exports = {
     const roles = await renameKeys(knex, ROLES, ROLE_RENAMES.map(([a, b]) => [b, a]),
       { admin_role_code: (to) => to });
     console.log(`[022] rolled back ${domains} domain(s) and ${roles} role(s)`);
-    console.log('[022] re-run the policy seed to match: npm --prefix rutba-core run seed:policy -- --prune');
+    console.log('[022] re-run the policy seed to match: npm --prefix services/core run seed:policy -- --prune');
   },
 };

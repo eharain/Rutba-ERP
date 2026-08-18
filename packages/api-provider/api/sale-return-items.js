@@ -10,7 +10,7 @@ export const SaleReturnItemsEndpoints = {
     // endpoint worked.
     meta: {
         uid: 'api::sale-return-item.sale-return-item',
-        domains: ['sale'],
+        domains: ['pos'],
         roles: ['admin', 'manager', 'staff'],
     },
 
@@ -19,7 +19,7 @@ export const SaleReturnItemsEndpoints = {
         path: '/sale-return-items',
         action: 'create',
         method: 'post',
-        apps: ['sale'],
+        apps: ['pos'],
         approle: ['admin', 'manager', 'staff'],
         data,
     }),
@@ -32,7 +32,7 @@ export const SaleReturnItemsEndpoints = {
         path: `/sale-return-items/${documentId}`,
         action: 'update',
         method: 'put',
-        apps: ['sale'],
+        apps: ['pos'],
         approle: ['admin', 'manager', 'staff'],
         data,
     }),

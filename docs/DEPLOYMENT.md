@@ -1,6 +1,6 @@
 # Rutba ERP — Production Deployment Guide
 
-This guide covers deploying Rutba ERP: full-stack on a Linux server with systemd, or a single app (e.g. `rutba-web`) on a managed hosting platform like Hostinger.
+This guide covers deploying Rutba ERP: full-stack on a Linux server with systemd, or a single app (e.g. `apps/content/storefront`) on a managed hosting platform like Hostinger.
 
 ---
 
@@ -49,13 +49,13 @@ This guide covers deploying Rutba ERP: full-stack on a Linux server with systemd
 ┌──────────────────────────────────────────────────────────────────┐
 │  17 systemd services  (each runs: node scripts/js/load-env.js --)│
 │                                                                  │
-│  rutba_pos_strapi   :4010  ─── MySQL 8                          │
-│  rutba_pos_auth     :4003                                        │
-│  rutba_pos_stock    :4001                                        │
-│  rutba_pos_sale     :4002                                        │
-│  rutba_web          :4000                                        │
-│  rutba_web_user     :4004                                        │
-│  rutba_order_management :4013                                    │
+│  rutba_strapi   :4010  ─── MySQL 8                          │
+│  rutba_auth     :4003                                        │
+│  rutba_stock    :4001                                        │
+│  rutba_pos     :4002                                        │
+│  rutba_storefront          :4000                                        │
+│  rutba_portal     :4004                                        │
+│  rutba_orders :4013                                    │
 │  rutba_rider        :4012                                        │
 │  rutba_crm          :4005                                        │
 │  rutba_hr           :4006                                        │
@@ -65,7 +65,7 @@ This guide covers deploying Rutba ERP: full-stack on a Linux server with systemd
 │  rutba_cms          :4009                                        │
 │  rutba_social       :4011                                        │
 │  rutba_manufacturing :4014                                       │
-│  rutba_inventory    :4017                                        │
+│  rutba_control    :4017                                        │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -114,8 +114,8 @@ This guide covers deploying Rutba ERP: full-stack on a Linux server with systemd
     └── pos_db_20250120_141458.sql
 
 /etc/systemd/system/
-    rutba_pos_strapi.service
-    rutba_pos_auth.service
+    rutba_strapi.service
+    rutba_auth.service
     ... (one per service)
 
 /var/log/
@@ -197,7 +197,7 @@ APP-SPECIFIC    PREFIX__VARNAME  → prefix stripped, injected only into that ap
 Examples:
   NEXT_PUBLIC_API_URL=https://api.rutba.pk/api/   ← global (all apps)
   POS_STRAPI__PORT=4010                           → PORT=4010 (Strapi only)
-  RUTBA_WEB__NEXTAUTH_SECRET=abc                  → NEXTAUTH_SECRET=abc (rutba-web only)
+  STOREFRONT__NEXTAUTH_SECRET=abc                  → NEXTAUTH_SECRET=abc (apps/content/storefront only)
 ```
 
 **Port resolution** — PORT is only set when explicitly configured:
@@ -249,12 +249,12 @@ The deploy script will also do this automatically on first run — it pauses and
 NEXT_PUBLIC_API_URL=https://api.rutba.pk/api/
 NEXT_PUBLIC_IMAGE_URL=https://api.rutba.pk
 
-NEXT_PUBLIC_WEB_URL=https://rutba.pk
+NEXT_PUBLIC_STOREFRONT_URL=https://rutba.pk
 NEXT_PUBLIC_AUTH_URL=https://auth.rutba.pk
 NEXT_PUBLIC_STOCK_URL=https://stock.rutba.pk
-NEXT_PUBLIC_SALE_URL=https://sale.rutba.pk
-NEXT_PUBLIC_WEB_USER_URL=https://my.rutba.pk
-NEXT_PUBLIC_ORDER_MANAGEMENT_URL=https://orders.rutba.pk
+NEXT_PUBLIC_POS_URL=https://sale.rutba.pk
+NEXT_PUBLIC_PORTAL_URL=https://my.rutba.pk
+NEXT_PUBLIC_ORDERS_URL=https://orders.rutba.pk
 NEXT_PUBLIC_RIDER_URL=https://rider.rutba.pk
 NEXT_PUBLIC_CRM_URL=https://crm.rutba.pk
 NEXT_PUBLIC_HR_URL=https://hr.rutba.pk
@@ -264,7 +264,7 @@ NEXT_PUBLIC_PAYROLL_URL=https://payroll.rutba.pk
 NEXT_PUBLIC_CMS_URL=https://cms.rutba.pk
 NEXT_PUBLIC_SOCIAL_URL=https://social.rutba.pk
 NEXT_PUBLIC_MANUFACTURING_URL=https://manufacturing.rutba.pk
-NEXT_PUBLIC_INVENTORY_URL=https://inventory.rutba.pk
+NEXT_PUBLIC_CONTROL_URL=https://inventory.rutba.pk
 
 # ── Image host (mirrors api.rutba.pk) ──────────────────────────────
 NEXT_PUBLIC_IMAGE_HOST_PROTOCOL=https
@@ -293,30 +293,30 @@ POS_STRAPI__ENCRYPTION_KEY=<generate>
 POS_STRAPI__HOST=0.0.0.0
 POS_STRAPI__PORT=4010
 
-# ── NextAuth (rutba-web) ───────────────────────────────────────────
-RUTBA_WEB__NEXTAUTH_URL=https://rutba.pk
-RUTBA_WEB__NEXTAUTH_SECRET=<generate>
-RUTBA_WEB__GOOGLE_CLIENT_KEY=<from Google Cloud Console>
-RUTBA_WEB__GOOGLE_SECRET_KEY=<from Google Cloud Console>
+# ── NextAuth (apps/content/storefront) ───────────────────────────────────────────
+STOREFRONT__NEXTAUTH_URL=https://rutba.pk
+STOREFRONT__NEXTAUTH_SECRET=<generate>
+STOREFRONT__GOOGLE_CLIENT_KEY=<from Google Cloud Console>
+STOREFRONT__GOOGLE_SECRET_KEY=<from Google Cloud Console>
 
 # ── Per-app ports ────────────────────────────────────────────
 # On managed platforms the platform PORT env var wins automatically.
-POS_AUTH__PORT=4003
-POS_STOCK__PORT=4001
-POS_SALE__PORT=4002
-RUTBA_WEB__PORT=4000
-RUTBA_WEB_USER__PORT=4004
-RUTBA_ORDER_MANAGEMENT__PORT=4013
-RUTBA_RIDER__PORT=4012
-RUTBA_CRM__PORT=4005
-RUTBA_HR__PORT=4006
-RUTBA_ESS__PORT=4015
-RUTBA_ACCOUNTS__PORT=4007
-RUTBA_PAYROLL__PORT=4008
-RUTBA_CMS__PORT=4009
-RUTBA_SOCIAL__PORT=4011
-RUTBA_MANUFACTURING__PORT=4014
-RUTBA_INVENTORY__PORT=4017
+AUTH__PORT=4003
+STOCK__PORT=4001
+POS__PORT=4002
+STOREFRONT__PORT=4000
+PORTAL__PORT=4004
+ORDERS__PORT=4013
+RIDER__PORT=4012
+CRM__PORT=4005
+HR__PORT=4006
+ESS__PORT=4015
+ACCOUNTS__PORT=4007
+PAYROLL__PORT=4008
+CMS__PORT=4009
+SOCIAL__PORT=4011
+MANUFACTURING__PORT=4014
+CONTROL__PORT=4017
 ```
 
 > **Generate all Strapi secrets at once:**
@@ -378,7 +378,7 @@ git clone (depth 1)
     ├─► Copy node_modules from previous build (if available)
     │
     ├─► npm install --prefer-offline --cache ~/rutba_builds/.npm_cache
-    │       └─ pos-strapi npm install separately
+    │       └─ services/strapi npm install separately
     │
     ├─► npm run build:strapi
     ├─► npm run build:all
@@ -389,7 +389,7 @@ git clone (depth 1)
     ├─► Write /etc/systemd/system/rutba_*.service  (new build path)
     ├─► ln -sfn <new-build> ~/rutba_active
     ├─► systemctl daemon-reload
-    ├─► systemctl start rutba_pos_strapi  (wait 3 s)
+    ├─► systemctl start rutba_strapi  (wait 3 s)
     ├─► systemctl start <all other services>
     │
     └─► rutba_prune_builds.sh --protect <new-build>
@@ -411,9 +411,9 @@ sudo bash ~/rutba_active/scripts/rutba_services.sh stop
 sudo bash ~/rutba_active/scripts/rutba_services.sh restart
 
 # Single service
-sudo bash ~/rutba_active/scripts/rutba_services.sh start rutba_pos_strapi
-sudo bash ~/rutba_active/scripts/rutba_services.sh stop rutba_pos_sale
-sudo bash ~/rutba_active/scripts/rutba_services.sh restart rutba_web
+sudo bash ~/rutba_active/scripts/rutba_services.sh start rutba_strapi
+sudo bash ~/rutba_active/scripts/rutba_services.sh stop rutba_pos
+sudo bash ~/rutba_active/scripts/rutba_services.sh restart rutba_storefront
 
 # Check status of all services
 sudo bash ~/rutba_active/scripts/rutba_services.sh status
@@ -427,12 +427,12 @@ sudo bash ~/rutba_active/scripts/rutba_services.sh rebuild /path/to/build_dir
 
 ```bash
 # Recent journal logs for a service (default 50 lines)
-sudo bash ~/rutba_active/scripts/rutba_services.sh logs rutba_pos_strapi
-sudo bash ~/rutba_active/scripts/rutba_services.sh logs rutba_pos_auth 100
+sudo bash ~/rutba_active/scripts/rutba_services.sh logs rutba_strapi
+sudo bash ~/rutba_active/scripts/rutba_services.sh logs rutba_auth 100
 
 # Live-follow logs (Ctrl+C to stop)
 sudo bash ~/rutba_active/scripts/rutba_services.sh tail
-sudo bash ~/rutba_active/scripts/rutba_services.sh tail rutba_web
+sudo bash ~/rutba_active/scripts/rutba_services.sh tail rutba_storefront
 
 # Deploy / rollback activity log
 tail -f /var/log/rutba_deploy.log
@@ -449,39 +449,39 @@ sudo bash ~/rutba_active/scripts/rutba_services.sh diagnose
 ### Direct systemctl (still works)
 
 ```bash
-sudo systemctl start|stop|restart|status rutba_pos_strapi
-sudo journalctl -fu rutba_pos_strapi
+sudo systemctl start|stop|restart|status rutba_strapi
+sudo journalctl -fu rutba_strapi
 ```
 
 ### Service List
 
 | Service Name | Description | App Directory | Default Port |
 |---|---|---|---|
-| `rutba_pos_strapi` | Strapi API + admin | `pos-strapi/` | 4010 |
-| `rutba_core` | Core API (strangler replacement for Strapi) | `rutba-core/` | 4020 |
-| `rutba_pos_auth` | Staff auth portal | `pos-auth/` | 4003 |
-| `rutba_pos_stock` | Stock management | `pos-stock/` | 4001 |
-| `rutba_pos_sale` | Point of sale | `pos-sale/` | 4002 |
-| `rutba_web` | Public storefront | `rutba-web/` | 4000 |
-| `rutba_web_user` | Customer orders | `rutba-web-user/` | 4004 |
-| `rutba_order_management` | Order management | `rutba-order-management/` | 4013 |
-| `rutba_rider` | Rider app | `rutba-rider/` | 4012 |
-| `rutba_crm` | CRM | `rutba-crm/` | 4005 |
-| `rutba_hr` | Human resources | `rutba-hr/` | 4006 |
-| `rutba_ess` | Employee self-service | `rutba-ess/` | 4015 |
-| `rutba_accounts` | Accounting | `rutba-accounts/` | 4007 |
-| `rutba_payroll` | Payroll | `rutba-payroll/` | 4008 |
-| `rutba_cms` | Content editor | `rutba-cms/` | 4009 |
-| `rutba_social` | Social media | `rutba-social/` | 4011 |
-| `rutba_manufacturing` | Manufacturing | `rutba-manufacturing/` | 4014 |
-| `rutba_marketplace` | Marketplace channels | `rutba-marketplace/` | 4016 |
-| `rutba_marketplace_worker` | Marketplace sync worker (no HTTP surface) | `rutba-marketplace/` | — |
-| `rutba_inventory` | Inventory management | `rutba-inventory/` | 4017 |
-| `rutba_seed` | Seeding control | `rutba-seed/` | 4018 |
-| `rutba_campaigns` | Campaigns | `rutba-campaigns/` | 4019 |
-| `rutba_mail` | Mail client | `rutba-mail/` | 4021 |
-| `rutba_admin` | Admin console | `rutba-admin/` | 4022 |
-| `rutba_helpdesk` | Helpdesk | `rutba-helpdesk/` | 4023 |
+| `rutba_strapi` | Strapi API + admin | `services/strapi/` | 4010 |
+| `rutba_core` | Core API (strangler replacement for Strapi) | `services/core/` | 4020 |
+| `rutba_auth` | Staff auth portal | `apps/admin/auth/` | 4003 |
+| `rutba_stock` | Stock management | `apps/inventory/stock/` | 4001 |
+| `rutba_pos` | Point of sale | `apps/sales/pos/` | 4002 |
+| `rutba_storefront` | Public storefront | `apps/content/storefront/` | 4000 |
+| `rutba_portal` | Customer orders | `apps/sales/portal/` | 4004 |
+| `rutba_orders` | Order management | `apps/sales/orders/` | 4013 |
+| `rutba_rider` | Rider app | `apps/sales/rider/` | 4012 |
+| `rutba_crm` | CRM | `apps/sales/crm/` | 4005 |
+| `rutba_hr` | Human resources | `apps/people/hr/` | 4006 |
+| `rutba_ess` | Employee self-service | `apps/people/ess/` | 4015 |
+| `rutba_accounts` | Accounting | `apps/finance/accounts/` | 4007 |
+| `rutba_payroll` | Payroll | `apps/finance/payroll/` | 4008 |
+| `rutba_cms` | Content editor | `apps/content/cms/` | 4009 |
+| `rutba_social` | Social media | `apps/content/social/` | 4011 |
+| `rutba_manufacturing` | Manufacturing | `apps/inventory/manufacturing/` | 4014 |
+| `rutba_marketplace` | Marketplace channels | `apps/sales/marketplace/` | 4016 |
+| `rutba_marketplace_worker` | Marketplace sync worker (no HTTP surface) | `apps/sales/marketplace/` | — |
+| `rutba_control` | Inventory management | `apps/inventory/control/` | 4017 |
+| `rutba_seed` | Seeding control | `apps/admin/seed/` | 4018 |
+| `rutba_campaigns` | Campaigns | `apps/content/campaigns/` | 4019 |
+| `rutba_mail` | Mail client | `apps/content/mail/` | 4021 |
+| `rutba_console` | Admin console | `apps/admin/console/` | 4022 |
+| `rutba_helpdesk` | Helpdesk | `apps/sales/helpdesk/` | 4023 |
 
 ### systemd Unit File Structure
 
@@ -489,7 +489,7 @@ Each service unit looks like this (auto-generated by `write_all_units` in the de
 
 ```ini
 [Unit]
-Description=Rutba ERP — Auth Portal (pos-auth)
+Description=Rutba ERP — Auth Portal (apps/admin/auth)
 After=network.target
 
 [Service]
@@ -498,12 +498,12 @@ User=rutba-nvr
 Group=rutba-nvr
 WorkingDirectory=/home/rutba-nvr/rutba_active
 ExecStart=/usr/bin/node /home/rutba-nvr/rutba_active/scripts/js/load-env.js \
-          -- /usr/bin/npm run start --workspace=pos-auth
+          -- /usr/bin/npm run start --workspace=apps/admin/auth
 Restart=on-failure
 RestartSec=10
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=rutba_pos_auth
+SyslogIdentifier=rutba_auth
 LimitNOFILE=65536
 Environment=NODE_ENV=production
 
@@ -581,7 +581,7 @@ sudo bash ~/rutba_active/scripts/rutba_prune_builds.sh --max 3
 | Action | Detail |
 |---|---|
 | Journal vacuum | Keeps last 7 days of journal, caps total at 500 MB |
-| Strapi file logs | Deletes `pos-strapi/logs/` entries older than 7 days |
+| Strapi file logs | Deletes `services/strapi/logs/` entries older than 7 days |
 | npm debug logs | Removes stale `npm-debug.log*` from active build |
 | Deploy log rotation | Archives `/var/log/rutba_deploy.log` when > 10 MB; keeps archives 30 days |
 
@@ -651,8 +651,8 @@ sudo cp ~/rutba_builds/.env.production ~/rutba_active/.env.production
 
 # 3. Restart only the affected services
 #    (Strapi for DB/secret changes, specific apps for their vars)
-sudo systemctl restart rutba_pos_strapi
-sudo systemctl restart rutba_web
+sudo systemctl restart rutba_strapi
+sudo systemctl restart rutba_storefront
 ```
 
 > Changes to `NEXT_PUBLIC_*` variables are **baked in at build time** by Next.js. These require a full redeploy — a restart alone will not pick them up.
@@ -700,7 +700,7 @@ For CI-driven deploys, use **env-var mode** (no `.env` file — the loader reads
 
 ## 13. Deploying a Single App on Hostinger / PaaS
 
-You can deploy individual Next.js apps (e.g. `rutba-web`) on managed Node.js platforms without the full systemd setup. The monorepo's npm workspace structure supports this directly.
+You can deploy individual Next.js apps (e.g. `apps/content/storefront`) on managed Node.js platforms without the full systemd setup. The monorepo's npm workspace structure supports this directly.
 
 ### 13.1 How It Works
 
@@ -733,16 +733,16 @@ ENVIRONMENT=production
 # Public URLs (baked at build time by Next.js)
 NEXT_PUBLIC_API_URL=https://api.rutba.pk/api/
 NEXT_PUBLIC_IMAGE_URL=https://api.rutba.pk
-NEXT_PUBLIC_WEB_URL=https://rutba.pk
+NEXT_PUBLIC_STOREFRONT_URL=https://rutba.pk
 NEXT_PUBLIC_IMAGE_HOST_PROTOCOL=https
 NEXT_PUBLIC_IMAGE_HOST_NAME=api.rutba.pk
 NEXT_PUBLIC_IMAGE_HOST_PORT=443
 
-# NextAuth (rutba-web specific)
-RUTBA_WEB__NEXTAUTH_URL=https://rutba.pk
-RUTBA_WEB__NEXTAUTH_SECRET=<generate with: openssl rand -base64 32>
-RUTBA_WEB__GOOGLE_CLIENT_KEY=<from Google Cloud Console>
-RUTBA_WEB__GOOGLE_SECRET_KEY=<from Google Cloud Console>
+# NextAuth (apps/content/storefront specific)
+STOREFRONT__NEXTAUTH_URL=https://rutba.pk
+STOREFRONT__NEXTAUTH_SECRET=<generate with: openssl rand -base64 32>
+STOREFRONT__GOOGLE_CLIENT_KEY=<from Google Cloud Console>
+STOREFRONT__GOOGLE_SECRET_KEY=<from Google Cloud Console>
 ```
 
 > **Do NOT set `PORT`** — Hostinger sets it automatically. The loader and Next.js both respect the platform-provided `PORT`.
@@ -764,7 +764,7 @@ The same pattern works on any Node.js hosting that sets `PORT`:
 For **any other app** in the monorepo, replace `:web` with the app's name:
 
 ```bash
-# Build & start rutba-crm on a PaaS
+# Build & start apps/sales/crm on a PaaS
 npm run build:crm
 npm run start:crm
 ```
@@ -791,20 +791,20 @@ Before deploying, ensure your domain points to the hosting platform:
 
 ### 13.5 Deploying Without `load-env.js` (Direct Start)
 
-If the platform cannot run the monorepo root (e.g. it expects a single `package.json`), you can start `rutba-web` directly:
+If the platform cannot run the monorepo root (e.g. it expects a single `package.json`), you can start `apps/content/storefront` directly:
 
 ```bash
 # Install from repo root (workspace hoisting)
 npm install
 
-# Build rutba-web
-npm run build --workspace=rutba-web
+# Build apps/content/storefront
+npm run build --workspace=apps/content/storefront
 
 # Start — Next.js reads PORT from the environment natively
-npm run start --workspace=rutba-web
+npm run start --workspace=apps/content/storefront
 ```
 
-In this case the app reads `NEXT_PUBLIC_*` vars at build time and `PORT` at runtime — no `load-env.js` required. However, app-specific vars like `NEXTAUTH_SECRET` must be set without the `RUTBA_WEB__` prefix (since `scripts/js/load-env.js` is not stripping prefixes):
+In this case the app reads `NEXT_PUBLIC_*` vars at build time and `PORT` at runtime — no `load-env.js` required. However, app-specific vars like `NEXTAUTH_SECRET` must be set without the `STOREFRONT__` prefix (since `scripts/js/load-env.js` is not stripping prefixes):
 
 ```ini
 # Without load-env.js — set bare variable names
@@ -825,10 +825,10 @@ GOOGLE_SECRET_KEY=<from Google Cloud Console>
 sudo bash ~/rutba_active/scripts/rutba_services.sh diagnose
 
 # Full error output for a specific service
-sudo bash ~/rutba_active/scripts/rutba_services.sh logs rutba_pos_strapi 80
+sudo bash ~/rutba_active/scripts/rutba_services.sh logs rutba_strapi 80
 
 # Check the unit file points at a real directory
-grep -E 'WorkingDirectory|ExecStart' /etc/systemd/system/rutba_pos_strapi.service
+grep -E 'WorkingDirectory|ExecStart' /etc/systemd/system/rutba_strapi.service
 
 # Verify load-env.js can find its dependencies
 ls ~/rutba_active/scripts/js/env-utils.js ~/rutba_active/scripts/js/env-config.js
@@ -852,7 +852,7 @@ sudo bash ~/rutba_active/scripts/rutba_services.sh status
 `scripts/js/load-env.js` logs validation errors to the journal before starting the app:
 
 ```bash
-sudo journalctl -u rutba_pos_auth -n 20 --no-pager | grep '\[env\]'
+sudo journalctl -u rutba_auth -n 20 --no-pager | grep '\[env\]'
 # [env] ERROR: Missing global variable: NEXT_PUBLIC_API_URL — Strapi API base URL
 # [env] 1 required variable(s) missing — aborting.
 ```
@@ -864,7 +864,7 @@ Fix the value in `~/rutba_builds/.env.production`, copy it to the active build, 
 ```bash
 sudo lsof -i :4010
 sudo kill -9 <PID>
-sudo systemctl restart rutba_pos_strapi
+sudo systemctl restart rutba_strapi
 ```
 
 ### Build fails — out of memory
@@ -909,7 +909,7 @@ mysql -u pos_user -p -h 127.0.0.1 pos_db
 # The target build may need its node_modules reinstalled
 cd /home/rutba-nvr/rutba_builds/build_20250115_093000_main
 npm install --production=false
-cd pos-strapi && npm install --production=false && cd ..
+cd services/strapi && npm install --production=false && cd ..
 
 # Then rebuild service files and restart
 sudo bash ~/rutba_active/scripts/rutba_services.sh rebuild
@@ -948,7 +948,7 @@ cat /var/log/rutba_log_rotate.log
 | `scripts/js/load-env.js` | service | Env loader: reads `.env.*`, validates, injects per-app vars, spawns app |
 | `scripts/js/env-config.js` | internal | Registry of required variables with severity levels |
 | `scripts/js/env-utils.js` | internal | Shared env utilities: parser, two-mode resolver, validator |
-| `scripts/js/postinstall.js` | internal | Post-install hook: installs pos-strapi dependencies with recursion guard |
+| `scripts/js/postinstall.js` | internal | Post-install hook: installs services/strapi dependencies with recursion guard |
 | `scripts/js/generate-docker-env.js` | dev | Generate `.env.docker` for Docker Compose from env files |
 
 ### Config Constants (in `scripts/rutba_deployed_environment.sh` — edit to match your server)

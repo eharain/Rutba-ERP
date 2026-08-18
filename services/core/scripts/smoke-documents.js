@@ -5,7 +5,7 @@
  * Smoke test for the documents() shim read path, cross-checked against raw SQL
  * on the live database. Read-only.
  *
- * Usage: npm run smoke --workspace-ignored (node rutba-core/scripts/smoke-documents.js)
+ * Usage: npm run smoke --workspace-ignored (node services/core/scripts/smoke-documents.js)
  */
 
 const { getDb, closeDb } = require('../src/db/connection');

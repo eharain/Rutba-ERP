@@ -18,14 +18,14 @@
  *
  * The database half is NOT here. Renaming an app key renames its api-pro domain
  * and role keys, which live in rows — that is
- * rutba-core/migrations/022-rename-app-keys.js, run separately, and it must run
+ * services/core/migrations/022-rename-app-keys.js, run separately, and it must run
  * in the same release as phase 3 or the seeded policy stops matching the header
  * every client sends.
  *
  * ── Why key rewrites are targeted and path rewrites are not ─────────────────
  *
- * A path (`pos-sale/`), an npm name (`@rutba/pos-shared`), an env var
- * (`POS_SALE__PORT`), a unit (`rutba_pos_sale`) and a role key (`sale_admin`)
+ * A path (`apps/sales/pos/`), an npm name (`@rutba/shared`), an env var
+ * (`POS__PORT`), a unit (`rutba_pos`) and a role key (`pos_admin`)
  * are all distinctive enough to replace across the whole tree by pattern.
  *
  * An app KEY is not. `sale` is a substring of a hundred innocent identifiers,
@@ -56,7 +56,7 @@ const PHASES = ['paths', 'refs', 'identity', 'surfaces'];
 
 // Files an app key legitimately appears in. Everything else is a false positive.
 const KEY_SURFACES = [
-  'packages/pos-shared/lib/roles.js',
+  'packages/shared/lib/roles.js',
   'packages/api-provider/config/domains.json',
   'packages/api-provider/config/roles.json',
   'packages/api-provider/api',
@@ -111,11 +111,21 @@ function currentUrlVar(service) {
 function buildPlan(manifest) {
   const moves = [];
   const seenPaths = new Set();
+  const seenPkg = new Set();
   const rules = [];
 
-  const add = (kind, from, to, scope) => {
-    if (from === to) return;
-    rules.push({ kind, from, to, scope: scope || 'tree' });
+  // priority 0 runs before priority 1 within a file. Package NAMES must be
+  // rewritten before path rules touch the same file: root package.json holds
+  // `"apps/content/storefront"` twice — once in `workspaces` (a directory, which the path
+  // rule owns) and once in `--workspace=apps/content/storefront` (a package name, which this
+  // rule owns). Rewrite the name first and the path rule can no longer see it.
+  const add = (kind, from, to, scope, priority = 1) => {
+    if (from === to || !from || !to) return;
+    rules.push({ kind, from, to, scope: scope || 'tree', priority });
+  };
+
+  const readJsonSafe = (file) => {
+    try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; }
   };
 
   for (const s of manifest.services) {
@@ -130,6 +140,20 @@ function buildPlan(manifest) {
     }
     if (r.path !== s.workspace) {
       add('path', s.workspace, r.path);
+    }
+
+    // The npm package name, which today equals the old directory name and so
+    // looks identical to a path. It is not one: nothing imports an app, but
+    // 69 root scripts select one with `--workspace=<name>`.
+    // Read from whichever location exists, so this still resolves after the
+    // directories have moved but the manifest still records the old paths.
+    // Deduped by workspace, not by service: the marketplace worker shares the
+    // app's directory, so it must not rename the app's package after it.
+    if (!seenPkg.has(s.workspace)) {
+      seenPkg.add(s.workspace);
+      const pkgDir = fs.existsSync(path.join(REPO_ROOT, s.workspace)) ? s.workspace : r.path;
+      const pkg = readJsonSafe(path.join(REPO_ROOT, pkgDir, 'package.json'));
+      if (pkg?.name) add('npm-app', pkg.name, `@rutba/${r.key || s.key}`, 'pkg', 0);
     }
 
     const envFrom = currentEnvPrefix(s.workspace);
@@ -167,6 +191,7 @@ function buildPlan(manifest) {
 const PHASE_OF_KIND = {
   path: 'refs',
   npm: 'refs',
+  'npm-app': 'refs',
   env: 'identity',
   url: 'identity',
   unit: 'identity',
@@ -225,7 +250,7 @@ const KEY_SLOTS = [
   },
   {
     // roles.js: APP_URLS / APP_META object keys, and the VALID_APP_KEYS array.
-    match: (rel) => rel === 'packages/pos-shared/lib/roles.js',
+    match: (rel) => rel === 'packages/shared/lib/roles.js',
     rewrite: (src, from, to) => src
       .replace(new RegExp(`^(\\s*)${escapeRe(from)}(\\s*:)`, 'gm'), `$1${to}$2`)
       .replace(new RegExp(`^(\\s*)'${escapeRe(from)}'(\\s*:)`, 'gm'), `$1'${to}'$2`)
@@ -262,15 +287,35 @@ function rewriteKeyIn(rel, src, from, to) {
  * not — they go through KEY_SLOTS above.
  */
 function matcherFor(rule) {
+  if (rule.kind === 'npm-app') {
+    // Only the two places a package NAME is written. Never the `workspaces`
+    // array or a `--prefix` argument — those are directories, and the path
+    // rule owns them.
+    const both = (src) => src
+      .replace(new RegExp(`("name"\\s*:\\s*)"${escapeRe(rule.from)}"`, 'g'), `$1"${rule.to}"`)
+      .replace(new RegExp(`(--workspace=)${escapeRe(rule.from)}(?![\\w./-])`, 'g'), `$1${rule.to}`);
+    return {
+      slotted: false,
+      re: () => new RegExp(`(?:"name"\\s*:\\s*"${escapeRe(rule.from)}")|(?:--workspace=${escapeRe(rule.from)}(?![\\w./-]))`, 'g'),
+      replace: both,
+      grep: rule.from,
+      grepMode: 'fixed',
+    };
+  }
   if (rule.kind === 'key' || rule.kind === 'domain-delete') {
     const quoted = () => new RegExp(`(['"])${escapeRe(rule.from)}\\1`, 'g');
     return {
       slotted: true,
-      // The candidate scan is still the quoted token — cheap, and a superset of
-      // what the slots will touch. The slot decides what actually changes.
       re: quoted,
       replace: null,
-      grep: `['\"]${escapeRe(rule.from)}['\"]`,
+      // The candidate scan is the BARE word, not the quoted token. A quoted
+      // scan looked tighter and silently skipped a file: roles.js writes
+      // APP_URLS and APP_META keys unquoted (`web:`), and `web` is a public app
+      // so it never appears quoted in VALID_APP_KEYS either — so roles.js was
+      // never a candidate for the `web` -> `storefront` rule, and its two
+      // entries went unrenamed while every other key worked. Widening the
+      // candidate scan is free: the slot still decides what actually changes.
+      grep: `\\b${escapeRe(rule.from)}\\b`,
       grepMode: 'regex',
     };
   }
@@ -297,12 +342,31 @@ function slottedHits(rel, rule) {
   return { hits: before - after, handled: true };
 }
 
+// Files that record the OLD names on purpose, because they ARE the mapping.
+// Rewriting them collapses every row into `apps/sales/pos -> apps/sales/pos`,
+// and the failure is quiet: the restructure doc turns into nonsense, and the
+// rename migration silently renames nothing because every from/to pair became
+// identical. Both happened on the first run.
+//
+// Applied migrations are excluded for a second reason as well: the runner
+// checksums them and refuses to run while any applied file has changed, so
+// editing even a comment inside one blocks every later migration. An applied
+// migration is a historical record — it should keep naming the paths that
+// existed when it ran.
+const PROSE_EXCLUDE = [
+  ':!docs/todo/erp2-program/03-repo-restructure.md',
+  ':!services/core/migrations/*',
+  ':!rutba-core/migrations/*',
+];
+
 /** Tracked files a rule matches in, honouring its scope. */
 function filesContaining(rule) {
   const m = matcherFor(rule);
   const pathspec = rule.scope === 'keys'
     ? KEY_SURFACES.slice()
-    : ['.', ':!package-lock.json', ':!*.lock', ':!.claude'];
+    : rule.scope === 'pkg'
+      ? ['package.json', '*/package.json', '*/*/package.json', '*/*/*/package.json']
+      : ['.', ':!package-lock.json', ':!*.lock', ':!.claude', ...PROSE_EXCLUDE];
   const flags = m.grepMode === 'fixed' ? ['-l', '--fixed-strings', '-I'] : ['-l', '-E', '-I'];
   try {
     return git(['grep', ...flags, m.grep, '--', ...pathspec]).split('\n').filter(Boolean);
@@ -408,9 +472,12 @@ function rewriteRules(rules, { verbose }) {
     let src;
     try { src = fs.readFileSync(abs, 'utf8'); } catch { continue; }
     const before = src;
-    // Longest literal first: `pos-strapi` must not be eaten by a shorter rule,
-    // and NEXT_PUBLIC_WEB_USER_URL must not be rewritten by the `web` rule.
-    for (const rule of fileRules.sort((a, b) => b.from.length - a.from.length)) {
+    // Priority first (package names before paths — see `add`), then longest
+    // literal: `services/strapi` must not be eaten by a shorter rule, and
+    // NEXT_PUBLIC_PORTAL_URL must not be rewritten by the `web` rule.
+    const ordered = fileRules.sort((a, b) =>
+      (a.priority - b.priority) || (b.from.length - a.from.length));
+    for (const rule of ordered) {
       const m = matcherFor(rule);
       if (m.slotted) {
         const { hits } = slottedHits(rel, rule);

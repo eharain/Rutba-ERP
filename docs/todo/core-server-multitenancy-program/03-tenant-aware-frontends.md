@@ -6,7 +6,7 @@ is 18 apps × N tenants of Node processes and dies on cost immediately.
 
 ## 2.1 Runtime tenant resolution (shared package)
 
-- [ ] New module in `packages/pos-shared` (or api-provider): `resolveTenant(host)` →
+- [ ] New module in `packages/shared` (or api-provider): `resolveTenant(host)` →
       `{ slug, apiOrigin, mediaOrigin, storefrontOrigin }`, backed by the rutba-console
       registry with an in-process TTL cache + startup snapshot fallback (console being
       down must not take tenants down).
@@ -33,7 +33,7 @@ is 18 apps × N tenants of Node processes and dies on cost immediately.
 
 ## 2.3 Auth/session scoping
 
-- [ ] NextAuth (storefront) and the pos-auth cookie flow: cookies must scope to the
+- [ ] NextAuth (storefront) and the apps/admin/auth cookie flow: cookies must scope to the
       tenant's host (they do by default — verify nothing sets a fleet-wide cookie
       domain); callback/redirect URL allow-lists become tenant-registry-driven.
 - [ ] JWT secrets are per-tenant, so a token from tenant A dies at tenant B's backend by
@@ -53,6 +53,6 @@ From/templates) read the tenant DB, not env, when run in the fleet.
       total traffic, behind the same Caddy. Fleet frontend version can lead/lag tenant
       backend versions by at most one ring — contract suite guards the skew.
 
-**Exit criteria**: the same running rutba-web / pos-sale / pos-stock processes serve
+**Exit criteria**: the same running apps/content/storefront / apps/sales/pos / apps/inventory/stock processes serve
 rutba.pk and the demo tenant concurrently, with correct data isolation, login, role
 switching, and media on both.

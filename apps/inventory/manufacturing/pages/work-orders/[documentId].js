@@ -2,12 +2,12 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
-import SearchableSelect from "@rutba/pos-shared/components/SearchableSelect";
-import WorkflowViewer from "@rutba/pos-shared/components/workflow/WorkflowViewer";
-import WorkItemPanel from "@rutba/pos-shared/components/workflow/WorkItemPanel";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import PermissionCheck from "@rutba/shared/components/PermissionCheck";
+import SearchableSelect from "@rutba/shared/components/SearchableSelect";
+import WorkflowViewer from "@rutba/shared/components/workflow/WorkflowViewer";
+import WorkItemPanel from "@rutba/shared/components/workflow/WorkItemPanel";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import {
     MfgWorkOrdersEndpoints,
     MfgBundlesEndpoints,

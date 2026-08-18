@@ -1,17 +1,17 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { getBranch } from "@rutba/pos-shared/lib/utils";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import { useAuth } from "@rutba/shared/context/AuthContext";
+import { getBranch } from "@rutba/shared/lib/utils";
 import { MediaUtilsEndpoints, ProductGroupsEndpoints, ProductsEndpoints, StockItemsEndpoints } from "@rutba/api-provider/endpoints";
-import FileView from "@rutba/pos-shared/components/FileView";
-import ProductGalleryManager from "@rutba/pos-shared/components/ProductGalleryManager";
-import ProductVariantManager from "@rutba/pos-shared/components/ProductVariantManager";
-import ProductMergeTool from "@rutba/pos-shared/components/product/ProductMergeTool";
-import MarkdownEditor from "@rutba/pos-shared/components/MarkdownEditor";
-import ProductPageShell from "@rutba/pos-shared/components/product/ProductPageShell";
-import { useUtil } from "@rutba/pos-shared/context/UtilContext";
+import FileView from "@rutba/shared/components/FileView";
+import ProductGalleryManager from "@rutba/shared/components/ProductGalleryManager";
+import ProductVariantManager from "@rutba/shared/components/ProductVariantManager";
+import ProductMergeTool from "@rutba/shared/components/product/ProductMergeTool";
+import MarkdownEditor from "@rutba/shared/components/MarkdownEditor";
+import ProductPageShell from "@rutba/shared/components/product/ProductPageShell";
+import { useUtil } from "@rutba/shared/context/UtilContext";
 import Link from "next/link";
 import { useToast } from "../../components/Toast";
 import InlineSeoPanel from "../../components/InlineSeoPanel";
@@ -47,7 +47,7 @@ export default function ProductDetail() {
     // Starting quantity is only collected on creation. After the product is
     // saved we mint that many stock-items in status 'InStock' so the
     // stock-item-lifecycle-owned product.stock_quantity cache reflects the
-    // opening balance immediately. Mirrors the pos-stock new-product flow.
+    // opening balance immediately. Mirrors the apps/inventory/stock new-product flow.
     const [startingQty, setStartingQty] = useState(0);
     const [seedingStock, setSeedingStock] = useState(false);
     const [logoFile, setLogoFile] = useState(null);
@@ -130,7 +130,7 @@ export default function ProductDetail() {
     // Mint `qty` stock-items in InStock for a newly-created product so its
     // opening balance shows up immediately. The stock-item lifecycle keeps
     // product.stock_quantity in sync — we never write the cache directly.
-    // Mirrors pos-stock/pages/[documentId]/product-edit.js#seedStartingStock.
+    // Mirrors apps/inventory/stock/pages/[documentId]/product-edit.js#seedStartingStock.
     const seedStartingStock = async (newDocId, qty) => {
         const n = Math.max(0, Math.floor(Number(qty) || 0));
         if (!newDocId || n < 1) return 0;
@@ -467,7 +467,7 @@ export default function ProductDetail() {
     // surface (image-based + term-based variant management belong together).
     // ProductGalleryManager handles gallery + creation; ProductVariantManager
     // handles per-variant term assignment. Stacked, they cover what the
-    // pos-stock Variants page does, just with CMS-friendly gallery affordances.
+    // apps/inventory/stock Variants page does, just with CMS-friendly gallery affordances.
     const tabs = product && !isNew ? [
         { key: "details", label: "Product Details", icon: "fa-edit", onClick: () => { setActiveTab("details"); return true; } },
         { key: "variants", label: "Variants", icon: "fa-layer-group", onClick: () => { setActiveTab("variants"); return true; }, badge: variantCount || undefined },
@@ -748,7 +748,7 @@ export default function ProductDetail() {
                         )}
 
                         {/* ---- VARIANTS TAB (unified gallery + variant management) ----
-                            Mirrors the pos-stock Variants page in structure: existing variants
+                            Mirrors the apps/inventory/stock Variants page in structure: existing variants
                             list (with gallery), create-by-term form, parent gallery, all in one
                             scroll. ProductVariantManager exposes per-variant term editing below
                             for CMS users who curate term assignments. */}

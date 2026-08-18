@@ -11,11 +11,11 @@ metadata:
 
 ## Problem
 
-URLs from rutba-web / pos-shared / rutba-cms to Strapi (via `packages/api-provider`) are multi-KB after `qs.stringify` serializes deep populate trees, filter operators, field arrays, and pagination/sort. The shape is mostly **fixed per endpoint** — only a handful of variables (slug, page, filters from caller input) actually change call-to-call. Sending the full shape over the wire is pure waste.
+URLs from apps/content/storefront / pos-shared / apps/content/cms to Strapi (via `packages/api-provider`) are multi-KB after `qs.stringify` serializes deep populate trees, filter operators, field arrays, and pagination/sort. The shape is mostly **fixed per endpoint** — only a handful of variables (slug, page, filters from caller input) actually change call-to-call. Sending the full shape over the wire is pure waste.
 
 ## Scope: public-facing first
 
-**Phase 1 is `api/web/*.js` only** — the descriptors that emit the public/unauth `api` client per [[project_api_provider_web_public_client]]. These serve anonymous traffic from rutba-web (SSR + browser). All other call surfaces (pos-shared, rutba-cms, authenticated rutba-web traffic) stay on the long form for now and migrate later.
+**Phase 1 is `api/web/*.js` only** — the descriptors that emit the public/unauth `api` client per [[project_api_provider_storefront_public_client]]. These serve anonymous traffic from apps/content/storefront (SSR + browser). All other call surfaces (pos-shared, apps/content/cms, authenticated apps/content/storefront traffic) stay on the long form for now and migrate later.
 
 ### Why public-first (security rationale)
 
@@ -122,7 +122,7 @@ The codec is a **pure transport-layer concern**. It doesn't know about auth, pol
 
    ```
    packages/api-provider/.generated/
-     RUTBA_WEB/client/web/banners.js, cms-pages.js, …    ← short (because RUTBA_WEB__API_WIRE_MODE=short)
+     RUTBA_WEB/client/web/banners.js, cms-pages.js, …    ← short (because STOREFRONT__API_WIRE_MODE=short)
      POS_AUTH/client/web/banners.js, …                   ← long (inherits global)
      POS_SALE/client/web/banners.js, …                   ← long
      …
@@ -134,7 +134,7 @@ The codec is a **pure transport-layer concern**. It doesn't know about auth, pol
 
    **What the app sees.** App source imports `from '@rutba/api-provider/client'` and never names a variant. No `next.config.js`/`vite.config.js` changes per app. No bundler alias maintenance. The `.d.ts` describes one method shape (signatures are identical across variants); the same types serve both modes because they only describe args in/response out.
 
-   **Concurrent dev safety.** Per-app output directories mean `rutba-web` and `pos-auth` running side-by-side don't collide on `providers/generated/client/`. Each owns its own subtree.
+   **Concurrent dev safety.** Per-app output directories mean `apps/content/storefront` and `apps/admin/auth` running side-by-side don't collide on `providers/generated/client/`. Each owns its own subtree.
 
    **`RUTBA_API_SCAFFOLDED=1` short-circuit is dropped.** The existing cross-app skip in [load-env.js:149](../../scripts/js/load-env.js#L149) assumed app-agnostic output. With per-app trees the skip is incorrect: each launch must scaffold for *its* app. The scaffolder is idempotent and cheap (content-aware, mtime-gated), so the per-launch cost stays in the low seconds. Replace the boolean with `RUTBA_API_SCAFFOLDED_FOR=<APP_PREFIX>` if a same-app re-run optimization is wanted later.
 
@@ -166,14 +166,14 @@ Uses the existing workspace convention from [scripts/js/load-env.js](../../scrip
 API_WIRE_MODE=long
 
 # Per-app overrides (workspace dir name uppercased)
-RUTBA_WEB__API_WIRE_MODE=short        # rutba-web — flip first (Phase 1)
-# RUTBA_CMS__API_WIRE_MODE=long       # rutba-cms — omit to inherit global
-# POS_AUTH__API_WIRE_MODE=long        # pos-* apps — omit to inherit global
-# POS_SALE__API_WIRE_MODE=long
-# POS_STOCK__API_WIRE_MODE=long
+STOREFRONT__API_WIRE_MODE=short        # apps/content/storefront — flip first (Phase 1)
+# CMS__API_WIRE_MODE=long       # apps/content/cms — omit to inherit global
+# AUTH__API_WIRE_MODE=long        # pos-* apps — omit to inherit global
+# POS__API_WIRE_MODE=long
+# STOCK__API_WIRE_MODE=long
 ```
 
-When the loader launches rutba-web: the `RUTBA_WEB__` prefix is stripped and the app sees `process.env.API_WIRE_MODE=short`. When it launches any other app with no override: the global `API_WIRE_MODE=long` flows through. The api-provider runtime always reads `process.env.API_WIRE_MODE` — one name, regardless of which app it's bundled into.
+When the loader launches apps/content/storefront: the `STOREFRONT__` prefix is stripped and the app sees `process.env.API_WIRE_MODE=short`. When it launches any other app with no override: the global `API_WIRE_MODE=long` flows through. The api-provider runtime always reads `process.env.API_WIRE_MODE` — one name, regardless of which app it's bundled into.
 
 Values: `long` | `short`. Default if unset = `long` (no behavior change).
 
@@ -195,12 +195,12 @@ The wire-mode decision rides the workspace's existing per-app context resolution
 ```
 1. Workspace .env contains:
      API_WIRE_MODE=long                       # global default
-     RUTBA_WEB__API_WIRE_MODE=short           # per-app override
+     STOREFRONT__API_WIRE_MODE=short           # per-app override
 
-2. `npm run dev --workspace=rutba-web` invokes load-env.js
-   → findTargetDir() detects workspace dir = 'rutba-web'
+2. `npm run dev --workspace=apps/content/storefront` invokes load-env.js
+   → findTargetDir() detects workspace dir = 'apps/content/storefront'
    → targetPrefix = 'RUTBA_WEB'
-   → splitVariables() routes RUTBA_WEB__API_WIRE_MODE → app-specific
+   → splitVariables() routes STOREFRONT__API_WIRE_MODE → app-specific
    → buildEnvForApp() strips the prefix, child env gets API_WIRE_MODE=short
    → also exports RUTBA_TARGET_APP=RUTBA_WEB into child env
 
@@ -225,7 +225,7 @@ Every decision is made **once**, at the boundary where the context is already kn
 2. Closed-shape sweep + `args` schemas on `api/web/*.js` descriptors. Old shape still works.
 3. Scaffolder gains the per-app emit + variant branch. `load-env.js` exports `RUTBA_TARGET_APP`. Drops the cross-app `RUTBA_API_SCAFFOLDED=1` short-circuit. api-provider's exports map / resolver resolves `client` per app.
 4. Codec middleware + descriptor bundle land in `strapi-api-pro`. Both routes (`/api/*` long, `/api-pro/x/*` short) accept traffic. Env var defaults to `long` everywhere.
-5. **Flip `RUTBA_WEB__API_WIRE_MODE=short`** in workspace `.env`. Restart rutba-web. Verify in Strapi console that no long-form public-role traffic remains.
+5. **Flip `STOREFRONT__API_WIRE_MODE=short`** in workspace `.env`. Restart apps/content/storefront. Verify in Strapi console that no long-form public-role traffic remains.
 6. **Deny long-form for the public role** on Strapi side (permissions or middleware) — this is the actual security win per §"Why public-first". Authenticated roles still hit long-form for pos/cms.
 7. Later phases: repeat the sweep for pos and cms descriptors, flip their per-app env vars, then deny long-form globally and retire the legacy path.
 
@@ -243,4 +243,4 @@ Every decision is made **once**, at the boundary where the context is already kn
 - Existing server interception (downstream of new codec): [packages/strapi-api-pro/server/src/services/request-interceptor.js](../../packages/strapi-api-pro/server/src/services/request-interceptor.js)
 - Scaffolder to extend: [packages/api-provider/scripts/scaffold-endpoint-providers.mjs](../../packages/api-provider/scripts/scaffold-endpoint-providers.mjs)
 - Bootstrap registration point for the new middleware: [packages/strapi-api-pro/server/src/bootstrap.js](../../packages/strapi-api-pro/server/src/bootstrap.js)
-- Public-client surface scope (which descriptors emit unauth `api`): [[project_api_provider_web_public_client]]
+- Public-client surface scope (which descriptors emit unauth `api`): [[project_api_provider_storefront_public_client]]

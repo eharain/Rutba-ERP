@@ -2,10 +2,10 @@
 
 /**
  * `strapi`-shaped compatibility object so PORTED SOURCE FILES run inside
- * rutba-core unmodified:
+ * services/core unmodified:
  *
  *  - the api-pro plugin's own services (packages/strapi-api-pro/server/src/*)
- *  - pos-strapi module code (controllers / services / state machines /
+ *  - services/strapi module code (controllers / services / state machines /
  *    lifecycles / shared utils) pulled in per migration tranche.
  *
  * Surface implemented = surface that code actually uses:
@@ -17,12 +17,12 @@
  *                                           is middleware-free — use for cache columns only)
  *   strapi.documents(uid)                 → the shim (document middlewares fire)
  *   strapi.entityService                  → id-based adapter over the shim
- *   strapi.service(uid)                   → pos-strapi service modules, instantiated
+ *   strapi.service(uid)                   → services/strapi service modules, instantiated
  *                                           against this compat object
  *   strapi.apiPro.cache                   → TTL cache (get/set/clearUser/clearAll)
  *   strapi.log / strapi.eventHub          → console logger / plain EventEmitter
  *
- * buildCompatStrapi() also assigns `global.strapi` — ported pos-strapi files
+ * buildCompatStrapi() also assigns `global.strapi` — ported services/strapi files
  * reference the bare `strapi` global exactly as they do under Strapi.
  */
 
@@ -36,12 +36,12 @@ const { applyFilters } = require('../documents/query');
 const { emailService } = require('../platform/email');
 
 const PLUGIN_ROOT = path.join(REPO_ROOT, 'packages', 'strapi-api-pro', 'server', 'src');
-const POS_SRC = path.join(REPO_ROOT, 'pos-strapi', 'src');
+const POS_SRC = path.join(REPO_ROOT, 'services/strapi', 'src');
 const pluginConfig = require(path.join(PLUGIN_ROOT, 'config.js'));
 
 /**
  * Seed require.cache with a stub for '@strapi/strapi' (as resolved from
- * pos-strapi's node_modules) BEFORE any pos-strapi source file is required.
+ * services/strapi's node_modules) BEFORE any services/strapi source file is required.
  * Service files import only `factories.createCoreService` from it; loading the
  * real package would drag the whole Strapi runtime into this process. The stub
  * returns a marker object the service resolver instantiates lazily.
@@ -54,7 +54,7 @@ function installStrapiFactoryStub() {
   try {
     resolved = require.resolve('@strapi/strapi', { paths: [POS_SRC] });
   } catch {
-    return; // pos-strapi deps absent — service loading will fail visibly later
+    return; // services/strapi deps absent — service loading will fail visibly later
   }
   if (require.cache[resolved]) return; // real module already loaded — leave it
   const marker = (kind) => (uid, cfg) => ({ __rutbaCoreFactory: kind, uid, cfg });
@@ -62,7 +62,7 @@ function installStrapiFactoryStub() {
     createCoreService: marker('service'),
     createCoreController: marker('controller'),
     // Router stub exposes the five CRUD routes Strapi generates, because
-    // several pos-strapi route files build their export as
+    // several services/strapi route files build their export as
     // `[...customRoutes, ...defaultRouter.routes]` — without a real array
     // there, requiring those files throws and their custom routes are
     // invisible to tooling (route-audit.js reads them this way).
@@ -92,14 +92,14 @@ function installStrapiFactoryStub() {
   };
 }
 
-/** Require a pos-strapi source file (controllers, services, utils, …). */
+/** Require a services/strapi source file (controllers, services, utils, …). */
 function posRequire(relPath) {
   installStrapiFactoryStub();
   return require(path.join(POS_SRC, relPath));
 }
 
 /**
- * Strapi-style env helper for evaluating pos-strapi config factories
+ * Strapi-style env helper for evaluating services/strapi config factories
  * (config/social.js etc.). Name resolution goes through core's env loader, so
  * the POS_STRAPI__ prefix convention keeps working (workspace-env parity).
  */
@@ -379,8 +379,8 @@ function baseCoreService(uid) {
 }
 
 /**
- * strapi.service(uid) resolver: loads the pos-strapi service module for
- * `api::<apiName>.<serviceName>` from pos-strapi/src/api/<apiName>/services/,
+ * strapi.service(uid) resolver: loads the services/strapi service module for
+ * `api::<apiName>.<serviceName>` from services/strapi/src/api/<apiName>/services/,
  * instantiating whatever shape it exports (createCoreService factory stub,
  * plain ({ strapi }) factory, or a plain object). Instances are cached.
  */
@@ -443,7 +443,7 @@ function compatAttributes(model) {
 function buildCompatStrapi(overrides = {}) {
   installStrapiFactoryStub();
   const config = { ...pluginConfig.default, ...(overrides.apiProConfig || {}) };
-  let socialConfig; // lazy — evaluated from pos-strapi's own config factory
+  let socialConfig; // lazy — evaluated from services/strapi's own config factory
   let uploadConfig; // ditto, from config/plugins.js's `upload` block
   let contentTypesCache = null;
   let componentsCache = null;
@@ -453,17 +453,17 @@ function buildCompatStrapi(overrides = {}) {
         if (key === 'plugin::api-pro') return config;
         if (key === 'social') {
           if (socialConfig === undefined) {
-            const factory = require(path.join(REPO_ROOT, 'pos-strapi', 'config', 'social.js'));
+            const factory = require(path.join(REPO_ROOT, 'services/strapi', 'config', 'social.js'));
             socialConfig = factory({ env: makeEnvHelper() });
           }
           return socialConfig;
         }
-        // Upload provider choice + options. Read from pos-strapi's own
+        // Upload provider choice + options. Read from services/strapi's own
         // config/plugins.js rather than re-derived from env here, so core can
         // never disagree with Strapi about where the bytes land.
         if (key === 'plugin::upload' || key.startsWith('plugin::upload.')) {
           if (uploadConfig === undefined) {
-            const factory = require(path.join(REPO_ROOT, 'pos-strapi', 'config', 'plugins.js'));
+            const factory = require(path.join(REPO_ROOT, 'services/strapi', 'config', 'plugins.js'));
             const plugins = factory({ env: makeEnvHelper() }) || {};
             uploadConfig = ((plugins.upload || {}).config) || {};
           }
@@ -478,9 +478,9 @@ function buildCompatStrapi(overrides = {}) {
       },
     },
     // @strapi/provider-upload-local writes under dirs.static.public/uploads,
-    // and PUBLIC_DIR moves that off pos-strapi/public in this deployment.
+    // and PUBLIC_DIR moves that off services/strapi/public in this deployment.
     get dirs() {
-      const pub = path.resolve(REPO_ROOT, 'pos-strapi', envGet('PUBLIC_DIR', './public'));
+      const pub = path.resolve(REPO_ROOT, 'services/strapi', envGet('PUBLIC_DIR', './public'));
       return { public: pub, static: { public: pub } };
     },
     // Attribute metadata view over the registry — enough for ported code that
@@ -647,11 +647,11 @@ function buildCompatStrapi(overrides = {}) {
           config: (key, fallback) => (key ? (config[key] ?? fallback) : config),
         };
       }
-      throw new Error(`compat: strapi.plugin('${name}') is not available in rutba-core`);
+      throw new Error(`compat: strapi.plugin('${name}') is not available in services/core`);
     },
   };
   strapi.service = createServiceResolver(strapi);
-  // Ported pos-strapi files reference the bare `strapi` global, exactly as
+  // Ported services/strapi files reference the bare `strapi` global, exactly as
   // they do under Strapi (which sets it the same way).
   global.strapi = strapi;
   return strapi;

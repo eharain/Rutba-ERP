@@ -67,7 +67,7 @@ function apiUrl(p: string) {
  * Server-side address book client.
  *
  * The generated proxy authenticates via the api-provider
- * `storage` JWT — which rutba-web does not populate (auth lives in the
+ * `storage` JWT — which apps/content/storefront does not populate (auth lives in the
  * next-auth session). So we use the descriptors for paths/methods only and
  * make the HTTP call with axios + the session JWT, the same pattern
  * services/orders.ts and services/delivery.ts use.

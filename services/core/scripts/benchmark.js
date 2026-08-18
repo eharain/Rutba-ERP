@@ -2,11 +2,11 @@
 'use strict';
 
 /**
- * Benchmark: pos-strapi (:4010, already running) vs rutba-core (booted here)
+ * Benchmark: services/strapi (:4010, already running) vs services/core (booted here)
  * on identical requests over the same database. Also records RSS for both
- * processes and rutba-core's boot time (Phase 0 baseline metrics).
+ * processes and services/core's boot time (Phase 0 baseline metrics).
  *
- * Usage: node rutba-core/scripts/benchmark.js
+ * Usage: node services/core/scripts/benchmark.js
  */
 
 const { execSync } = require('child_process');

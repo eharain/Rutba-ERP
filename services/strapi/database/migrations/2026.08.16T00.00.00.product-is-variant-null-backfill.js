@@ -17,7 +17,7 @@
  * false-or-null explicitly, mirroring ACTIVE_PRODUCT_FILTER. This migration
  * closes the other half: it makes the stored data match what the schema already
  * claims, so the next `$ne`/`= false` test written against this column — in this
- * repo or in rutba-marketplace — cannot reintroduce the same class of bug.
+ * repo or in apps/sales/marketplace — cannot reintroduce the same class of bug.
  *
  * Only provably-parentless rows are touched. `parent` is the authoritative
  * signal: a product is genuinely a variant iff it has one, and at the time of

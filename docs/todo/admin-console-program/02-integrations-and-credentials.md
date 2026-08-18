@@ -24,7 +24,7 @@ on the list too.
 
 This is not an inference. Both sides of it are written down in the repo already.
 
-[`cmp-sending-identity`'s own schema](../../../pos-strapi/src/api/cmp-sending-identity/content-types/cmp-sending-identity/schema.json)
+[`cmp-sending-identity`'s own schema](../../../services/strapi/src/api/cmp-sending-identity/content-types/cmp-sending-identity/schema.json)
 says so on the field:
 
 > `trust_token` — *"Stored `private` so it is stripped on serialize, matching
@@ -32,7 +32,7 @@ says so on the field:
 > at rest**."*
 > `webhook_secret` — *"Same storage caveat as trust_token."*
 
-And [`pos-strapi/src/utils/mail/crypto.js`](../../../pos-strapi/src/utils/mail/crypto.js)
+And [`services/strapi/src/utils/mail/crypto.js`](../../../services/strapi/src/utils/mail/crypto.js)
 names it from the other direction, in its header:
 
 > *"IMAP/SMTP passwords are full-mailbox keys — strictly higher value than the
@@ -54,7 +54,7 @@ safe in every one of those scenarios.
 
 ### The existing crypto is good and should simply be reused
 
-[`mail/crypto.js`](../../../pos-strapi/src/utils/mail/crypto.js) is 60 lines and
+[`mail/crypto.js`](../../../services/strapi/src/utils/mail/crypto.js) is 60 lines and
 already has everything the other four need:
 
 - AES-256-GCM, random 12-byte IV per encryption, auth tag verified on decrypt.
@@ -103,7 +103,7 @@ Federate instead, in four steps.
 
 ### Step 1 — Shared credential vault
 
-- [ ] Lift `pos-strapi/src/utils/mail/crypto.js` to a shared credential vault
+- [ ] Lift `services/strapi/src/utils/mail/crypto.js` to a shared credential vault
       util (`utils/credentials/vault.js` or similar). **Keep the existing module
       path working** — five consumers import it (one of them as `./crypto` from
       inside `utils/mail/`), and the mail cluster must not churn for this.
@@ -193,7 +193,7 @@ Two concrete cases are waiting:
   connection type and gets the UI, the vault and the health probe for free
   instead of adding a sixth ad-hoc table.
 - **Payment gateways** — verified: there is **no gateway credential entity at
-  all** today. `pos-strapi/src/api/payment` is the `payments` transaction record,
+  all** today. `services/strapi/src/api/payment` is the `payments` transaction record,
   not a connection. The digital-payments adapter seam has nowhere to store a PSP
   key. Whichever gateway lands first will invent a table; the registry decides
   whether that table is encrypted and visible by default, or the fifth plaintext

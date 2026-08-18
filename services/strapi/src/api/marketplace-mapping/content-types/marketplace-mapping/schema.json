@@ -5,7 +5,7 @@
     "singularName": "marketplace-mapping",
     "pluralName": "marketplace-mappings",
     "displayName": "Marketplace Mapping",
-    "description": "Maps an internal taxonomy entity (category/brand/term/term-type) to a marketplace's taxonomy id. Pure reference data — the rutba-marketplace app reads/writes it; Strapi just stores it."
+    "description": "Maps an internal taxonomy entity (category/brand/term/term-type) to a marketplace's taxonomy id. Pure reference data — the apps/sales/marketplace app reads/writes it; Strapi just stores it."
   },
   "options": {
     "draftAndPublish": false

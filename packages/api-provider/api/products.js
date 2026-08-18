@@ -25,7 +25,7 @@ export const ProductsEndpoints = {
 
     meta: {
         uid: 'api::product.product',
-        domains: ['cms', 'order-management', 'social', 'stock', 'inventory'],
+        domains: ['cms', 'orders', 'social', 'stock', 'control'],
         roles: ['admin', 'manager', 'staff']
     },
 
@@ -39,7 +39,7 @@ export const ProductsEndpoints = {
         path: '/products',
         action: 'find',
         method: 'get',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['name:asc'],
@@ -87,7 +87,7 @@ export const ProductsEndpoints = {
         path: '/products',
         action: 'find',
         method: 'get',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['name:asc'],
@@ -147,7 +147,7 @@ export const ProductsEndpoints = {
             // no published sibling) is a set-difference the product controller's
             // find() override resolves via the `publishState` query param.
             publishState,
-            // "Without social posts" (rutba-social only): products not yet linked
+            // "Without social posts" (apps/content/social only): products not yet linked
             // to any social-post. The link lives on social-post.products, so it's
             // resolved by the product controller's find() via a `noSocialPosts`
             // query hint (like publishState / low stock).
@@ -305,9 +305,9 @@ export const ProductsEndpoints = {
             path: '/products',
             // 'product' is not a domain key (see config/domains.json) — it granted
             // nothing. Every app that renders a product list needs this method:
-            // rutba-cms and rutba-social route their searches through list() now
+            // apps/content/cms and apps/content/social route their searches through list() now
             // that search() is no longer a separate (filter-discarding) path.
-            apps: ['inventory', 'stock', 'cms', 'social', 'order-management', 'manufacturing'],
+            apps: ['control', 'stock', 'cms', 'social', 'orders', 'manufacturing'],
             params,
         };
     },
@@ -346,7 +346,7 @@ export const ProductsEndpoints = {
         // Same route+action as list(), so api-pro resolves one policy per role
         // for both. Kept in sync deliberately: a narrower list here reads like
         // these apps are denied when they are not.
-        apps: ['inventory', 'stock', 'cms', 'social', 'order-management', 'manufacturing'],
+        apps: ['control', 'stock', 'cms', 'social', 'orders', 'manufacturing'],
         params: {
             filters: {
                 $or: [
@@ -493,7 +493,7 @@ export const ProductsEndpoints = {
      * Same as byParent but constrained to draft status — used by the bulk-edit flow
      * to enumerate variant drafts for parent records.
      *
-     * todo: speculative stub — added so pos-shared/components/BulkProductActions.js
+     * todo: speculative stub — added so shared/components/BulkProductActions.js
      * resolves. Confirm the `status: 'draft'` query is honored by Strapi for the
      * /products route under bundled draft-publish, and that the filter shape matches
      * what byParent currently produces in production traffic.

@@ -2,7 +2,7 @@ import axios from "axios";
 import { WebCheckoutEndpoints } from "@rutba/api-provider/endpoints/web/checkout.js";
 import { WebOrdersEndpoints } from "@rutba/api-provider/endpoints/web/orders.js";
 // Raw descriptor — same reason as orders.ts / me-addresses.ts: the generated
-// proxy routes through api-provider's storage-JWT, which rutba-web doesn't
+// proxy routes through api-provider's storage-JWT, which apps/content/storefront doesn't
 // populate (auth lives in the NextAuth session). For the order-create call
 // we want the descriptor for path/method only and axios+Bearer ourselves.
 import { WebOrdersEndpoints as WebOrdersEndpointsApi } from "@rutba/api-provider/api/web/orders.js";

@@ -6,7 +6,7 @@ export const SaleItemsEndpoints = {
 
     meta: {
         uid: 'api::sale-item.sale-item',
-        domains: ['sale', 'stock'],
+        domains: ['pos', 'stock'],
         roles: ['admin', 'manager', 'staff']
     },
 
@@ -15,7 +15,7 @@ export const SaleItemsEndpoints = {
         path: '/sale-items',
         action: 'create',
         method: 'post',
-        apps: ['sale', 'stock'],
+        apps: ['pos', 'stock'],
         approle: ['admin', 'manager', 'staff'],
         data,
     }),
@@ -27,7 +27,7 @@ export const SaleItemsEndpoints = {
         path: `/sale-items/${documentId}`,
         action: 'update',
         method: 'put',
-        apps: ['sale', 'stock'],
+        apps: ['pos', 'stock'],
         approle: ['admin', 'manager', 'staff'],
         data,
     }),
@@ -40,7 +40,7 @@ export const SaleItemsEndpoints = {
         path: `/sale-items/${documentId}`,
         action: 'disconnect',
         method: 'put',
-        apps: ['sale', 'stock'],
+        apps: ['pos', 'stock'],
         approle: ['admin', 'manager', 'staff']
     }),
 

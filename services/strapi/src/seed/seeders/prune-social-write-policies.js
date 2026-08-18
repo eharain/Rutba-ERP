@@ -6,7 +6,7 @@
  *
  * ── Why a prune is needed at all ──────────────────────────────────────────
  * Administering connected accounts and relay providers moved to the
- * rutba-admin console, expressed as `apps: ['admin']` on those methods in
+ * apps/admin/console console, expressed as `apps: ['admin']` on those methods in
  * @rutba/api-provider. But the api-pro seeder is UPSERT-ONLY — it writes a
  * policy row per (method × granted role) and never deletes one that the
  * descriptors have stopped declaring. So narrowing an `apps` array grants the
@@ -45,7 +45,7 @@ const INTERFACES = [
     'api--social-relay-provider-social-relay-provider',
 ];
 
-// The methods rutba-social KEEPS. Everything else on these two interfaces is
+// The methods apps/content/social KEEPS. Everything else on these two interfaces is
 // pruned for social_* roles.
 //
 // This started as the opposite — an allowlist of the write methods to delete —

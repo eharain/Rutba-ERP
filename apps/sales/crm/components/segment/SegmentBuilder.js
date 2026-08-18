@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { CrmSegmentsEndpoints } from "@rutba/api-provider/endpoints";
-import EnumSelect from "@rutba/pos-shared/components/EnumSelect";
+import EnumSelect from "@rutba/shared/components/EnumSelect";
 
 /**
  * The rule builder for a saved segment (CRM plan §5.3).

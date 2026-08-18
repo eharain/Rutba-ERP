@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { APP_URLS } from "@rutba/pos-shared/lib/roles";
+import { useAuth } from "@rutba/shared/context/AuthContext";
+import { APP_URLS } from "@rutba/shared/lib/roles";
 import { MarketplaceAccountsEndpoints } from "@rutba/api-provider/endpoints/index.js";
 
 /**
@@ -10,7 +10,7 @@ import { MarketplaceAccountsEndpoints } from "@rutba/api-provider/endpoints/inde
  * The worker already pulls on a schedule; this exists for the moment a customer
  * says "I ordered ten minutes ago" and nobody wants to wait for the next run.
  *
- * The sync ENGINE lives in the rutba-marketplace app (it owns the adapters and
+ * The sync ENGINE lives in the apps/sales/marketplace app (it owns the adapters and
  * the service token), not in Strapi, so this posts to that app's operator route
  * with the signed-in user's JWT. That route requires a `marketplace_*` app-role,
  * so order-management staff who need this must also hold one — the button hides

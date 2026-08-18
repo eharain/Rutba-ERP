@@ -1,18 +1,18 @@
-# rutba-core
+# services/core
 
-The in-house backend core that strangler-replaces pos-strapi, serving the same
+The in-house backend core that strangler-replaces services/strapi, serving the same
 descriptor-defined REST contract from the same database. Program plan and
 ground rules: `docs/todo/core-server-multitenancy-program/`.
 
-Follows the pos-strapi precedent: a top-level app with its own standalone
-install (`npm --prefix rutba-core install`), **not** an npm workspace — its
+Follows the services/strapi precedent: a top-level app with its own standalone
+install (`npm --prefix services/core install`), **not** an npm workspace — its
 dependency tree stays isolated from the frontend workspaces.
 
 ## Status
 
 - **Schema registry** (`src/schema/`): loads the existing `schema.json` files
   (118 app CTs + api-pro plugin CTs + 20 components — the shared source of
-  truth with pos-strapi) and derives Strapi 5 table/column/link-table naming.
+  truth with services/strapi) and derives Strapi 5 table/column/link-table naming.
   Validated **byte-exact** against the live DB: 140 entity tables, 314 link
   tables, 15 component tables, zero diffs.
 - **documents() shim v0** (`src/documents/`): read path — findMany/findOne/
@@ -33,9 +33,9 @@ dependency tree stays isolated from the frontend workspaces.
   (`api_pro_interfaces`/`_methods`; unported custom actions answer 501 — as of
   2026-08-17 the remaining 501s are the campaigns cluster (cmp-*),
   mail-message/mail-link and the media api dir; every other module's custom
-  actions are served from `src/modules/`). Auth = users-permissions JWT (verify-only; pos-strapi
+  actions are served from `src/modules/`). Auth = users-permissions JWT (verify-only; services/strapi
   stays issuer) + admin API tokens (no-user requests skip policy, parity with
-  pos-strapi). Policy enforcement runs the api-pro plugin's OWN service
+  services/strapi). Policy enforcement runs the api-pro plugin's OWN service
   modules (context / permission-engine / policy-resolver / request-interceptor
   required directly from `packages/strapi-api-pro`) through a thin
   strapi-compat object (`config.get`, `db.query`→shim, `apiPro.cache`, `log`).
@@ -46,7 +46,7 @@ dependency tree stays isolated from the frontend workspaces.
   `/api/api-pro/me/permissions`) via the plugin's own mePermissions service —
   appRoles/domains/rolesByApp/permissions shape verified. Known gap: `role`
   (the UP admin-role name) is null — compat drops the builtin role populate.
-- **Bypass paths**: prefix-matched from plugin config (pos-strapi's plugins.js
+- **Bypass paths**: prefix-matched from plugin config (services/strapi's plugins.js
   api-pro block is fully commented out, so plugin defaults ARE parity);
   bypassed paths skip policy enforcement and allow unauthenticated access
   (parity with `auth: false` public routes).
@@ -77,30 +77,30 @@ npm run dev:core                             # nodemon — restarts on any watch
 npm run start:core                           # plain node, no watcher (what deploys run)
 ```
 
-`dev` runs under nodemon (`rutba-core/nodemon.json`). The watch list is wider
-than `src/` on purpose: core `require`s pos-strapi controllers/services/utils
+`dev` runs under nodemon (`services/core/nodemon.json`). The watch list is wider
+than `src/` on purpose: core `require`s services/strapi controllers/services/utils
 zero-copy through `posRequire()` and loads the api-pro plugin's own service
 modules from `packages/strapi-api-pro/server/src`. Node caches those requires,
 so an edit on either side is invisible until the process restarts — hence they
-are watched too. `pos-strapi/src/admin` and `src/seed/data` are ignored (admin
+are watched too. `services/strapi/src/admin` and `src/seed/data` are ignored (admin
 panel code core never loads; JSON fixture blobs).
 
 ```bash
-node rutba-core/scripts/validate-schema.js   # diff derived schema vs live DB (must stay clean)
-node rutba-core/scripts/smoke-documents.js   # read-path smoke, cross-checked against raw SQL
-node rutba-core/scripts/smoke-writes.js      # write-path smoke, marker rows, self-cleaning
-node rutba-core/scripts/smoke-http.js        # boots the server; auth + policy matrix + envelope
-node rutba-core/scripts/smoke-policy.js      # seeder + token minting, inside a rolled-back txn
+node services/core/scripts/validate-schema.js   # diff derived schema vs live DB (must stay clean)
+node services/core/scripts/smoke-documents.js   # read-path smoke, cross-checked against raw SQL
+node services/core/scripts/smoke-writes.js      # write-path smoke, marker rows, self-cleaning
+node services/core/scripts/smoke-http.js        # boots the server; auth + policy matrix + envelope
+node services/core/scripts/smoke-policy.js      # seeder + token minting, inside a rolled-back txn
 ```
 
 Policy tables and API tokens, without Strapi (`src/policy/`):
 
 ```bash
-npm --prefix rutba-core run seed:policy -- --dry-run    # print the plan, write nothing
-npm --prefix rutba-core run seed:policy                 # write what differs
-npm --prefix rutba-core run seed:policy -- --prune      # also drop rows no descriptor declares
-npm --prefix rutba-core run token -- list
-npm --prefix rutba-core run token -- mint "<name>" --days=90
+npm --prefix services/core run seed:policy -- --dry-run    # print the plan, write nothing
+npm --prefix services/core run seed:policy                 # write what differs
+npm --prefix services/core run seed:policy -- --prune      # also drop rows no descriptor declares
+npm --prefix services/core run token -- list
+npm --prefix services/core run token -- mint "<name>" --days=90
 ```
 
 `--dry-run` exits 2 when the plan is non-empty, so CI can gate "the committed
@@ -109,14 +109,14 @@ runs at boot when the contract's hash or the row counts moved
 (`RUTBA_CORE_POLICY_SEED=auto|off|force`).
 
 Both read env the same way the dev stack does: repo-root `.env` /
-`.env.<ENVIRONMENT>`, honoring `RUTBA_CORE__*` > `POS_STRAPI__*` > bare names
-(rutba-core connects to the same DB as pos-strapi during the migration).
+`.env.<ENVIRONMENT>`, honoring `CORE__*` > `POS_STRAPI__*` > bare names
+(services/core connects to the same DB as services/strapi during the migration).
 
 ## Invariants
 
 - `validate-schema` must exit clean before trusting any shim change; the shim
   is only correct while the registry's derivation matches the live schema.
-- schema.json files stay owned by pos-strapi until a module's migration hands
+- schema.json files stay owned by services/strapi until a module's migration hands
   its tables over to SQL migrations (program ground rule 3).
 - Never expose up_users secret columns through populate — user rows go through
   the safe projection in `src/documents/index.js`.

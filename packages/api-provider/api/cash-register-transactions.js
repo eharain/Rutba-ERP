@@ -19,7 +19,7 @@ export const CashRegisterTransactionEndpoints = {
 
     meta: {
         uid: 'api::cash-register-transaction.cash-register-transaction',
-        domains: ['accounts', 'sale', 'accounts-ar', 'accounts-ap'],
+        domains: ['accounts', 'pos', 'accounts-ar', 'accounts-ap'],
         roles: ['admin', 'manager', 'staff'],
     },
 
@@ -28,7 +28,7 @@ export const CashRegisterTransactionEndpoints = {
         path: '/cash-register-transactions',
         action: 'create',
         method: 'post',
-        apps: ['sale'],
+        apps: ['pos'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
         data,
@@ -37,7 +37,7 @@ export const CashRegisterTransactionEndpoints = {
         path: '/cash-register-transactions',
         action: 'create',
         method: 'post',
-        apps: ['sale'],
+        apps: ['pos'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
         data,
@@ -52,7 +52,7 @@ export const CashRegisterTransactionEndpoints = {
         path: '/cash-register-transactions',
         action: 'find',
         method: 'get',
-        apps: ['sale'],
+        apps: ['pos'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
         params: {
@@ -65,7 +65,7 @@ export const CashRegisterTransactionEndpoints = {
         path: '/cash-register-transactions',
         action: 'find',
         method: 'get',
-        apps: ['sale'],
+        apps: ['pos'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
         params: {

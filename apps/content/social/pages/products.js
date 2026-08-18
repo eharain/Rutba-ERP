@@ -2,19 +2,19 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import Layout from "../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { useUtil } from "@rutba/pos-shared/context/UtilContext";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import { useAuth } from "@rutba/shared/context/AuthContext";
+import { useUtil } from "@rutba/shared/context/UtilContext";
 import { ProductsEndpoints, SocialPostsEndpoints, fetchProducts } from "@rutba/api-provider/endpoints";
-import { useProductLookups } from "@rutba/pos-shared/hooks/useProductLookups";
-import { ProductFilter } from "@rutba/pos-shared/components/filter/product-filter";
-import ListPageLayout, { AddButton } from "@rutba/pos-shared/components/ListPageLayout";
-import ListPagination from "@rutba/pos-shared/components/ListPagination";
-import ProductListTable from "@rutba/pos-shared/components/ProductListTable";
+import { useProductLookups } from "@rutba/shared/hooks/useProductLookups";
+import { ProductFilter } from "@rutba/shared/components/filter/product-filter";
+import ListPageLayout, { AddButton } from "@rutba/shared/components/ListPageLayout";
+import ListPagination from "@rutba/shared/components/ListPagination";
+import ProductListTable from "@rutba/shared/components/ProductListTable";
 import { useToast } from "../components/Toast";
 import { useStorefrontBaseUrl, productStorefrontUrl } from "../lib/storefront-url";
 
-// Products browser for rutba-social. Same list + filters as the CMS (shared
+// Products browser for apps/content/social. Same list + filters as the CMS (shared
 // ProductListTable + ProductFilter), parents only. Expanding a product shows
 // the social posts already made for it; a post can be started from a product
 // row (or from several selected products), so every social post originates

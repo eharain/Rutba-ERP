@@ -21,7 +21,7 @@
  * That is acceptable for a link someone follows and then sees a product page
  * for; it would not be for anything that spends money.
  *
- * CommonJS on purpose: pos-strapi resolves scanned codes from CJS service code.
+ * CommonJS on purpose: services/strapi resolves scanned codes from CJS service code.
  * `short-code.js` is the ESM view of this same module — change this file only.
  */
 

@@ -3,7 +3,7 @@ import React from 'react';
 /**
  * ListPageLayout — the canonical shape every "X list" page in the ERP uses.
  *
- * Why this exists: each app (rutba-cms, pos-stock, pos-sale) was hand-rolling
+ * Why this exists: each app (apps/content/cms, apps/inventory/stock, apps/sales/pos) was hand-rolling
  * its own list-page chrome, which drifted across pages — different header
  * spacing, different filter-card padding, different pagination components,
  * different empty-state copy. This primitive locks the chrome and lets each

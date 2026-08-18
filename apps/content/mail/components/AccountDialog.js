@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import EnumSelect from "@rutba/pos-shared/components/EnumSelect";
+import EnumSelect from "@rutba/shared/components/EnumSelect";
 import { MailAccountsEndpoints } from "@rutba/api-provider/endpoints";
 
 // Add/edit a BYO IMAP/SMTP mailbox.

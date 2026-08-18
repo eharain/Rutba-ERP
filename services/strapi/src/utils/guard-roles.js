@@ -6,7 +6,7 @@
  *
  * Utility for resolving api-pro app role IDs from domain keys.
  *
- * App roles are stored as flat keys (e.g. `sale_admin`, `stock_staff`) and
+ * App roles are stored as flat keys (e.g. `pos_admin`, `stock_staff`) and
  * linked to app domains.
  *
  * For direct role key assignment (e.g. from hr_teams.app_roles) use roleKeys.

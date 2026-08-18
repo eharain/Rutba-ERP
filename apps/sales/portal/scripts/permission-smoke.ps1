@@ -59,8 +59,8 @@ Assert-Status -Name 'auth-admin roles access' -Expected 200 -Result $rolesResult
 
 $roles = $rolesResult.data.roles
 $appRole = $roles | Where-Object { $_.type -eq 'rutba_app_user' } | Select-Object -First 1
-$webRole = $roles | Where-Object { $_.type -eq 'rutba_web_user' } | Select-Object -First 1
-if (-not $appRole -or -not $webRole) { throw 'FAIL missing rutba_app_user or rutba_web_user role' }
+$webRole = $roles | Where-Object { $_.type -eq 'rutba_portal' } | Select-Object -First 1
+if (-not $appRole -or -not $webRole) { throw 'FAIL missing rutba_app_user or rutba_portal role' }
 
 $appAccessesResult = Invoke-Api -Method 'GET' -Path '/app-accesses' -Headers $authAdminHeaders
 Assert-Status -Name 'app-accesses fetch' -Expected 200 -Result $appAccessesResult
@@ -107,7 +107,7 @@ $webCreate = Invoke-Api -Method 'POST' -Path '/auth-admin/users' -Headers $authA
   app_accesses = @($webUserId)
   admin_app_accesses = @()
 }
-Assert-Status -Name 'create rutba_web_user' -Expected 200 -Result $webCreate
+Assert-Status -Name 'create rutba_portal' -Expected 200 -Result $webCreate
 $webUserIdNumeric = [int]$webCreate.data.id
 
 function Login-User([string]$identifier, [string]$pwd) {
@@ -159,7 +159,7 @@ Assert-Status -Name 'assign app admin access order-management' -Expected 200 -Re
 $r4 = Invoke-Api -Method 'GET' -Path '/sale-orders?pagination[page]=1&pagination[pageSize]=5' -Headers (App-Headers -jwt $appJwt -app 'order-management' -elevate $true)
 Assert-Status -Name 'app-user elevated order-management sale-orders allowed' -Expected 200 -Result $r4
 
-# rutba_web_user checks
+# rutba_portal checks
 $r5 = Invoke-Api -Method 'GET' -Path '/sale-orders?pagination[page]=1&pagination[pageSize]=5' -Headers (App-Headers -jwt $webJwt -app 'web-user')
 Assert-Status -Name 'web-user web-user sale-orders allowed' -Expected 200 -Result $r5
 

@@ -9,7 +9,7 @@
 The screen agents live in all day. Its design goal is **time-to-resolution**, and everything
 else is subordinate to that.
 
-**Host:** `rutba-helpdesk` (:4023).
+**Host:** `apps/sales/helpdesk` (:4023).
 
 ## 18.2 The one design principle
 

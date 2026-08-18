@@ -38,7 +38,7 @@ npm run dev:web        # → http://localhost:4000
 
 ### Environment Variables
 
-In the monorepo, env is loaded from the root `.env.<ENVIRONMENT>` via `scripts/js/load-env.js`, which strips the `RUTBA_WEB__` prefix for this app (and maps the shared `WEB_*` NextAuth/OAuth secrets). The effective vars this app consumes:
+In the monorepo, env is loaded from the root `.env.<ENVIRONMENT>` via `scripts/js/load-env.js`, which strips the `STOREFRONT__` prefix for this app (and maps the shared `WEB_*` NextAuth/OAuth secrets). The effective vars this app consumes:
 
 ```
 NEXTAUTH_SECRET=<your-secret>
@@ -52,7 +52,7 @@ NEXT_PUBLIC_IMAGE_HOST_NAME=localhost
 NEXT_PUBLIC_IMAGE_HOST_PORT=4010
 ```
 
-See the root [README](../README.md) and [DEPLOYMENT guide](../docs/DEPLOYMENT.md) for the full env contract.
+See the root [README](../../../README.md) and [DEPLOYMENT guide](../../../docs/DEPLOYMENT.md) for the full env contract.
 
 ## Build
 
@@ -62,4 +62,4 @@ npm run build:web
 
 ## License
 
-MIT — see [LICENSE](../LICENSE) for details.
+MIT — see [LICENSE](../../../LICENSE) for details.

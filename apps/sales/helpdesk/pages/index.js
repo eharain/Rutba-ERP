@@ -2,15 +2,15 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import Layout from "../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import { HelpdeskTicketsEndpoints, HelpdeskDesksEndpoints } from "@rutba/api-provider/endpoints";
 import AppHome, {
     AppHomeStats,
     AppHomeStat,
     AppHomePanel,
     AppHomeSection,
-} from "@rutba/pos-shared/components/AppHome";
+} from "@rutba/shared/components/AppHome";
 import { agentLabel, buildTicketFilters } from "../components/TicketFilters";
 import SlaChip, { formatRelativeTime } from "../components/SlaChip";
 import StatusBadge, { PriorityBadge } from "../components/StatusBadge";

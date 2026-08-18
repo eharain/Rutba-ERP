@@ -28,7 +28,7 @@ const EXPIRY_HOURS = 20;
 // The drawer is POS + accounting territory (`accounts` also matches the
 // accounts_viewer_* keys by prefix). Level stays open for the everyday
 // actions — reading and opening a register is the cashier's own job, so
-// sale_staff must pass. `close` re-checks ownership and `expire` narrows to
+// pos_staff must pass. `close` re-checks ownership and `expire` narrows to
 // manager+ on top of this baseline.
 const DRAWER_DOMAINS = ['sale', 'accounts'];
 

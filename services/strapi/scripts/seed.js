@@ -11,7 +11,7 @@
  * torn down. Runs the seed engine, prints a report, and exits non-zero if any
  * seeder failed so CI / the deploy one-shot can detect it.
  *
- * Usage (from pos-strapi):
+ * Usage (from services/strapi):
  *   node scripts/seed.js                         # partial (idempotent) run of all entries
  *   node scripts/seed.js --mode=full             # force re-apply where supported
  *   node scripts/seed.js --only=accounting,api-provider

@@ -7,7 +7,7 @@ export const StockTransfersEndpoints = {
 
     meta: {
         uid: 'api::stock-transfer.stock-transfer',
-        domains: ['inventory', 'stock'],
+        domains: ['control', 'stock'],
         roles: ['admin', 'manager', 'staff'],
     },
 
@@ -17,7 +17,7 @@ export const StockTransfersEndpoints = {
             path: '/stock-transfers',
             action: 'find',
             method: 'get',
-            apps: ['inventory', 'stock'],
+            apps: ['control', 'stock'],
             approle: ['admin', 'manager', 'staff'],
             params: {
                 filters: {
@@ -37,7 +37,7 @@ export const StockTransfersEndpoints = {
         path: `/stock-transfers/${documentId}`,
         action: 'findOne',
         method: 'get',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             populate: {
@@ -53,7 +53,7 @@ export const StockTransfersEndpoints = {
         path: '/stock-transfers',
         action: 'create',
         method: 'post',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager', 'staff'],
         data,
     }),
@@ -62,7 +62,7 @@ export const StockTransfersEndpoints = {
         path: `/stock-transfers/${documentId}`,
         action: 'update',
         method: 'put',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager', 'staff'],
         data,
     }),
@@ -71,7 +71,7 @@ export const StockTransfersEndpoints = {
         path: `/stock-transfers/${documentId}`,
         action: 'delete',
         method: 'delete',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager'],
     }),
 
@@ -80,7 +80,7 @@ export const StockTransfersEndpoints = {
         path: `/stock-transfers/${documentId}/dispatch`,
         action: 'create',
         method: 'post',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager', 'staff'],
         data: {},
     }),
@@ -90,7 +90,7 @@ export const StockTransfersEndpoints = {
         path: `/stock-transfers/${documentId}/receive`,
         action: 'create',
         method: 'post',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager', 'staff'],
         data: {},
     }),
@@ -100,7 +100,7 @@ export const StockTransfersEndpoints = {
         path: `/stock-transfers/${documentId}/cancel`,
         action: 'create',
         method: 'post',
-        apps: ['inventory', 'stock'],
+        apps: ['control', 'stock'],
         approle: ['admin', 'manager'],
         data: {},
     }),

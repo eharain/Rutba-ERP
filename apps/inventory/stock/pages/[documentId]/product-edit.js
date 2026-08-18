@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../../components/Layout';
-import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
-import ProductPageShell, { buildStockProductTabs } from '@rutba/pos-shared/components/product/ProductPageShell';
+import ProtectedRoute from '@rutba/shared/components/ProtectedRoute';
+import ProductPageShell, { buildStockProductTabs } from '@rutba/shared/components/product/ProductPageShell';
 import { StockHelpersEndpoints, CategoriesEndpoints, BrandsEndpoints, SuppliersEndpoints, ProductsEndpoints, StockItemsEndpoints, TermsEndpoints, fetchProducts, saveProduct, loadProduct } from '@rutba/api-provider/endpoints';
 
-import { useUtil } from '@rutba/pos-shared/context/UtilContext';
-import FileView from '@rutba/pos-shared/components/FileView';
-import MarkdownEditor from '@rutba/pos-shared/components/MarkdownEditor';
+import { useUtil } from '@rutba/shared/context/UtilContext';
+import FileView from '@rutba/shared/components/FileView';
+import MarkdownEditor from '@rutba/shared/components/MarkdownEditor';
 import { MultiSelect } from 'primereact/multiselect';
-import { getBranch } from '@rutba/pos-shared/lib/utils';
+import { getBranch } from '@rutba/shared/lib/utils';
 
 export default function ProductEditPage() {
     const router = useRouter();

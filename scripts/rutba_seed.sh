@@ -8,10 +8,10 @@
 # service is actually serving requests.
 #
 # WHY THE WAIT
-#   Seeding runs the same registry + engine the rutba-seed control app
-#   (:4018) drives, via the standalone runner pos-strapi/scripts/seed.js.
+#   Seeding runs the same registry + engine the apps/admin/seed control app
+#   (:4018) drives, via the standalone runner services/strapi/scripts/seed.js.
 #   That runner boots its own load-only Strapi instance, so it must not
-#   start until the rutba_pos_strapi service has finished its own boot -
+#   start until the rutba_strapi service has finished its own boot -
 #   schema sync, migrations and the api-pro descriptor seeder all run
 #   there. Starting both at once makes them race on the same tables.
 #   So: hold for a grace delay, then poll /_health until the API answers.
@@ -31,7 +31,7 @@
 #   an unattended "run everything" default is what dumped all 8 industry
 #   packs' category trees onto a single-tenant DB in one shot. Anything
 #   beyond the essential set is applied deliberately, by an operator, via
-#   the rutba-seed control app (:4018) or an explicit --only/--categories.
+#   the apps/admin/seed control app (:4018) or an explicit --only/--categories.
 #
 # TUNING (environment variables)
 #   RUTBA_SEED_ENABLED       1 (default) | 0 to skip seeding entirely
@@ -137,7 +137,7 @@ wait_for_strapi() {
     local url="http://${host}:${port}/_health"
     local waited=0
 
-    log "Waiting ${SEED_DELAY}s for rutba_pos_strapi to settle before probing ${url} ..."
+    log "Waiting ${SEED_DELAY}s for rutba_strapi to settle before probing ${url} ..."
     sleep "$SEED_DELAY"
 
     while [ "$waited" -lt "$SEED_TIMEOUT" ]; do
@@ -149,9 +149,9 @@ wait_for_strapi() {
         # A dead unit will never come up - fail fast instead of burning the
         # full timeout.
         local unit_state
-        unit_state=$(systemctl is-active rutba_pos_strapi.service 2>/dev/null || echo "unknown")
+        unit_state=$(systemctl is-active rutba_strapi.service 2>/dev/null || echo "unknown")
         if [ "$unit_state" = "failed" ]; then
-            log_err "rutba_pos_strapi.service is in 'failed' state - aborting the wait."
+            log_err "rutba_strapi.service is in 'failed' state - aborting the wait."
             return 1
         fi
 
@@ -182,14 +182,14 @@ if [ -z "$SEED_BUILD_DIR" ] || [ ! -d "$SEED_BUILD_DIR" ]; then
     exit 1
 fi
 
-if [ ! -f "${SEED_BUILD_DIR}/pos-strapi/scripts/seed.js" ]; then
-    log_err "Seed runner not found: ${SEED_BUILD_DIR}/pos-strapi/scripts/seed.js"
+if [ ! -f "${SEED_BUILD_DIR}/services/strapi/scripts/seed.js" ]; then
+    log_err "Seed runner not found: ${SEED_BUILD_DIR}/services/strapi/scripts/seed.js"
     exit 1
 fi
 
 # The seed engine runs INSIDE Strapi (the api-pro seeder writes through the
-# query engine, which rutba-core cannot do yet), so seeding needs the
-# rutba_pos_strapi unit to be running. With RUTBA_BACKEND=core that unit is not
+# query engine, which services/core cannot do yet), so seeding needs the
+# rutba_strapi unit to be running. With RUTBA_BACKEND=core that unit is not
 # started at all, and this would sit here polling a port nobody is listening on
 # until it timed out and failed the deploy.
 #
@@ -197,7 +197,7 @@ fi
 # reseed, and when one IS needed the operator runs it with Strapi up. Exit 0:
 # this is an expected state, not a failure.
 if [ "${RUTBA_BACKEND:-strapi}" = "core" ]; then
-    log_warn "RUTBA_BACKEND=core - pos-strapi is not running, and the seed engine needs it."
+    log_warn "RUTBA_BACKEND=core - services/strapi is not running, and the seed engine needs it."
     log "  Nothing was seeded. If descriptors or seed data changed, re-run with Strapi up:"
     log "    sudo RUTBA_BACKEND=both bash ${_RUTBA_SEED_DIR}/rutba_seed.sh"
     exit 0
@@ -212,7 +212,7 @@ log "Args:   ${SEED_ARGS[*]}"
 
 if ! wait_for_strapi "$STRAPI_HOST" "$STRAPI_PORT"; then
     log_err "Skipping seeding - Strapi never became ready."
-    log "  Check:  sudo bash ${_RUTBA_SEED_DIR}/rutba_services.sh logs rutba_pos_strapi 100"
+    log "  Check:  sudo bash ${_RUTBA_SEED_DIR}/rutba_services.sh logs rutba_strapi 100"
     log "  Re-run: sudo bash ${_RUTBA_SEED_DIR}/rutba_seed.sh"
     exit 1
 fi

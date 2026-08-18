@@ -1,9 +1,9 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import Layout from "../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
 import AppAccessGate from "../components/AppAccessGate";
-import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
+import PermissionCheck from "@rutba/shared/components/PermissionCheck";
 import { SiteSettingEndpoints } from "@rutba/api-provider/endpoints";
 import { useToast } from "../components/Toast";
 
@@ -13,7 +13,7 @@ import { useToast } from "../components/Toast";
  * Site settings are a collection resolved by `app_slug`, with a single row
  * flagged `is_default` as the fallback for any request that doesn't match a
  * slug. This page lists the rows and hands off to the per-row editor; the
- * fuller CMS-oriented editor still lives in rutba-cms.
+ * fuller CMS-oriented editor still lives in apps/content/cms.
  */
 export default function SiteSettingsPage() {
     const [rows, setRows] = useState([]);

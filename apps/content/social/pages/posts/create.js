@@ -1,15 +1,15 @@
 ﻿import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import { MediaUtilsEndpoints, SocialAccountsEndpoints, SocialPostsEndpoints, ProductsEndpoints } from "@rutba/api-provider/endpoints";
 import { useToast } from "../../components/Toast";
 import PLATFORMS from "../../components/PlatformBadge";
-import FileView from "@rutba/pos-shared/components/FileView";
+import FileView from "@rutba/shared/components/FileView";
 import Link from "next/link";
 
-const WEB_URL = process.env.NEXT_PUBLIC_WEB_URL || "http://localhost:4000";
+const WEB_URL = process.env.NEXT_PUBLIC_STOREFRONT_URL || "http://localhost:4000";
 
 export default function CreatePostPage() {
     const { jwt } = useAuth();

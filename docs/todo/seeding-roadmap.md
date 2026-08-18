@@ -1,8 +1,8 @@
 # Seeding Roadmap
 
-Backlog for the unified seeding system (registry + engine + `rutba-seed` control
+Backlog for the unified seeding system (registry + engine + `apps/admin/seed` control
 app). Captures everything discussed but deliberately deferred, so it can be
-picked up later. See `pos-strapi/src/seed/` and the memory note
+picked up later. See `services/strapi/src/seed/` and the memory note
 `project_seeding_control_system` for the built system.
 
 ## Status — built (2026-07)
@@ -10,7 +10,7 @@ picked up later. See `pos-strapi/src/seed/` and the memory note
 - **Decoupled engine**: `src/seed/registry.js` + `engine.js` (sequential,
   single-flight + stale-run reap, audit rows). Server bootstrap seeds nothing.
 - **Surfaces**: CLI `npm run seed`, guarded HTTP `/seed/*`, deploy one-shot
-  (`strapi-seed` compose service), `rutba-seed` control app (:4018).
+  (`strapi-seed` compose service), `apps/admin/seed` control app (:4018).
 - **Categories & content** (~36 registry entries):
   - `system` — UP roles/email/site-setting, slug indexes, api-pro, up-permissions
   - `reference` — accounting COA, return policy, cost-change template, per-file
@@ -88,7 +88,7 @@ picked up later. See `pos-strapi/src/seed/` and the memory note
 ### G. Onboarding wizard & bundles
 - [ ] **Seed profiles / bundles** — one-click "region + industry + demo" combos
       (e.g. "PK Pharmacy") that run the right set of entries together.
-- [ ] **Onboarding wizard** — a guided flow in `rutba-seed` (or auth/admin) that
+- [ ] **Onboarding wizard** — a guided flow in `apps/admin/seed` (or auth/admin) that
       picks country → industry → runs the matching packs on a fresh tenant.
 - [ ] **Empty-tenant guard** — packs should detect a non-empty catalog and warn
       before adding (avoid polluting an established tenant).

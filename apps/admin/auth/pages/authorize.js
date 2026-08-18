@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/router";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import SignInRequired from "@rutba/pos-shared/components/SignInRequired";
+import { useAuth } from "@rutba/shared/context/AuthContext";
+import SignInRequired from "@rutba/shared/components/SignInRequired";
 import { storage } from "@rutba/api-provider/lib/storage";
 
 /**
@@ -11,7 +11,7 @@ import { storage } from "@rutba/api-provider/lib/storage";
  *   redirect_uri  — where to send the token (e.g. http://localhost:3001/auth/callback)
  *   state         — opaque value forwarded back (original path the user wanted)
  *
- * If the user is already logged in (JWT in pos-auth's localStorage),
+ * If the user is already logged in (JWT in apps/admin/auth's localStorage),
  * redirect immediately to redirect_uri?token=JWT&refreshToken=...&state=...
  *
  * If not logged in, redirect to /login with the same params so the user

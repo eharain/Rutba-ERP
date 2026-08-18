@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Layout from "../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import { HrCoursesEndpoints, HrTrainingSessionsEndpoints, HrTrainingEnrollmentsEndpoints } from "@rutba/api-provider/endpoints";
 
 const SESSION_VARIANT = { Scheduled: "primary", InProgress: "info", Completed: "success", Cancelled: "dark" };

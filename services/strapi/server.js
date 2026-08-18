@@ -2,7 +2,7 @@
 'use strict';
 
 /**
- * pos-strapi/server.js — Start Strapi programmatically via `node server.js`
+ * services/strapi/server.js — Start Strapi programmatically via `node server.js`
  *
  * This allows Hostinger (or any Node-based process manager) to launch Strapi
  * with a plain `node` command instead of relying on the `strapi` CLI binary.

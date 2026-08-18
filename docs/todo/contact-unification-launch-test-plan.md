@@ -1,6 +1,6 @@
 # Contact-unification — launch readiness test plan
 
-Walk-through to validate the Phase 1A unification work before rutba-web goes
+Walk-through to validate the Phase 1A unification work before apps/content/storefront goes
 public. Group by priority — P0 blocks launch, P1 must work before any real
 traffic, P2 is acceptable to fix in the first week post-launch.
 
@@ -11,7 +11,7 @@ and project_contact_unification_phase1a memory.
 
 Before any test run:
 
-- [ ] `cd pos-strapi && npm run develop` — Strapi boots without schema-sync
+- [ ] `cd services/strapi && npm run develop` — Strapi boots without schema-sync
   errors. Watch for:
   - "[strapi] Removing component `order.order-contact`" — expected (we
     deleted it).
@@ -37,7 +37,7 @@ Before any test run:
 ## P0 — launch-blocking
 
 ### P0.1 — Anonymous checkout (express, no address)
-- [ ] On rutba-web (logged out), add an item to cart, go to checkout.
+- [ ] On apps/content/storefront (logged out), add an item to cart, go to checkout.
 - [ ] Submit express form with name / email / phone only.
 - [ ] **Strapi admin**: confirm a new `sale-order` row exists with
   `delivery_snapshot` JSON containing the entered name/email/phone,
@@ -55,7 +55,7 @@ Before any test run:
   address book).
 
 ### P0.3 — Authenticated checkout (express)
-- [ ] Log into rutba-web. Confirm `useSession().data.jwt` is set.
+- [ ] Log into apps/content/storefront. Confirm `useSession().data.jwt` is set.
 - [ ] Cart → checkout → express form.
 - [ ] Submit.
 - [ ] Confirm sale-order's `customer_person` resolved to the existing person
@@ -87,7 +87,7 @@ Before any test run:
   resolves to the SAME person row (no new row).
 
 ### P0.6 — /me/addresses CRUD (profile address book)
-On rutba-web, logged in:
+On apps/content/storefront, logged in:
 - [ ] Profile → Saved addresses. Confirm the list loads (might be empty
   on first visit).
 - [ ] Click "Add address". Fill all fields. Save.
@@ -105,14 +105,14 @@ On rutba-web, logged in:
   hard-deleted.
 
 ### P0.7 — POS sale untouched
-- [ ] Open pos-sale. Create a sale through the normal POS flow with a
+- [ ] Open apps/sales/pos. Create a sale through the normal POS flow with a
   customer chosen / created.
 - [ ] Confirm the sale lands successfully. No "customer_contact" errors.
 - [ ] Confirm `api::sale.sale` row has the customer FK populated as before.
 - [ ] (POS is the production-data app — any regression here is a launch
   blocker even though it's unrelated to web.)
 
-### P0.8 — Order detail page (rutba-web /profile/orders/:id)
+### P0.8 — Order detail page (apps/content/storefront /profile/orders/:id)
 - [ ] As a logged-in user with at least one order, open profile → orders.
 - [ ] Click an order.
 - [ ] Confirm the detail page renders name / phone / email / address from
@@ -139,15 +139,15 @@ On rutba-web, logged in:
 - [ ] Page should NOT 500. The synthesized `customer_contact` shape comes
   from snapshot/person in `sale-order.trackOrder`.
 
-### P1.3 — Rider mobile (rutba-rider)
-- [ ] Log into rutba-rider as a rider.
+### P1.3 — Rider mobile (apps/sales/rider)
+- [ ] Log into apps/sales/rider as a rider.
 - [ ] Confirm `/deliveries` lists assigned orders with customer name (no `—`
   unless the order genuinely has no name).
 - [ ] Open a delivery detail. Confirm customer name / phone / address all
   populate from snapshot.
 - [ ] Open a delivery offer detail. Same check.
 
-### P1.4 — Order management admin (rutba-order-management)
+### P1.4 — Order management admin (apps/sales/orders)
 - [ ] Log into the admin app.
 - [ ] /sale-orders list shows customer name column.
 - [ ] /:documentId/sale-order detail loads with form fields prefilled.
@@ -213,7 +213,7 @@ On rutba-web, logged in:
 
 - `customer` row creation from the web — POS-only entity until Phase 1B.
 - CRM lead / crm-contact dual-write — Phase 1C.
-- Person merge UI — Phase 3.1 (will live in rutba-crm).
+- Person merge UI — Phase 3.1 (will live in apps/sales/crm).
 - Backfill of existing POS customers to person — Phase 1B (separate seed
   with dry-run mode).
 

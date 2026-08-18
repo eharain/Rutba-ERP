@@ -46,9 +46,9 @@ npm install git+https://<git-host>/<owner>/strapi-provider-upload-media.git
 # or pin a tag:  ...strapi-provider-upload-media.git#v1.0.0
 ```
 
-**C) Monorepo (pos-strapi / ERP):** make it a workspace package and depend on it.
+**C) Monorepo (services/strapi / ERP):** make it a workspace package and depend on it.
 ```bash
-# move/copy this folder to packages/strapi-provider-upload-media, then in pos-strapi:
+# move/copy this folder to packages/strapi-provider-upload-media, then in services/strapi:
 #   "dependencies": { "strapi-provider-upload-media": "*" }
 npm install
 ```

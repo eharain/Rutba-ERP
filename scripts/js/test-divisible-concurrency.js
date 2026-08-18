@@ -17,7 +17,7 @@
  */
 
 const path = require('path');
-const APP_DIR = path.resolve(__dirname, '..', '..', 'pos-strapi');
+const APP_DIR = path.resolve(__dirname, '..', '..', 'services/strapi');
 const { compileStrapi, createStrapi } = require(require.resolve('@strapi/strapi', { paths: [APP_DIR] }));
 
 const PRODUCT_UID = 'api::product.product';

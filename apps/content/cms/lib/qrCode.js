@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { SiteSettingEndpoints } from "@rutba/api-provider/endpoints";
-import { APP_URLS } from "@rutba/pos-shared/lib/roles";
+import { APP_URLS } from "@rutba/shared/lib/roles";
 
 /**
  * QR codes for print material.
  *
  * Every printed QR encodes `<storefront>/qr/<code>` rather than a direct
  * product/page URL. The storefront resolves the code at scan time against
- * products, collections, CMS pages and page-groups (pos-strapi
+ * products, collections, CMS pages and page-groups (services/strapi
  * src/api/qr/services/qr.js), which means:
  *
  *   - one QR shape works for every entity type, so this generator does too;
@@ -24,7 +24,7 @@ let cachedBasePromise = null;
 
 /**
  * Canonical storefront base. site-settings.site_url wins over the env because
- * the CMS's NEXT_PUBLIC_WEB_URL points wherever *this* deployment's storefront
+ * the CMS's NEXT_PUBLIC_STOREFRONT_URL points wherever *this* deployment's storefront
  * runs, which on a staging box is not the host that ends up on the label.
  * GET /site-setting is public (auth:false), so this works for any role.
  */

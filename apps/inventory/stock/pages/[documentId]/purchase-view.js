@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { fetchPurchaseByIdDocumentIdOrPO } from '@rutba/api-provider/pos';
-import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
+import ProtectedRoute from '@rutba/shared/components/ProtectedRoute';
 import Layout from '../../components/Layout';
-import PermissionCheck from '@rutba/pos-shared/components/PermissionCheck';
+import PermissionCheck from '@rutba/shared/components/PermissionCheck';
 import PurchaseHeader from '../../components/purchase-view/PurchaseHeader';
 import PurchaseItemsList from '../../components/purchase-view/PurchaseItemsList';
 import PurchaseDocuments from '../../components/purchase-view/PurchaseDocuments';
 import PurchaseSummary from '../../components/purchase-view/PurchaseSummary';
-import { useUtil } from '@rutba/pos-shared/context/UtilContext';
+import { useUtil } from '@rutba/shared/context/UtilContext';
 
 export default function PurchaseViewPage() {
     const router = useRouter();

@@ -2,8 +2,8 @@
 
 /**
  * Marketplace tranche (playbook tranche 6): the marketplace-account credential
- * CRUD overrides + the rutba-marketplace WORKER surface. The engine (adapters,
- * OAuth, scheduling, outbound HTTP) lives in the rutba-marketplace app — the
+ * CRUD overrides + the apps/sales/marketplace WORKER surface. The engine (adapters,
+ * OAuth, scheduling, outbound HTTP) lives in the apps/sales/marketplace app — the
  * Strapi side is only the data contract, so this tranche is small: the other
  * marketplace CTs (listing, mapping, price-rule, sync-log) are plain CRUD
  * already served by the seeded route table.
@@ -23,9 +23,9 @@
  * the mfg/hr tranches (stock-item, stock-batch, acc-*, sale-order). The
  * sale/stock cluster itself remains Strapi-owned until tranche 7; this module
  * only exercises the same shared code paths the descriptors already route
- * through pos-strapi today.
+ * through services/strapi today.
  *
- * Crons: none (the worker schedules itself inside rutba-marketplace).
+ * Crons: none (the worker schedules itself inside apps/sales/marketplace).
  * Lifecycles: none new (sale-order registered by hr; order-message has none).
  */
 

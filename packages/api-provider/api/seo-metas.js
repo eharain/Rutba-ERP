@@ -9,7 +9,7 @@ import { listParams, byIdParams } from './__param_builders.js';
 export const SeoMetasEndpoints = {
     meta: {
         uid: 'api::seo-meta.seo-meta',
-        domains: ['cms', 'web', 'web-user'],
+        domains: ['cms', 'storefront', 'portal'],
         roles: ['admin', 'manager', 'staff', 'public', 'user'],
     },
 
@@ -48,7 +48,7 @@ export const SeoMetasEndpoints = {
         path: `/seo-metas/${documentId}`,
         action: 'findOne',
         method: 'get',
-        apps: ['cms', 'web', 'web-user'],
+        apps: ['cms', 'storefront', 'portal'],
         approle: ['admin', 'manager', 'staff', 'public', 'user'],
         params: byIdParams(
             { populate, fields },

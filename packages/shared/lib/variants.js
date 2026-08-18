@@ -1,4 +1,4 @@
-// Variant-creation helpers shared across pos-stock + rutba-cms.
+// Variant-creation helpers shared across apps/inventory/stock + apps/content/cms.
 //
 // Today four surfaces create variant products with subtly different code
 // paths (product-variants.js term flow, catalogue-import.js PDF flow,
@@ -73,7 +73,7 @@ export function buildVariantPayload({ parent, name, sku, barcode, selling_price,
  *                     required. config: { name, sku?, barcode?,
  *                       selling_price?, offer_price?, is_active?, term?,
  *                       moveStockItemDocIds?: string[] }. Stock items only move
- *                     when moveStockItemDocIds is supplied (pos-stock passes it;
+ *                     when moveStockItemDocIds is supplied (apps/inventory/stock passes it;
  *                     the CMS gallery flow omits it).
  *
  *   'term'          — from a term-type selection (e.g. colour = Red).

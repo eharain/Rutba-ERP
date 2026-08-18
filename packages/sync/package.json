@@ -1,5 +1,5 @@
 {
-  "name": "@rutba/sync-core",
+  "name": "@rutba/sync",
   "version": "0.1.0",
   "private": true,
   "description": "The offline sync-bridge, phase 1: a transparent pass-through proxy in front of the Rutba API. No cache, no replica, no outbox — see docs/todo/offline-pos-options.md §10.2.",

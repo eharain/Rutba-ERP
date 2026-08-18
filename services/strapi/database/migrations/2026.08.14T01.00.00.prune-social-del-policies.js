@@ -10,7 +10,7 @@
  * `delete`. Policy keys carry the descriptor's METHOD name — `del` — so six
  * `…:del:social_*` rows were never matched, and social_admin kept the ability
  * to delete social accounts and relay providers even though management had
- * moved to the rutba-admin console.
+ * moved to the apps/admin/console console.
  *
  * The body is now inverted (keep an explicit read list, prune everything else
  * for social_* roles on those two interfaces), which is fail-closed. Strapi

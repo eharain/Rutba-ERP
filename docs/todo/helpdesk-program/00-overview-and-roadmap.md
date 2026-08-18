@@ -10,7 +10,7 @@
 > throughout.
 
 > Program-level plan for turning the existing `contact-ticket` primitive into a **general
-> service-desk platform** (`rutba-helpdesk`, port **4023**) that serves many areas — customer
+> service-desk platform** (`apps/sales/helpdesk`, port **4023**) that serves many areas — customer
 > support, IT, HR, facilities, field service, warranty/RMA, maintenance — and then extends
 > into **remote support** (remote control of enrolled devices) as a wider IT capability.
 >
@@ -18,7 +18,7 @@
 > what already exists, the platform primitives every phase reuses instead of reinventing, the
 > dependency graph, and the sequencing.
 
-Authored: 2026-08-08. **Status: NOT STARTED** — no `rutba-helpdesk` app, no `helpdesk` domain,
+Authored: 2026-08-08. **Status: NOT STARTED** — no `apps/sales/helpdesk` app, no `helpdesk` domain,
 no prior spec. This is the first helpdesk document in the repo.
 
 Decisions locked with the user (2026-08-08):
@@ -41,13 +41,13 @@ Decisions locked with the user (2026-08-08):
 
 | Piece | Where | State |
 |---|---|---|
-| `contact-ticket` content type | [pos-strapi/src/api/contact-ticket/.../schema.json](../../../pos-strapi/src/api/contact-ticket/content-types/contact-ticket/schema.json) | `ticket_no, subject, message, status(open\|in_progress\|waiting\|resolved), sla_due_at, resolved_at, last_reply_by, last_reply_at, metadata`; relations `user`, `person`, `assigned_to`, `employee`; `category(General\|IT\|HR\|Facilities)` |
-| Public storefront flow | `submit`, `:id/reply`, `:id/sla-breach` — [routes](../../../pos-strapi/src/api/contact-ticket/routes/01-custom-contact-ticket.js) | `auth:false` + `ensureUser` (selfAuth); resolves `person` via contact-unification; fires `contact.submitted` / `contact.reply.added` / `contact.sla.breach` |
+| `contact-ticket` content type | [services/strapi/src/api/contact-ticket/.../schema.json](../../../services/strapi/src/api/contact-ticket/content-types/contact-ticket/schema.json) | `ticket_no, subject, message, status(open\|in_progress\|waiting\|resolved), sla_due_at, resolved_at, last_reply_by, last_reply_at, metadata`; relations `user`, `person`, `assigned_to`, `employee`; `category(General\|IT\|HR\|Facilities)` |
+| Public storefront flow | `submit`, `:id/reply`, `:id/sla-breach` — [routes](../../../services/strapi/src/api/contact-ticket/routes/01-custom-contact-ticket.js) | `auth:false` + `ensureUser` (selfAuth); resolves `person` via contact-unification; fires `contact.submitted` / `contact.reply.added` / `contact.sla.breach` |
 | Internal employee helpdesk | `mine`, `submit-internal`, `team`, `:id/resolve` | interceptor-gated; scoped by `isHrManager` / `managedReportDocIds` in `utils/hr-access.js` |
-| Same routes served by core | [rutba-core/src/modules/crm.js:60-68](../../../rutba-core/src/modules/crm.js) | ported + smoke-verified, see [tranche-3-crm.md](../core-server-multitenancy-program/tranche-3-crm.md) |
+| Same routes served by core | [services/core/src/modules/crm.js:60-68](../../../services/core/src/modules/crm.js) | ported + smoke-verified, see [tranche-3-crm.md](../core-server-multitenancy-program/tranche-3-crm.md) |
 | Descriptor | [api-provider/api/contact-tickets.js](../../../packages/api-provider/api/contact-tickets.js) | `domains: ['hr','ess']` only |
-| Agent UI | [rutba-hr/pages/tickets.js](../../../rutba-hr/pages/tickets.js), [rutba-ess/pages/tickets.js](../../../rutba-ess/pages/tickets.js) | two near-duplicate ~166-line Bootstrap pages |
-| Storefront intake | [rutba-web/src/pages/contact.tsx](../../../rutba-web/src/pages/contact.tsx) + `cms-contact-form-section.tsx` | submit only; CMS `enable_contact_form` |
+| Agent UI | [apps/people/hr/pages/tickets.js](../../../apps/people/hr/pages/tickets.js), [apps/people/ess/pages/tickets.js](../../../apps/people/ess/pages/tickets.js) | two near-duplicate ~166-line Bootstrap pages |
+| Storefront intake | [apps/content/storefront/src/pages/contact.tsx](../../../apps/content/storefront/src/pages/contact.tsx) + `cms-contact-form-section.tsx` | submit only; CMS `enable_contact_form` |
 
 ### What is missing — the gaps this program closes
 
@@ -65,7 +65,7 @@ Decisions locked with the user (2026-08-08):
 6. **`category` is a hardcoded enum**, duplicated as a hardcoded `CATEGORIES` array in both
    `tickets.js` pages — the exact drift the `EnumSelect` + `/enums/:name/:field` convention
    exists to prevent.
-7. **Requesters can file but never see a ticket again.** `rutba-web-user` has no ticket page.
+7. **Requesters can file but never see a ticket again.** `apps/sales/portal` has no ticket page.
 8. **A ticket can't point at anything.** No link to the order, invoice, product, asset or work
    order it is about — which is precisely what makes a desk useful in many areas.
 
@@ -82,8 +82,8 @@ primitives**. The single most important architectural decision in this program i
 | Conversation thread | `api::work-item-comment` (`entity_uid` + `target_document_id`, author stamped server-side) | Needs an `internal_only` flag + a ticket-scoped endpoint (see security note below) |
 | Watchers / CC | `api::work-item-watch` (one row per user per item) | Already has custom routes |
 | Audit trail | `api::work-item-activity` + `utils/work-item-activity.js#logActivity` | `kind: created\|transition\|assigned\|unassigned\|watch\|unwatch\|comment\|note` — already exactly the helpdesk vocabulary; best-effort, never throws |
-| Configurable stages/transitions per desk | `api::workflow` + [utils/workflow-engine.js](../../../pos-strapi/src/utils/workflow-engine.js) | Stages carry `maps_to_status`, so custom stages never bypass canonical side effects; falls back to hardcoded maps when no workflow row exists — zero behaviour change until configured |
-| **SLA breach detection** | `workflowSlaSweep` cron, `*/15 * * * *` — [config/workflow-cron-tasks.js](../../../pos-strapi/config/workflow-cron-tasks.js) | Scans every active SLA-configured workflow, fires a deduped `workflow.sla_breach` event. **Flags only — never auto-transitions.** A no-op until a workflow sets `sla_hours` on a transition |
+| Configurable stages/transitions per desk | `api::workflow` + [utils/workflow-engine.js](../../../services/strapi/src/utils/workflow-engine.js) | Stages carry `maps_to_status`, so custom stages never bypass canonical side effects; falls back to hardcoded maps when no workflow row exists — zero behaviour change until configured |
+| **SLA breach detection** | `workflowSlaSweep` cron, `*/15 * * * *` — [config/workflow-cron-tasks.js](../../../services/strapi/config/workflow-cron-tasks.js) | Scans every active SLA-configured workflow, fires a deduped `workflow.sla_breach` event. **Flags only — never auto-transitions.** A no-op until a workflow sets `sla_hours` on a transition |
 | Notifications | `api::notification.notification-engine#processEvent` | `contact.*` templates already routed |
 | Identity across channels | `api::person` + `ensureForUser` | contact-unification already wired into `submit` |
 | Assets (for IT desks) | `api::hr-asset` + `api::hr-asset-assignment` | `asset_tag`, `serial_number`, `category`, `status`, branch/account links |
@@ -105,11 +105,11 @@ stages arrive by configuration, not by code.
 
 | # | Phase | Owning code | Ships | Depends on |
 |---|-------|-------------|-------|-----------|
-| 1 | **Desk foundation** — generalise the ticket, add the thread, wire the platform primitives | `pos-strapi` + `rutba-core` + api-provider | A ticket that can be threaded, assigned, prioritised, SLA'd and pointed at any entity | — |
-| 2 | **`rutba-helpdesk` app (:4023)** — the agent console | new app + roles/domains registration | Agents work every desk from one queue | 1 |
-| 3 | **Requester surfaces** — portal + omnichannel intake | `rutba-web-user`, `rutba-web`, HR/ESS, pos-shared | Requesters see and reply to their own tickets; tickets arrive from more than a form | 1, 2 |
-| 4 | **Automation & knowledge** — routing rules, canned replies, KB, CSAT, reports | `pos-strapi` + `rutba-helpdesk` | The desk scales past manual triage | 2, 3 |
-| 5 | **Remote support** — device enrolment, remote control sessions, consent + audit | new CTs + provider adapters + `rutba-helpdesk` | IT resolves device issues from inside the ticket | 2; asset model | 
+| 1 | **Desk foundation** — generalise the ticket, add the thread, wire the platform primitives | `services/strapi` + `services/core` + api-provider | A ticket that can be threaded, assigned, prioritised, SLA'd and pointed at any entity | — |
+| 2 | **`apps/sales/helpdesk` app (:4023)** — the agent console | new app + roles/domains registration | Agents work every desk from one queue | 1 |
+| 3 | **Requester surfaces** — portal + omnichannel intake | `apps/sales/portal`, `apps/content/storefront`, HR/ESS, pos-shared | Requesters see and reply to their own tickets; tickets arrive from more than a form | 1, 2 |
+| 4 | **Automation & knowledge** — routing rules, canned replies, KB, CSAT, reports | `services/strapi` + `apps/sales/helpdesk` | The desk scales past manual triage | 2, 3 |
+| 5 | **Remote support** — device enrolment, remote control sessions, consent + audit | new CTs + provider adapters + `apps/sales/helpdesk` | IT resolves device issues from inside the ticket | 2; asset model | 
 
 Phases 1–2 are the minimum for a usable product. Phase 3 is what makes it a *service* desk
 rather than an internal tracker. Phases 4 and 5 are independent of each other and can be
@@ -193,7 +193,7 @@ also fixes the existing duplication in the two `tickets.js` pages.
 
 Rewrite [contact-tickets.js](../../../packages/api-provider/api/contact-tickets.js) for
 `domains: ['helpdesk','hr','ess','crm']`, per-method `scope`, and the named-policy
-convention. Mirror every new route in [rutba-core/src/modules/crm.js](../../../rutba-core/src/modules/crm.js)
+convention. Mirror every new route in [services/core/src/modules/crm.js](../../../services/core/src/modules/crm.js)
 — or split a `helpdesk.js` module — keeping literal paths registered before `:documentId`.
 
 > **Gate:** new actions 403 until `npm run seed -- --only=api-provider,up-permissions` runs.
@@ -201,14 +201,14 @@ convention. Mirror every new route in [rutba-core/src/modules/crm.js](../../../r
 
 ---
 
-## Phase 2 — `rutba-helpdesk` app (port 4023)
+## Phase 2 — `apps/sales/helpdesk` app (port 4023)
 
 Registration checklist (per the new-ERP-app convention):
 
 - `helpdesk` entry in [domains.json](../../../packages/api-provider/config/domains.json) with
   `helpdesk_admin` / `helpdesk_manager` / `helpdesk_staff` (`helpdesk_agent` as the staff-level
   alias if agent reads better in the UI).
-- [pos-shared/lib/roles.js](../../../packages/pos-shared/lib/roles.js): `APP_URLS.helpdesk`,
+- [shared/lib/roles.js](../../../packages/shared/lib/roles.js): `APP_URLS.helpdesk`,
   `VALID_APP_KEYS`, `APP_META` entry. Category: **`sales` (Sales & Customers)** — a customer-facing
   desk sits closer to CRM than to Administration.
 - `/auth/callback` page, `RoleSwitcher`, `PrimeReactProvider`.
@@ -230,7 +230,7 @@ Screens:
 
 ## Phase 3 — Requester surfaces
 
-- **`rutba-web-user` portal**: `tickets.js` list + detail with reply, reopen, CSAT. Uses the
+- **`apps/sales/portal` portal**: `tickets.js` list + detail with reply, reopen, CSAT. Uses the
   ticket-scoped message endpoint, never the generic comment route.
 - **Storefront**: `contact.tsx` posts a real desk-routed ticket (`source=web`,
   `desk=Customer Support`), and logged-in customers get a link to the portal thread.
@@ -238,7 +238,7 @@ Screens:
   `subject_entity_uid` + `subject_document_id`.
 - **De-duplicate HR/ESS**: extract the shared ticket UI into `pos-shared` and re-point both
   `tickets.js` pages at the new API. They stay as *filing* surfaces; agents work in
-  `rutba-helpdesk`.
+  `apps/sales/helpdesk`.
 - **Email intake** via Rutba-MTA inbound (RSMTPREST ingress is listed as partial in the
   [RightApp gap analysis](../rightapp-gap-analysis/README.md) — confirm before committing).
   Reply-to-thread by parsing the ticket reference.
@@ -298,7 +298,7 @@ behind a provider-adapter seam (self-hosted RustDesk / MeshCentral / Guacamole).
 ## Open questions to settle before Phase 1 lands
 
 1. **Rename or keep `contact-ticket`?** Keeping the UID avoids a migration across
-   `pos-strapi`, `rutba-core`, descriptors, generated clients and the notification templates.
+   `services/strapi`, `services/core`, descriptors, generated clients and the notification templates.
    Recommendation: **keep the UID**, present it as "Helpdesk Ticket" in the UI.
 2. **Agent identity** — do agents need an `hr-employee` record (as the internal flow assumes
    today via `resolveOrCreateEmployeeForUser`), or is a users-permissions user with a

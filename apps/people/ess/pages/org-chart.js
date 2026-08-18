@@ -1,6 +1,6 @@
 import Layout from "../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import OrgChart from "@rutba/pos-shared/components/OrgChart";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import OrgChart from "@rutba/shared/components/OrgChart";
 
 /**
  * Employee-facing view of where they sit. The server roots the tree on the

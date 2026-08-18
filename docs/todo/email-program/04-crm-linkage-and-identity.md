@@ -46,18 +46,18 @@ triage history may be garbage-collected — retention decision deferred to M3.
 
 ## Timelines (M2)
 
-- **rutba-crm** contact/lead pages and **rutba-order-management** order pages
+- **apps/sales/crm** contact/lead pages and **apps/sales/orders** order pages
   gain a "Mail" panel: `mail-links?entity_uid=…&target_document_id=…` →
   hydrate messages → list with snippet, direction arrow, date; click opens a
   read-only MessageView (imported copy — works even if the mail server no
   longer has the message).
-- The panel writes nothing itself; linking happens in rutba-mail (or via the
+- The panel writes nothing itself; linking happens in apps/content/mail (or via the
   auto-rule later). Keeps the CRM apps read-only consumers.
 
 ## Compose from CRM (M2)
 
-"Email this contact" buttons in rutba-crm / order pages deep-link into
-rutba-mail compose (`/`?compose=1&to=…&link=api::crm-contact.crm-contact:abc`)
+"Email this contact" buttons in apps/sales/crm / order pages deep-link into
+apps/content/mail compose (`/`?compose=1&to=…&link=api::crm-contact.crm-contact:abc`)
 with the link target pre-attached — sending then imports the outbound message
 automatically (direction `outbound`, `link_kind='manual'`).
 

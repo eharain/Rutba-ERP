@@ -1248,7 +1248,7 @@ module.exports = {
 > GET /acc-journal-entries/reports/ap-aging?asOf=
 > ```
 >
-> Access is gated in the controller: the caller must be authenticated **and** an accountant (role `admin`, or an `admin`-level permission role in the `accounts` or `auth` domain). The **`rutba-accounts`** frontend app (`d:/Rutba/ERP/rutba-accounts`) is the consumer of these endpoints.
+> Access is gated in the controller: the caller must be authenticated **and** an accountant (role `admin`, or an `admin`-level permission role in the `accounts` or `auth` domain). The **`apps/finance/accounts`** frontend app (`d:/Rutba/ERP/apps/finance/accounts`) is the consumer of these endpoints.
 
 All reports are derived from querying `acc-journal-line` joined with `acc-account` and `acc-journal-entry`. No separate reporting tables are needed.
 
@@ -1649,4 +1649,4 @@ For multi-branch setups, branch-specific accounts can be created per branch (bra
 | **Tax** | Tax taken from the source document and credited via the `TAX_PAYABLE` mapping; `acc-tax-rate` is a scaffold, not wired |
 | **Audit** | Strapi built-in timestamps + `posted_by`/`posted_at` + immutability rules |
 | **Periods** | `acc-fiscal-period` — best-effort stamp only; posting is not blocked on missing/closed periods; no automated year-end close |
-| **Reporting** | Built: Trial Balance, P&L, Balance Sheet, Cash Flow, AR/AP Aging at `GET /acc-journal-entries/reports/*`; consumed by `rutba-accounts` |
+| **Reporting** | Built: Trial Balance, P&L, Balance Sheet, Cash Flow, AR/AP Aging at `GET /acc-journal-entries/reports/*`; consumed by `apps/finance/accounts` |

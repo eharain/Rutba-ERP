@@ -139,12 +139,12 @@ async function main() {
     await grantIfMissing(staff.id, invRole.id);
     // listOffersForProduct requires an order/sale/cms membership — piggyback
     // a sale role on the same actor.
-    const saleRole = await db('api_pro_app_roles').where('key', 'sale_admin').first('id');
+    const saleRole = await db('api_pro_app_roles').where('key', 'pos_admin').first('id');
     if (saleRole) await grantIfMissing(staff.id, saleRole.id);
     // The cash-register routes are auth:false + requireAppRole('sale'/'accounts'),
     // so the POS actor needs a real drawer role — staff level, because that is
     // the cashier the gate has to keep letting through.
-    const cashierRole = await db('api_pro_app_roles').where('key', 'sale_staff').first('id')
+    const cashierRole = await db('api_pro_app_roles').where('key', 'pos_staff').first('id')
       || saleRole;
     check('a sale app-role exists for the POS actor', Boolean(cashierRole));
     if (cashierRole) await grantIfMissing(posUser.id, cashierRole.id);
@@ -248,7 +248,7 @@ async function main() {
     }));
     const stockUnit = track(STOCK_UID, await documents(STOCK_UID).create({
       data: {
-        name: `${MARK} pos product`, sku: `${MARK}-pos-stock-sku`, status: 'InStock',
+        name: `${MARK} pos product`, sku: `${MARK}-apps/inventory/stock-sku`, status: 'InStock',
         cost_price: 300, product: { connect: [posProduct.documentId] },
       },
     }));
@@ -314,7 +314,7 @@ async function main() {
       JSON.stringify(detailRes.body && detailRes.body.data
         && [detailRes.body.data.invoice_no, (detailRes.body.data.items || []).length]));
 
-    const searchRes = await req('GET', `/api/sales/search-by-stock-item?term=${MARK}-pos-stock`, tokenPos);
+    const searchRes = await req('GET', `/api/sales/search-by-stock-item?term=${MARK}-apps/inventory/stock`, tokenPos);
     check('search-by-stock-item finds the sale through the unit',
       searchRes.status === 200 && (searchRes.body.data || []).includes(sale.documentId),
       JSON.stringify(searchRes.body));

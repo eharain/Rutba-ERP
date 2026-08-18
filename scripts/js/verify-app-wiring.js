@@ -8,8 +8,8 @@
  * Adding an app to this monorepo means touching eight unrelated files. Miss
  * one and the failure is silent and delayed: an app with no PREFIX__PORT falls
  * back to Next's default 3000 and crash-loops on EADDRINUSE behind whichever
- * app bound it first — which is exactly how rutba-ess, rutba-inventory and
- * rutba-marketplace sat dead on the deploy box for months while `systemctl`
+ * app bound it first — which is exactly how apps/people/ess, apps/inventory/control and
+ * apps/sales/marketplace sat dead on the deploy box for months while `systemctl`
  * cheerfully reported "activating".
  *
  * Source of truth is config/apps.manifest.json. Everything else — the systemd
@@ -19,7 +19,7 @@
  * Why the manifest rather than rutba_apps.sh (which was the authority until
  * 2026-08-17): the shell registry knows units, commands and ports, and nothing
  * else. It cannot express that `web` is public, that the two backends install
- * standalone, that rutba-core has no build step, or that `users` is a domain
+ * standalone, that services/core has no build step, or that `users` is a domain
  * with no app — so each of those read as drift on every run, and five surfaces
  * had genuinely drifted apart underneath the noise. Recording a deliberate
  * divergence as a flag is what lets the rest be a hard failure.
@@ -107,15 +107,15 @@ const devStart = read('dev-start.bat') || '';
 const sampleEnv = read('sample.env.enviromentname.txt') || '';
 const envDev = read('.env.development');          // gitignored — may be absent
 const envProd = read('.env.production');          // gitignored — may be absent
-const rolesJs = read('packages/pos-shared/lib/roles.js') || '';
+const rolesJs = read('packages/shared/lib/roles.js') || '';
 const descriptorScan = read('packages/api-provider/scripts/discover-descriptor-meta.mjs') || '';
 
 let DOMAINS = {};
 try { DOMAINS = JSON.parse(read('packages/api-provider/config/domains.json') || '{}'); } catch { /* reported below */ }
 
-// packages/pos-shared/lib/roles.js APP_URLS carries a hard-coded localhost
+// packages/shared/lib/roles.js APP_URLS carries a hard-coded localhost
 // fallback per app. It only bites when the NEXT_PUBLIC_*_URL is absent, which
-// is exactly when nobody is watching — `web` sat on 4010 (pos-strapi's port)
+// is exactly when nobody is watching — `web` sat on 4010 (services/strapi's port)
 // instead of 4000, so a cross-app link out of any admin app landed on Strapi.
 const rolesUrlPorts = new Map();
 for (const m of rolesJs.matchAll(
@@ -149,10 +149,21 @@ const scanFolders = new Set(
     .split(',').map((s) => s.trim().replace(/^['"]|['"]$/g, '')).filter(Boolean)
 );
 
-/** pos-auth -> AUTH, rutba-web-user -> WEB_USER. */
-const urlToken = (dir) => dir.replace(/^(pos|rutba)-/, '').toUpperCase().replace(/-/g, '_');
-/** pos-auth -> POS_AUTH */
-const envPrefix = (dir) => dir.toUpperCase().replace(/-/g, '_');
+// envPrefix and urlVar used to be DERIVED from the workspace directory name
+// (pos-auth -> AUTH__PORT, rutba-web-user -> NEXT_PUBLIC_PORTAL_URL).
+// The P3 restructure (2026-08-18) killed that rule: a workspace is now a path,
+// and "APPS/ADMIN/AUTH__PORT" is not an environment variable. Both are stored
+// explicitly in the manifest, which is also what lets an app move or be renamed
+// without its deploy env changing underneath it.
+//
+// Read, not computed — and required, so a new entry that forgets them fails
+// here rather than silently looking for a variable nobody sets.
+function requireField(entry, field) {
+  const value = entry[field];
+  if (typeof value === 'string' && value.trim()) return value;
+  fail(entry.key, `config/apps.manifest.json is missing "${field}" (no longer derived from the workspace path)`);
+  return null;
+}
 
 // ── 4. Manifest ↔ registry reconciliation ──────────────────
 // Neither may carry a service the other does not know about. This is the check
@@ -250,8 +261,12 @@ for (const entry of ENTRIES) {
   }
 
   // -- root convenience scripts (dev/start/build) -----------
+  // Matched on the npm package NAME, not the directory. Those were the same
+  // string until the P3 restructure moved apps into apps/<category>/ — a root
+  // script selects a workspace by name (`--workspace=@rutba/pos`), and only the
+  // two out-of-workspace backends are selected by path (`--prefix services/core`).
   const shortNames = Object.keys(pkg.scripts || {})
-    .filter((k) => k.startsWith('start:') && (pkg.scripts[k].includes(`--workspace=${dir}`) ||
+    .filter((k) => k.startsWith('start:') && (pkg.scripts[k].includes(`--workspace=${entry.npm}`) ||
                                               pkg.scripts[k].includes(`--prefix ${dir} `)))
     .map((k) => k.slice('start:'.length));
   const short = shortNames[0] || null;
@@ -271,7 +286,7 @@ for (const entry of ENTRIES) {
 
   // -- ports ------------------------------------------------
   if (port != null) {
-    const portKey = `${envPrefix(dir)}__PORT`;
+    const portKey = `${requireField(entry, 'envPrefix')}__PORT`;
     if (!check(new RegExp(`^\\s*${portKey}\\s*=`, 'm').test(sampleEnv), 'sample:PORT')) {
       fail(key, `${portKey} missing from sample.env.enviromentname.txt — a first-time deploy seeds .env.production from this file, so the app would fall back to port 3000`);
     }
@@ -288,7 +303,7 @@ for (const entry of ENTRIES) {
   // listening), so they declare it explicitly rather than deriving a
   // per-service var nothing would ever read.
   if (!isWorker) {
-    const urlKey = urlVarOverride || `NEXT_PUBLIC_${urlToken(dir)}_URL`;
+    const urlKey = requireField(entry, 'urlVar');
     if (!check(envConfig.includes(urlKey), 'env-config:URL')) {
       fail(key, `${urlKey} not declared in scripts/js/env-config.js GLOBAL_VARS — a missing value would never be reported`);
     }
@@ -304,7 +319,7 @@ for (const entry of ENTRIES) {
     if (launcher) {
       const rolesEntry = rolesUrlPorts.get(key);
       if (!check(!!rolesEntry, 'roles.js:entry')) {
-        fail(key, `no APP_URLS['${key}'] entry in packages/pos-shared/lib/roles.js — the app launcher cannot link to it`);
+        fail(key, `no APP_URLS['${key}'] entry in packages/shared/lib/roles.js — the app launcher cannot link to it`);
       } else {
         if (!check(rolesEntry.envKey === urlKey, 'roles.js:urlVar')) {
           fail(key, `roles.js APP_URLS.${key} reads ${rolesEntry.envKey}, but the manifest says ${urlKey}`);
@@ -347,7 +362,9 @@ for (const entry of ENTRIES) {
   }
 
   // -- docker ------------------------------------------------
-  const dockerName = isWorker ? 'marketplace-worker' : (short || dir);
+  // Docker stages and compose services are named by KEY, never by directory —
+  // they coincided before the restructure, when a workspace WAS its key.
+  const dockerName = isWorker ? 'marketplace-worker' : key;
   if (!check(dockerStages.has(dockerName), 'docker:stage')) {
     warn(key, `no Dockerfile stage "${dockerName}" — the Docker path cannot build it`);
   }

@@ -5,14 +5,14 @@
      what was true on 2026-05-15, and must not be updated to match the tree. -->
 
 
-> **Historical snapshot — 2026-05-15. Superseded; do NOT update.** The headline fails are resolved: the `/api/products/public/list` pageSize bug is fixed (`clampInt` in the pos-strapi product controller now bounds it to 1–100), and api-pro enforcement + `/me/permissions` are resolved (hybrid + denyByDefault, no policy = 403; populate fixed). Carry-forward items still worth a fresh check on the next deploy: the CORS whitelist for any extra ports (T4.38 — 4020/4030 unwhitelisted at the time), the anonymous Public-role over-grant on products/categories/brands/customers/sales (T0.6), and the manual-only tiers (T4.39 email, T4.40 backup/restore). Kept as the pre-deploy audit trail.
+> **Historical snapshot — 2026-05-15. Superseded; do NOT update.** The headline fails are resolved: the `/api/products/public/list` pageSize bug is fixed (`clampInt` in the services/strapi product controller now bounds it to 1–100), and api-pro enforcement + `/me/permissions` are resolved (hybrid + denyByDefault, no policy = 403; populate fixed). Carry-forward items still worth a fresh check on the next deploy: the CORS whitelist for any extra ports (T4.38 — 4020/4030 unwhitelisted at the time), the anonymous Public-role over-grant on products/categories/brands/customers/sales (T0.6), and the manual-only tiers (T4.39 email, T4.40 backup/restore). Kept as the pre-deploy audit trail.
 
 Automated portion of [../pre-deployment-test-plan.md](../pre-deployment-test-plan.md)
 executed against the running Strapi at `localhost:4010`. User: id=2,
 roleType `rutba_app_user`, 49 `app_roles`.
 
-The UP-permissions seeder added in [pos-strapi/src/seed/up-permissions-seed.js](../../pos-strapi/src/seed/up-permissions-seed.js)
-is in place but has **not run yet** — pos-strapi still on previous bootstrap.
+The UP-permissions seeder added in [services/strapi/src/seed/up-permissions-seed.js](../../services/strapi/src/seed/up-permissions-seed.js)
+is in place but has **not run yet** — services/strapi still on previous bootstrap.
 Items affected by that note are flagged.
 
 Legend: ✅ pass · ❌ fail · ⚠️ partial / inconclusive · ⏸ requires restart · 🔒 manual / out-of-band.
@@ -140,7 +140,7 @@ Not auto-driven. 🔒 Manual.
 
 ### T4.35 / T4.36 Boot health
 
-Seed checkpoint at [pos-strapi/.api-pro/seed-checkpoint.json](../../pos-strapi/.api-pro/seed-checkpoint.json):
+Seed checkpoint at [services/strapi/.api-pro/seed-checkpoint.json](../../services/strapi/.api-pro/seed-checkpoint.json):
 
 ```
 seededAt:    2026-05-15T11:39:42.942Z
@@ -174,7 +174,7 @@ Action: confirm which apps run on 4020 / 4030 and whether they need
 
 ### T4.41 Logs
 
-Not inspected here. 🔒 Manual: tail pos-strapi log on next boot, watch for
+Not inspected here. 🔒 Manual: tail services/strapi log on next boot, watch for
 `[up-perm-seed]` line and any `[api-pro]` warnings.
 
 ---

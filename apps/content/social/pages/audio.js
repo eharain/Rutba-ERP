@@ -13,15 +13,15 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import Layout from "../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import {
     SocialAudioTracksEndpoints, UploadEndpoints, MediaUtilsEndpoints,
 } from "@rutba/api-provider/endpoints";
 import { useToast } from "../components/Toast";
 import DropZone from "../components/DropZone";
-import RecorderDialog from "@rutba/pos-shared/components/RecorderDialog";
-import AudioEditorDialog from "@rutba/pos-shared/components/AudioEditorDialog";
+import RecorderDialog from "@rutba/shared/components/RecorderDialog";
+import AudioEditorDialog from "@rutba/shared/components/AudioEditorDialog";
 import { fetchMediaViaProxy, isAudioFile, loadAudioTrack, setMediaAuth } from "../lib/video-maker";
 
 const BLANK = { name: "", url: "", credit: "", tags: "", volume: "" };

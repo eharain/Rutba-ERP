@@ -1,17 +1,17 @@
 # Email Program — IMAP Gateway
 
-`pos-strapi/src/utils/mail/` — the live-read engine. Four files, each importing
+`services/strapi/src/utils/mail/` — the live-read engine. Four files, each importing
 the previous: `crypto.js` → `sanitize.js` → `pool.js` → `gateway.js`.
 
-Dependencies (pos-strapi is **not** a workspace — own install):
-`npm install --prefix pos-strapi imapflow mailparser sanitize-html`.
+Dependencies (services/strapi is **not** a workspace — own install):
+`npm install --prefix services/strapi imapflow mailparser sanitize-html`.
 SMTP send uses the `nodemailer` already present for the Strapi email plugin.
 
-## Why it lives in pos-strapi
+## Why it lives in services/strapi
 
 - Strapi is a long-lived Node process → a connection pool actually works.
 - Credentials, the role gate (`requireAppRole`), and nodemailer are already here.
-- rutba-core wraps pos-strapi controllers via `posRequire` — a future core
+- services/core wraps services/strapi controllers via `posRequire` — a future core
   `mail` module mounts these controllers unchanged, like `src/modules/crm.js`.
 - Graduation path: if IDLE/push is ever wanted, the pool moves into a
   standalone worker (marketplace-worker pattern) behind the same gateway API.

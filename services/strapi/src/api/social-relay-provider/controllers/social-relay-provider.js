@@ -12,10 +12,10 @@ const UID = 'api::social-relay-provider.social-relay-provider';
 // post (api_key/extra_config are `private` and never serialized).
 //
 // `admin` rides alongside `social` because registering a relay moved to the
-// rutba-admin console. Which APP may reach the write methods is a separate
+// apps/admin/console console. Which APP may reach the write methods is a separate
 // decision, made by `apps: ['admin']` on the descriptor; this list only says
 // which ROLE-key prefixes count as an administrator, so an instance admin
-// holding admin_admin qualifies without also holding social_admin.
+// holding console_admin qualifies without also holding social_admin.
 const requireAdmin = (ctx, strapi) => requireAppRole(ctx, strapi, {
   domains: ['admin', 'social'],
   levels: ['admin'],

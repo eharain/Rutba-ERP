@@ -13,7 +13,7 @@
  * Boots Strapi load-only (no HTTP listen — safe while the dev server is up).
  * Run the api-provider seed first so the users_* roles exist:
  *   npm run seed -- --only=api-provider,up-permissions
- * Then from pos-strapi:  node scripts/backfill-users-roles.js
+ * Then from services/strapi:  node scripts/backfill-users-roles.js
  * (A running server may serve cached claims for up to the api-pro cache TTL.)
  */
 

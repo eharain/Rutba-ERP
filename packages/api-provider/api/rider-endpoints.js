@@ -2,7 +2,7 @@ export const RiderEndpoints = {
   meta: { domains: ['delivery'] },
 
   myProfile: () => ({ path: '/rider/me', action: 'findOne', method: 'get' }),
-  // PATCH, not PUT — pos-strapi routes it as PATCH (01-custom-rider.js) and a
+  // PATCH, not PUT — services/strapi routes it as PATCH (01-custom-rider.js) and a
   // PUT never reached a handler on either server.
   updateStatus: (data) => ({ path: '/rider/me/status', action: 'updateStatus', method: 'patch', data }),
   deliveryOffers: () => ({ path: '/rider/delivery-offers', action: 'find', method: 'get' }),

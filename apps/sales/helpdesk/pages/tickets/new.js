@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import Layout from "../../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { useEnumValues } from "@rutba/pos-shared/lib/use-enum-values";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import { useAuth } from "@rutba/shared/context/AuthContext";
+import { useEnumValues } from "@rutba/shared/lib/use-enum-values";
 import { HelpdeskDesksEndpoints, HelpdeskTicketsEndpoints } from "@rutba/api-provider/endpoints";
 
 function serverError(err) {
@@ -42,7 +42,7 @@ function fieldForMessage(message) {
 /**
  * A select when /enums answers, a suggestion-backed text box when it does not.
  *
- * /enums/:name/:field is served by rutba-core but its route is registered under
+ * /enums/:name/:field is served by services/core but its route is registered under
  * `api::product.product`.`find`, and no policy for that pair is seeded for the
  * helpdesk_* roles — so the request 403s from this app today and the field falls
  * back rather than rendering a dead select. `suggest` carries values that came

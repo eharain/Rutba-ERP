@@ -2,17 +2,17 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import Layout from "../../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
 import AppAccessGate from "../../components/AppAccessGate";
-import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
+import PermissionCheck from "@rutba/shared/components/PermissionCheck";
 import { SiteSettingEndpoints } from "@rutba/api-provider/endpoints";
-import FileView from "@rutba/pos-shared/components/FileView";
+import FileView from "@rutba/shared/components/FileView";
 import { useToast } from "../../components/Toast";
 
 /**
  * Per-row site settings editor for the admin console.
  *
- * Ported from rutba-cms's editor onto this app's chrome. Two deliberate
+ * Ported from apps/content/cms's editor onto this app's chrome. Two deliberate
  * differences from the CMS original:
  *
  *  - It edits the analytics ids (GA4 / GTM / Meta Pixel), which the CMS editor
@@ -348,7 +348,7 @@ export default function SiteSettingDetail() {
                                     <p className="small text-muted">
                                         Raw markup injected unescaped into every storefront page. It is not editable here
                                         on purpose — editing it means being able to run arbitrary script site-wide, so it
-                                        stays with the CMS editors who already had it. Manage it in <strong>rutba-cms →
+                                        stays with the CMS editors who already had it. Manage it in <strong>apps/content/cms →
                                         Site Settings</strong>.
                                     </p>
                                     {customHtml.length === 0 ? (
@@ -440,7 +440,7 @@ export default function SiteSettingDetail() {
                                     <small className="text-muted d-block">
                                         Used when a CMS page doesn&apos;t specify its own footer. Read-only here — choosing
                                         one means browsing CMS footers, which this app has no grant for. Change it in{" "}
-                                        <strong>rutba-cms → Site Settings</strong>. Saving from this page leaves it as it is.
+                                        <strong>apps/content/cms → Site Settings</strong>. Saving from this page leaves it as it is.
                                     </small>
                                 </div>
                             </div>

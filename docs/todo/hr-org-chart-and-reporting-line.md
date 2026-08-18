@@ -30,7 +30,7 @@ Everything that asks "whose records may this person act on?" goes through a
 single function:
 
 ```
-managedReportDocIds(strapi, employeeDocId)   // pos-strapi/src/utils/hr-access.js
+managedReportDocIds(strapi, employeeDocId)   // services/strapi/src/utils/hr-access.js
 ```
 
 which finds the teams the employee manages, walks `child_teams` down (bounded
@@ -87,7 +87,7 @@ a lot in practice — that divergence is itself the signal.
 - Backfill `reports_to` from the team graph where it is unambiguous — an employee
   in exactly one team gets that team's manager. Ambiguous cases are left blank and
   listed for HR rather than guessed at.
-- An "employees with no reporting line" view in rutba-hr, so the gap is visible.
+- An "employees with no reporting line" view in apps/people/hr, so the gap is visible.
 
 **2. Org chart API**
 - `GET /hr-employees/org-chart?view=reporting|team[&root=<documentId>&depth=n]`
@@ -98,12 +98,12 @@ a lot in practice — that divergence is itself the signal.
   so the frontend renders one component either way.
 
 **3. Org chart UI**
-- A chart page in rutba-hr with a **Reporting line / Team structure** toggle;
+- A chart page in apps/people/hr with a **Reporting line / Team structure** toggle;
   collapsible nodes, search-to-focus, deep-linkable root.
 - Read-only first. Drag-to-reparent is a natural follow-on but it rewrites
   approval authority as a side effect, so it needs a confirmation step that says
   so in plain language.
-- A compact read-only version in rutba-ess ("where I sit"), rooted on the caller.
+- A compact read-only version in apps/people/ess ("where I sit"), rooted on the caller.
 
 **4. Appraisal routing**
 - `hr-appraisal.reviewer` is currently free-set. Default it to the employee's

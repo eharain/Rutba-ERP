@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Layout from "../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import PermissionCheck from "@rutba/shared/components/PermissionCheck";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import { SocialRelayProvidersEndpoints } from "@rutba/api-provider/endpoints";
 import { useToast } from "../components/Toast";
 import PLATFORMS from "../components/PlatformBadge";
-import { APP_URLS } from "@rutba/pos-shared/lib/roles";
+import { APP_URLS } from "@rutba/shared/lib/roles";
 
 // A relay provider is a third-party aggregator API (Ayrshare, Postiz, …) that
 // posts to several platforms through ONE key — the Meta/TikTok developer apps,

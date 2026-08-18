@@ -5,8 +5,8 @@ Two intertwined workstreams:
 - **Workstream A — Multitenancy**: turn the single-tenant rutba.pk deployment into a
   SaaS fleet: control plane, tenant provisioning, shared frontend fleet, per-tenant
   backend + database.
-- **Workstream B — Strapi replacement**: strangler-migrate the backend from pos-strapi
-  to a slim in-house core server (`rutba-core`) serving the exact same descriptor-defined
+- **Workstream B — Strapi replacement**: strangler-migrate the backend from services/strapi
+  to a slim in-house core server (`services/core`) serving the exact same descriptor-defined
   REST contract, module by module.
 
 They are sequenced so that A ships revenue first on instance-per-tenant Strapi, while B
@@ -21,7 +21,7 @@ maintained as current counts (noted 2026-08-17)._
 
 | Surface | Count |
 |---|---|
-| Content-types (`pos-strapi/src/api`) | 118 |
+| Content-types (`services/strapi/src/api`) | 118 |
 | API descriptor files (`packages/api-provider/api`) | 107 |
 | Custom JS files under `src/api` | 471 |
 | Custom controllers / services | 147 / 135 |
@@ -48,14 +48,14 @@ database and one wire contract during migration.
 | 0 | B (enables A too) | Contracts freeze + golden contract test suite | [01-contracts-freeze.md](01-contracts-freeze.md) | not started |
 | 1 | A | Control plane MVP: tenant registry + provisioning + Caddy routing | [02-control-plane.md](02-control-plane.md) | not started |
 | 2 | A | Tenant-aware frontend fleet (hostname → tenant → API origin) | [03-tenant-aware-frontends.md](03-tenant-aware-frontends.md) | not started |
-| 3 | B | `rutba-core` skeleton: Koa + data shim + api-pro port | [04-core-server-and-shim.md](04-core-server-and-shim.md) | **built** |
+| 3 | B | `services/core` skeleton: Koa + data shim + api-pro port | [04-core-server-and-shim.md](04-core-server-and-shim.md) | **built** |
 | 4 | B | First module migrated end-to-end (mfg) + playbook validated | [05-module-migration-playbook.md](05-module-migration-playbook.md) | **built** — [tranche-1-mfg.md](tranche-1-mfg.md): ported + smoke-verified |
 | 5 | A | Fleet ops: upgrade rings, backups, monitoring, suspension | [02-control-plane.md](02-control-plane.md) | not started |
 | 6 | B | Remaining modules in tranches; sale/stock/accounting cluster last | [05-module-migration-playbook.md](05-module-migration-playbook.md) | **built** — all 8 tranche sheets say ported + smoke-verified |
 | 7 | B | Auth issuer cutover, Strapi retirement, multi-DB core process | [04-core-server-and-shim.md](04-core-server-and-shim.md), [05](05-module-migration-playbook.md) | partial — auth tranche built ([tranche-8-auth.md](tranche-8-auth.md): cross-server-verified); Strapi retirement + multi-DB core not started |
 
 _Status column added 2026-08-17. Workstream B has outrun the tranche sheets:
-`rutba-core/src/modules/index.js` registers 12 modules, four of which (catalog,
+`services/core/src/modules/index.js` registers 12 modules, four of which (catalog,
 helpdesk — core-native, uploads, user-mgmt) have no tranche sheet. Workstream A
 (phases 0/1/2/5) has not started._
 
@@ -69,8 +69,8 @@ what happens to api-provider (kept), strapi-api-pro (ported), strapi-content-syn
 
 1. **Contract over implementation.** No frontend, descriptor, or DB-table change is
    required by this program. If a migration step needs one, that step is wrong.
-2. **Same database, exclusive write paths.** During strangling, pos-strapi and
-   rutba-core run against the same MySQL 8 DB, but any given module's routes are served
+2. **Same database, exclusive write paths.** During strangling, services/strapi and
+   services/core run against the same MySQL 8 DB, but any given module's routes are served
    by exactly one of them (Caddy path routing). A module migrates atomically with its
    side-effect chokepoints.
 3. **Schema authority handover, never shared.** Until a module migrates, Strapi's
@@ -91,7 +91,7 @@ what happens to api-provider (kept), strapi-api-pro (ported), strapi-content-syn
   live in different servers) → tranche ordering in the playbook; the
   sale/stock/payment/GL cluster moves as one.
 - **Auth issuer duality** → Strapi remains the sole JWT issuer until the final phase;
-  rutba-core only verifies (shared secret).
+  services/core only verifies (shared secret).
 - **Fleet upgrade blast radius** → version pinning + canary ring (rutba.pk is canary 0).
 - **Per-tenant cost with Strapi backend** (~0.5–1 GB RSS/tenant) → acceptable at launch
   scale; the economic driver for Workstream B's endgame (one multi-DB core process).

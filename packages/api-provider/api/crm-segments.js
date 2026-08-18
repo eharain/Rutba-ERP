@@ -124,7 +124,7 @@ export const CrmSegmentsEndpoints = {
      * `channel`: 'email' (default) | 'phone' | 'any' | 'none'. 'none' skips
      * the contactable filter and answers "how many humans does this reach".
      *
-     * NOTE for whoever builds rutba-campaigns: this is the audience contract.
+     * NOTE for whoever builds apps/content/campaigns: this is the audience contract.
      * When the app registers its own domain (roles.js + domains.json), add it
      * to `apps` here and on `list`/`byId` — until then only CRM roles can read
      * a segment, and a campaigns-domain caller gets a 403.

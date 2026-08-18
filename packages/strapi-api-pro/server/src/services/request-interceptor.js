@@ -118,14 +118,14 @@ function injectIntoBody(ctx, fragment) {
 // which 400s on / strips private and restricted attributes (createdBy, user
 // relations) that scoping templates routinely reference. For those actions the
 // filters are applied post-sanitize at the documents-service layer instead
-// (bootstrap.js installDocumentsPolicyEnforcer). rutba-core keeps the default.
+// (bootstrap.js installDocumentsPolicyEnforcer). services/core keeps the default.
 //
 // opts.injectBody (default true): same story for the resolved body fragment
 // (ownership stamps like `{ owners: $user.id }`). Core create/update run the
 // request body through contentAPI.validateInput/sanitizeInput, which throw on
 // / strip relations the users-permissions role can't reach — so the enforce
 // middleware passes false for core CRUD and the stamp is applied post-sanitize
-// at the documents-service layer. rutba-core keeps the default.
+// at the documents-service layer. services/core keeps the default.
 async function process(ctx, strapi, opts = {}) {
   const cfg = strapi.config.get('plugin::api-pro') || {};
   const mode = cfg.enforcementMode || 'hybrid';

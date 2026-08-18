@@ -1,4 +1,4 @@
-# Copilot Instructions — rutba-web
+# Copilot Instructions — apps/content/storefront
 
 ## General Guidelines
 - Prefer fast, scoped edits: inspect a few known files directly instead of performing broad repo-wide or snapshot searches when the task can be handled locally.
@@ -9,7 +9,7 @@
 | Layer | Technology |
 |---|---|
 | Framework | Next.js (Pages Router) · TypeScript |
-| Backend / CMS | Strapi v5 (REST API) · JavaScript (pos-strapi) |
+| Backend / CMS | Strapi v5 (REST API) · JavaScript (services/strapi) |
 | Styling | TailwindCSS · shadcn/ui (Radix UI primitives) |
 | State | Zustand |
 | Data fetching | Axios · TanStack React Query v5 |
@@ -27,7 +27,7 @@
 - Document any deliberate visual deviations (icon, accent, or layout exceptions) with rationale in the component README or a short note in the shared design tokens.
 
 ## Project Structure
-rutba-web/src/
+apps/content/storefront/src/
 ├── components/       # Domain-grouped components
 │   └── ui/           # shadcn/ui primitives (Button, Card, Dialog, …)
 ├── hooks/            # Custom React hooks (useDebounce, useErrorHandler, …)
@@ -52,21 +52,21 @@ rutba-web/src/
 
 - **Path alias**: `@/` maps to `src/`.
 - **Services**: Export either a hook factory (`useProductsService()`) or plain async functions. Always import `BASE_URL` from `@/static/const`.
-- **Types**: Every Strapi entity interface includes `id` (numeric) and `documentId` (string). Keep both fields present. pos-strapi uses plain JavaScript (not TypeScript); do not expect Strapi to emit TypeScript types — maintain and update TS interfaces in `src/types/api/` to mirror content-types.
+- **Types**: Every Strapi entity interface includes `id` (numeric) and `documentId` (string). Keep both fields present. services/strapi uses plain JavaScript (not TypeScript); do not expect Strapi to emit TypeScript types — maintain and update TS interfaces in `src/types/api/` to mirror content-types.
 - **UI components**: Follow the shadcn/ui pattern — thin wrappers around Radix primitives in `components/ui/`, composed in domain components.
 - **State management**: Use Zustand stores in `src/store/`. Do not introduce additional state libraries.
 - **Forms**: Validate with Zod schemas in `src/validations/`, bind via `@hookform/resolvers/zod`.
 
 ## Strapi v5 Rules
 
-- pos-strapi uses plain JavaScript (the Strapi codebase is not TypeScript). Treat the CMS as a JS project and do not rely on auto-generated TypeScript artifacts from the Strapi instance.
-- **Draft / Publish**: Strapi v5 `draftAndPublish` creates two DB rows per entity sharing the same `documentId` but each with a unique numeric `id`. Always fetch and work with the **draft** version. Publish only when the user explicitly requests it. For the rutba-web storefront (public-facing), do NOT add `status: 'draft'` to API calls. The web app should only display published content. Draft/publish workflow is managed in the CMS (rutba-cms) where editors explicitly publish content.
+- services/strapi uses plain JavaScript (the Strapi codebase is not TypeScript). Treat the CMS as a JS project and do not rely on auto-generated TypeScript artifacts from the Strapi instance.
+- **Draft / Publish**: Strapi v5 `draftAndPublish` creates two DB rows per entity sharing the same `documentId` but each with a unique numeric `id`. Always fetch and work with the **draft** version. Publish only when the user explicitly requests it. For the apps/content/storefront storefront (public-facing), do NOT add `status: 'draft'` to API calls. The web app should only display published content. Draft/publish workflow is managed in the CMS (apps/content/cms) where editors explicitly publish content.
 - **Media attachments**: Reference media by numeric `id`, not `documentId`, to avoid ambiguity between draft and published rows.
 - Public vs authenticated web API guard domains & role assignment:
-  - Separate public and authenticated web traffic into distinct API-guard domains (for example: web_public and web_user) and enforce guards in Strapi and backend route handlers.
-  - Assign registered users (users-permissions authenticated accounts) the users-permissions role web_user on registration or approval.
-  - Protect authenticated endpoints behind the web_user guard/domain and expose public endpoints under the web_public guard/domain; avoid mixing both guards on the same route.
-  - Surface the user's role (including web_user) in session/claims and use it in server-side guards to choose the correct API domain and permissions.
+  - Separate public and authenticated web traffic into distinct API-guard domains (for example: storefront_public and storefront_user) and enforce guards in Strapi and backend route handlers.
+  - Assign registered users (users-permissions authenticated accounts) the users-permissions role storefront_user on registration or approval.
+  - Protect authenticated endpoints behind the storefront_user guard/domain and expose public endpoints under the storefront_public guard/domain; avoid mixing both guards on the same route.
+  - Surface the user's role (including storefront_user) in session/claims and use it in server-side guards to choose the correct API domain and permissions.
   - Document guard-domain mappings and role expectations in the access metadata aggregator so UI and server guards remain consistent.
 
 ## Domain Rules
@@ -109,16 +109,16 @@ rutba-web/src/
 - Prefer fixing API access issues by adding endpoint/access-metadata entries and shared endpoint definitions rather than introducing bypass-path workarounds. Define and reuse shared endpoint definitions (metadata + access rules) across services to ensure consistent enforcement and avoid ad-hoc access logic.
 - When adding new workflows that require approvals, register the workflow’s required approval scopes and reuse the same manager-scoped guard.
 
-### pos-auth: User Management Screens
+### apps/admin/auth: User Management Screens
 
 - Show app access in expandable sections per user (accordion/expandable row).
 - Add pagination controls and a page-size selector to both Users and Access Assignment lists.
 - Make user names link to their edit user pages (use dedicated edit routes).
 - Ensure UI visibility follows authorization: hide actions the current user cannot perform and enforce the same rules server-side.
-- Assign registered users the users-permissions role web_user on registration/approval and surface this role in the user edit screen.
-- Manage and display the separation between web_public and web_user API domains in user-access views so admins can confirm guard/role mappings.
+- Assign registered users the users-permissions role storefront_user on registration/approval and surface this role in the user edit screen.
+- Manage and display the separation between storefront_public and storefront_user API domains in user-access views so admins can confirm guard/role mappings.
 
-### pos-auth: Additional Access Rules
+### apps/admin/auth: Additional Access Rules
 
-- Enforce web_public vs web_user separation in service-layer guards and document the mapping in the access metadata aggregator.
+- Enforce storefront_public vs storefront_user separation in service-layer guards and document the mapping in the access metadata aggregator.
 - Use session claims to avoid extra lookups where safe, but validate role-to-guard mappings server-side for sensitive actions.

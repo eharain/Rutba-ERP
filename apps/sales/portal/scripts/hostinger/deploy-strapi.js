@@ -71,7 +71,7 @@ function envToString(envObj) {
 // ── Create source tarball ──────────────────────────────────
 
 function createSourceTar() {
-  const tarName = 'pos-strapi-src.tar.gz';
+  const tarName = 'services/strapi-src.tar.gz';
   const tarPath = path.join(ROOT, tarName);
 
   console.log('📦 Creating Strapi source tarball...');
@@ -113,7 +113,7 @@ function createSourceTar() {
       if (!skipBuild) {
         // ── Upload source ───────────────────────────────
         const tarPath = createSourceTar();
-        const remoteTar = '/tmp/pos-strapi-src.tar.gz';
+        const remoteTar = '/tmp/services/strapi-src.tar.gz';
 
         console.log('\n⬆️  Uploading source...');
         await uploadFile(conn, tarPath, remoteTar);

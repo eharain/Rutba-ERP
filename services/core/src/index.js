@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * rutba-core process entrypoint.
+ * services/core process entrypoint.
  *
  * Until now core only ever ran inside a smoke script, which composed the
  * pieces by hand and tore them down at the end of the test. This is the long-
@@ -14,13 +14,13 @@
  * (the env precedence chain has bitten us before: PORT used to fall through to
  * POS_STRAPI__PORT and land on Strapi's 4010).
  *
- *   npm run start --workspace-equivalent:  node rutba-core/src/index.js
+ *   npm run start --workspace-equivalent:  node services/core/src/index.js
  *
  * Env of note:
- *   PORT                 listen port (RUTBA_CORE__PORT or bare PORT; never
+ *   PORT                 listen port (CORE__PORT or bare PORT; never
  *                        inherits POS_STRAPI__PORT — see config/env CORE_OWNED)
  *   RUTBA_CORE_CRONS=1   master switch for the scheduler. Leave OFF while
- *                        pos-strapi still schedules the same tasks — the two
+ *                        services/strapi still schedules the same tasks — the two
  *                        must never run the same cron at the same time.
  */
 
@@ -114,8 +114,8 @@ main().catch(async (err) => {
   // that; say what it is.
   if (err && err.code === 'EADDRINUSE') {
     const port = parseInt(get('PORT', '4020'), 10);
-    console.error(`[core] port ${port} is already in use — another rutba-core is running `
-      + '(or the previous one has not exited yet). Stop it, or set RUTBA_CORE__PORT.');
+    console.error(`[core] port ${port} is already in use — another services/core is running `
+      + '(or the previous one has not exited yet). Stop it, or set CORE__PORT.');
   } else {
     console.error('[core] failed to start:', err.stack || err);
   }

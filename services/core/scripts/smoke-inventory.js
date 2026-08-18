@@ -80,7 +80,7 @@ async function main() {
 
   try {
     // Two plain users: neither a UP super-admin nor a holder of any
-    // inventory/stock/purchase app-role. B gets a temp inventory_admin grant.
+    // inventory/stock/purchase app-role. B gets a temp control_admin grant.
     const plainUsers = await db('up_users as u')
       .leftJoin('up_users_role_lnk as rl', 'rl.user_id', 'u.id')
       .leftJoin('up_roles as r', 'r.id', 'rl.role_id')
@@ -97,8 +97,8 @@ async function main() {
     check('found two plain users', plainUsers.length === 2, `got ${plainUsers.length}`);
     const [userA, userB] = plainUsers;
 
-    const invAdmin = await db('api_pro_app_roles').where('key', 'inventory_admin').first('id');
-    check('inventory_admin app-role exists', Boolean(invAdmin));
+    const invAdmin = await db('api_pro_app_roles').where('key', 'control_admin').first('id');
+    check('control_admin app-role exists', Boolean(invAdmin));
     await db('up_users_app_roles_lnk').insert({ user_id: userB.id, app_role_id: invAdmin.id });
     grants.push({ user_id: userB.id, app_role_id: invAdmin.id });
 
@@ -298,7 +298,7 @@ async function main() {
 
     // ── crons registered (dormant) ────────────────────────────────────────
     const { tasks } = require('../src/platform/cron');
-    check('inventory crons registered with pos-strapi rules',
+    check('inventory crons registered with services/strapi rules',
       tasks.has('inventoryExpirySweep') && tasks.get('inventoryExpirySweep').rule === '15 2 * * *'
       && tasks.has('lowStockAlertSweep') && tasks.get('lowStockAlertSweep').rule === '30 2 * * *');
   } finally {

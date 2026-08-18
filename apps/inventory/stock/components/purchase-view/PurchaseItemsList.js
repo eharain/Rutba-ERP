@@ -1,8 +1,8 @@
-import { Table, TableHead, TableBody, TableRow, TableCell } from '@rutba/pos-shared/components/Table';
-import StrapiImage from '@rutba/pos-shared/components/StrapiImage';
+import { Table, TableHead, TableBody, TableRow, TableCell } from '@rutba/shared/components/Table';
+import StrapiImage from '@rutba/shared/components/StrapiImage';
 import StatusBadge from './StatusBadge';
 import ProgressBar from './ProgressBar';
-import { useUtil } from '@rutba/pos-shared/context/UtilContext';
+import { useUtil } from '@rutba/shared/context/UtilContext';
 export default function PurchaseItemsList({ items }) {
     if (!items || items.length === 0) {
         return (

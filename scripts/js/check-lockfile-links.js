@@ -4,7 +4,7 @@
 /**
  * scripts/js/check-lockfile-links.js — fail fast on dev-machine links in a lockfile.
  *
- * `npm link ../../some/local/path` (see pos-strapi's `link:sync-pro` /
+ * `npm link ../../some/local/path` (see services/strapi's `link:sync-pro` /
  * `link:api-pro` scripts) rewrites package-lock.json with a
  *
  *     "node_modules/<pkg>": { "resolved": "../../some/local/path", "link": true }
@@ -33,10 +33,10 @@ const ROOT = path.resolve(process.argv[2] || path.join(__dirname, '..', '..'));
 // Lockfiles that ship with the repo and are consumed by `npm ci` on deploy.
 const LOCKFILES = [
   'package-lock.json',
-  path.join('pos-strapi', 'package-lock.json'),
-  // rutba-core is outside the workspaces array too, so it carries its own
+  path.join('services/strapi', 'package-lock.json'),
+  // services/core is outside the workspaces array too, so it carries its own
   // lockfile and gets its own `npm ci` on deploy - same exposure.
-  path.join('rutba-core', 'package-lock.json'),
+  path.join('services/core', 'package-lock.json'),
 ];
 
 const problems = [];

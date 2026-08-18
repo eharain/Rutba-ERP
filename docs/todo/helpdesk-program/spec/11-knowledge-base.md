@@ -18,7 +18,7 @@ The KB is **tenant-scoped and desk-tagged**, not desk-owned ([05 §5.2](05-infor
 one "how to reset your password" article serves the IT desk and the customer portal at once.
 
 > **Publishing decision.** Public-facing articles are surfaced on the storefront through the
-> **CMS** (`rutba-cms` → `rutba-web`), not through a second content system. The KB owns
+> **CMS** (`apps/content/cms` → `apps/content/storefront`), not through a second content system. The KB owns
 > authoring, versioning and internal visibility; the CMS owns public presentation, SEO and
 > navigation for the `public` subset. Building a second public content stack inside Helpdesk
 > would duplicate the CMS's page, menu and SEO machinery for no gain.

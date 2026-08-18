@@ -2,13 +2,13 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import Layout from "../components/Layout";
 import CloseRegisterModal from "../components/CloseRegisterModal";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
 import { AppContextEndpoints, CashRegistersEndpoints } from "@rutba/api-provider/endpoints/index.js";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { isAppAdmin, isActiveManagerRole, isEffectiveAdmin } from "@rutba/pos-shared/lib/roles";
-import { useUtil } from "@rutba/pos-shared/context/UtilContext";
-import ListPageLayout from "@rutba/pos-shared/components/ListPageLayout";
-import ListPagination from "@rutba/pos-shared/components/ListPagination";
+import { useAuth } from "@rutba/shared/context/AuthContext";
+import { isAppAdmin, isActiveManagerRole, isEffectiveAdmin } from "@rutba/shared/lib/roles";
+import { useUtil } from "@rutba/shared/context/UtilContext";
+import ListPageLayout from "@rutba/shared/components/ListPageLayout";
+import ListPagination from "@rutba/shared/components/ListPagination";
 
 const STATUS_OPTIONS = ["Active", "Open", "Closed", "Expired", "Cancelled"];
 // Sentinel status filter: every register still holding the drawer open —

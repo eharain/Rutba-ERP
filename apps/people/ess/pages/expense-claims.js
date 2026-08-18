@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import Layout from "../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import { HrExpenseClaimsEndpoints, UploadEndpoints } from "@rutba/api-provider/endpoints";
-import EnumSelect from "@rutba/pos-shared/components/EnumSelect";
+import EnumSelect from "@rutba/shared/components/EnumSelect";
 
 const money = (n) => Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 

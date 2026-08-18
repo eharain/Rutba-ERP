@@ -1,5 +1,5 @@
-// Shared product-merge tool, mounted by both pos-stock (in /product-relations)
-// and rutba-cms (as a Merge tab on the product page).
+// Shared product-merge tool, mounted by both apps/inventory/stock (in /product-relations)
+// and apps/content/cms (as a Merge tab on the product page).
 //
 // Two operations:
 //

@@ -9,7 +9,7 @@
 // Returns the accessKey. The password is used only for this exchange and is
 // never stored — only the resulting token is persisted (as the account api_key).
 
-const TOKEN_NAME = 'rutba-marketplace-sync';
+const TOKEN_NAME = 'apps/sales/marketplace-sync';
 
 // The admin API (/admin/*) lives at the Strapi ROOT, not under the /api base the
 // marketplace account stores. Derive the root from the API base.

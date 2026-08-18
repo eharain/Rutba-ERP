@@ -7,7 +7,7 @@
 > **no** `mfg-product-type`/`mfg-recipe` CT. The WO state machine does multi-output receipt
 > (cost-share normalized), `autoConsumeInputs` on completion (serialized→`Reduced`, bulk→FEFO
 > `mfg-material-issue`), and `track_mode` routing; kind-typing is enforced by the
-> `bom-typing-validator.js` document middleware. **Deferred:** a dedicated `rutba-manufacturing`
+> `bom-typing-validator.js` document middleware. **Deferred:** a dedicated `apps/inventory/manufacturing`
 > template/BOM builder UI. See the overview's [as-built status](00-overview-and-roadmap.md#implementation-status-as-built).
 
 > Elevate manufacturing from per-product BOMs into a reusable **product-type / recipe**
@@ -16,7 +16,7 @@
 > inventory automatically — finally activating `track_mode` so bulk vs serialized outputs
 > route to the right ledger.
 
-Owning app: `rutba-manufacturing` (port 4014) + `pos-strapi/mfg-*`. Depends on: Foundation
+Owning app: `apps/inventory/manufacturing` (port 4014) + `services/strapi/mfg-*`. Depends on: Foundation
 F2/F3/F5 (stock-level, batch, track_mode) for output receipt & input consumption — can
 start in parallel with Epic 2's UI once Foundation lands. Converges with Epic 5 on the
 batch/lot concept.
@@ -155,7 +155,7 @@ to finished-goods inventory on receipt).
 - BOM lifecycle typing validation.
 - Reuse Foundation F1/F3/F5 for output placement, batch, and track_mode routing.
 
-## Frontend surface (`rutba-manufacturing`)
+## Frontend surface (`apps/inventory/manufacturing`)
 
 - **Recipe/Template builder** — define product-types with input/output category slots +
   routing; "Instantiate to BOM" action.

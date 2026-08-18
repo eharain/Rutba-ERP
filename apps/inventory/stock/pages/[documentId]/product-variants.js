@@ -2,13 +2,13 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Layout from '../../components/Layout';
-import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
+import ProtectedRoute from '@rutba/shared/components/ProtectedRoute';
 import { TermTypesEndpoints, StockItemsEndpoints, ProductsEndpoints, MediaUtilsEndpoints, fetchProducts } from '@rutba/api-provider/endpoints';
-import ProductVariantManager from '@rutba/pos-shared/components/ProductVariantManager';
-import TermTypeTermDialog from '@rutba/pos-shared/components/TermTypeTermDialog';
-import ProductPageShell, { buildStockProductTabs } from '@rutba/pos-shared/components/product/ProductPageShell';
-import AddVariantsByName from '@rutba/pos-shared/components/product/AddVariantsByName';
-import { createVariant } from '@rutba/pos-shared/lib/variants';
+import ProductVariantManager from '@rutba/shared/components/ProductVariantManager';
+import TermTypeTermDialog from '@rutba/shared/components/TermTypeTermDialog';
+import ProductPageShell, { buildStockProductTabs } from '@rutba/shared/components/product/ProductPageShell';
+import AddVariantsByName from '@rutba/shared/components/product/AddVariantsByName';
+import { createVariant } from '@rutba/shared/lib/variants';
 
 function getEntryId(entry) {
     return entry?.documentId || entry?.id;

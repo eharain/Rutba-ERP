@@ -1,7 +1,7 @@
 'use strict';
 
 // Standalone unit tests for the marketplace engine's pure logic — no Strapi,
-// no network, no framework. Run: `npm test` (from rutba-marketplace) or
+// no network, no framework. Run: `npm test` (from apps/sales/marketplace) or
 // `node test/unit.js`. Covers the price math, the Daraz signing + transforms,
 // the scheduler cron parser, the job runner, and the shared base helpers.
 

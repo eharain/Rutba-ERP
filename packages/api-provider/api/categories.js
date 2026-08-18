@@ -7,14 +7,14 @@ import __publish_generic_helper from "./__publish_generic_helper.js";
 export const CategoriesEndpoints = {
 
     // todo: spread adds updateDraft/publish/unpublish/create/del. Verify the
-    // category content type has draft-publish enabled in pos-strapi before
+    // category content type has draft-publish enabled in services/strapi before
     // relying on the publish/unpublish + updateDraft methods at runtime.
     ...__publish_generic_helper('categories'),
 
     /** Resource metadata for policy generation */
     meta: {
         uid: 'api::category.category',
-        domains: ['cms', 'order-management', 'sale', 'stock'],
+        domains: ['cms', 'orders', 'pos', 'stock'],
         roles: ['admin', 'manager', 'staff']
     },
 
@@ -28,7 +28,7 @@ export const CategoriesEndpoints = {
         path: '/categories',
         action: 'find',
         method: 'get',
-        apps: ['stock', 'sale', 'cms'],
+        apps: ['stock', 'pos', 'cms'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['name:asc'],
@@ -39,7 +39,7 @@ export const CategoriesEndpoints = {
 
     /**
      * Fetch all categories — returns one page; callers loop via pagination meta
-     * (see pos-shared/hooks/useProductLookups). `page` is a real parameter:
+     * (see shared/hooks/useProductLookups). `page` is a real parameter:
      * hardcoding page 1 truncated every category dropdown at `pageSize`.
      * @param {{ sort?, populate?, page?, pageSize? }} opts
      */
@@ -47,7 +47,7 @@ export const CategoriesEndpoints = {
         path: '/categories',
         action: 'find',
         method: 'get',
-        apps: ['stock', 'sale', 'cms', 'inventory', 'social'],
+        apps: ['stock', 'pos', 'cms', 'control', 'social'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['name:asc'],
@@ -65,7 +65,7 @@ export const CategoriesEndpoints = {
         path: '/categories',
         action: 'find',
         method: 'get',
-        apps: ['stock', 'sale', 'cms'],
+        apps: ['stock', 'pos', 'cms'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['name:asc'],
@@ -94,7 +94,7 @@ export const CategoriesEndpoints = {
         path: '/categories',
         action: 'find',
         method: 'get',
-        apps: ['stock', 'sale', 'cms'],
+        apps: ['stock', 'pos', 'cms'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             status: 'published',
@@ -119,7 +119,7 @@ export const CategoriesEndpoints = {
         path: `/categories/${documentId}`,
         action: 'findOne',
         method: 'get',
-        apps: ['stock', 'sale', 'cms'],
+        apps: ['stock', 'pos', 'cms'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             status: 'published',

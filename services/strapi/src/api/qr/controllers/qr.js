@@ -9,8 +9,8 @@
  * requireApp guard — the in-store scanner apps resolve the same codes.
  *
  * `?prefer=short` is a query flag rather than a second route on purpose: the
- * route is `auth: false` and both backends register it by hand (pos-strapi
- * routes/qr.js, rutba-core src/modules/catalog.js), so a new path would mean a
+ * route is `auth: false` and both backends register it by hand (services/strapi
+ * routes/qr.js, services/core src/modules/catalog.js), so a new path would mean a
  * new api-pro action to seed and a koa-router ordering hazard against the
  * existing `/qr/resolve/:code`. A flag on the route that already works costs
  * neither.

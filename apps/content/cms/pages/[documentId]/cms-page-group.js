@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import { CmsPagesEndpoints, CmsPageGroupsEndpoints } from "@rutba/api-provider/endpoints";
-import FileView from "@rutba/pos-shared/components/FileView";
-import MarkdownEditor from "@rutba/pos-shared/components/MarkdownEditor";
+import FileView from "@rutba/shared/components/FileView";
+import MarkdownEditor from "@rutba/shared/components/MarkdownEditor";
 import Link from "next/link";
 import { useToast } from "../../components/Toast";
 import PagePickerTabs from "../../components/PagePickerTabs";

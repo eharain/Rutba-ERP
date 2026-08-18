@@ -177,7 +177,7 @@ const REGISTRY = [
     // create/update/delete.
     {
         key: 'prune-social-write-policies',
-        title: 'Prune stale social_* write policies (management moved to rutba-admin)',
+        title: 'Prune stale social_* write policies (management moved to apps/admin/console)',
         category: 'system',
         essential: true,
         supportsPartial: true,

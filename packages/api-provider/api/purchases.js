@@ -7,7 +7,7 @@ export const PurchasesEndpoints = {
 
     meta: {
         uid: 'api::purchase.purchase',
-        domains: ['cms', 'order-management', 'stock'],
+        domains: ['cms', 'orders', 'stock'],
         roles: ['admin', 'manager', 'staff']
     },
 
@@ -25,7 +25,7 @@ export const PurchasesEndpoints = {
         // nothing. 'cms', 'order-management' and 'inventory' render the
         // "All Purchases" filter cell on their product lists (ProductPickerTabs);
         // without the grant api-pro 403s the lookup.
-        apps: ['stock', 'cms', 'order-management', 'inventory'],
+        apps: ['stock', 'cms', 'orders', 'control'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['createdAt:desc'],
@@ -44,7 +44,7 @@ export const PurchasesEndpoints = {
         path: '/purchases/',
         action: 'findOne',
         method: 'get',
-        apps: ['stock', 'inventory'],
+        apps: ['stock', 'control'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             filters: {
@@ -70,7 +70,7 @@ export const PurchasesEndpoints = {
         path: '/purchases',
         action: 'create',
         method: 'post',
-        apps: ['stock', 'inventory'],
+        apps: ['stock', 'control'],
         approle: ['admin', 'manager', 'staff'],
         data,
     }),
@@ -83,7 +83,7 @@ export const PurchasesEndpoints = {
         path: `/purchases/${documentId}`,
         action: 'update',
         method: 'put',
-        apps: ['stock', 'inventory'],
+        apps: ['stock', 'control'],
         approle: ['admin', 'manager', 'staff'],
         data,
     }),
@@ -92,7 +92,7 @@ export const PurchasesEndpoints = {
         path: `/purchases/${documentId}`,
         action: 'delete',
         method: 'delete',
-        apps: ['stock', 'inventory'],
+        apps: ['stock', 'control'],
         approle: ['admin', 'manager', 'staff'],
     }),
 
@@ -107,7 +107,7 @@ export const PurchasesEndpoints = {
         path: `/purchases/${documentId}/generate-bill`,
         action: 'generateBill',
         method: 'post',
-        apps: ['accounts', 'accounts-ap', 'stock', 'inventory'],
+        apps: ['accounts', 'accounts-ap', 'stock', 'control'],
         approle: ['admin', 'manager'],
     }),
 };

@@ -1,6 +1,6 @@
 # Video Studio v2 — layers, editing, customization
 
-<!-- verify-docs: planned packages/video-maker/test/ -->
+<!-- verify-docs: planned packages/video/test/ -->
 <!-- The harness pair is checked in at M1; until then it lives in scratchpad form. -->
 
 **Superseded by v3:** `docs/todo/video-studio-timeline-plan.md` (BUILT) made
@@ -52,7 +52,7 @@ still describes the shipped v2 substrate the v3 work compiles onto.
   full-snapshot `video_settings` written on attach, poster resolves recipe →
   default template → config. Encoder cold-start empty-file race fixed for real
   (primer records its own canvas, never the live stream) + one job-level retry.
-**Builds on:** `packages/video-maker` (shared renderer), rutba-social Video Studio +
+**Builds on:** `packages/video` (shared renderer), apps/content/social Video Studio +
 Audio Library, Social Poster unattended generation — all shipped 2026-08-10.
 
 ## Where this starts from
@@ -60,7 +60,7 @@ Audio Library, Social Poster unattended generation — all shipped 2026-08-10.
 The image-to-video pipeline works end to end: an image-only post becomes a
 1080p H.264 video with the post text typed over a slideshow, the site logo,
 and a music bed from the shared audio library — rendered by the same
-dependency-free module (`packages/video-maker`) in the Video Studio and in the
+dependency-free module (`packages/video`) in the Video Studio and in the
 Social Poster's hidden window, attached to the post so it renders once.
 
 What it is NOT yet is *editable*. The look is one hardcoded pipeline —
@@ -211,7 +211,7 @@ require new server surface beyond what M2 stored.
 | Milestone | Surface | Risk | Verify with |
 |---|---|---|---|
 | M0 schema now | Strapi + seed | low | table/columns exist; routes 200 after core restart |
-| M1 scene graph | `packages/video-maker` only | medium (regression) | harness A/B frame probes, both hosts |
+| M1 scene graph | `packages/video` only | medium (regression) | harness A/B frame probes, both hosts |
 | M2 templates | CT + studio + poster | low | poster renders a post's `video_settings` byte-consistent with studio |
 | M3 editor v1 | studio UI | medium (UX scope) | fixture posts per layer type; Urdu fixture |
 | M4 transitions/outro | renderer + studio | low | harness probes at boundary times |
@@ -223,7 +223,7 @@ must work in a page and in the hidden Electron window** — timer-paced loop,
 explicit `requestFrame`, `createImageBitmap`, media via injected transport.
 The standalone HTML/Electron harnesses from the v1 work are the regression
 rig; keep them in `scratchpad` form until M1, then check a trimmed pair into
-`packages/video-maker/test/`.
+`packages/video/test/`.
 
 ## Open questions (decide at M2, none block M0/M1)
 

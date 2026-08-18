@@ -18,8 +18,8 @@ When a sale was rung offline against replica units, does the replayer:
 - **(a)** replay the stock-unit references the till captured, flagging per-unit
   collisions when another till already sold one; or
 - **(b)** degrade the sale to product + quantity and let
-  [`stock-item.allocateSellableUnits`](../../../pos-strapi/src/api/stock-item/services/stock-item.js)
-  (`pos-strapi/src/api/stock-item/services/stock-item.js:555`) pick real units at
+  [`stock-item.allocateSellableUnits`](../../../services/strapi/src/api/stock-item/services/stock-item.js)
+  (`services/strapi/src/api/stock-item/services/stock-item.js:555`) pick real units at
   sync?
 
 ## The decision
@@ -43,7 +43,7 @@ under the already-decided oversell policy.
 
 ### 1. Returns restock **only** through `items`
 
-[`sale-return-item/lifecycles.js:28-64`](../../../pos-strapi/src/api/sale-return-item/content-types/sale-return-item/lifecycles.js)
+[`sale-return-item/lifecycles.js:28-64`](../../../services/strapi/src/api/sale-return-item/content-types/sale-return-item/lifecycles.js)
 is the whole restock path. `restockLinkedItems` populates the return line's
 `items` relation and walks it — nothing else:
 
@@ -65,7 +65,7 @@ only `strapi.log.warn` in the file fires for divisible rolls
 ### 2. Unit lookup and the return UI are built on hard references
 
 `GET /sales/search-by-stock-item`
-([`search-by-stock-item.js:73-83`](../../../pos-strapi/src/api/sale/controllers/search-by-stock-item.js))
+([`search-by-stock-item.js:73-83`](../../../services/strapi/src/api/sale/controllers/search-by-stock-item.js))
 resolves a scanned unit to its sale by filtering sale-items on
 `items: { id: { $in: stockIds } }`. Scanning a returned unit to find the sale it
 came from works **only** because the sale holds hard unit references. Degrade
@@ -73,7 +73,7 @@ the capture and the counter staff's "scan it to find the receipt" stops working
 for every offline-rung sale.
 
 The return page renders per-unit rows —
-`pos-sale/pages/[documentId]/sale-return.js:897-931` gives each linked unit its
+`apps/sales/pos/pages/[documentId]/sale-return.js:897-931` gives each linked unit its
 own row with SKU and Barcode columns — and gates returnability on the unit's own
 status:
 
@@ -92,8 +92,8 @@ Never `product.cost_price`. Both posting paths agree:
 
 | Path | Where | Cost basis |
 |---|---|---|
-| POS checkout | [`checkout.js:185-204`](../../../pos-strapi/src/api/sale/controllers/checkout.js) | `stock.cost_price` per linked unit; divisible lines pro-rate `units × (roll cost_price / capacity)` |
-| Web order | [`sale-order-state-machine.js:396-421`](../../../pos-strapi/src/api/sale-order/services/sale-order-state-machine.js) | *"the `cost_price` of the specific stock-items attached to the order lines"* — its own comment, line 397 |
+| POS checkout | [`checkout.js:185-204`](../../../services/strapi/src/api/sale/controllers/checkout.js) | `stock.cost_price` per linked unit; divisible lines pro-rate `units × (roll cost_price / capacity)` |
+| Web order | [`sale-order-state-machine.js:396-421`](../../../services/strapi/src/api/sale-order/services/sale-order-state-machine.js) | *"the `cost_price` of the specific stock-items attached to the order lines"* — its own comment, line 397 |
 
 Units of the same product routinely differ in cost — that is the entire reason
 `cost_price` lives on `stock-item` and not on `product`. A sale that names no
@@ -103,7 +103,7 @@ wrong number — a missing entry.
 
 ### And a supporting fact: quantity is *derived* from the unit count
 
-[`SaleItem.js:448`](../../../packages/pos-shared/context/domain/sale/SaleItem.js):
+[`SaleItem.js:448`](../../../packages/shared/context/domain/sale/SaleItem.js):
 
 ```js
 quantity: this.items.length || Number(this.quantity) || 0,
@@ -167,7 +167,7 @@ above. That is not a trade worth making.
 naming unit X against a database recording unit Y.
 
 **That is not true of the receipt this repo prints.** Checked directly:
-[`SaleInvoice.js`](../../../pos-sale/components/print/SaleInvoice.js) prints
+[`SaleInvoice.js`](../../../apps/sales/pos/components/print/SaleInvoice.js) prints
 **nothing unit-specific**. The item table has exactly two columns, `Item` and
 `Total` (lines 229-235); each row prints
 
@@ -192,7 +192,7 @@ Not a carve-out invented for offline — it is the shape they already have onlin
 
 The POS never connects whole units for a divisible line. It sends product +
 quantity to `POST /stock-items/sell-units`
-([`saleApi.js:327-346`](../../../packages/pos-shared/lib/saleApi.js), which
+([`saleApi.js:327-346`](../../../packages/shared/lib/saleApi.js), which
 `continue`s past the whole-unit path at line 345), and the server allocates:
 
 ```
@@ -202,7 +202,7 @@ saleApi.saveSaleItems → StockItemsEndpoints.sellUnits({ productDocId, qty, sal
 ```
 
 And `sellDivisibleUnits`
-([`stock-item.js:716-783`](../../../pos-strapi/src/api/stock-item/services/stock-item.js))
+([`stock-item.js:716-783`](../../../services/strapi/src/api/stock-item/services/stock-item.js))
 is **reconcile-to-target**, which its own docblock states as a contract
 (lines 705-710):
 
@@ -241,15 +241,15 @@ replay.
 ### The POS has no state machine
 
 Web orders route stock side effects through
-[`sale-order-state-machine.js`](../../../pos-strapi/src/api/sale-order/services/sale-order-state-machine.js)'s
-`executeTransition`. The POS has no equivalent: `pos-strapi/src/api/sale/services/`
+[`sale-order-state-machine.js`](../../../services/strapi/src/api/sale-order/services/sale-order-state-machine.js)'s
+`executeTransition`. The POS has no equivalent: `services/strapi/src/api/sale/services/`
 contains only `sale.js`, and the six state machines in the repo belong to
 `hr-leave-request`, `mfg-bundle`, `mfg-task`, `mfg-work-order`, `return-request`
 and `sale-order`. **There is no sale state machine.**
 
 The POS stock walk is the **browser client** issuing one
 `PUT /stock-items/:documentId` per unit from `saveSaleItems`
-([`saleApi.js:351-388`](../../../packages/pos-shared/lib/saleApi.js)), each
+([`saleApi.js:351-388`](../../../packages/shared/lib/saleApi.js)), each
 carrying `{ status: 'Sold', sale_items: { connect: [saleItemId] } }`.
 
 Two things follow:
@@ -266,7 +266,7 @@ Two things follow:
 ### `allocateSellableUnits`' lock does not cover a replaying bridge
 
 The allocator is guarded by an **in-process promise mutex**
-(`withProductLock`, [`stock-item.js:31-62`](../../../pos-strapi/src/api/stock-item/services/stock-item.js)),
+(`withProductLock`, [`stock-item.js:31-62`](../../../services/strapi/src/api/stock-item/services/stock-item.js)),
 and its own header says what that does and does not cover:
 
 > *"This is an IN-PROCESS lock: it protects one Strapi instance (the current
@@ -290,7 +290,7 @@ it cannot see.
 ### One asymmetry that favours references anyway
 
 The allocator excludes expired units and prefers earliest expiry
-([`stock-item.js:570-577`](../../../pos-strapi/src/api/stock-item/services/stock-item.js)):
+([`stock-item.js:570-577`](../../../services/strapi/src/api/stock-item/services/stock-item.js)):
 
 ```js
 // Exclude already-expired units — the daily sweep flips them to 'Expired'
@@ -299,7 +299,7 @@ The allocator excludes expired units and prefers earliest expiry
 ```
 
 The POS whole-unit path has **no expiry guard at all** — `expiry` appears
-nowhere in `pos-sale/` or in `packages/pos-shared/`. A scanned unit is sold
+nowhere in `apps/sales/pos/` or in `packages/shared/`. A scanned unit is sold
 whatever its expiry date, and the only thing that ever stops it is the daily
 sweep flipping the row to `Expired`.
 

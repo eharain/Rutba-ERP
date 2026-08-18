@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Dropdown } from "primereact/dropdown";
 import { ProductsEndpoints } from "@rutba/api-provider/endpoints";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 
 function optionLabel(p) {
     const sku = p.sku ? ` · ${p.sku}` : "";

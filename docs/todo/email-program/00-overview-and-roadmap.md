@@ -44,8 +44,8 @@
 > (needs `MAILCOW_BASE_URL`/`MAILCOW_API_KEY`).
 >
 > **Verified:** 31/31-check API smoke across M1–M5 (plus the original 22-check
-> M0 suite) against the live dev stack; production builds of rutba-mail,
-> rutba-campaigns, rutba-crm pass. **Still pending:** the live-mailbox happy
+> M0 suite) against the live dev stack; production builds of apps/content/mail,
+> apps/content/campaigns, apps/sales/crm pass. **Still pending:** the live-mailbox happy
 > path — ALL company mailboxes live on the mailcow at **mail.trustlist.uk**
 > (the env files' old smtp.hostinger.com entries were stale and are now
 > corrected), but the stored contact@rutba.pk password fails 535 there too
@@ -57,7 +57,7 @@
 > (`MAILCOW_BASE_URL=https://mail.trustlist.uk` + an admin API key).
 >
 > Original M0 record: Spec set + gateway + `mail-account` API +
-> `rutba-mail` (:4021, registered at all seven points) + 3-pane client,
+> `apps/content/mail` (:4021, registered at all seven points) + 3-pane client,
 > compose, and account settings — one session.
 >
 > **Verified** (22-check API smoke against the live dev stack): domain/policy
@@ -84,12 +84,12 @@
 
 The umbrella program for everything email in Rutba ERP:
 
-1. **A dedicated mail client** (`rutba-mail`, **:4021**) — users read and send
+1. **A dedicated mail client** (`apps/content/mail`, **:4021**) — users read and send
    from their **own** mailboxes and from **shared** team mailboxes (support@,
    sales@), without leaving the ERP.
 2. **Deep CRM/customer linkage** — an email can be attached to a person,
    CRM contact, sale order, or ticket, and shows up on those records' timelines.
-3. **Campaigns** — the in-flight `rutba-campaigns` module (:4019, phases 2–6
+3. **Campaigns** — the in-flight `apps/content/campaigns` module (:4019, phases 2–6
    outstanding) is sequenced by this roadmap; see
    [`07-campaigns-integration.md`](./07-campaigns-integration.md).
 
@@ -138,17 +138,17 @@ mailcow at mail.trustlist.uk, Hostinger, Gmail app-passwords — anything), with
 |---|---|
 | [`01-data-model.md`](./01-data-model.md) | `mail-account` / `mail-message` / `mail-link` / `mail-attachment`, identity + idempotency rules |
 | [`02-imap-gateway.md`](./02-imap-gateway.md) | Pool, mutex, deadlines, op API, sanitization, SMTP send + APPEND |
-| [`03-mail-client-app.md`](./03-mail-client-app.md) | `rutba-mail` screens/components, registration checklist |
+| [`03-mail-client-app.md`](./03-mail-client-app.md) | `apps/content/mail` screens/components, registration checklist |
 | [`04-crm-linkage-and-identity.md`](./04-crm-linkage-and-identity.md) | Import-on-link, person as email spine, timelines |
 | [`05-shared-inboxes.md`](./05-shared-inboxes.md) | Shared accounts, triage lifecycle, work-item-* reuse |
 | [`06-mailcow-provisioning.md`](./06-mailcow-provisioning.md) | mailcow admin API, provision flows, password custody |
-| [`07-campaigns-integration.md`](./07-campaigns-integration.md) | How this program sequences rutba-campaigns 2–6 |
+| [`07-campaigns-integration.md`](./07-campaigns-integration.md) | How this program sequences apps/content/campaigns 2–6 |
 | [`08-security.md`](./08-security.md) | Credential crypto, HTML threat model, ACLs, timeouts |
 | [`09-usability-gap-analysis.md`](./09-usability-gap-analysis.md) | Feature-by-feature walk against Gmail/Outlook, Front/Missive, Mailchimp/Brevo |
 | [`10-index-decision.md`](./10-index-decision.md) | **Does this ADR survive 09?** Recommends a headers-only envelope index (bodies never stored) and names MODSEQ as the prerequisite |
 
 Campaigns' own spec stays authoritative for campaigns internals:
-[`../rutba-campaigns-implementation.md`](../rutba-campaigns-implementation.md).
+[`../campaigns-implementation.md`](../campaigns-implementation.md).
 
 ## Umbrella roadmap
 

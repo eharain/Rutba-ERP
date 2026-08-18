@@ -21,7 +21,7 @@ const { requireAppRole } = require('../../../utils/require-admin');
 module.exports = {
   async cancel(ctx) {
     // ── Admin guard ─────────────────────────────────────────
-    // requireAppRole reads the user's REAL app_roles (`sale_admin`) from the
+    // requireAppRole reads the user's REAL app_roles (`pos_admin`) from the
     // DB. The previous guard populated a `permission_roles` relation that has
     // no schema, so it always came back empty and every non-super-admin — the
     // sale admins this action exists for — was refused.

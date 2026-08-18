@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import Layout from "../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import WorkflowBoard from "@rutba/pos-shared/components/workflow/WorkflowBoard";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import WorkflowBoard from "@rutba/shared/components/workflow/WorkflowBoard";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import { MfgWorkOrdersEndpoints, WorkflowsEndpoints } from "@rutba/api-provider/endpoints";
 
 const WO_ENTITY_UID = "api::mfg-work-order.mfg-work-order";

@@ -3,7 +3,7 @@ import { listParams } from './__param_builders.js';
 export const TermsEndpoints = {
     meta: {
         uid: 'api::term.term',
-        domains: ['stock', 'sale'],
+        domains: ['stock', 'pos'],
         roles: ['admin', 'manager', 'staff']
     },
 
@@ -11,7 +11,7 @@ export const TermsEndpoints = {
         path: '/terms',
         action: 'find',
         method: 'get',
-        apps: ['stock', 'sale'],
+        apps: ['stock', 'pos'],
         approle: ['admin', 'manager', 'staff'],
         params: listParams(
             { page, pageSize, sort, populate, filters, fields },
@@ -24,7 +24,7 @@ export const TermsEndpoints = {
         path: '/terms',
         action: 'create',
         method: 'post',
-        apps: ['stock', 'sale'],
+        apps: ['stock', 'pos'],
         approle: ['admin', 'manager', 'staff'],
         data,
     }),
@@ -34,7 +34,7 @@ export const TermsEndpoints = {
         path: `/terms/${id}`,
         action: 'update',
         method: 'put',
-        apps: ['stock', 'sale'],
+        apps: ['stock', 'pos'],
         approle: ['admin', 'manager', 'staff'],
         data,
     }),
@@ -43,7 +43,7 @@ export const TermsEndpoints = {
         path: `/terms/${id}`,
         action: 'delete',
         method: 'delete',
-        apps: ['stock', 'sale'],
+        apps: ['stock', 'pos'],
         approle: ['admin', 'manager'],
     }),
 

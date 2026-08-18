@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import Layout from "../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import { SaleOrdersEndpoints } from "@rutba/api-provider/endpoints/index.js";
-import { useUtil } from "@rutba/pos-shared/context/UtilContext";
+import { useUtil } from "@rutba/shared/context/UtilContext";
 import { useToast } from "../components/Toast";
 import PullOrdersButton from "../components/PullOrdersButton";
 import Link from "next/link";

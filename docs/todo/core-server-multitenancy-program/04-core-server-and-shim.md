@@ -1,6 +1,6 @@
-# Phase 3 — `rutba-core`: server skeleton, data shim, api-pro port
+# Phase 3 — `services/core`: server skeleton, data shim, api-pro port
 
-A new package `packages/rutba-core` (its own workspace; runnable standalone). It serves
+A new package `packages/services/core` (its own workspace; runnable standalone). It serves
 the identical descriptor API from the identical MySQL 8 schema, so it can take over
 routes one module at a time.
 
@@ -16,7 +16,7 @@ routes one module at a time.
   transaction model). Migrations via knex-migrate-style plain SQL/JS files, written
   against MySQL semantics — notably that MySQL implicitly commits on every DDL
   statement, so a migration cannot wrap schema changes in a rollback-able transaction
-  (see `rutba-core/migrations/README.md`). rutba-core carries both the `mysql2` and `pg`
+  (see `services/core/migrations/README.md`). services/core carries both the `mysql2` and `pg`
   drivers, but MySQL 8 is the deployed engine; `pg` is optionality, not current state.
 - **Config**: same env conventions as today (root env loader), pino logging, one
   error-handler middleware producing byte-compatible Strapi error bodies.
@@ -29,10 +29,10 @@ routes one module at a time.
 - [ ] Table/column name derivation must reproduce Strapi 5's conventions exactly
       (snake_case pluralized tables, `_lnk` join tables with order columns, component
       link tables, `document_id`/`published_at`/`locale` columns). Validate by diffing
-      derived DDL against a live pos-strapi database — this validator is a one-day tool
+      derived DDL against a live services/strapi database — this validator is a one-day tool
       that prevents weeks of subtle bugs.
 - [ ] The schema.json files become the shared source of truth: Strapi keeps loading them
-      until retirement; rutba-core loads the same files.
+      until retirement; services/core loads the same files.
 
 ## 3.3 Data-access shim (the main engineering artifact)
 
@@ -63,7 +63,7 @@ ported controllers/services are mostly copy-paste:
       files get ported per-module onto this hook or inlined into services — audited one
       by one during each module's migration, never bulk-converted.
 
-**Acceptance**: shim test suite = golden queries recorded from pos-strapi against the
+**Acceptance**: shim test suite = golden queries recorded from services/strapi against the
 contract-fixture DB, replayed through the shim, results deep-equal after normalization.
 
 ## 3.4 api-pro engine port
@@ -79,7 +79,7 @@ rewrite:
       (`owners`) checks, `requireAppRole`, API-token bypass, `X-Rutba-App-Role` handling.
 - [ ] `/me/permissions` endpoint byte-compatible.
 - [ ] Route table generation from descriptors honoring literal-before-param ordering.
-- [ ] **JWT: verify-only.** Same UP secret per tenant; pos-strapi remains the sole
+- [ ] **JWT: verify-only.** Same UP secret per tenant; services/strapi remains the sole
       issuer (register/login/refresh/reset) until Phase 7. Guest + optional-auth routes
       reuse the manual-parse pattern.
 
@@ -95,7 +95,7 @@ so migrated modules can register transitions against it.
 
 - [ ] Port auth issuance: register/login/refresh/password-reset + email verification
       (contract tests already cover the flows). Cut Caddy's `/auth/*` over last.
-- [ ] Retire pos-strapi containers; keep schema.json files as the schema registry input.
+- [ ] Retire services/strapi containers; keep schema.json files as the schema registry input.
 - [ ] **Multi-tenant core process**: tenant context (from Caddy header) → per-tenant
       Knex pool + per-tenant api-pro cache, LRU-capped pools. One core process serves
       many tenant DBs; the control plane's backend template shrinks to fleet-shared

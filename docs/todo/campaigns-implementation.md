@@ -1,4 +1,4 @@
-# `rutba-campaigns` — Implementation Spec
+# `apps/content/campaigns` — Implementation Spec
 
 <!-- verify-docs: planned campaign/start.js unsubscribe/ -->
 <!-- verify-docs: external RMAILX/** -->
@@ -41,7 +41,7 @@
 > Phase 4. **Phases 2–6 are not started** — see §9.
 >
 > **Phase 0** — seven `cmp-*` content types, their api-provider descriptors, the
-> Rutba-MTA client, the sending-identity lifecycle, and the `rutba-campaigns`
+> Rutba-MTA client, the sending-identity lifecycle, and the `apps/content/campaigns`
 > app shell (**:4019**) registered across all seven registration points.
 >
 > **Phase 1** — the template studio: GrapesJS + `grapesjs-preset-newsletter`,
@@ -53,10 +53,10 @@
 > methods, 4005 policies, 42 UP permissions = 7 CTs × 5 + 7 custom actions); the
 > app builds with all six pages; and the pure render logic — merge-key
 > extraction, substitution, missing-key reporting, UTM appending — passes 27
-> targeted checks (`pos-strapi/src/utils/template-render.js`).
+> targeted checks (`services/strapi/src/utils/template-render.js`).
 >
 > **What is NOT verified: GrapesJS mounting in a real browser.** React does not
-> hydrate in the agent's browser pane — `rutba-inventory`, untouched, fails
+> hydrate in the agent's browser pane — `apps/inventory/control`, untouched, fails
 > identically — so the studio could not be exercised end to end. The imports
 > resolve and the production build succeeds, and grapesjs is pinned to `^0.21.13`
 > to satisfy the preset's declared `^0.21.2` peer, but **a human should open
@@ -111,7 +111,7 @@ per-recipient signed tokens, retry/backoff, IMAP bounce capture (DSN + ARF),
 RFC 8058 one-click unsubscribe, per-batch live aggregate reports, and
 HMAC-signed webhooks.
 
-The API surface `rutba-campaigns` will consume:
+The API surface `apps/content/campaigns` will consume:
 
 | Endpoint | Use |
 |---|---|
@@ -135,7 +135,7 @@ tracking decision.
 
 ### 1.3 ERP platform pieces we can lean on
 
-- **Cron:** `pos-strapi/config/server.js` merges per-module task builders
+- **Cron:** `services/strapi/config/server.js` merges per-module task builders
   (`inventory-cron-tasks.js`, `social-cron-tasks`, `workflow-cron-tasks.js`,
   `hr-cron-tasks.js`), each behind its own `*_CRON_ENABLED` flag with
   configurable rules. A `campaign-cron-tasks.js` drops straight in.
@@ -269,7 +269,7 @@ table — index `(run, status)` and plan retention early.
 
 ---
 
-## 4. Backend work (pos-strapi + api-provider)
+## 4. Backend work (services/strapi + api-provider)
 
 1. **MTA client service** — thin wrapper over `X-Trust-Token` HTTP calls, base
    URL from env. **Note the timeout trap:** a wedged MTA must not hang a request;
@@ -315,7 +315,7 @@ now". Campaign reporting needs opens and link clicks. Three options:
   emitting `opened`/`clicked` webhooks. Cleanest — tracking lives with sending,
   and every caller benefits. Cost: a change to an external repo with its own
   release process.
-- **(b) Track in `rutba-campaigns`** — inject our own pixel/redirect URLs into the
+- **(b) Track in `apps/content/campaigns`** — inject our own pixel/redirect URLs into the
   HTML before handing it to MTA, serve `/t/open/:token.gif` and `/t/click/:token`
   ourselves. Fastest, no external dependency, but splits attribution across two
   systems and needs a public endpoint on the ERP.
@@ -329,12 +329,12 @@ render time in the template service.
 
 ---
 
-## 6. The app — `rutba-campaigns`
+## 6. The app — `apps/content/campaigns`
 
 **Port `4019`.** (The gap-analysis doc says `:4018`; that is stale — `:4018` is
-`rutba-seed` and `:4020` is `rutba-core` per `scripts/rutba_apps.sh:134`.)
+`apps/admin/seed` and `:4020` is `services/core` per `scripts/rutba_apps.sh:134`.)
 
-Next.js pages app, same skeleton as `rutba-inventory` (`components/Layout|Navigation|Sidebar`,
+Next.js pages app, same skeleton as `apps/inventory/control` (`components/Layout|Navigation|Sidebar`,
 `pages/_app.js`, `pages/auth/callback.js`, `src/styles/globals.css`).
 
 Screens:
@@ -352,11 +352,11 @@ Screens:
 | `settings` | sending identities, MTA connection health, suppression list |
 
 **Registration checklist** (miss one and it silently doesn't appear):
-1. `packages/pos-shared/lib/roles.js` — `APP_URLS` + `VALID_APP_KEYS` + `APP_META`
-2. `pages/auth/callback.js` re-exporting `@rutba/pos-shared/components/AuthCallback`
+1. `packages/shared/lib/roles.js` — `APP_URLS` + `VALID_APP_KEYS` + `APP_META`
+2. `pages/auth/callback.js` re-exporting `@rutba/shared/components/AuthCallback`
 3. `packages/api-provider/config/domains.json` — domain key + `campaigns_admin/manager/staff`
 4. `scripts/rutba_apps.sh` — `RUTBA_SERVICES` + `RUTBA_SVC_CMD` + `RUTBA_SVC_DESC` + `RUTBA_SVC_PORT`
-5. root `package.json` dev/start/build scripts, `.env.*` (`RUTBA_CAMPAIGNS__PORT`,
+5. root `package.json` dev/start/build scripts, `.env.*` (`CAMPAIGNS__PORT`,
    `NEXT_PUBLIC_CAMPAIGNS_URL`), `scripts/js/env-config.js` `GLOBAL_VARS`,
    Dockerfile + compose, `dev-start.bat`
 6. **Full Strapi restart** after adding the URL — CORS is baked at boot; a
@@ -369,7 +369,7 @@ Screens:
 
 | Doc says | This spec says | Why |
 |---|---|---|
-| `rutba-campaigns` at **:4018** | **:4019** | :4018 is `rutba-seed` |
+| `apps/content/campaigns` at **:4018** | **:4019** | :4018 is `apps/admin/seed` |
 | `mail-template` / `mail-audience` / `mail-campaign` / `mail-send-log` | `cmp-*`, plus `cmp-run` / `cmp-recipient` / `cmp-event` / `cmp-sending-identity` | multi-channel from the start; runs and recipients need to be first-class for attribution and resume |
 | "reuse CRM segmentation §5" for audiences | CRM segmentation **does not exist** — ship `cmp-audience` behind a resolver interface | unblocks 1.4 without waiting on 0.6 |
 | "MTA already owns … click interception" | MTA owns **action-token** clicks only; generic click/open tracking is explicitly out of scope | `FUNCTION.md:317` |

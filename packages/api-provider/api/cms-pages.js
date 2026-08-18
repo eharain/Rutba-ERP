@@ -1,7 +1,7 @@
 /**
  * CmsPagesEndpoints
  * Centralised path + params definitions for the /cms-pages content-type.
- * Covers both the admin (pos-shared / rutba-cms) draft flows and the web storefront read flows.
+ * Covers both the admin (pos-shared / apps/content/cms) draft flows and the web storefront read flows.
  */
 import __publish_generic_helper from "./__publish_generic_helper.js";
 import { listParams, byIdParams } from './__param_builders.js';
@@ -10,7 +10,7 @@ export const CmsPagesEndpoints = {
 
     meta: {
         uid: 'api::cms-page.cms-page',
-        domains: ['auth', 'cms', 'sale', 'stock', 'web', 'web-user'],
+        domains: ['auth', 'cms', 'pos', 'stock', 'storefront', 'portal'],
         roles: ['admin', 'manager', 'staff', 'public', 'user']
     },
 
@@ -22,7 +22,7 @@ export const CmsPagesEndpoints = {
         path: '/cms-pages',
         action: 'find',
         method: 'get',
-        apps: ['cms', 'auth', 'stock', 'sale', 'web', 'web-user'],
+        apps: ['cms', 'auth', 'stock', 'pos', 'storefront', 'portal'],
         approle: ['admin', 'manager', 'staff', 'public', 'user'],
         params: listParams(
             { page, pageSize, sort, populate, filters, fields },
@@ -41,7 +41,7 @@ export const CmsPagesEndpoints = {
     }),
 
     /**
-     * Draft list — used by the rutba-cms admin screen.
+     * Draft list — used by the apps/content/cms admin screen.
      * @param {{ search?, typeFilter? }} extra  — convenience filter shortcuts.
      */
     listDraft: ({ page, pageSize, sort, populate, filters, fields, search, typeFilter } = {}) => {
@@ -75,7 +75,7 @@ export const CmsPagesEndpoints = {
         path: '/cms-pages',
         action: 'find',
         method: 'get',
-        apps: ['cms', 'auth', 'stock', 'sale', 'web', 'web-user'],
+        apps: ['cms', 'auth', 'stock', 'pos', 'storefront', 'portal'],
         approle: ['admin', 'manager', 'staff', 'public', 'user'],
         params: listParams(
             { page, pageSize, sort, populate, filters, fields },
@@ -93,7 +93,7 @@ export const CmsPagesEndpoints = {
         path: '/cms-pages',
         action: 'find',
         method: 'get',
-        apps: ['cms', 'auth', 'stock', 'sale', 'web', 'web-user'],
+        apps: ['cms', 'auth', 'stock', 'pos', 'storefront', 'portal'],
         approle: ['admin', 'manager', 'staff', 'public', 'user'],
         params: {
             filters: { slug: { $eq: slug } },
@@ -119,7 +119,7 @@ export const CmsPagesEndpoints = {
         path: '/cms-pages',
         action: 'find',
         method: 'get',
-        apps: ['cms', 'auth', 'stock', 'sale', 'web', 'web-user'],
+        apps: ['cms', 'auth', 'stock', 'pos', 'storefront', 'portal'],
         approle: ['admin', 'manager', 'staff', 'public', 'user'],
         params: {
             filters: { slug: { $eq: slug } },
@@ -135,7 +135,7 @@ export const CmsPagesEndpoints = {
         path: '/cms-pages',
         action: 'find',
         method: 'get',
-        apps: ['cms', 'auth', 'stock', 'sale', 'web', 'web-user'],
+        apps: ['cms', 'auth', 'stock', 'pos', 'storefront', 'portal'],
         approle: ['admin', 'manager', 'staff', 'public', 'user'],
         params: {
             filters: { slug: { $eq: 'index' } },
@@ -161,12 +161,12 @@ export const CmsPagesEndpoints = {
         path: `/cms-pages/${documentId}`,
         action: 'findOne',
         method: 'get',
-        apps: ['cms', 'auth', 'stock', 'sale', 'web', 'web-user'],
+        apps: ['cms', 'auth', 'stock', 'pos', 'storefront', 'portal'],
         approle: ['admin', 'manager', 'staff', 'public', 'user'],
         params: byIdParams({ populate, fields }, {}, { status: 'published' }),
     }),
     // todo: speculative stub — full (non-draft) update PUT. Used by the bulk CSV
-    // import in rutba-cms/pages/pages.js where the row should overwrite both draft
+    // import in apps/content/cms/pages/pages.js where the row should overwrite both draft
     // and published. __publish_generic_helper only provides `updateDraft`; clarify
     // whether bulk import should hit `update` (PUT) or `updateDraft` + immediate
     // `publish`, and align the descriptor accordingly.

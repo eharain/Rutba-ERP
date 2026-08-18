@@ -16,7 +16,7 @@
  * first module to claim a verb+path keeps it, so two modules registering the
  * same route is resolved here rather than there. Helpdesk sits before crm for
  * exactly that reason: it reimplements the seven /api/contact-tickets/* legacy
- * contracts over TicketService (F13), and crm's ported pos-strapi versions of
+ * contracts over TicketService (F13), and crm's ported services/strapi versions of
  * the same routes must not win. crm keeps its address and crm-lead routes.
  */
 

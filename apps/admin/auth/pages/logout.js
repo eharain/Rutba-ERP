@@ -1,10 +1,10 @@
 import { useEffect } from "react";
 import { useRouter } from "next/router";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 
 /**
  * Central logout endpoint.
- * Clears pos-auth's auth state and redirects to the login page.
+ * Clears apps/admin/auth's auth state and redirects to the login page.
  */
 export default function Logout() {
     const { logout } = useAuth();

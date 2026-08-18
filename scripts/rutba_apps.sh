@@ -42,13 +42,13 @@ _RUTBA_APPS_LOADED=1
 # Strapi first - every other app talks to its API.
 
 RUTBA_SERVICES=(
-    rutba_pos_strapi
+    rutba_strapi
     rutba_core
-    rutba_pos_auth
-    rutba_pos_stock
-    rutba_pos_sale
-    rutba_web
-    rutba_web_user
+    rutba_auth
+    rutba_stock
+    rutba_pos
+    rutba_storefront
+    rutba_portal
     rutba_crm
     rutba_hr
     rutba_accounts
@@ -56,16 +56,16 @@ RUTBA_SERVICES=(
     rutba_cms
     rutba_social
     rutba_rider
-    rutba_order_management
+    rutba_orders
     rutba_manufacturing
     rutba_ess
     rutba_marketplace
     rutba_marketplace_worker
-    rutba_inventory
+    rutba_control
     rutba_seed
     rutba_campaigns
     rutba_mail
-    rutba_admin
+    rutba_console
     rutba_helpdesk
 )
 
@@ -74,33 +74,33 @@ RUTBA_SERVICES=(
 ###########################################
 
 declare -A RUTBA_SVC_CMD=(
-    [rutba_pos_strapi]="--prefix pos-strapi run start"
-    # rutba-core is not an npm workspace (own install via --prefix, same as
-    # pos-strapi) — see the strangler-migration notes.
-    [rutba_core]="--prefix rutba-core run start"
-    [rutba_pos_auth]="run start --workspace=pos-auth"
-    [rutba_pos_stock]="run start --workspace=pos-stock"
-    [rutba_pos_sale]="run start --workspace=pos-sale"
-    [rutba_web]="run start --workspace=rutba-web"
-    [rutba_web_user]="run start --workspace=rutba-web-user"
-    [rutba_crm]="run start --workspace=rutba-crm"
-    [rutba_hr]="run start --workspace=rutba-hr"
-    [rutba_accounts]="run start --workspace=rutba-accounts"
-    [rutba_payroll]="run start --workspace=rutba-payroll"
-    [rutba_cms]="run start --workspace=rutba-cms"
-    [rutba_social]="run start --workspace=rutba-social"
-    [rutba_rider]="run start --workspace=rutba-rider"
-    [rutba_order_management]="run start --workspace=rutba-order-management"
-    [rutba_manufacturing]="run start --workspace=rutba-manufacturing"
-    [rutba_ess]="run start --workspace=rutba-ess"
-    [rutba_marketplace]="run start --workspace=rutba-marketplace"
-    [rutba_marketplace_worker]="run worker --workspace=rutba-marketplace"
-    [rutba_inventory]="run start --workspace=rutba-inventory"
-    [rutba_seed]="run start --workspace=rutba-seed"
-    [rutba_campaigns]="run start --workspace=rutba-campaigns"
-    [rutba_mail]="run start --workspace=rutba-mail"
-    [rutba_admin]="run start --workspace=rutba-admin"
-    [rutba_helpdesk]="run start --workspace=rutba-helpdesk"
+    [rutba_strapi]="--prefix services/strapi run start"
+    # services/core is not an npm workspace (own install via --prefix, same as
+    # services/strapi) — see the strangler-migration notes.
+    [rutba_core]="--prefix services/core run start"
+    [rutba_auth]="run start --workspace=apps/admin/auth"
+    [rutba_stock]="run start --workspace=apps/inventory/stock"
+    [rutba_pos]="run start --workspace=apps/sales/pos"
+    [rutba_storefront]="run start --workspace=apps/content/storefront"
+    [rutba_portal]="run start --workspace=apps/sales/portal"
+    [rutba_crm]="run start --workspace=apps/sales/crm"
+    [rutba_hr]="run start --workspace=apps/people/hr"
+    [rutba_accounts]="run start --workspace=apps/finance/accounts"
+    [rutba_payroll]="run start --workspace=apps/finance/payroll"
+    [rutba_cms]="run start --workspace=apps/content/cms"
+    [rutba_social]="run start --workspace=apps/content/social"
+    [rutba_rider]="run start --workspace=apps/sales/rider"
+    [rutba_orders]="run start --workspace=apps/sales/orders"
+    [rutba_manufacturing]="run start --workspace=apps/inventory/manufacturing"
+    [rutba_ess]="run start --workspace=apps/people/ess"
+    [rutba_marketplace]="run start --workspace=apps/sales/marketplace"
+    [rutba_marketplace_worker]="run worker --workspace=apps/sales/marketplace"
+    [rutba_control]="run start --workspace=apps/inventory/control"
+    [rutba_seed]="run start --workspace=apps/admin/seed"
+    [rutba_campaigns]="run start --workspace=apps/content/campaigns"
+    [rutba_mail]="run start --workspace=apps/content/mail"
+    [rutba_console]="run start --workspace=apps/admin/console"
+    [rutba_helpdesk]="run start --workspace=apps/sales/helpdesk"
 )
 
 ###########################################
@@ -108,31 +108,31 @@ declare -A RUTBA_SVC_CMD=(
 ###########################################
 
 declare -A RUTBA_SVC_DESC=(
-    [rutba_pos_strapi]="Rutba ERP - Strapi API (pos-strapi)"
-    [rutba_core]="Rutba ERP - Core API (rutba-core, strangler replacement for Strapi)"
-    [rutba_pos_auth]="Rutba ERP - Auth Portal (pos-auth)"
-    [rutba_pos_stock]="Rutba ERP - Stock Management (pos-stock)"
-    [rutba_pos_sale]="Rutba ERP - Point of Sale (pos-sale)"
-    [rutba_web]="Rutba ERP - Public Website (rutba-web)"
-    [rutba_web_user]="Rutba ERP - My Orders (rutba-web-user)"
-    [rutba_crm]="Rutba ERP - CRM (rutba-crm)"
-    [rutba_hr]="Rutba ERP - Human Resources (rutba-hr)"
-    [rutba_accounts]="Rutba ERP - Accounting (rutba-accounts)"
-    [rutba_payroll]="Rutba ERP - Payroll (rutba-payroll)"
-    [rutba_cms]="Rutba ERP - Content Management (rutba-cms)"
-    [rutba_social]="Rutba ERP - Social Media (rutba-social)"
-    [rutba_rider]="Rutba ERP - Rider App (rutba-rider)"
-    [rutba_order_management]="Rutba ERP - Order Management (rutba-order-management)"
-    [rutba_manufacturing]="Rutba ERP - Manufacturing (rutba-manufacturing)"
-    [rutba_ess]="Rutba ERP - Employee Self-Service (rutba-ess)"
-    [rutba_marketplace]="Rutba ERP - Marketplace (rutba-marketplace)"
-    [rutba_marketplace_worker]="Rutba ERP - Marketplace Sync Worker (rutba-marketplace)"
-    [rutba_inventory]="Rutba ERP - Inventory Management (rutba-inventory)"
-    [rutba_seed]="Rutba ERP - Seeding Control (rutba-seed)"
-    [rutba_campaigns]="Rutba ERP - Campaigns (rutba-campaigns)"
-    [rutba_mail]="Rutba ERP - Mail (rutba-mail)"
-    [rutba_admin]="Rutba ERP - Admin Console (rutba-admin)"
-    [rutba_helpdesk]="Rutba ERP - Helpdesk (rutba-helpdesk)"
+    [rutba_strapi]="Rutba ERP - Strapi API (services/strapi)"
+    [rutba_core]="Rutba ERP - Core API (services/core, strangler replacement for Strapi)"
+    [rutba_auth]="Rutba ERP - Auth Portal (apps/admin/auth)"
+    [rutba_stock]="Rutba ERP - Stock Management (apps/inventory/stock)"
+    [rutba_pos]="Rutba ERP - Point of Sale (apps/sales/pos)"
+    [rutba_storefront]="Rutba ERP - Public Website (apps/content/storefront)"
+    [rutba_portal]="Rutba ERP - My Orders (apps/sales/portal)"
+    [rutba_crm]="Rutba ERP - CRM (apps/sales/crm)"
+    [rutba_hr]="Rutba ERP - Human Resources (apps/people/hr)"
+    [rutba_accounts]="Rutba ERP - Accounting (apps/finance/accounts)"
+    [rutba_payroll]="Rutba ERP - Payroll (apps/finance/payroll)"
+    [rutba_cms]="Rutba ERP - Content Management (apps/content/cms)"
+    [rutba_social]="Rutba ERP - Social Media (apps/content/social)"
+    [rutba_rider]="Rutba ERP - Rider App (apps/sales/rider)"
+    [rutba_orders]="Rutba ERP - Order Management (apps/sales/orders)"
+    [rutba_manufacturing]="Rutba ERP - Manufacturing (apps/inventory/manufacturing)"
+    [rutba_ess]="Rutba ERP - Employee Self-Service (apps/people/ess)"
+    [rutba_marketplace]="Rutba ERP - Marketplace (apps/sales/marketplace)"
+    [rutba_marketplace_worker]="Rutba ERP - Marketplace Sync Worker (apps/sales/marketplace)"
+    [rutba_control]="Rutba ERP - Inventory Management (apps/inventory/control)"
+    [rutba_seed]="Rutba ERP - Seeding Control (apps/admin/seed)"
+    [rutba_campaigns]="Rutba ERP - Campaigns (apps/content/campaigns)"
+    [rutba_mail]="Rutba ERP - Mail (apps/content/mail)"
+    [rutba_console]="Rutba ERP - Admin Console (apps/admin/console)"
+    [rutba_helpdesk]="Rutba ERP - Helpdesk (apps/sales/helpdesk)"
 )
 
 ###########################################
@@ -144,13 +144,13 @@ declare -A RUTBA_SVC_DESC=(
 # "-" = background worker with no HTTP surface.
 
 declare -A RUTBA_SVC_PORT=(
-    [rutba_pos_strapi]="4010"
+    [rutba_strapi]="4010"
     [rutba_core]="4020"
-    [rutba_pos_auth]="4003"
-    [rutba_pos_stock]="4001"
-    [rutba_pos_sale]="4002"
-    [rutba_web]="4000"
-    [rutba_web_user]="4004"
+    [rutba_auth]="4003"
+    [rutba_stock]="4001"
+    [rutba_pos]="4002"
+    [rutba_storefront]="4000"
+    [rutba_portal]="4004"
     [rutba_crm]="4005"
     [rutba_hr]="4006"
     [rutba_accounts]="4007"
@@ -158,23 +158,23 @@ declare -A RUTBA_SVC_PORT=(
     [rutba_cms]="4009"
     [rutba_social]="4011"
     [rutba_rider]="4012"
-    [rutba_order_management]="4013"
+    [rutba_orders]="4013"
     [rutba_manufacturing]="4014"
     [rutba_ess]="4015"
     [rutba_marketplace]="4016"
     [rutba_marketplace_worker]="-"
-    [rutba_inventory]="4017"
+    [rutba_control]="4017"
     [rutba_seed]="4018"
     [rutba_campaigns]="4019"
     [rutba_mail]="4021"
-    # 4022 was rutba_users (User Management); rutba-admin replaced that app and
+    # 4022 was rutba_users (User Management); apps/admin/console replaced that app and
     # inherits the port. Dropping rutba_users from RUTBA_SERVICES is enough to
     # free it: write_all_units' retirement pass stops, disables and deletes any
     # rutba_*.service no longer in the registry, and it runs before
     # start_services.
-    [rutba_admin]="4022"
+    [rutba_console]="4022"
     # 4019 was in the helpdesk spec but rutba_campaigns already owns it; moved to
-    # 4023 here, in roles.js APP_URLS, and in .env.* (RUTBA_HELPDESK__PORT +
+    # 4023 here, in roles.js APP_URLS, and in .env.* (HELPDESK__PORT +
     # NEXT_PUBLIC_HELPDESK_URL).
     [rutba_helpdesk]="4023"
 )
@@ -182,13 +182,13 @@ declare -A RUTBA_SVC_PORT=(
 ###########################################
 # BACKEND SELECTION
 ###########################################
-# Which API server this deployment runs. pos-strapi and rutba-core speak the
+# Which API server this deployment runs. services/strapi and services/core speak the
 # same wire contract against the same database, so this is the only switch that
 # decides which process serves the apps:
 #
-#   strapi  pos-strapi only                    (default — unchanged behaviour)
+#   strapi  services/strapi only                    (default — unchanged behaviour)
 #   both    both up, apps still on Strapi      (bake: core runs, serves nobody)
-#   core    rutba-core only
+#   core    services/core only
 #
 # Set RUTBA_BACKEND in the master .env at the builds root, or inline for a
 # single run:   RUTBA_BACKEND=both sudo bash scripts/rutba_deploy.sh
@@ -243,7 +243,7 @@ _rutba_drop_service() {
 
 case "$RUTBA_BACKEND" in
     strapi) _rutba_drop_service rutba_core ;;
-    core)   _rutba_drop_service rutba_pos_strapi ;;
+    core)   _rutba_drop_service rutba_strapi ;;
 esac
 
 ###########################################
@@ -275,7 +275,7 @@ rutba_backend_validate() {
     # 1. Crons must never fire in both servers. Core keeps them dormant unless
     #    RUTBA_CORE_CRONS=1, so `both` plus that flag is the dangerous pair —
     #    two processes running the same expiry sweep against one database.
-    crons="$(rutba_env_value RUTBA_CORE__RUTBA_CORE_CRONS)"
+    crons="$(rutba_env_value CORE__RUTBA_CORE_CRONS)"
     [ -n "$crons" ] || crons="$(rutba_env_value RUTBA_CORE_CRONS)"
     if [ "$RUTBA_BACKEND" = "both" ] && [ "$crons" = "1" ]; then
         echo "rutba_apps.sh: RUTBA_BACKEND=both with RUTBA_CORE_CRONS=1 — both servers would" >&2

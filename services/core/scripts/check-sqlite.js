@@ -4,10 +4,10 @@
  * Proves the SQLite branch of dbConfig() actually opens, and that the
  * transaction helper in src/db/connection.js behaves under it. Run:
  *
- *   npm --prefix rutba-core run check:sqlite
+ *   npm --prefix services/core run check:sqlite
  *
  * Why this exists as a checked-in script rather than a one-off: the offline
- * bridge in docs/todo/offline-pos-options.md is "rutba-core run against local
+ * bridge in docs/todo/offline-pos-options.md is "services/core run against local
  * SQLite", and the part most likely to break quietly is not the driver
  * resolving — it is withTransaction(). SQLite takes a database-wide write
  * lock, so the pool is pinned to a single connection (see sqliteConfig in
@@ -28,12 +28,12 @@ const os = require('os');
 const path = require('path');
 
 // Must be set before anything calls get(): src/config/env.js caches the
-// resolved variable set on first read. RUTBA_CORE__ rather than a bare name
+// resolved variable set on first read. CORE__ rather than a bare name
 // because the repo-root .env files win over process.env for the same key, and
 // they already define POS_STRAPI__DATABASE_CLIENT.
-const dbFile = path.join(os.tmpdir(), `rutba-core-sqlite-check-${process.pid}.sqlite`);
-process.env.RUTBA_CORE__DATABASE_CLIENT = 'sqlite';
-process.env.RUTBA_CORE__DATABASE_FILENAME = dbFile;
+const dbFile = path.join(os.tmpdir(), `services/core-sqlite-check-${process.pid}.sqlite`);
+process.env.CORE__DATABASE_CLIENT = 'sqlite';
+process.env.CORE__DATABASE_FILENAME = dbFile;
 
 const { dbConfig } = require('../src/config/env');
 const { getDb, withTransaction, closeDb } = require('../src/db/connection');
@@ -76,12 +76,12 @@ async function main() {
     // set on first read, so this needs a clean copy of the module to see a
     // different filename — the cached original keeps serving the connection
     // the checks above and below are using.
-    const root = path.join(os.tmpdir(), `rutba-core-nested-${process.pid}`);
+    const root = path.join(os.tmpdir(), `services/core-nested-${process.pid}`);
     const nested = path.join(root, 'deep', 'x.sqlite');
     fs.rmSync(root, { recursive: true, force: true });
     assert.ok(!fs.existsSync(path.dirname(nested)), 'precondition: the directory must be absent');
 
-    process.env.RUTBA_CORE__DATABASE_FILENAME = nested;
+    process.env.CORE__DATABASE_FILENAME = nested;
     delete require.cache[require.resolve('../src/config/env')];
     const cfg = require('../src/config/env').dbConfig();
 
@@ -89,17 +89,17 @@ async function main() {
     assert.ok(fs.existsSync(path.dirname(nested)), 'sqliteConfig() should have created it');
 
     fs.rmSync(root, { recursive: true, force: true });
-    process.env.RUTBA_CORE__DATABASE_FILENAME = dbFile;
+    process.env.CORE__DATABASE_FILENAME = dbFile;
     delete require.cache[require.resolve('../src/config/env')];
   });
 
   await check(':memory: is passed through without being treated as a path', () => {
-    process.env.RUTBA_CORE__DATABASE_FILENAME = ':memory:';
+    process.env.CORE__DATABASE_FILENAME = ':memory:';
     delete require.cache[require.resolve('../src/config/env')];
     const cfg = require('../src/config/env').dbConfig();
     assert.strictEqual(cfg.connection.filename, ':memory:');
 
-    process.env.RUTBA_CORE__DATABASE_FILENAME = dbFile;
+    process.env.CORE__DATABASE_FILENAME = dbFile;
     delete require.cache[require.resolve('../src/config/env')];
   });
 

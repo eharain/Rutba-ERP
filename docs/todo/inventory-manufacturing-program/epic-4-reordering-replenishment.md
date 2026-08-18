@@ -14,7 +14,7 @@
 > surface, reorder suggestions with recommended quantities, and one-click generation of
 > draft purchases (and manufacturing work-orders for made-in-house goods).
 
-Owning app: `rutba-inventory` (reorder dashboard + suggestion review) + `pos-strapi`
+Owning app: `apps/inventory/control` (reorder dashboard + suggestion review) + `services/strapi`
 (reorder policy CT, suggestion engine). Depends on: Foundation F2 (stock-level for
 accurate per-location on-hand), the existing `purchase` flow, and Epic 1 (for
 manufacture-vs-buy routing). Consumes: Epic 5 (perishable safety windows).
@@ -38,7 +38,7 @@ See [00-overview-and-roadmap.md](00-overview-and-roadmap.md).
 Rather than overloading product with many fields, model a **policy per (product,
 warehouse)** so different locations replenish independently, with a product-level default.
 
-**`reorder-policy`** (`pos-strapi/src/api/reorder-policy/…`):
+**`reorder-policy`** (`services/strapi/src/api/reorder-policy/…`):
 | field | type | notes |
 |-------|------|-------|
 | `product` | relation m:1 → product | |
@@ -116,7 +116,7 @@ received".
   `createReplenishment`; check the regex). Optionally `reorder-suggestion` CT if persisting.
 - Daily cron for low-stock detection + notification (reuse notification-template).
 
-## Frontend surface (`rutba-inventory`)
+## Frontend surface (`apps/inventory/control`)
 
 - **Reorder dashboard** — below/at reorder point, grouped by warehouse & supplier;
   columns on_hand/on_order/suggested; filter perishables (Epic 5 tightens their safety).

@@ -17,10 +17,10 @@ import {
 import { SITE_SETTINGS_QUERY_KEY } from "@/hooks/use-site-settings";
 import type { CmsPageDetailInterface } from "@/types/api/cms-page";
 
-// Tag every request from rutba-web with X-Rutba-App so the strapi-api-pro
+// Tag every request from apps/content/storefront with X-Rutba-App so the strapi-api-pro
 // claim middleware can pick the correct policy. The storefront acts in the
-// 'web' domain; anonymous calls resolve to the web_public role, signed-in
-// calls to web_user (server-side fallback or explicit X-Rutba-App-Role).
+// 'web' domain; anonymous calls resolve to the storefront_public role, signed-in
+// calls to storefront_user (server-side fallback or explicit X-Rutba-App-Role).
 AppContextEndpoints.setAppName('web');
 
 type RutbaAppProps = AppProps & { siteSettings?: SiteSettings };

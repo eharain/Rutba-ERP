@@ -50,7 +50,7 @@ npm install
 npm run dev:strapi      # Strapi API → http://localhost:4010
 ```
 
-Running `npm run develop` inside this folder also works, but only if the environment is already populated — the root loader (`scripts/js/load-env.js`) is what strips the `POS_STRAPI__` prefix from the root `.env.<ENVIRONMENT>`. The per-app `.env` is intentionally empty; **do not** add vars there. See the root [README](../README.md) and [DEPLOYMENT guide](../docs/DEPLOYMENT.md).
+Running `npm run develop` inside this folder also works, but only if the environment is already populated — the root loader (`scripts/js/load-env.js`) is what strips the `POS_STRAPI__` prefix from the root `.env.<ENVIRONMENT>`. The per-app `.env` is intentionally empty; **do not** add vars there. See the root [README](../../README.md) and [DEPLOYMENT guide](../../docs/DEPLOYMENT.md).
 
 ### Key environment variables (set as `POS_STRAPI__*` in the root env)
 
@@ -77,4 +77,4 @@ On boot, deferred background seeders (see `src/index.js` + `src/seed/`) write th
 ## Learn more
 
 - [Strapi 5 Documentation](https://docs.strapi.io)
-- Root [README](../README.md) · [DEPLOYMENT guide](../docs/DEPLOYMENT.md) · [api-pro plugin](../packages/strapi-api-pro)
+- Root [README](../../README.md) · [DEPLOYMENT guide](../../docs/DEPLOYMENT.md) · [api-pro plugin](../../packages/strapi-api-pro)

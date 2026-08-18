@@ -14,9 +14,9 @@
  * and prints a JSON report. Boots Strapi load-only (no HTTP listen — safe while
  * the dev server is up).
  *
- * Run from pos-strapi:  DATABASE_NAME=pos_db node scripts/backfill-inventory-foundation.js
+ * Run from services/strapi:  DATABASE_NAME=pos_db node scripts/backfill-inventory-foundation.js
  * Or via the workspace env loader:
- *   node scripts/js/load-env.js -- npm --prefix pos-strapi run backfill:inventory-foundation
+ *   node scripts/js/load-env.js -- npm --prefix services/strapi run backfill:inventory-foundation
  */
 
 const { createStrapi, compileStrapi } = require('@strapi/strapi');

@@ -72,7 +72,7 @@ Use `$seedMedia` for media fields. The runner uploads the file to Strapi uploads
 {
   "site_logo": {
     "$seedMedia": {
-      "path": "rutba-web/public/rutba_erp_logo.png",
+      "path": "apps/content/storefront/public/rutba_erp_logo.png",
       "alternativeText": "Rutba ERP Logo"
     }
   }

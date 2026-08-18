@@ -51,20 +51,20 @@ task. Three of the gaps below are hard blockers:
 | [10](#gap-10) | `syncDeletions` on a one-way profile turns creates into deletes | medium | A push profile with deletions on never creates anything |
 | [11](#gap-11) | DB-rows-only media push cannot create remote file rows | low | `syncFileBytes: false` on push is a no-op for new files |
 
-Reference points used throughout (versions as installed in `pos-strapi`,
+Reference points used throughout (versions as installed in `services/strapi`,
 Strapi `5.51.0`):
 
-- `pos-strapi/node_modules/@strapi/database/dist/metadata/relations.js:31`
+- `services/strapi/node_modules/@strapi/database/dist/metadata/relations.js:31`
   — `const isOwner = (attribute)=>!isBidirectional(attribute) || hasInversedBy(attribute);`
-- `pos-strapi/node_modules/@strapi/core/dist/services/document-service/transform/relations/transform/data-ids.js`
+- `services/strapi/node_modules/@strapi/core/dist/services/document-service/transform/relations/transform/data-ids.js`
   — `getRelationIds` throws `ValidationError: Document with id "…" not found`
-- `pos-strapi/node_modules/@strapi/core/dist/services/entity-validator/index.js:372-388`
+- `services/strapi/node_modules/@strapi/core/dist/services/entity-validator/index.js:372-388`
   — `checkRelationsExist` throws `N relation(s) of type X … do not exist`
-- `pos-strapi/node_modules/@strapi/core/dist/services/entity-validator/validators.js:105`
+- `services/strapi/node_modules/@strapi/core/dist/services/entity-validator/validators.js:105`
   — `if (attr.type !== 'uid' && !attr.unique) return validator;` → uid is *always* unique-validated
-- `pos-strapi/node_modules/@strapi/core/dist/services/document-service/entries.js:112-129`
+- `services/strapi/node_modules/@strapi/core/dist/services/document-service/entries.js:112-129`
   — `publishEntry` clones the fully-populated draft → a published document has **two** rows and **two** sets of morph rows
-- `pos-strapi/node_modules/@strapi/database/dist/entity-manager/index.js:91`
+- `services/strapi/node_modules/@strapi/database/dist/entity-manager/index.js:91`
   — `processData` iterates known attributes only → unknown keys (e.g. `syncId`) are silently dropped
 
 ---
@@ -110,13 +110,13 @@ intent; the predicate does not match it.
 
 | Content type | Field | Declaration | Consequence |
 |---|---|---|---|
-| `api::cms-menu-item` | `menu` | `pos-strapi/src/api/cms-menu-item/content-types/cms-menu-item/schema.json:77-82` (`inversedBy: items`) | Every menu item lands orphaned — the storefront nav is empty |
+| `api::cms-menu-item` | `menu` | `services/strapi/src/api/cms-menu-item/content-types/cms-menu-item/schema.json:77-82` (`inversedBy: items`) | Every menu item lands orphaned — the storefront nav is empty |
 | `api::cms-menu-item` | `parent` | same file `:83-88` (`inversedBy: children`) | No nesting; mega/dropdown structure is lost |
-| `api::cms-menu` | `pages`, `items` | `pos-strapi/src/api/cms-menu/content-types/cms-menu/schema.json:44-55` | Menu↔page links lost |
-| `api::cms-page-group` | `pages` | `pos-strapi/src/api/cms-page-group/content-types/cms-page-group/schema.json:55-60` (`inversedBy: member_page_groups`) | **Flip cards have no members** |
-| `api::cms-page` | `page_groups` | `pos-strapi/src/api/cms-page/content-types/cms-page/schema.json:78-83` | Flip-card blocks never appear on a page |
+| `api::cms-menu` | `pages`, `items` | `services/strapi/src/api/cms-menu/content-types/cms-menu/schema.json:44-55` | Menu↔page links lost |
+| `api::cms-page-group` | `pages` | `services/strapi/src/api/cms-page-group/content-types/cms-page-group/schema.json:55-60` (`inversedBy: member_page_groups`) | **Flip cards have no members** |
+| `api::cms-page` | `page_groups` | `services/strapi/src/api/cms-page/content-types/cms-page/schema.json:78-83` | Flip-card blocks never appear on a page |
 | `api::cms-page` | `menus`, `offers`, `delivery_methods` | same file `:90-95`, `:128-139` | Lost (owner side is also `inversedBy` on the peer type) |
-| `api::seo-meta` | all 8 entity relations | `pos-strapi/src/api/seo-meta/content-types/seo-meta/schema.json:53-100` (every one `inversedBy`) | SEO rows arrive completely detached |
+| `api::seo-meta` | all 8 entity relations | `services/strapi/src/api/seo-meta/content-types/seo-meta/schema.json:53-100` (every one `inversedBy`) | SEO rows arrive completely detached |
 
 What *does* survive today are only the unidirectional relations —
 `cms-page.related_pages`, `cms-page.product_groups`, `cms-page.hero_product_groups`,
@@ -257,7 +257,7 @@ sync scope or even syncable. `normalizeRelations` turns it into a documentId
 A single unresolvable documentId aborts the **entire** write, so all the other
 relations on that record are lost too — not just the offending field.
 
-**Rutba symptom.** `pos-strapi/src/api/cms-page/content-types/cms-page/schema.json:96-100`:
+**Rutba symptom.** `services/strapi/src/api/cms-page/content-types/cms-page/schema.json:96-100`:
 
 ```json
 "owners": { "type": "relation", "relation": "manyToMany", "target": "plugin::users-permissions.user" }
@@ -330,7 +330,7 @@ peer simply hasn't sent yet.
 - `server/src/utils/fetcher.js:180-195` — `uidToPluralEndpoint` returns `pluralName`; a single type is served at `/api/<singularName>`
 - `server/src/utils/applier.js:119-127` — the create branch calls `documents(uid).create()`, which is not the single-type semantic
 
-**Rutba symptom.** `pos-strapi/src/api/site-setting/content-types/site-setting/schema.json:1-2`
+**Rutba symptom.** `services/strapi/src/api/site-setting/content-types/site-setting/schema.json:1-2`
 is `"kind": "singleType"`. It carries `site_logo`, `favicon`, `default_og_image`,
 `site_url`, all the `default_meta_*` fields, the header promo, the nav labels and
 `default_footer`. **None of it can ever be synced.** Even if it were enabled by
@@ -585,7 +585,7 @@ option from the signature. Deletion is `reconcileDeletions`' job.
 and does nothing.
 
 **Why it matters for Rutba**: both instances are configured to use the same
-external media host — `pos-strapi/config/plugins.js:178-192` switches the upload
+external media host — `services/strapi/config/plugins.js:178-192` switches the upload
 provider to `strapi-provider-upload-media` (`MEDIA_BASE_URL`, i.e.
 `images.rutba.pk`) whenever that env var is set. When both sides share the media
 origin, re-uploading bytes is pure waste: the file is already reachable. The
@@ -608,7 +608,7 @@ service. That also fixes the `documentId` instability that forces
   self-references, but that is only the *topological ordering* input — a type
   cannot be ordered before itself. The relations phase still carries a
   self-reference: `cms-page.related_pages`
-  (`pos-strapi/src/api/cms-page/content-types/cms-page/schema.json:73-77`) is
+  (`services/strapi/src/api/cms-page/content-types/cms-page/schema.json:73-77`) is
   unidirectional and does sync correctly today under `hybrid_two_pass`.
   `cms-menu-item.parent` is broken by [GAP-1](#gap-1) (it uses `inversedBy`), not
   by self-reference handling. In `one_pass` a self-reference can never resolve on

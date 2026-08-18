@@ -35,7 +35,7 @@ export const PayPayslipsEndpoints = {
         params: byIdParams({ populate, fields }, { populate: ['employee', 'payroll_run', 'lines', 'tasks'] }),
     }),
 
-    /** The logged-in employee's own payslips (self-service; surfaced in rutba-hr). */
+    /** The logged-in employee's own payslips (self-service; surfaced in apps/people/hr). */
     listMyPayslips: () => ({
         path: '/pay-payslips/my-payslips',
         action: 'myPayslips',

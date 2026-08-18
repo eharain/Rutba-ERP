@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import { AuthEndpoints } from "@rutba/api-provider/endpoints/index.js";
 
 export default function Login() {
@@ -30,7 +30,7 @@ export default function Login() {
             router.replace(`/authorize?redirect_uri=${encodeURIComponent(redirect_uri)}`
                 + (state ? `&state=${encodeURIComponent(state)}` : ''));
         } else {
-            // Direct login on pos-auth — go to dashboard
+            // Direct login on apps/admin/auth — go to dashboard
             router.replace("/");
         }
     }, [router.isReady, user, jwt]);

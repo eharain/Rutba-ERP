@@ -6,8 +6,8 @@ import { ProductFilter } from "./filter/product-filter";
 import { useProductLookups } from "../hooks/useProductLookups";
 
 /**
- * StockHealthPanel — cohort stock-% analysis, shared across rutba-inventory and
- * pos-stock. For stock CREATED in a date range (the cohort's peak at creation),
+ * StockHealthPanel — cohort stock-% analysis, shared across apps/inventory/control and
+ * apps/inventory/stock. For stock CREATED in a date range (the cohort's peak at creation),
  * shows how much is still in stock vs sold per product, with % remaining / % sold
  * and rich filters (brand / category / supplier / term / purchase order / branch /
  * % remaining / creation window / search). Driven by GET /stock-items/stock-health.

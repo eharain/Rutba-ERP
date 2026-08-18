@@ -4,7 +4,7 @@ import PurchaseOrder from './PurchaseOrder';
 /**
  * PurchaseOrderPrint — screen wrapper around the printable PurchaseOrder.
  * Auto-fires window.print() shortly after mount and renders floating (screen-only)
- * print / paper-width / close controls. Mirrors pos-sale SaleInvoicePrint.
+ * print / paper-width / close controls. Mirrors apps/sales/pos SaleInvoicePrint.
  */
 const PurchaseOrderPrint = ({ purchase, onClose }) => {
     const [printer, setPrinter] = useState({ paperWidth: '210mm' });

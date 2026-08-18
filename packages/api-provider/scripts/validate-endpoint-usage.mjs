@@ -35,15 +35,15 @@ const generatedClientDir = path.join(packageRoot, 'providers', 'generated', 'cli
 const endpointsIndexDts = path.join(packageRoot, 'endpoints', 'index.d.ts');
 
 const CONSUMER_GLOB_DIRS = [
-    'rutba-rider',
-    'rutba-cms',
-    'rutba-order-management',
-    'rutba-social',
-    'rutba-web',
-    'pos-auth',
-    'pos-sale',
-    'pos-stock',
-    'packages/pos-shared',
+    'apps/sales/rider',
+    'apps/content/cms',
+    'apps/sales/orders',
+    'apps/content/social',
+    'apps/content/storefront',
+    'apps/admin/auth',
+    'apps/sales/pos',
+    'apps/inventory/stock',
+    'packages/shared',
     'packages/api-provider/endpoints',
     'packages/api-provider/pos',
 ];

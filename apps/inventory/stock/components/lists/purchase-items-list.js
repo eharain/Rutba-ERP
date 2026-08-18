@@ -1,8 +1,8 @@
 // components/lists/purchase-items-list.js
 import React from 'react';
-import { Table, TableHead, TableBody, TableRow, TableCell } from '@rutba/pos-shared/components/Table';
+import { Table, TableHead, TableBody, TableRow, TableCell } from '@rutba/shared/components/Table';
 import PurchaseItemForm from '../form/purchase-item-form';
-import { useUtil } from '@rutba/pos-shared/context/UtilContext';
+import { useUtil } from '@rutba/shared/context/UtilContext';
 
 const PurchaseItemsList = ({ purchaseItems, onEditItem, onDeleteItem, onSaveItem, onCancelEdit, editingDocumentId }) => {
     const {currency} = useUtil();

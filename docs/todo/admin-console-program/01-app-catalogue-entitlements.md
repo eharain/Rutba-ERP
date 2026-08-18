@@ -34,14 +34,14 @@ to a working Next.js app that 403s on every request. That is the bug.
 
 So the enforcement half is done and correct. Three further defects sit on top:
 
-- **No UI reads or writes it.** `grep isActive rutba-admin/pages rutba-admin/components`
-  returns nothing. [`app-domains.js`](../../../rutba-admin/pages/app-domains.js)
+- **No UI reads or writes it.** `grep isActive apps/admin/console/pages apps/admin/console/components`
+  returns nothing. [`app-domains.js`](../../../apps/admin/console/pages/app-domains.js)
   edits Key, Name and Description only.
 - **No descriptor method can set it.**
   [`api/app-domains.js`](../../../packages/api-provider/api/app-domains.js)
   exposes `list`, `create`, `del` — there is **no `update`**.
 - **Deactivation is a one-way door.** `del` is a soft-delete:
-  [`deleteDomain`](../../../pos-strapi/src/api/user-admin/controllers/user-admin.js)
+  [`deleteDomain`](../../../services/strapi/src/api/user-admin/controllers/user-admin.js)
   writes `isActive: false`, while `listDomains` at the same file's line 123
   filters `isActive: true`. A deactivated domain **disappears from the only
   screen that could reactivate it**, and no endpoint sets it back to `true`.
@@ -64,9 +64,9 @@ Measured drift on the dev branch as of 2026-08-13:
 
 | Registry | Path | Keys |
 |---|---|---|
-| `APP_META` | [`pos-shared/lib/roles.js:65`](../../../packages/pos-shared/lib/roles.js) | 22 |
-| `APP_URLS` | [`pos-shared/lib/roles.js:15`](../../../packages/pos-shared/lib/roles.js) | 22 |
-| `VALID_APP_KEYS` | [`pos-shared/lib/roles.js`](../../../packages/pos-shared/lib/roles.js) | 21 |
+| `APP_META` | [`shared/lib/roles.js:65`](../../../packages/shared/lib/roles.js) | 22 |
+| `APP_URLS` | [`shared/lib/roles.js:15`](../../../packages/shared/lib/roles.js) | 22 |
+| `VALID_APP_KEYS` | [`shared/lib/roles.js`](../../../packages/shared/lib/roles.js) | 21 |
 | `domains.json` | [`api-provider/config/domains.json`](../../../packages/api-provider/config/domains.json) | 26 |
 | `RUTBA_SVC_PORT` | [`scripts/rutba_apps.sh`](../../../scripts/rutba_apps.sh) | 25 |
 
@@ -76,8 +76,8 @@ Actual disagreements:
 |---|---|---|
 | In `APP_META`, not in `VALID_APP_KEYS` | `web` | `canAccessApp('web')` is unreachable while the launcher still renders a Web tile |
 | In `domains.json`, not in `APP_META` | `accounts-ap`, `accounts-ar`, `accounts-viewer`, `delivery` | Real auth domains with no catalogue presence. Three are `accounts` sub-domains (arguably correct); `delivery` is a genuine orphan |
-| In `rutba_apps.sh`, not in `APP_META` | `pos-strapi`, `core`, `marketplace-worker` | Backend services, correctly absent — but nothing *says* so |
-| In `rutba_apps.sh`, not in `APP_META` | `pos-auth`, `pos-stock`, `pos-sale` | Same three apps as `APP_META`'s `auth`, `stock`, `sale` under **different names**. A pure naming mismatch that no tool can detect |
+| In `rutba_apps.sh`, not in `APP_META` | `services/strapi`, `core`, `marketplace-worker` | Backend services, correctly absent — but nothing *says* so |
+| In `rutba_apps.sh`, not in `APP_META` | `apps/admin/auth`, `apps/inventory/stock`, `apps/sales/pos` | Same three apps as `APP_META`'s `auth`, `stock`, `sale` under **different names**. A pure naming mismatch that no tool can detect |
 | In `APP_META`, not in `rutba_apps.sh` | `auth`, `stock`, `sale` | The other side of the same mismatch |
 
 None of these is currently a bug in production. All of them are a bug waiting for
@@ -146,7 +146,7 @@ Two corrections to how this is usually described:
    `border`, `color`, `url` and `sort` are genuinely new.
 2. `APP_META.color` is a Bootstrap utility class, not a colour. The **hex**
    colours live one level up in `APP_CATEGORIES`
-   ([`roles.js:49`](../../../packages/pos-shared/lib/roles.js)), which
+   ([`roles.js:49`](../../../packages/shared/lib/roles.js)), which
    `appAccent()` reads via `CATEGORY_COLOR[meta.group]`. So an app's accent is
    derived from its *category*, never set on the app — which is exactly the
    invariant recorded in the app-home design system. **Do not add a per-app hex
@@ -177,7 +177,7 @@ render-blocking round trip.
 - [ ] Widen the `select` to the presentation fields; attach `apps[]` to
       `/me/permissions`.
 - [ ] Add a **public, unauthenticated** catalogue endpoint too. The login page
-      and the app-home tiles render before a claim exists, and `pos-auth` needs
+      and the app-home tiles render before a claim exists, and `apps/admin/auth` needs
       the catalogue to decide where to send a user post-login. Serve only
       presentation fields — never role keys — from the public variant.
 - [ ] Cache per instance with an explicit bust on catalogue write. Per T5, the
@@ -198,12 +198,12 @@ which is what makes A1 an M rather than an L.
 
 | Consumer | Reads |
 |---|---|
-| [`NavAppSwitcher.js`](../../../packages/pos-shared/components/NavAppSwitcher.js) | `APP_META` directly (line 32) + `getCrossAppLinks`, `getAppCatalogGroups` |
-| [`Topbar.js`](../../../packages/pos-shared/components/Topbar.js) | `APP_META` directly (line 50) |
-| [`AppHome.js`](../../../packages/pos-shared/components/AppHome.js) | `APP_META` directly (lines 38, 76) + defines `appAccent()` at line 37 |
-| [`FooterInfo.js`](../../../packages/pos-shared/components/FooterInfo.js) | **Indirectly** — imports `getAppCatalogGroups`, `getCrossAppGroups` only |
+| [`NavAppSwitcher.js`](../../../packages/shared/components/NavAppSwitcher.js) | `APP_META` directly (line 32) + `getCrossAppLinks`, `getAppCatalogGroups` |
+| [`Topbar.js`](../../../packages/shared/components/Topbar.js) | `APP_META` directly (line 50) |
+| [`AppHome.js`](../../../packages/shared/components/AppHome.js) | `APP_META` directly (lines 38, 76) + defines `appAccent()` at line 37 |
+| [`FooterInfo.js`](../../../packages/shared/components/FooterInfo.js) | **Indirectly** — imports `getAppCatalogGroups`, `getCrossAppGroups` only |
 
-Selectors, all in [`roles.js`](../../../packages/pos-shared/lib/roles.js):
+Selectors, all in [`roles.js`](../../../packages/shared/lib/roles.js):
 `getCrossAppLinks` (213), `getCrossAppGroups` (262), `getAppCatalogLinks` (277),
 `getAppCatalogGroups` (326).
 

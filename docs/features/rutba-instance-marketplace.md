@@ -1,6 +1,6 @@
 # Rutba instance as a Marketplace (instance-to-instance sync)
 
-<!-- verify-docs: planned pos-strapi/src/seed/seeders/rutba-marketplace-target.js -->
+<!-- verify-docs: planned services/strapi/src/seed/seeders/apps/sales/marketplace-target.js -->
 
 Connect a **second Rutba ERP instance** — typically a public **online store** — to
 your primary **in-house** instance and treat it as just another marketplace
@@ -9,10 +9,10 @@ selectively publish a catalog to the online store and pull its web orders back
 to process them locally.
 
 - **Status:** P1 shipped (commit `378dc11`, branch `dev`).
-- **Code:** in-house side in `rutba-marketplace/`; receiving side in `pos-strapi/`
+- **Code:** in-house side in `apps/sales/marketplace/`; receiving side in `services/strapi/`
   (dormant on the source instance, active on the target).
-- **Tests:** `rutba-marketplace` → `npm test` (32); online ingest →
-  `node pos-strapi/tests/marketplace-catalog-ingest.test.js` (14).
+- **Tests:** `apps/sales/marketplace` → `npm test` (32); online ingest →
+  `node services/strapi/tests/marketplace-catalog-ingest.test.js` (14).
 
 ---
 
@@ -70,7 +70,7 @@ forcing one tool to do both.
 ```
         IN-HOUSE (source of truth)                         ONLINE (satellite store)
   ┌─────────────────────────────────────┐          ┌────────────────────────────────────┐
-  │ rutba-marketplace (app + worker)     │          │ pos-strapi (online install)         │
+  │ apps/sales/marketplace (app + worker)     │          │ services/strapi (online install)         │
   │                                      │          │                                     │
   │ product-groups ─► syncCatalog ──POST─┼────────► │ POST /products/integration/         │
   │ (publish gate)   (full product,      │  catalog │   ingest-catalog  → upsert by SKU   │
@@ -90,7 +90,7 @@ user** (`isServiceToken`) — a browser session can never reach them.
 
 ### File map
 
-**In-house (`rutba-marketplace/`)**
+**In-house (`apps/sales/marketplace/`)**
 
 | File | Role |
 |---|---|
@@ -102,7 +102,7 @@ user** (`isServiceToken`) — a browser session can never reach them.
 | `worker.js` | Adds the `catalog` cron job. |
 | `pages/api/accounts/[id]/sync-catalog.js` | Manual "push catalog now" endpoint. |
 
-**Online (`pos-strapi/`, dormant on the source install)**
+**Online (`services/strapi/`, dormant on the source install)**
 
 | File | Role |
 |---|---|
@@ -122,7 +122,7 @@ user** (`isServiceToken`) — a browser session can never reach them.
   three enum additions are schema changes.
 - Both instances point their upload provider at the **same media host**
   (images.rutba.pk) so media-by-reference URLs resolve on the online store.
-- The `rutba-marketplace` **worker** process must be running for automatic
+- The `apps/sales/marketplace` **worker** process must be running for automatic
   cron (orders + catalog): `npm run worker:marketplace` from the repo root.
 
 ### Step 1 — Get an API token for the ONLINE instance
@@ -133,7 +133,7 @@ Two ways:
 app's **Add Account** form (Step 2), pick platform **Rutba**, enter the online
 API base URL, then enter the online instance's **admin email + password** and
 click **Generate**. This logs into the remote `/admin/login`, mints a
-non-expiring **full-access** token (`rutba-marketplace-sync`) via
+non-expiring **full-access** token (`apps/sales/marketplace-sync`) via
 `/admin/api-tokens`, and fills the API Token field. The password is used only for
 that exchange — **never stored**; only the resulting token is saved. (Same
 approach as the content-sync-pro setup wizard.)
@@ -190,7 +190,7 @@ token and reports `ok: true` on success. A failure here means a wrong
   them as local sale-orders (`channel='rutba'`, deduped on the online
   `documentId`). **Verify the worker is up before relying on the cron.**
 
-### Environment variables (`rutba-marketplace`, prefix `RUTBA_MARKETPLACE__`)
+### Environment variables (`apps/sales/marketplace`, prefix `MARKETPLACE__`)
 
 | Var | Purpose | Default |
 |---|---|---|
@@ -223,7 +223,7 @@ token and reports `ok: true` on success. A failure here means a wrong
 **Yes, partially — and it's the recommended way to make target config
 reproducible.** The in-house **marketplace-account row** (and its product-group
 attachment) is ordinary content and fits the seeding control system
-(`pos-strapi/src/seed/registry.js`, run via `npm run seed` or the `rutba-seed`
+(`services/strapi/src/seed/registry.js`, run via `npm run seed` or the `apps/admin/seed`
 control app on :4018). The one thing that should **not** be baked into a seed is
 the **secret token** — read it from the environment.
 
@@ -244,7 +244,7 @@ the **secret token** — read it from the environment.
 
 ### Example seeder
 
-Create `pos-strapi/src/seed/seeders/rutba-marketplace-target.js`:
+Create `services/strapi/src/seed/seeders/apps/sales/marketplace-target.js`:
 
 ```js
 'use strict';
@@ -294,13 +294,13 @@ async function seedRutbaTarget(strapi) {
 module.exports = { seedRutbaTarget };
 ```
 
-Register it in `pos-strapi/src/seed/registry.js`:
+Register it in `services/strapi/src/seed/registry.js`:
 
 ```js
-const { seedRutbaTarget } = require('./seeders/rutba-marketplace-target');
+const { seedRutbaTarget } = require('./seeders/apps/sales/marketplace-target');
 // …add to the REGISTRY array:
 {
-  key: 'rutba-marketplace-target',
+  key: 'apps/sales/marketplace-target',
   title: 'Marketplace account — Rutba online store',
   category: 'reference',
   essential: false,        // tenant-specific; run explicitly
@@ -314,15 +314,15 @@ const { seedRutbaTarget } = require('./seeders/rutba-marketplace-target');
 Run it:
 
 ```bash
-# from pos-strapi/
+# from services/strapi/
 RUTBA_ONLINE_BASE_URL=https://api.rutba.pk/api \
 RUTBA_ONLINE_TOKEN=xxxxx \
 RUTBA_ONLINE_GROUPS=online-store,new-arrivals \
-node scripts/seed.js --only=rutba-marketplace-target
+node scripts/seed.js --only=apps/sales/marketplace-target
 ```
 
-Or from the **rutba-seed** control app (:4018) / `POST /seed/run` with
-`{ only: 'rutba-marketplace-target' }`.
+Or from the **apps/admin/seed** control app (:4018) / `POST /seed/run` with
+`{ only: 'apps/sales/marketplace-target' }`.
 
 > This seeder is **not committed** — it's a template. Ask if you want it added as
 > a real, tenant-agnostic registry entry.
@@ -340,10 +340,10 @@ so it works for any tenant that sets those env vars.
 
 ```bash
 # In-house adapter + catalog assembly + variant fallback (32 tests)
-cd rutba-marketplace && npm test
+cd apps/sales/marketplace && npm test
 
 # Online upsert / barcode collision / variants / media-by-ref / batch isolation (14 tests)
-cd pos-strapi && node tests/marketplace-catalog-ingest.test.js
+cd services/strapi && node tests/marketplace-catalog-ingest.test.js
 ```
 
 Both are dependency-free (mocked `fetch` / in-memory `strapi`), safe to run in CI

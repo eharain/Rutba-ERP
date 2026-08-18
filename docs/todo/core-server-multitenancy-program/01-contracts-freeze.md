@@ -27,7 +27,7 @@ One markdown per concern under `docs/contracts/` (checked in, versioned):
       used subset first, not all of Strapi's dialect.
 - [ ] **DB contract**: table/column naming rules (snake_case, `_lnk` join tables,
       `document_id`, `published_at`, `created_by_id`), the tables downstream apps read
-      directly (from the pos-strapi integration contracts memory/doc).
+      directly (from the services/strapi integration contracts memory/doc).
 
 ## 0.2 Golden contract test suite
 
@@ -38,8 +38,8 @@ Extend the `probe-auth-gates.js` approach into a general harness:
       CRUD × populate-heavy reads × custom actions), snapshotting normalized responses.
 - [ ] Normalizer: strip volatile fields (timestamps, ids where unstable), sort arrays
       deterministically.
-- [ ] Modes: **record** (against pos-strapi, produces golden files) and **verify**
-      (against any base URL, diffs). `verify` against rutba-core is the per-module
+- [ ] Modes: **record** (against services/strapi, produces golden files) and **verify**
+      (against any base URL, diffs). `verify` against services/core is the per-module
       migration gate; `verify` against a freshly provisioned tenant is the provisioning
       acceptance gate.
 - [ ] Seed a dedicated **contract-fixture dataset** via the seeding registry (small,
@@ -48,9 +48,9 @@ Extend the `probe-auth-gates.js` approach into a general harness:
 
 ## 0.3 Baseline metrics
 
-- [ ] Log and record: pos-strapi boot time, RSS after warm-up, p95 latency on the top ~20
+- [ ] Log and record: services/strapi boot time, RSS after warm-up, p95 latency on the top ~20
       routes (enable request-duration logging), per-cron runtime. These are the numbers
       that later prove the core server's win and catch fleet regressions.
 
 **Exit criteria**: contracts docs merged; contract suite green in record→verify
-round-trip against the same pos-strapi instance; baseline numbers recorded.
+round-trip against the same services/strapi instance; baseline numbers recorded.

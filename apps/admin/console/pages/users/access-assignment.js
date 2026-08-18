@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Layout from "../../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
 import AppAccessGate from "../../components/AppAccessGate";
-import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
+import PermissionCheck from "@rutba/shared/components/PermissionCheck";
 import { UsersEndpoints, AppDomainsEndpoints } from "@rutba/api-provider/endpoints";
 import UserAccessFilters from "../../components/UserAccessFilters";
 import UserAccessCard from "../../components/UserAccessCard";

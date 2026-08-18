@@ -10,7 +10,7 @@ export const WorkItemActivitiesEndpoints = {
 
     meta: {
         uid: 'api::work-item-activity.work-item-activity',
-        domains: ['manufacturing', 'order-management', 'crm'],
+        domains: ['manufacturing', 'orders', 'crm'],
         roles: ['admin', 'manager', 'staff'],
     },
 
@@ -18,7 +18,7 @@ export const WorkItemActivitiesEndpoints = {
         path: '/work-item-activities',
         action: 'find',
         method: 'get',
-        apps: ['manufacturing', 'order-management', 'crm'],
+        apps: ['manufacturing', 'orders', 'crm'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             filters: {
@@ -40,7 +40,7 @@ export const WorkItemActivitiesEndpoints = {
         path: '/work-item-activities/assign',
         action: 'assign',
         method: 'post',
-        apps: ['manufacturing', 'order-management', 'crm'],
+        apps: ['manufacturing', 'orders', 'crm'],
         approle: ['admin', 'manager', 'staff'],
         data,
     }),

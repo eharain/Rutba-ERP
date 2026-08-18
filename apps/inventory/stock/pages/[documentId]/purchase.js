@@ -3,11 +3,11 @@ import { useRouter } from "next/router";
 import { PurchasesEndpoints, PurchaseItemsEndpoints } from "@rutba/api-provider/endpoints/index.js";
 import { fetchPurchaseByIdDocumentIdOrPO, fetchEnumsValues } from '@rutba/api-provider/pos/fetchs';
 import { savePurchaseItem } from '@rutba/api-provider/pos/save';
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
 import Layout from "../../components/Layout";
 import PurchaseItemsList from "../../components/lists/purchase-items-list";
-import { generateNextDocumentId, generateNextPONumber, getUser } from "@rutba/pos-shared/lib/utils";
-import { useUtil } from "@rutba/pos-shared/context/UtilContext";
+import { generateNextDocumentId, generateNextPONumber, getUser } from "@rutba/shared/lib/utils";
+import { useUtil } from "@rutba/shared/context/UtilContext";
 
 export default function PurchasePage() {
     const router = useRouter();

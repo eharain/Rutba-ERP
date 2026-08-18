@@ -1,4 +1,4 @@
-import SharedSidebar from "@rutba/pos-shared/components/Sidebar";
+import SharedSidebar from "@rutba/shared/components/Sidebar";
 
 const SECTIONS = [
     { href: "/",          label: "Dashboard", icon: "fa-gauge" },
@@ -10,5 +10,5 @@ const SECTIONS = [
 ];
 
 export default function Sidebar() {
-    return <SharedSidebar sections={SECTIONS} storageKey="rutba-marketplace-sidebar-pinned" />;
+    return <SharedSidebar sections={SECTIONS} storageKey="apps/sales/marketplace-sidebar-pinned" />;
 }

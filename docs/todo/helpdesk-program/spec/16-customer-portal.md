@@ -9,7 +9,7 @@
 Give customers one place to ask for help and see what is happening — closing the gap where
 today a customer can file a contact form and then never see the ticket again.
 
-**Host:** `rutba-web-user` (:4004), with entry points from `rutba-web` (:4000).
+**Host:** `apps/sales/portal` (:4004), with entry points from `apps/content/storefront` (:4000).
 
 ## 16.2 Design stance
 
@@ -55,7 +55,7 @@ Public and (when authenticated) internal-tier articles; helpful/not-helpful feed
 
 | Location | Action | Effect |
 |---|---|---|
-| `rutba-web-user` order detail | "Get help with this order" | Ticket pre-linked to the order (BR-C4) |
+| `apps/sales/portal` order detail | "Get help with this order" | Ticket pre-linked to the order (BR-C4) |
 | Return detail | "Ask about this return" | Pre-linked to the return |
 | Storefront `/contact` | Contact form | Ticket on the Customer Support desk, `source: web` |
 | Storefront `/help/[slug]` | "Still need help?" | Pre-filled from the article |
@@ -119,7 +119,7 @@ requester surface, and the requester namespace can be audited as one unit.
 
 ## 16.9 Session and token handling
 
-`rutba-web-user` uses NextAuth over Strapi JWTs, which expire in ~2 hours and must be rotated
+`apps/sales/portal` uses NextAuth over Strapi JWTs, which expire in ~2 hours and must be rotated
 via `/auth/refresh`. A customer reading a long thread must not be silently logged out
 mid-reply — refresh on focus, and preserve the draft across a re-auth.
 

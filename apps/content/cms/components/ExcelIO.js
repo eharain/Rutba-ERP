@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import * as XLSX from 'xlsx';
-import PermissionCheck from '@rutba/pos-shared/components/PermissionCheck';
+import PermissionCheck from '@rutba/shared/components/PermissionCheck';
 import { CmsBulkEndpoints } from '@rutba/api-provider/endpoints';
 
 // Identity columns are always emitted first and always accepted on import.

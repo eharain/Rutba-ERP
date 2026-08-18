@@ -42,21 +42,21 @@ node scripts/hostinger/restart.js --all
 
 | Name       | Type    | Workspace        | Domain             |
 |------------|---------|------------------|--------------------|
-| `strapi`   | strapi  | pos-strapi       | rutba.rutba.pk     |
-| `web`      | nextjs  | rutba-web        | rutba.pk           |
-| `web-user` | nextjs  | rutba-web-user   | user.rutba.pk      |
-| `order-management` | nextjs | rutba-order-management | orders.rutba.pk |
-| `rider`    | nextjs  | rutba-rider      | rider.rutba.pk     |
-| `auth`     | nextjs  | pos-auth         | auth.rutba.pk      |
-| `stock`    | nextjs  | pos-stock        | stock.rutba.pk     |
-| `sale`     | nextjs  | pos-sale         | sale.rutba.pk      |
-| `crm`      | nextjs  | rutba-crm        | crm.rutba.pk       |
-| `hr`       | nextjs  | rutba-hr         | hr.rutba.pk        |
-| `ess`      | nextjs  | rutba-ess        | ess.rutba.pk       |
-| `accounts` | nextjs  | rutba-accounts   | accounts.rutba.pk  |
-| `payroll`  | nextjs  | rutba-payroll    | payroll.rutba.pk   |
-| `cms`      | nextjs  | rutba-cms        | cms.rutba.pk       |
-| `social`   | nextjs  | rutba-social     | social.rutba.pk    |
+| `strapi`   | strapi  | services/strapi       | rutba.rutba.pk     |
+| `web`      | nextjs  | apps/content/storefront        | rutba.pk           |
+| `web-user` | nextjs  | apps/sales/portal   | user.rutba.pk      |
+| `order-management` | nextjs | apps/sales/orders | orders.rutba.pk |
+| `rider`    | nextjs  | apps/sales/rider      | rider.rutba.pk     |
+| `auth`     | nextjs  | apps/admin/auth         | auth.rutba.pk      |
+| `stock`    | nextjs  | apps/inventory/stock        | stock.rutba.pk     |
+| `sale`     | nextjs  | apps/sales/pos         | sale.rutba.pk      |
+| `crm`      | nextjs  | apps/sales/crm        | crm.rutba.pk       |
+| `hr`       | nextjs  | apps/people/hr         | hr.rutba.pk        |
+| `ess`      | nextjs  | apps/people/ess        | ess.rutba.pk       |
+| `accounts` | nextjs  | apps/finance/accounts   | accounts.rutba.pk  |
+| `payroll`  | nextjs  | apps/finance/payroll    | payroll.rutba.pk   |
+| `cms`      | nextjs  | apps/content/cms        | cms.rutba.pk       |
+| `social`   | nextjs  | apps/content/social     | social.rutba.pk    |
 
 ## Scripts
 

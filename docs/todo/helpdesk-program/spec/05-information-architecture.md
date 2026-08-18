@@ -7,8 +7,8 @@
 ## 5.1 Purpose
 
 How the module's concepts are organised, and where each lives across the four surfaces:
-the **agent app** (`rutba-helpdesk`, :4023), the **customer portal** (`rutba-web-user`), the
-**employee portal** (`rutba-ess`), and the **storefront** (`rutba-web`).
+the **agent app** (`apps/sales/helpdesk`, :4023), the **customer portal** (`apps/sales/portal`), the
+**employee portal** (`apps/people/ess`), and the **storefront** (`apps/content/storefront`).
 
 ## 5.2 Concept hierarchy
 
@@ -51,7 +51,7 @@ sits on the ticket.
 Desks, teams, workflows, SLA policies, catalog items, automation rules, macros and KB articles
 are separate aggregates with their own lifecycles and their own endpoints.
 
-## 5.4 Agent app (`rutba-helpdesk`, :4023)
+## 5.4 Agent app (`apps/sales/helpdesk`, :4023)
 
 ```
 /                             Dashboard (role-aware: agent | manager | admin)
@@ -78,7 +78,7 @@ are separate aggregates with their own lifecycles and their own endpoints.
                               channels, notifications, branding, retention
 ```
 
-## 5.5 Customer portal (`rutba-web-user`)
+## 5.5 Customer portal (`apps/sales/portal`)
 
 ```
 /support                      My support home
@@ -92,7 +92,7 @@ are separate aggregates with their own lifecycles and their own endpoints.
 Plus contextual entry points on existing pages: **"Get help with this order"** on
 `/sale-orders/[id]` and `/returns/[id]`, which pre-links the subject entity (BR-C4).
 
-## 5.6 Employee portal (`rutba-ess`)
+## 5.6 Employee portal (`apps/people/ess`)
 
 ```
 /requests                     My requests (replaces the current /tickets page)
@@ -102,11 +102,11 @@ Plus contextual entry points on existing pages: **"Get help with this order"** o
 /knowledge                    Internal knowledge (published, visibility: internal)
 ```
 
-The existing `rutba-hr/pages/tickets.js` and `rutba-ess/pages/tickets.js` are replaced by one
+The existing `apps/people/hr/pages/tickets.js` and `apps/people/ess/pages/tickets.js` are replaced by one
 shared component in `pos-shared`, consumed by both, so the current duplication ends. HR keeps a
 link into the agent app for staff who hold a helpdesk role.
 
-## 5.7 Storefront (`rutba-web`)
+## 5.7 Storefront (`apps/content/storefront`)
 
 ```
 /contact                      Contact form (existing page, rewired to the real desk API)
@@ -121,12 +121,12 @@ reference number plus a prompt to register so the ticket becomes trackable.
 
 | Where | What appears | Why |
 |---|---|---|
-| `rutba-order-management` → order detail | "Tickets about this order" panel + Raise ticket | Support context where fulfilment work happens |
-| `rutba-crm` → contact detail | Ticket history on the relationship timeline | CRM owns the relationship view |
-| `rutba-inventory` → product / stock item | Tickets referencing this product | Quality signal |
-| `rutba-hr` → employee record | That employee's requests | HR case context |
-| `rutba-manufacturing` → work order | Tickets about this job | Shop-floor issues |
-| `pos-sale` (POS) | Raise a branch support ticket | Terminal and cash issues at the till |
+| `apps/sales/orders` → order detail | "Tickets about this order" panel + Raise ticket | Support context where fulfilment work happens |
+| `apps/sales/crm` → contact detail | Ticket history on the relationship timeline | CRM owns the relationship view |
+| `apps/inventory/control` → product / stock item | Tickets referencing this product | Quality signal |
+| `apps/people/hr` → employee record | That employee's requests | HR case context |
+| `apps/inventory/manufacturing` → work order | Tickets about this job | Shop-floor issues |
+| `apps/sales/pos` (POS) | Raise a branch support ticket | Terminal and cash issues at the till |
 
 All of these are **read projections plus a create action** — the ticket data model is never
 duplicated into another app.

@@ -2,8 +2,8 @@
 
 // Server-side engine configuration, read from the app's process env.
 //
-// load-env.js strips the `RUTBA_MARKETPLACE__` prefix, so the repo-root
-// .env entries (RUTBA_MARKETPLACE__DARAZ_APP_KEY, …) arrive here as
+// load-env.js strips the `MARKETPLACE__` prefix, so the repo-root
+// .env entries (MARKETPLACE__DARAZ_APP_KEY, …) arrive here as
 // DARAZ_APP_KEY, STRAPI_SERVICE_TOKEN, etc. None of these are NEXT_PUBLIC_*,
 // so they stay server-only (worker + API routes) and never reach the browser.
 

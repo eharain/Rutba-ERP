@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { parseContactLine } from '@rutba/pos-shared/lib/utils';
+import { parseContactLine } from '@rutba/shared/lib/utils';
 import CustomerForm from './form/customer-form';
 import { CustomersEndpoints } from '@rutba/api-provider/endpoints/index.js';
 

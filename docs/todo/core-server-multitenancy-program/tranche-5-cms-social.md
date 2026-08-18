@@ -5,7 +5,7 @@ live dev DB; goldens, schema handover and the Caddy flip remain).
 
 ## What runs in core now
 
-`rutba-core/src/modules/cms-social.js` (same zero-copy model as tranches 1–4).
+`services/core/src/modules/cms-social.js` (same zero-copy model as tranches 1–4).
 This is the **draft/publish tranche**: every content type here except
 social-account and social-reply is D&P, and the publish/unpublish/discard-draft
 triads run through the shim's graph-clone machinery.
@@ -21,16 +21,16 @@ triads run through the shim's graph-clone machinery.
 | site-setting | GET /site-setting (singular RESOLVER) + /publish /unpublish /discard | resolution rule: app_slug (from ?app= or X-Rutba-App) → is_default row → first row; published preferred, draft fallback. Per-row CRUD stays on the seeded /site-settings collection routes |
 | cms-bulk | POST /cms-bulk/import | Excel I/O upsert: allowlisted CTs, natural-key dedup, SEO field split into the seo-meta sidecar, two-phase deferred publish with cross-row retries; gate = ensureUser + `*_admin` role header |
 | social-account | GET oauth/callback, GET provider-status, POST :id/connect-url · validate-connection · refresh-token | OAuth popup flow + token probes; callback is genuinely public (provider redirect target) |
-| social-post | GET/POST webhook/:platform, triad, publish-social, unpublish-social, sync-replies, reply, GET replies, duplicate | provider adapters (`pos-strapi/src/social-providers`) load zero-copy; webhooks verify HMAC over the RAW body and fail closed |
+| social-post | GET/POST webhook/:platform, triad, publish-social, unpublish-social, sync-replies, reply, GET replies, duplicate | provider adapters (`services/strapi/src/social-providers`) load zero-copy; webhooks verify HMAC over the RAW body and fail closed |
 | **gated** | POST/PUT /seo-metas (create/update), POST/PUT/DELETE /social-accounts | core-action OVERRIDES on authenticated REST routes (hr pattern: uid+action → interceptor). seo-meta chains super.* then denormalises entity_title; social-account adds the DB-backed social_admin gate (credentials live there) |
 
 ### Crons
 
 `socialPublishScheduled` (\* \* \* \* \*), `socialSyncReplies` (\*/10),
-`socialRefreshTokens` (0 \*/6) read zero-copy from pos-strapi's
+`socialRefreshTokens` (0 \*/6) read zero-copy from services/strapi's
 `config/cron-tasks.js` with the same env-tunable rules
 (SOCIAL_CRON_PUBLISH_RULE etc). **Dormant** unless `RUTBA_CORE_CRONS=1`; at
-the flip remove `buildSocialCronTasks` from pos-strapi config/server.js in the
+the flip remove `buildSocialCronTasks` from services/strapi config/server.js in the
 same deploy — double cron here means double provider publishes.
 
 ### Lifecycles
@@ -65,7 +65,7 @@ is benign.
   callbacks. Previously core 401'd all unauthenticated selfAuth traffic.
 - **`pagination: {...}` param + populate-level `sort`** in the documents shim
   (the shapes the cms services use).
-- **compat `config.get('social')` / `('server.url')`** — pos-strapi's own
+- **compat `config.get('social')` / `('server.url')`** — services/strapi's own
   config/social.js evaluated with a Strapi-style env helper (POS_STRAPI__
   prefix honored), and **`strapi.contentTypes`** — attribute-metadata view
   over the registry (cms-bulk's Excel type coercion + draftAndPublish checks).
@@ -105,7 +105,7 @@ is benign.
 
 Same as tranches 1–4 (goldens, baseline migration via `schema-diff.js
 --filter`, Caddy flip) **plus the cron cutover**: set `RUTBA_CORE_CRONS=1` on
-the core instance and remove `buildSocialCronTasks` from pos-strapi
+the core instance and remove `buildSocialCronTasks` from services/strapi
 config/server.js in the same deploy. The flip also needs `SOCIAL_*` env
 (provider client ids/secrets, SOCIAL_PUBLIC_URL, webhook verify token)
 present in the core instance's env — the compat env helper reads the same

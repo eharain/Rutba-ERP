@@ -1,7 +1,7 @@
 # Core-owned SQL migrations
 
-Tables that rutba-core owns outright. Everything else in the database is still
-derived from pos-strapi's `schema.json` files through `src/schema/`, and
+Tables that services/core owns outright. Everything else in the database is still
+derived from services/strapi's `schema.json` files through `src/schema/`, and
 `scripts/validate-schema.js` must keep exiting clean — a migration that touches
 a registry-owned table's shape breaks that gate and, with it, the `documents()`
 shim.
@@ -15,26 +15,26 @@ them uses knex via `getDb()` directly.
 ## Commands
 
 ```bash
-npm --prefix rutba-core run migrate:status          # applied vs pending vs drift
-npm --prefix rutba-core run migrate                 # apply everything pending
-npm --prefix rutba-core run migrate -- --dry-run    # print the plan, touch nothing
-npm --prefix rutba-core run migrate -- --name=004-helpdesk-desks
-npm --prefix rutba-core run migrate:down            # roll back the last applied
-npm --prefix rutba-core run migrate:down -- --name=004-helpdesk-desks
+npm --prefix services/core run migrate:status          # applied vs pending vs drift
+npm --prefix services/core run migrate                 # apply everything pending
+npm --prefix services/core run migrate -- --dry-run    # print the plan, touch nothing
+npm --prefix services/core run migrate -- --name=004-helpdesk-desks
+npm --prefix services/core run migrate:down            # roll back the last applied
+npm --prefix services/core run migrate:down -- --name=004-helpdesk-desks
 ```
 
-`node rutba-core/scripts/migrate.js status|up|down` works identically — core
+`node services/core/scripts/migrate.js status|up|down` works identically — core
 loads the repo-root `.env` itself, so it needs no `load-env.js` wrapper. Every
 command prints the target database first; check it before pressing on.
 
 **Migrations never run at boot.** Nothing in `src/index.js` requires the runner.
-Applying schema changes to a database a live pos-strapi is also serving is an
+Applying schema changes to a database a live services/strapi is also serving is an
 explicit, operator-timed act.
 
 ## File contract
 
 ```
-rutba-core/migrations/<NNN>-<kebab-name>.js
+services/core/migrations/<NNN>-<kebab-name>.js
 ```
 
 ```js

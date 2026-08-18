@@ -391,13 +391,13 @@ seed_node_modules() {
 if [ -n "$CURRENT_ACTIVE" ] && [ -d "$CURRENT_ACTIVE" ]; then
     seed_node_modules "monorepo root" \
         "$CURRENT_ACTIVE/node_modules" "$BUILD_DIR/node_modules" "$BUILD_DIR"
-    seed_node_modules "pos-strapi" \
-        "$CURRENT_ACTIVE/pos-strapi/node_modules" "$BUILD_DIR/pos-strapi/node_modules" "$BUILD_DIR/pos-strapi"
+    seed_node_modules "services/strapi" \
+        "$CURRENT_ACTIVE/services/strapi/node_modules" "$BUILD_DIR/services/strapi/node_modules" "$BUILD_DIR/services/strapi"
 fi
 
 # A cache warmed before a dependency bump has no tarball for the new version,
 # so an offline install can legitimately fail.  Retry online before giving up —
-# for both projects, not just pos-strapi.
+# for both projects, not just services/strapi.
 install_project_deps() {
     local label="$1" dir="$2"
 
@@ -410,15 +410,15 @@ install_project_deps() {
 }
 
 # RUTBA_POSTINSTALL=1 makes the root postinstall hook (scripts/js/postinstall.js)
-# skip pos-strapi — we install it explicitly below with the same cache settings.
+# skip services/strapi — we install it explicitly below with the same cache settings.
 export RUTBA_POSTINSTALL=1
 install_project_deps "monorepo" "$BUILD_DIR"
 unset RUTBA_POSTINSTALL
 
-install_project_deps "pos-strapi" "$BUILD_DIR/pos-strapi"
+install_project_deps "services/strapi" "$BUILD_DIR/services/strapi"
 
-# rutba-core is not in the root workspaces array either (see rutba_apps.sh), so
-# like pos-strapi it needs its own install or its node_modules is simply absent
+# services/core is not in the root workspaces array either (see rutba_apps.sh), so
+# like services/strapi it needs its own install or its node_modules is simply absent
 # and the unit dies on the first require.
 #
 # Only when the backend selection actually runs it. Under RUTBA_BACKEND=strapi
@@ -428,13 +428,13 @@ install_project_deps "pos-strapi" "$BUILD_DIR/pos-strapi"
 # core is first started.
 #
 # NOTE: core resolves a second set of modules (@koa/cors, koa-send, koa-range,
-# formidable, @strapi/upload, ...) out of pos-strapi/node_modules via
+# formidable, @strapi/upload, ...) out of services/strapi/node_modules via
 # posModule() rather than declaring them itself. They are transitive deps
-# pinned at top-level paths in pos-strapi's lockfile, so `npm ci` above puts
+# pinned at top-level paths in services/strapi's lockfile, so `npm ci` above puts
 # them exactly where posModule looks - but it does mean core cannot run in a
-# build where the pos-strapi install was skipped.
-if [ "${RUTBA_BACKEND:-strapi}" != "strapi" ] && [ -f "$BUILD_DIR/rutba-core/package.json" ]; then
-    install_project_deps "rutba-core" "$BUILD_DIR/rutba-core"
+# build where the services/strapi install was skipped.
+if [ "${RUTBA_BACKEND:-strapi}" != "strapi" ] && [ -f "$BUILD_DIR/services/core/package.json" ]; then
+    install_project_deps "services/core" "$BUILD_DIR/services/core"
 fi
 
 ###########################################
@@ -457,7 +457,7 @@ log_ok "Build completed successfully."
 # apps write at RUNTIME then fails with EACCES, and because those failures are
 # caught and logged rather than fatal, the services come up "healthy" while
 # quietly degraded. Observed on the LAN box: api-pro could not mkdir
-# pos-strapi/.api-pro, so its file→DB policy sync threw on EVERY boot of EVERY
+# services/strapi/.api-pro, so its file→DB policy sync threw on EVERY boot of EVERY
 # build since 2026-07-26 and .api-pro/{policies,interfaces} stayed empty.
 # Next.js needs the same for .next/cache.
 
@@ -580,7 +580,7 @@ for b in "${REMAINING_BUILDS[@]}"; do
 done
 echo ""
 echo "  View logs:"
-echo "    sudo journalctl -fu rutba_pos_strapi"
+echo "    sudo journalctl -fu rutba_strapi"
 echo "    tail -f ${LOG_FILE}"
 echo ""
 echo "  Log rotation:"

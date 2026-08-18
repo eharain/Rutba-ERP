@@ -22,7 +22,7 @@ the dev database.
 > this.
 
 **Required work (P3):** a Core-native `NotificationService` facade so Helpdesk domain services
-never reach into a pos-strapi service directly. The facade owns channel selection, preference
+never reach into a services/strapi service directly. The facade owns channel selection, preference
 resolution, quiet hours, digesting and delivery logging; the existing engine remains the
 transport until it is ported.
 

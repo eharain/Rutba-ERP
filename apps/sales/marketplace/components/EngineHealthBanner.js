@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import { appGet } from "./appClient";
 
 // Tells the operator when the engine cannot authenticate with Strapi.
@@ -51,7 +51,7 @@ export default function EngineHealthBanner() {
                 <div className="small mt-1">
                     {missing ? (
                         <>No service token is configured. Set{" "}
-                        <code>RUTBA_MARKETPLACE__STRAPI_SERVICE_TOKEN</code> in the environment
+                        <code>MARKETPLACE__STRAPI_SERVICE_TOKEN</code> in the environment
                         and restart the marketplace worker.</>
                     ) : (
                         <>The configured service token was rejected by{" "}

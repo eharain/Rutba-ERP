@@ -9,7 +9,7 @@ export const WorkflowsEndpoints = {
 
     meta: {
         uid: 'api::workflow.workflow',
-        domains: ['manufacturing', 'order-management'],
+        domains: ['manufacturing', 'orders'],
         roles: ['admin', 'manager', 'staff'],
     },
 
@@ -17,7 +17,7 @@ export const WorkflowsEndpoints = {
         path: '/workflows',
         action: 'find',
         method: 'get',
-        apps: ['manufacturing', 'order-management'],
+        apps: ['manufacturing', 'orders'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             filters: {
@@ -33,7 +33,7 @@ export const WorkflowsEndpoints = {
         path: `/workflows/${documentId}`,
         action: 'findOne',
         method: 'get',
-        apps: ['manufacturing', 'order-management'],
+        apps: ['manufacturing', 'orders'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             populate: { stages: true, transitions: true },
@@ -44,7 +44,7 @@ export const WorkflowsEndpoints = {
         path: '/workflows',
         action: 'create',
         method: 'post',
-        apps: ['manufacturing', 'order-management'],
+        apps: ['manufacturing', 'orders'],
         approle: ['admin'],
         data,
     }),
@@ -53,7 +53,7 @@ export const WorkflowsEndpoints = {
         path: `/workflows/${documentId}`,
         action: 'update',
         method: 'put',
-        apps: ['manufacturing', 'order-management'],
+        apps: ['manufacturing', 'orders'],
         approle: ['admin'],
         data,
     }),
@@ -62,7 +62,7 @@ export const WorkflowsEndpoints = {
         path: `/workflows/${documentId}`,
         action: 'delete',
         method: 'delete',
-        apps: ['manufacturing', 'order-management'],
+        apps: ['manufacturing', 'orders'],
         approle: ['admin'],
     }),
 };

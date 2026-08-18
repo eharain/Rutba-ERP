@@ -75,7 +75,7 @@ const config = {
     //   handler: 'api::sale-order.sale-order.getOrderById',
     // },
 
-    // ── Web-user order routes (rutba_web_user only) ─────────
+    // ── Web-user order routes (rutba_portal only) ─────────
     {
       method: 'GET',
       path: '/web-orders',

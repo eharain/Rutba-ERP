@@ -2,11 +2,11 @@ import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import Layout from "../../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
 import { AppContextEndpoints, CashRegistersEndpoints, PaymentsEndpoints, CashRegisterTransactionEndpoints } from "@rutba/api-provider/endpoints/index.js";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { isAppAdmin } from "@rutba/pos-shared/lib/roles";
-import { useUtil } from "@rutba/pos-shared/context/UtilContext";
+import { useAuth } from "@rutba/shared/context/AuthContext";
+import { isAppAdmin } from "@rutba/shared/lib/roles";
+import { useUtil } from "@rutba/shared/context/UtilContext";
 
 export default function CashRegisterDetailPage() {
     const router = useRouter();

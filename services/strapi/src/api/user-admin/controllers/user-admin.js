@@ -2,7 +2,7 @@
 'use strict';
 
 /**
- * user-admin — the central user-management API behind rutba-admin (:4022).
+ * user-admin — the central user-management API behind apps/admin/console (:4022).
  *
  * Carved out of api::auth-admin (which now re-exports this controller so the
  * legacy /auth-admin/* paths keep working on both servers during transition).
@@ -13,7 +13,7 @@
  *
  * ADMIN_DOMAINS is a role-key PREFIX list, not an app list, and both legacy
  * entries are transitional:
- *   'admin' — the live one. rutba-admin replaced rutba-users and claims
+ *   'admin' — the live one. apps/admin/console replaced rutba-users and claims
  *             X-Rutba-App: admin, so admin_* is what new grants use.
  *   'users' — the rutba-users carve-out's domain, kept so existing users_*
  *             holders keep working. The admin-domain-grants seeder backfills
@@ -31,7 +31,7 @@ const ADMIN_DOMAINS = ['admin', 'users', 'auth'];
 const USER_UID = 'plugin::users-permissions.user';
 
 // The generated api-provider clients wrap bodies as { data: {...} } (wrapData);
-// the legacy pos-auth client posts raw payloads to the /auth-admin/* aliases.
+// the legacy apps/admin/auth client posts raw payloads to the /auth-admin/* aliases.
 // Accept both shapes everywhere.
 function bodyOf(ctx) {
   const body = ctx.request.body || {};
@@ -175,14 +175,14 @@ async function listDomainsWithUserCounts(strapi) {
 }
 
 // Invite plumbing: a fresh reset token + templated email. Redemption is 100%
-// existing machinery — pos-auth's /login?code= reset view resets the password
+// existing machinery — apps/admin/auth's /login?code= reset view resets the password
 // and BOTH servers' resetPassword confirm-on-reset wrappers flip
-// confirmed:true (pos-strapi extensions/users-permissions/strapi-server.js;
-// rutba-core modules/auth.js). While unconfirmed, UP blocks local login, so
+// confirmed:true (services/strapi extensions/users-permissions/strapi-server.js;
+// services/core modules/auth.js). While unconfirmed, UP blocks local login, so
 // the random initial password is unusable before redemption.
 async function issueInvite(strapi, user) {
   const token = crypto.randomBytes(64).toString('hex');
-  // Through the UP user service, not db.query: rutba-core's compat query
+  // Through the UP user service, not db.query: services/core's compat query
   // layer only writes scalar cache columns and rejects resetPasswordToken,
   // while BOTH servers' user services map it (core: userScalarColumns).
   await strapi.plugin('users-permissions').service('user').edit(user.id, {
@@ -270,7 +270,7 @@ module.exports = {
       orderBy: { displayName: 'asc' },
     });
 
-    // Explicit projection rather than trusting `select` — rutba-core's compat
+    // Explicit projection rather than trusting `select` — services/core's compat
     // query layer returns extra columns, and this feed goes to non-users apps.
     ctx.send({
       data: (users || []).map((u) => ({

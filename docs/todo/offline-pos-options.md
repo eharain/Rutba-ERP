@@ -23,8 +23,8 @@ _For roadmap [0.3 — Offline-first POS hardening](./ROADMAP.md)._
 >    **retires §10.2a's mixed-content constraint for the same-machine case**, because
 >    the desktop app serves from a secure-context origin.
 > 2. **The framework serves three apps, not one** — [§12](#12-amendment-2026-08-13--one-engine-three-apps).
->    POS, Email (`rutba-mail`, :4021) and Video Studio
->    (`rutba-social/pages/posts/video-studio.js` + `packages/video-maker`). Every
+>    POS, Email (`apps/content/mail`, :4021) and Video Studio
+>    (`apps/content/social/pages/posts/video-studio.js` + `packages/video`). Every
 >    mechanism below is a per-app configuration of one engine, not POS-specific
 >    machinery.
 >
@@ -269,9 +269,9 @@ answer *because* there are two hosts sharing one implementation:
   guest wifi. TLS on the LAN needs an answer (local cert vs. accepting plain HTTP on a
   trusted VLAN) — **open question**.
 
-**Build it from `rutba-core`, not from scratch.** `rutba-core` is already a standalone
+**Build it from `services/core`, not from scratch.** `services/core` is already a standalone
 Node server speaking this API against this schema with a zero-copy compat layer. A
-branch-local tier is "run rutba-core against local SQLite with a sync channel", which
+branch-local tier is "run services/core against local SQLite with a sync channel", which
 lands inside the [core-server/multitenancy program](./core-server-multitenancy-program/)
 rather than forking away from it.
 
@@ -310,7 +310,7 @@ first, which the decision dropped. Kept for the record._
 | **0** | Bounded request timeout in `lib/api.js` (`authApi.withTimeout`, `isNetworkError`). | Prerequisite for every tier — a wedged backend currently hangs forever. **Independently correct; land it regardless of which design wins.** |
 | **1** | Proxy core + IndexedDB adapter; `offline` on the POS sale-write descriptors; `Idempotency-Key` server-side; connectivity + queue UI. | A till survives an outage and reconciles. |
 | **2** | Collection mirror + snapshot delta endpoint for stock search. | A till can build a cart from scratch offline. |
-| **3** | LAN host (rutba-core + SQLite) and fallback tiering. | Multi-till branches stop double-selling. |
+| **3** | LAN host (services/core + SQLite) and fallback tiering. | Multi-till branches stop double-selling. |
 | **4** | Batch endpoint for atomic group replay. | Closes the half-visible-sale window. |
 
 ---
@@ -318,7 +318,7 @@ first, which the decision dropped. Kept for the record._
 ## 9. Option C — a lightweight offline-first POS app
 
 A **separate, deliberately small** POS that stores locally as its primary store and
-syncs opportunistically, in batch, or on demand. Not `pos-sale` with offline bolted on
+syncs opportunistically, in batch, or on demand. Not `apps/sales/pos` with offline bolted on
 — a different product with a much smaller domain.
 
 ### 9.1 The inversion that makes it simple
@@ -405,7 +405,7 @@ runs; the POS's `API_URL` points at it.
 ### 10.1 Shape
 
 ```
-pos-sale (unchanged) ──► rutba-pos-bridge ──► cloud API (:4010 / :4020)
+apps/sales/pos (unchanged) ──► rutba-pos-bridge ──► cloud API (:4010 / :4020)
                           │
                           ├─ proxy        upstream reachable → pass through verbatim
                           ├─ replicator   passive delta pulls of POS-read entities → SQLite
@@ -414,10 +414,10 @@ pos-sale (unchanged) ──► rutba-pos-bridge ──► cloud API (:4010 / :40
                           └─ replayer     upstream back → drain in order, idempotent, flag conflicts
 ```
 
-**Local reads come from `rutba-core`, not from new code.** Offline, the bridge must
+**Local reads come from `services/core`, not from new code.** Offline, the bridge must
 answer the POS's real routes — `/me/stock-items-search`, `/sales/:id/detail`, the
-cash-register endpoints — and rutba-core already implements exactly those routes
-against a database through its compat layer. The bridge is therefore rutba-core run
+cash-register endpoints — and services/core already implements exactly those routes
+against a database through its compat layer. The bridge is therefore services/core run
 against local SQLite, **plus** the four bridge-specific parts: proxy, replicator,
 outbox/provisional-ids (§2), and replayer. This keeps the promise of §6: no second
 implementation of the domain, and it lands inside the core-server program.
@@ -504,7 +504,7 @@ under either host; only the packaging beneath them changed._
 Three separate problems, three separate answers — collapsing them into one "offline
 auth" mechanism is how this goes wrong.
 
-**(1) Session at the till.** SSO (pos-auth) is unreachable during an outage. Whoever
+**(1) Session at the till.** SSO (apps/admin/auth) is unreachable during an outage. Whoever
 is already signed in keeps working: the bridge serves the cached `/me/permissions`
 snapshot from its replica and the POS gates its UI exactly as today. A fresh login or
 shift change mid-outage is impossible under SSO by definition; the industry answer is
@@ -594,7 +594,7 @@ loudly to warn, how long the bridge may hold sales), not the architecture.
 **Decision.** The bridge runs **inside the Electron main process** of the Rutba desktop
 app. It is not packaged, installed, supervised or updated separately.
 
-§10.1's content is unchanged: the bridge is still `rutba-core` against local SQLite plus
+§10.1's content is unchanged: the bridge is still `services/core` against local SQLite plus
 the four bridge-specific parts (proxy, replicator, outbox/provisional-ids, replayer),
 still reading its offline policy from the descriptors (§3). What changed is only the
 process that owns it. The Electron main process is a Node process — the same runtime
@@ -692,9 +692,9 @@ three apps, and each wants the same machinery for different reasons:
 
 | App | Where it lives | What offline means for it |
 |---|---|---|
-| **POS** | `pos-sale` | Keep selling through an outage and reconcile afterwards. The case this document was written for. |
-| **Email** | `rutba-mail` (:4021) | Read and compose against mail already pulled; queue sends, flags and moves. `rutba-mail` imports from live IMAP on demand, so an outage today leaves it with almost nothing to show. |
-| **Video Studio** | `rutba-social/pages/posts/video-studio.js` + `packages/video-maker` | Edit a project and render it with no connection. `@rutba/video-maker` is browser-engine only — canvas → `captureStream()` → `MediaRecorder`, no ffmpeg — so the **render already runs locally**. What needs the network is loading assets and saving the project. |
+| **POS** | `apps/sales/pos` | Keep selling through an outage and reconcile afterwards. The case this document was written for. |
+| **Email** | `apps/content/mail` (:4021) | Read and compose against mail already pulled; queue sends, flags and moves. `apps/content/mail` imports from live IMAP on demand, so an outage today leaves it with almost nothing to show. |
+| **Video Studio** | `apps/content/social/pages/posts/video-studio.js` + `packages/video` | Edit a project and render it with no connection. `@rutba/video` is browser-engine only — canvas → `captureStream()` → `MediaRecorder`, no ffmpeg — so the **render already runs locally**. What needs the network is loading assets and saving the project. |
 
 None of this is new machinery. Each mechanism in §§2–5 is a **per-app configuration** of
 one engine:
@@ -710,7 +710,7 @@ one engine:
 
 **What this changes about how the engine gets built:** nothing in §§1–5, and one thing
 in §10. The bridge must not come out POS-shaped. §10.1 already says local reads come
-from `rutba-core` answering the app's real routes rather than from new code, and the
+from `services/core` answering the app's real routes rather than from new code, and the
 descriptor files (§3) already describe every app in the monorepo rather than only
 `apps: ['sale']` — so the engine is app-agnostic by construction, as long as nothing
 hardcodes a sale. The one place to hold that line is §3's audit rule: written there as
@@ -739,7 +739,7 @@ recorder to give.
   [v5](./video-studio-v5-rail-plan.md) are the current work.
 - **The host itself** — the bridge lands inside the
   [core-server/multitenancy program](./core-server-multitenancy-program/), per §6 and
-  §10.1: `rutba-core` run against local SQLite, not a fork of it.
+  §10.1: `services/core` run against local SQLite, not a fork of it.
 
 This section implies no sequencing. POS is first and stays the proving ground. The value
 of writing it down now is that phases 1–3 should not bake in assumptions that make the
@@ -749,7 +749,7 @@ second and third app a rewrite.
 
 ## 13. Amendment (2026-08-14) — sync execution model
 
-Phase 1 is built: [`packages/sync-core`](../../packages/sync-core/README.md), commit
+Phase 1 is built: [`packages/sync`](../../packages/sync/README.md), commit
 `c0d7608`. Everything below is about phases 2–3, prompted by a review of standard
 Electron offline-sync practice. Most of it confirms decisions already in this document;
 three things change, and two must **not** be adopted as usually stated.
@@ -806,7 +806,7 @@ These will come up again, so this is why the answer is no.
 
 Every one of them brings its own data model and its own replication protocol. That is a
 **second implementation of the domain**, which is precisely what §6 and §10.1 exist to
-prevent — "local reads come from `rutba-core`, not from new code."
+prevent — "local reads come from `services/core`, not from new code."
 
 The decisive objection is narrower than architecture, though. They replicate **rows**.
 Every read and write in this system is mediated by api-pro's claim resolution — app,
@@ -816,7 +816,7 @@ to see, and a replayed write would land without a policy check. That is a **secu
 regression**, not a stylistic one, and no amount of configuration in those tools fixes
 it because none of them knows what a claim is.
 
-Custom outbox + rutba-core against local SQLite keeps one domain implementation and one
+Custom outbox + services/core against local SQLite keeps one domain implementation and one
 authorization path. Cost accepted: we write the delta feed ourselves (§10.2 phase 2,
 and it is not recoverable from the reverted build — see *What this replaces*).
 
@@ -862,7 +862,7 @@ costs single-digit milliseconds on a healthy link, the trade is not worth the st
 | Where | What it says | What it says now |
 |---|---|---|
 | **§11**, opening | "The bridge runs **inside the Electron main process**." | Inside the Electron **app**, in a `UtilityProcess`. The installer/lifecycle argument is unchanged; only the host process within the app is narrowed (§13.1). |
-| **§10.2, phase 1** | Pass-through bridge + `/bridge/status`. | **BUILT** — `packages/sync-core`, `c0d7608`. §10.2a discovery skipped by §11.1's rule (same machine, nothing to discover). |
+| **§10.2, phase 1** | Pass-through bridge + `/bridge/status`. | **BUILT** — `packages/sync`, `c0d7608`. §10.2a discovery skipped by §11.1's rule (same machine, nothing to discover). |
 
 ---
 

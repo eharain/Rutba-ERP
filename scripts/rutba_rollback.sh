@@ -314,7 +314,7 @@ esac
 echo "============================================"
 echo ""
 echo "  View logs:"
-echo "    sudo journalctl -fu rutba_pos_strapi"
+echo "    sudo journalctl -fu rutba_strapi"
 echo "    tail -f ${LOG_FILE}"
 echo ""
 echo "  To deploy again:"

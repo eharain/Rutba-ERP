@@ -6,11 +6,11 @@
  * files (src/schema/registry.js) and diffs it against the live database's
  * information_schema.
  *
- * This is the correctness gate for rutba-core's naming rules — the documents()
+ * This is the correctness gate for services/core's naming rules — the documents()
  * shim is only trustworthy while this report is clean.
  *
- * Usage:  npm run validate-schema --workspace=rutba-core
- * Output: console summary + rutba-core/.tmp/schema-validation.json
+ * Usage:  npm run validate-schema --workspace=services/core
+ * Output: console summary + services/core/.tmp/schema-validation.json
  */
 
 const fs = require('fs');
@@ -18,7 +18,7 @@ const path = require('path');
 const { getDb, closeDb } = require('../src/db/connection');
 const { buildRegistry } = require('../src/schema/registry');
 
-// Live tables owned by Strapi core / plugins that rutba-core doesn't derive.
+// Live tables owned by Strapi core / plugins that services/core doesn't derive.
 const PLATFORM_TABLE_PATTERNS = [
   /^strapi_/, /^admin_/, /^up_/, /^i18n_/,
   /^files$/, /^files_/, /^upload_folders/,

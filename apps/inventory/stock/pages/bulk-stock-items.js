@@ -2,11 +2,11 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import Layout from '../components/Layout';
 import ProductPickerModal from '../components/ProductPickerModal';
-import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
-import PermissionCheck from '@rutba/pos-shared/components/PermissionCheck';
-import ListPageLayout from '@rutba/pos-shared/components/ListPageLayout';
+import ProtectedRoute from '@rutba/shared/components/ProtectedRoute';
+import PermissionCheck from '@rutba/shared/components/PermissionCheck';
+import ListPageLayout from '@rutba/shared/components/ListPageLayout';
 import { StockItemsEndpoints } from '@rutba/api-provider/endpoints/index.js';
-import { printStorage } from '@rutba/pos-shared/lib/printStorage';
+import { printStorage } from '@rutba/shared/lib/printStorage';
 
 // ── Column mapping for Excel import (extends the bulk-stock-inputs approach) ──
 const COLUMN_ALIASES = {

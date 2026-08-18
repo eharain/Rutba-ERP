@@ -1,4 +1,4 @@
-import { useEnumValues } from "@rutba/pos-shared/lib/use-enum-values";
+import { useEnumValues } from "@rutba/shared/lib/use-enum-values";
 
 /**
  * Lead statuses come from the schema via /enums/crm-lead/status — there is

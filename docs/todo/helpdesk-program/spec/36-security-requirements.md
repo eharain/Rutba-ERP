@@ -30,7 +30,7 @@ What an attacker or a mistake would actually go after:
 
 ## 36.3 Authentication
 
-Users-permissions JWT, verified by Core (`src/http/auth.js`); pos-strapi remains the issuer until
+Users-permissions JWT, verified by Core (`src/http/auth.js`); services/strapi remains the issuer until
 the Core program's Phase 7. Admin API tokens for machine callers, hashed at rest.
 
 `auth: false` / `optional: true` routes **do not authenticate** — they parse a token if present

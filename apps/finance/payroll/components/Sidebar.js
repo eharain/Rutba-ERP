@@ -1,4 +1,4 @@
-import SharedSidebar from "@rutba/pos-shared/components/Sidebar";
+import SharedSidebar from "@rutba/shared/components/Sidebar";
 
 const SECTIONS = [
     { href: "/salary-structures", label: "Salary Structures", icon: "fa-money-check-dollar" },
@@ -11,5 +11,5 @@ const SECTIONS = [
 ];
 
 export default function Sidebar() {
-    return <SharedSidebar sections={SECTIONS} storageKey="rutba-payroll-sidebar-pinned" />;
+    return <SharedSidebar sections={SECTIONS} storageKey="apps/finance/payroll-sidebar-pinned" />;
 }

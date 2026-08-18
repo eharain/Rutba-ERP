@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import { SaleOrdersEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 
@@ -134,7 +134,7 @@ export default function SaleOrderDetailPage() {
                                         <div className="mb-3">
                                             <Link
                                                 className="btn btn-sm btn-outline-info"
-                                                href={`${process.env.NEXT_PUBLIC_WEB_URL || "https://rutba.pk"}/order-tracking/${order.documentId}?secret=${order.order_secret}`}
+                                                href={`${process.env.NEXT_PUBLIC_STOREFRONT_URL || "https://rutba.pk"}/order-tracking/${order.documentId}?secret=${order.order_secret}`}
                                                 target="_blank"
                                             >
                                                 Track on Web

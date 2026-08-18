@@ -3,7 +3,7 @@
  *
  * Anchored on `api::contact-ticket.contact-ticket` deliberately (spec decision D3):
  * the Helpdesk Ticket aggregate IS the existing contact_tickets recording, extended
- * additively. Renaming the UID would touch pos-strapi, Core, every descriptor, the
+ * additively. Renaming the UID would touch services/strapi, Core, every descriptor, the
  * generated clients and the notification templates for zero functional gain.
  *
  * Because the UID is shared with `contact-tickets.js` (the legacy ESS/HR flow), every
@@ -26,7 +26,7 @@
  * so a natural name like `reopenTicket()` would be skipped by the seeder and surface
  * later as an unexplainable 403. Every lifecycle intent therefore carries a `run`
  * prefix and every read a `list`/`get`/`by` prefix; the wire `action` underneath is the
- * spec's name and must equal the handler name in rutba-core/src/modules/helpdesk.js.
+ * spec's name and must equal the handler name in services/core/src/modules/helpdesk.js.
  *
  * Route registration order matters on the server side, not here: koa-router matches in
  * registration order, so `/helpdesk/tickets/bulk` must mount before
@@ -558,7 +558,7 @@ export const HelpdeskTicketsEndpoints = {
         path: '/me/helpdesk/tickets',
         action: 'myHelpdeskTickets',
         method: 'get',
-        apps: ['helpdesk', 'ess', 'web'],
+        apps: ['helpdesk', 'ess', 'storefront'],
         approle: ['admin', 'manager', 'staff', 'user'],
         params: listQuery({ page, pageSize, sort, filters }),
     }),
@@ -567,7 +567,7 @@ export const HelpdeskTicketsEndpoints = {
         path: `/me/helpdesk/tickets/${documentId}`,
         action: 'myHelpdeskTicket',
         method: 'get',
-        apps: ['helpdesk', 'ess', 'web'],
+        apps: ['helpdesk', 'ess', 'storefront'],
         approle: ['admin', 'manager', 'staff', 'user'],
     }),
 
@@ -575,7 +575,7 @@ export const HelpdeskTicketsEndpoints = {
         path: '/me/helpdesk/tickets',
         action: 'createMyTicket',
         method: 'post',
-        apps: ['helpdesk', 'ess', 'web'],
+        apps: ['helpdesk', 'ess', 'storefront'],
         approle: ['admin', 'manager', 'staff', 'user'],
         data,
     }),
@@ -585,7 +585,7 @@ export const HelpdeskTicketsEndpoints = {
         path: `/me/helpdesk/tickets/${documentId}/messages`,
         action: 'myTicketMessages',
         method: 'get',
-        apps: ['helpdesk', 'ess', 'web'],
+        apps: ['helpdesk', 'ess', 'storefront'],
         approle: ['admin', 'manager', 'staff', 'user'],
         params: listQuery({ page, pageSize }),
     }),
@@ -594,7 +594,7 @@ export const HelpdeskTicketsEndpoints = {
         path: `/me/helpdesk/tickets/${documentId}/messages`,
         action: 'addMyTicketMessage',
         method: 'post',
-        apps: ['helpdesk', 'ess', 'web'],
+        apps: ['helpdesk', 'ess', 'storefront'],
         approle: ['admin', 'manager', 'staff', 'user'],
         data,
     }),
@@ -603,7 +603,7 @@ export const HelpdeskTicketsEndpoints = {
         path: `/me/helpdesk/tickets/${documentId}/reopen`,
         action: 'reopenMyTicket',
         method: 'post',
-        apps: ['helpdesk', 'ess', 'web'],
+        apps: ['helpdesk', 'ess', 'storefront'],
         approle: ['admin', 'manager', 'staff', 'user'],
         data,
     }),
@@ -612,7 +612,7 @@ export const HelpdeskTicketsEndpoints = {
         path: `/me/helpdesk/tickets/${documentId}/close`,
         action: 'closeMyTicket',
         method: 'post',
-        apps: ['helpdesk', 'ess', 'web'],
+        apps: ['helpdesk', 'ess', 'storefront'],
         approle: ['admin', 'manager', 'staff', 'user'],
         data,
     }),
@@ -622,7 +622,7 @@ export const HelpdeskTicketsEndpoints = {
         path: `/me/helpdesk/tickets/${documentId}/rate`,
         action: 'rateMyTicket',
         method: 'post',
-        apps: ['helpdesk', 'ess', 'web'],
+        apps: ['helpdesk', 'ess', 'storefront'],
         approle: ['admin', 'manager', 'staff', 'user'],
         data,
     }),
@@ -632,7 +632,7 @@ export const HelpdeskTicketsEndpoints = {
         path: `/me/helpdesk/tickets/${documentId}/nudge`,
         action: 'nudgeMyTicket',
         method: 'post',
-        apps: ['helpdesk', 'ess', 'web'],
+        apps: ['helpdesk', 'ess', 'storefront'],
         approle: ['admin', 'manager', 'staff', 'user'],
         data,
     }),
@@ -660,7 +660,7 @@ export const HelpdeskTicketsEndpoints = {
         path: '/helpdesk/public/tickets',
         action: 'createPublicTicket',
         method: 'post',
-        apps: ['web', 'helpdesk'],
+        apps: ['storefront', 'helpdesk'],
         approle: ['public', 'user', 'admin', 'manager', 'staff'],
         data,
     }),

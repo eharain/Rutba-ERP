@@ -1,25 +1,25 @@
 'use strict';
 
 /**
- * Email seam for rutba-core.
+ * Email seam for services/core.
  *
- * pos-strapi sends mail through @strapi/plugin-email with the nodemailer
- * provider (see pos-strapi/config/plugins.js). Every call site in the codebase
+ * services/strapi sends mail through @strapi/plugin-email with the nodemailer
+ * provider (see services/strapi/config/plugins.js). Every call site in the codebase
  * uses exactly one method:
  *
  *   strapi.plugin('email').service('email').send({ to, from, replyTo, subject, text, html })
  *
  * so that is the whole surface this module has to reproduce. The field
  * defaulting below is copied from @strapi/provider-email-nodemailer's `send`
- * (5.51.0) so a message built by ported pos-strapi code lands on the wire
+ * (5.51.0) so a message built by ported services/strapi code lands on the wire
  * byte-identical to what Strapi would have sent.
  *
- * nodemailer is loaded from pos-strapi's node_modules, the same way up.js
+ * nodemailer is loaded from services/strapi's node_modules, the same way up.js
  * loads bcryptjs and @strapi/utils — one version, one behaviour, no second
  * copy to keep in sync. Retiring Strapi means sweeping every posModule() call
  * site, not just this one.
  *
- * Config (via config/env, which already falls back RUTBA_CORE__X → POS_STRAPI__X
+ * Config (via config/env, which already falls back CORE__X → POS_STRAPI__X
  * → X, so the EMAIL_* keys in the repo-root .env files are picked up as-is):
  *
  *   EMAIL_HOST / EMAIL_PORT / EMAIL_USER / EMAIL_PASS   SMTP transport
@@ -36,7 +36,7 @@
 const path = require('path');
 const { get } = require('../config/env');
 
-const POS_ROOT = path.join(__dirname, '..', '..', '..', 'pos-strapi');
+const POS_ROOT = path.join(__dirname, '..', '..', '..', '..', 'services/strapi');
 const posModule = (name) => require(path.join(POS_ROOT, 'node_modules', name));
 
 // Messages recorded in `log` mode, newest last. Smokes read this instead of a
@@ -55,7 +55,7 @@ function settings() {
   return { defaultFrom, defaultReplyTo: defaultFrom };
 }
 
-/** Mirrors the providerOptions block of pos-strapi/config/plugins.js. */
+/** Mirrors the providerOptions block of services/strapi/config/plugins.js. */
 function providerOptions() {
   return {
     host: get('EMAIL_HOST', 'smtp.gmail.com'),

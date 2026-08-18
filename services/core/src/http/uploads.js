@@ -10,8 +10,8 @@
  *
  * The bytes live in two places, and both have to work:
  *
- *  1. ON DISK — pos-strapi sets dirs.public from PUBLIC_DIR (config/server.js),
- *     which in dev is ../../data/rutba-pos-files, NOT pos-strapi/public. That
+ *  1. ON DISK — services/strapi sets dirs.public from PUBLIC_DIR (config/server.js),
+ *     which in dev is ../../data/rutba-pos-files, NOT services/strapi/public. That
  *     directory holds 34k files: everything uploaded while the `local` provider
  *     was configured, which is most of the catalogue. Strapi serves them
  *     through strapi::public → koa-static; core serves them the same way, with
@@ -31,7 +31,7 @@ const path = require('path');
 const fs = require('fs');
 const { get } = require('../config/env');
 
-const POS_ROOT = path.join(__dirname, '..', '..', '..', 'pos-strapi');
+const POS_ROOT = path.join(__dirname, '..', '..', '..', '..', 'services/strapi');
 const posModule = (name) => require(path.join(POS_ROOT, 'node_modules', name));
 
 // The same two packages @strapi/upload's middleware composes for /uploads/(.*):
@@ -42,7 +42,7 @@ const range = posModule('koa-range');
 
 const PREFIX = '/uploads/';
 
-/** Resolve PUBLIC_DIR the way Strapi does — relative to the pos-strapi app root. */
+/** Resolve PUBLIC_DIR the way Strapi does — relative to the services/strapi app root. */
 function resolvePublicDir() {
   return path.resolve(POS_ROOT, get('PUBLIC_DIR', './public'));
 }
@@ -69,7 +69,7 @@ function createUploadsMiddleware() {
         // Content-Length and Last-Modified. It throws 404 when the file is
         // absent, which is the signal to fall through to the media host.
         // maxage 0 matches koa-static's default, which is what Strapi runs
-        // with (no localServer config in pos-strapi/config/plugins.js).
+        // with (no localServer config in services/strapi/config/plugins.js).
         await range(ctx, async () => {
           sent = await send(ctx, ctx.path.slice(PREFIX.length), {
             root: uploadsDir,

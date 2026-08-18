@@ -1,8 +1,8 @@
-# CMS preview — view draft pages on rutba-web before publishing
+# CMS preview — view draft pages on apps/content/storefront before publishing
 
 ## Goal
 From the CMS editor, click "Preview" on a CMS page / product / product-group and
-see exactly how it'll look on rutba-web — including the draft content, not the
+see exactly how it'll look on apps/content/storefront — including the draft content, not the
 last published version. No iframes inside CMS; open a real storefront URL in a
 new tab so editors can interact with the full layout (sticky header, scroll,
 hover, mobile menu).
@@ -37,17 +37,17 @@ hover, mobile menu).
 
 ### Token + route
 
-Editor in rutba-cms clicks "Preview" → CMS hits a Strapi endpoint
+Editor in apps/content/cms clicks "Preview" → CMS hits a Strapi endpoint
 `POST /cms-pages/:documentId/preview-token` (or similar per content type)
 that mints a short-lived signed token. CMS opens
 `https://<site>/<page-url>?preview=<token>` in a new tab.
 
-Token payload: `{ contentType, documentId, exp: now+15min, iss: 'rutba-cms' }`,
-HMAC-signed with `PREVIEW_SECRET` shared between Strapi and rutba-web.
+Token payload: `{ contentType, documentId, exp: now+15min, iss: 'apps/content/cms' }`,
+HMAC-signed with `PREVIEW_SECRET` shared between Strapi and apps/content/storefront.
 
 ### Storefront resolver
 
-A single `resolvePreview(ctx)` helper in rutba-web that:
+A single `resolvePreview(ctx)` helper in apps/content/storefront that:
 - reads `?preview=` from the query
 - verifies the signature server-side
 - if valid, sets `ctx.res.setHeader('Cache-Control', 'no-store')`
@@ -125,4 +125,4 @@ right now the publish-then-fix cycle works but won't scale to multiple editors.
 ## Related
 
 - api/web/ descriptors generate public-`api` clients — the public-client convention preview must not subvert.
-- pos-strapi integration contracts — preview tokens are a new "load-bearing header" that belongs in that contract.
+- services/strapi integration contracts — preview tokens are a new "load-bearing header" that belongs in that contract.

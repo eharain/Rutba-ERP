@@ -2,7 +2,7 @@
 'use strict';
 
 /**
- * HTTP smoke: boots rutba-core on a test port and exercises the auth +
+ * HTTP smoke: boots services/core on a test port and exercises the auth +
  * api-pro policy gate + CRUD envelope against live data. Read-only.
  *
  * The test user/role/route are discovered from the DB: first user holding an
@@ -60,7 +60,7 @@ async function main() {
   // ...and one where NO find-method of the interface has a policy for this
   // role (the engine matches policies per interface uid × action, not per path).
   // Skip paths claimed as selfAuth by ported modules (e.g. GET /me/addresses):
-  // those are auth:false + controller-gated in pos-strapi — the interceptor
+  // those are auth:false + controller-gated in services/strapi — the interceptor
   // never denies them, so they are not valid denyByDefault probes.
   buildCompatStrapi(); // module registration reads global.strapi
   const selfAuthPaths = initModules().routes
@@ -98,7 +98,7 @@ async function main() {
     };
 
     const health = await req('/_health');
-    check('health 200', health.status === 200 && health.body.server === 'rutba-core');
+    check('health 200', health.status === 200 && health.body.server === 'services/core');
 
     const noAuth = await req(`/api${allowed.path}`);
     check('401 without token', noAuth.status === 401, `got ${noAuth.status}`);

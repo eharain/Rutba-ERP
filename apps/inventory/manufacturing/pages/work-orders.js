@@ -2,10 +2,10 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import Layout from "../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import SearchableSelect from "@rutba/pos-shared/components/SearchableSelect";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import SearchableSelect from "@rutba/shared/components/SearchableSelect";
 import ProductSelect from "../components/ProductSelect";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import {
     MfgWorkOrdersEndpoints,
     MfgBomsEndpoints,

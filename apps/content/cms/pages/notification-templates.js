@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import Layout from "../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import { NotificationTemplatesEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
-import ListPageLayout, { AddButton } from "@rutba/pos-shared/components/ListPageLayout";
+import ListPageLayout, { AddButton } from "@rutba/shared/components/ListPageLayout";
 import ExcelIO from "../components/ExcelIO";
 
 const tryParseJSON = (val) => {

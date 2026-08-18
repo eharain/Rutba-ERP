@@ -1,13 +1,13 @@
 import { useRouter } from "next/router";
 import Link from "next/link";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import { useToast } from "../Toast";
 import { useState } from "react";
 import { useSaleOrder, isCustomWorkflow, workflowStage } from "./hooks/useSaleOrder";
 import { SaleOrdersEndpoints } from "@rutba/api-provider/endpoints/index.js";
-import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
-import WorkflowViewer from "@rutba/pos-shared/components/workflow/WorkflowViewer";
-import WorkItemPanel from "@rutba/pos-shared/components/workflow/WorkItemPanel";
+import PermissionCheck from "@rutba/shared/components/PermissionCheck";
+import WorkflowViewer from "@rutba/shared/components/workflow/WorkflowViewer";
+import WorkItemPanel from "@rutba/shared/components/workflow/WorkItemPanel";
 import StageStepper from "./StageStepper";
 
 const SO_ENTITY_UID = "api::sale-order.sale-order";

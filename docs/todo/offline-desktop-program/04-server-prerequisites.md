@@ -10,7 +10,7 @@
 | # | Change | Size | Gates | Correct on its own? |
 |---|---|---|---|---|
 | 1 | [Bounded timeout in the axios seam](#1-bounded-timeout-in-the-axios-seam) | S | Everything — the client cannot detect a dead upstream without it | **Yes** — fixes the SSR-hang trap |
-| 2 | [A SQLite driver for rutba-core](#2-a-sqlite-driver-for-rutba-core) | S (driver) / M (parity) | D3 and everything after | Yes — a second client is useful for tests |
+| 2 | [A SQLite driver for services/core](#2-a-sqlite-driver-for-services/core) | S (driver) / M (parity) | D3 and everything after | Yes — a second client is useful for tests |
 | 3 | [Generic `Idempotency-Key` + dedupe table](#3-a-generic-idempotency-key-and-a-dedupe-table) | M | D4, and Mail's `send` at all | Yes — replay-on-flaky-link is a live failure mode |
 | 4 | [Conflicts that are distinguishable](#4-conflicts-that-are-distinguishable) | S | D4's conflict flagging | Yes — a 500 for a lost race is wrong today |
 | 5 | [Descriptor `offline:` facet + an audit that fails the build](#5-descriptor-offline-facet-and-an-audit-that-fails-the-build) | S | D5, and the readiness gate | Yes — makes coverage measurable |
@@ -57,18 +57,18 @@ no timeout, no log.
       local data to a user who has just lost access.
 - [ ] **Cover the five seam-bypassing files too**, or accept and document that
       they stay unbounded.
-      [`pos-shared/context/AuthContext.js`](../../../packages/pos-shared/context/AuthContext.js)
+      [`shared/context/AuthContext.js`](../../../packages/shared/context/AuthContext.js)
       is the one that matters for the desktop: raw axios to `/users/me` (line 154)
       and `/auth/refresh` (line 427). Those are the first calls a cold desktop
       start makes, so an unbounded one there is a launcher that never finishes
-      loading. The other four are in `rutba-web/src/services/`, which is not in
+      loading. The other four are in `apps/content/storefront/src/services/`, which is not in
       the desktop set.
 
 ---
 
-## 2. A SQLite driver for rutba-core
+## 2. A SQLite driver for services/core
 
-[`rutba-core/src/config/env.js`](../../../rutba-core/src/config/env.js) maps two
+[`services/core/src/config/env.js`](../../../services/core/src/config/env.js) maps two
 clients and assumes a network connection:
 
 ```js
@@ -91,7 +91,7 @@ function dbConfig() {                                              // line 106
 SQLite has no host, no port, no user and no password. It wants
 `connection: { filename }` plus `useNullAsDefault: true`, and a pool of one.
 
-**Knex `^3.1.0` is already a dependency** (`rutba-core/package.json`), so the
+**Knex `^3.1.0` is already a dependency** (`services/core/package.json`), so the
 change is contained: a third entry in `clientMap`, a branch in the connection
 shape, and one driver package.
 
@@ -172,17 +172,17 @@ wrong.
 There is already a precedent in this repo, and it should be generalized rather
 than copied a second time:
 
-- [`routing.service.js:169`](../../../rutba-core/src/domain/helpdesk/routing.service.js)
+- [`routing.service.js:169`](../../../services/core/src/domain/helpdesk/routing.service.js)
   defines a local `ConflictError` and notes, in its own comment, that
   *"409 is not in the server's name→status map, so it is carried explicitly"*
   (`this.status = 409`).
-- [`ticket.repo.js:275`](../../../rutba-core/src/domain/helpdesk/repository/ticket.repo.js)
+- [`ticket.repo.js:275`](../../../services/core/src/domain/helpdesk/repository/ticket.repo.js)
   has the right shape already: a compare-and-swap whose zero-rows-changed case
   *"owes the loser a 409 carrying the state that actually won."*
 
 - [ ] Add `ConflictError: 409` to `ERROR_NAME_STATUS` and `409: 'ConflictError'`
       to `STATUS_ERROR_NAME` in
-      [`rutba-core/src/http/server.js`](../../../rutba-core/src/http/server.js)
+      [`services/core/src/http/server.js`](../../../services/core/src/http/server.js)
       (the two maps at lines 37 and 46), plus a `ctx.conflict` helper alongside
       `ctx.badRequest` / `ctx.forbidden` (lines 60–63). Then retire helpdesk's
       local class.
@@ -192,7 +192,7 @@ than copied a second time:
       is a queue screen a shopkeeper can actually clear.
 - [ ] A **stable machine-readable code** per conflict class, distinct from the
       message. The bridge routes on the code; the human reads the message.
-- [ ] Do the same on the pos-strapi side for as long as it serves these routes.
+- [ ] Do the same on the services/strapi side for as long as it serves these routes.
       Half the surface returning 409 and half returning 500 is worse than either.
 
 ---
@@ -230,7 +230,7 @@ lives in perhaps thirty of them.
 
 > **A correction worth recording.** [§3](../offline-pos-options.md#3-descriptors-declare-offline-policy)
 > and the brief for this program both cite `scripts/descriptor-audit.mjs`. The
-> file is at **[`rutba-core/scripts/descriptor-audit.mjs`](../../../rutba-core/scripts/descriptor-audit.mjs)**.
+> file is at **[`services/core/scripts/descriptor-audit.mjs`](../../../services/core/scripts/descriptor-audit.mjs)**.
 > There is no `descriptor-audit.mjs` at the repo root or in
 > `packages/api-provider/scripts/`.
 
@@ -267,13 +267,13 @@ needs.
 | # | Condition | Checked by |
 |---|---|---|
 | **G1** | Every endpoint reachable from `apps: ['x']` carries an `offline:` policy | `descriptor-audit.mjs`, extended per §5 |
-| **G2** | Every read route the app uses is **ported in rutba-core** | `descriptor-audit.mjs` in its existing job |
+| **G2** | Every read route the app uses is **ported in services/core** | `descriptor-audit.mjs` in its existing job |
 | **G3** | A smoke test runs the app against the bridge **with the upstream killed** | New, in the desktop pipeline |
 
 ### G2 is the real ceiling
 
 An unported custom action answers **`501 NotPortedError`**
-([`rutba-core/src/http/server.js:284`](../../../rutba-core/src/http/server.js)),
+([`services/core/src/http/server.js:284`](../../../services/core/src/http/server.js)),
 and core logs the split at boot: *"mounted N routes … P custom ported; C custom →
 501"*.
 

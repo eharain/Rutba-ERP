@@ -4,13 +4,13 @@ Status: **program plan — v1, 2026-08-17.** Umbrella program. Detailed specs st
 own program folders; this document decides the decomposition model, resolves the recorded
 contradictions between programs, and sequences everything into one launchable release.
 
-<!-- verify-docs: planned rutba-core/src/modules/campaigns.js rutba-core/src/modules/mail.js rutba-core/migrations/000-baseline-schema.js apps/** infra/** scripts/contract-tests/** docs/contracts/** -->
+<!-- verify-docs: planned services/core/src/modules/campaigns.js services/core/src/modules/mail.js services/core/migrations/000-baseline-schema.js infra/** scripts/contract-tests/** docs/contracts/** -->
 
 **What "2.0" means, in one sentence per axis:**
 
 | Axis | 1.x today | 2.0 |
 |---|---|---|
-| Backend | Strapi (`pos-strapi`) + strangler (`rutba-core`) side by side on one DB | **Strapi-free**: `rutba-core` only; `pos-strapi` archived |
+| Backend | Strapi (`services/strapi`) + strangler (`services/core`) side by side on one DB | **Strapi-free**: `services/core` only; `services/strapi` archived |
 | Services | one backend process serves every domain | **cells**: the same core binary deployable per module-bundle behind the gateway |
 | Data | one MySQL database (`pos_db`) for everything | split on **three axes**: per-tenant DBs, platform-service DBs, per-module schema ownership inside the tenant DB |
 | API | Strapi REST envelope, long-form query surface | same descriptor contract, served by core; closed-shape wire codec as the hardened public surface |
@@ -34,8 +34,8 @@ understate their own progress (fixing them is a P0 task).
 
 - **22 Next.js apps** (all pages-router), **2 backends**, **1 worker**, **6 shared packages**.
   19 of 22 apps are pure browser clients of `@rutba/api-provider`; only three have server-side
-  surface: `rutba-web` (NextAuth + SSR), `rutba-social` (media byte-proxy), and
-  `rutba-marketplace` (19 API routes + a standalone worker that talks to Strapi directly with a
+  surface: `apps/content/storefront` (NextAuth + SSR), `apps/content/social` (media byte-proxy), and
+  `apps/sales/marketplace` (19 API routes + a standalone worker that talks to Strapi directly with a
   service token).
 - **One MySQL 8 database (`pos_db`) shared by both backends** — [core-server ground rule 2](../core-server-multitenancy-program/README.md)
   ("same database, exclusive write paths"). No Postgres, no SQLite in deployment.
@@ -43,11 +43,11 @@ understate their own progress (fixing them is a P0 task).
   units, ports 4000–4023 (strapi 4010, core 4020), plus the `RUTBA_BACKEND=strapi|core|both`
   strangler switch and its validator.
 - **Registry drift is real:** adding an app touches ~8 surfaces (registry, root `package.json`
-  scripts, `.env.*`, [roles.js](../../../packages/pos-shared/lib/roles.js) `APP_URLS`/`VALID_APP_KEYS`,
+  scripts, `.env.*`, [roles.js](../../../packages/shared/lib/roles.js) `APP_URLS`/`VALID_APP_KEYS`,
   [domains.json](../../../packages/api-provider/config/domains.json), `Dockerfile` targets,
   `docker-compose.yml`, `dev-start.bat`) and today five of them disagree in small ways.
 - **Dead weight — purged 2026-08-17:** `rutba-users/` (stale `.next/` only),
-  `src/hooks/useErrorHandler.ts` (orphaned at repo root; rutba-web has its own copy), dead
+  `src/hooks/useErrorHandler.ts` (orphaned at repo root; apps/content/storefront has its own copy), dead
   `RUTBA_USERS__PORT` / `NEXT_PUBLIC_USERS_URL` env entries, and the
   `packages/api-provider/temp/` scratch files are gone. Still open in
   [tech-debt-cleanup.md](../tech-debt-cleanup.md): §3 swiper (needs component migration first).
@@ -60,10 +60,10 @@ is much further along than its README's phase table implies:
 
 - **All 8 tranches ported and smoke-verified** (playbook steps 1–4), plus four modules with no
   tranche sheet at all: `catalog`, `helpdesk` (core-native), `uploads`, `user-mgmt`. Twelve
-  modules in [rutba-core/src/modules/index.js](../../../rutba-core/src/modules/index.js), ≈505
+  modules in [services/core/src/modules/index.js](../../../services/core/src/modules/index.js), ≈505
   custom routes mounted.
 - **Content-type coverage is 100% by construction** — the schema registry loads every
-  `pos-strapi/src/api/*/content-types/*/schema.json` at boot; the real axis is custom actions.
+  `services/strapi/src/api/*/content-types/*/schema.json` at boot; the real axis is custom actions.
 - **Still Strapi-only** (custom actions answer 501 on core): the campaigns cluster
   (`cmp-campaign`, `cmp-run`, `cmp-sending-identity`, `cmp-template`, `cmp-audience`),
   `mail-message`/`mail-link` actions, the `media` api dir, and `/api/content-sync/*`
@@ -72,17 +72,17 @@ is much further along than its README's phase table implies:
 - ~~**The hardest residual dependency:** the api-pro descriptor seeder runs only inside
   Strapi~~ — **closed 2026-08-17.** Core's route table is still read from
   `api_pro_interfaces`/`api_pro_interface_methods`, but
-  [rutba-core/src/policy/](../../../rutba-core/src/policy/) now writes those tables itself
+  [services/core/src/policy/](../../../services/core/src/policy/) now writes those tables itself
   (and mints API tokens), so a descriptor change no longer needs a Strapi process. See
   [02-policy-seeder-port.md](02-policy-seeder-port.md).
-- **Runtime coupling:** 9 core files `require()` from `pos-strapi/node_modules`
+- **Runtime coupling:** 9 core files `require()` from `services/strapi/node_modules`
   (auth validators, `@strapi/utils`, nodemailer, `@strapi/upload` image manipulation), and the
-  schema loader reads `schema.json` from the pos-strapi tree. Even at `RUTBA_BACKEND=core`,
-  pos-strapi's source tree must be deployed.
+  schema loader reads `schema.json` from the services/strapi tree. Even at `RUTBA_BACKEND=core`,
+  services/strapi's source tree must be deployed.
 - **Core cannot create its own base schema** — measured in
   [05-sqlite-viability.md](../offline-desktop-program/05-sqlite-viability.md): the only
   `createTable` in core's source is the migrations ledger. Core derives and validates a schema
-  Strapi built ([validate-schema.js](../../../rutba-core/scripts/validate-schema.js): 140 entity /
+  Strapi built ([validate-schema.js](../../../services/core/scripts/validate-schema.js): 140 entity /
   314 link / 15 component tables, zero diffs), but cannot bootstrap one.
 - **Dev already runs on core**: `.env.development` points `NEXT_PUBLIC_API_URL` at port 4020;
   the LAN box runs `RUTBA_BACKEND=both` with core baking.
@@ -96,20 +96,20 @@ build**, as are the six admin-console sections beyond the A0 rekey.
 
 These are 2.0's platform spine, already in the tree:
 
-- [rutba-core/src/platform/events.js](../../../rutba-core/src/platform/events.js) — transactional
+- [services/core/src/platform/events.js](../../../services/core/src/platform/events.js) — transactional
   outbox domain-event bus (`core_events`/`core_event_deliveries`, at-least-once, per-aggregate
   ordering, dead-letter + replay). The offline program's replayer and the sync engine both reuse
   it by decision.
-- [rutba-core/src/platform/workflow.js](../../../rutba-core/src/platform/workflow.js) — the
+- [services/core/src/platform/workflow.js](../../../services/core/src/platform/workflow.js) — the
   configurable state machine that owns order/stock side effects.
-- Core-native module pattern: `rutba-core/src/domain/helpdesk/` + knex migrations in
-  [rutba-core/migrations/](../../../rutba-core/migrations/) — services/repos/policies with no
+- Core-native module pattern: `services/core/src/domain/helpdesk/` + knex migrations in
+  [services/core/migrations/](../../../services/core/migrations/) — services/repos/policies with no
   Strapi shapes at all. **This is the go-forward style for every new domain.**
-- Coverage instrumentation: [descriptor-audit.mjs](../../../rutba-core/scripts/descriptor-audit.mjs)
-  and [route-audit.js](../../../rutba-core/scripts/route-audit.js) make "what still 501s" a
-  number per app, and [contract-diff.js](../../../rutba-core/scripts/contract-diff.js) + 17
+- Coverage instrumentation: [descriptor-audit.mjs](../../../services/core/scripts/descriptor-audit.mjs)
+  and [route-audit.js](../../../services/core/scripts/route-audit.js) make "what still 501s" a
+  number per app, and [contract-diff.js](../../../services/core/scripts/contract-diff.js) + 17
   `smoke-*.js` scripts are the de-facto contract harness.
-- [packages/sync-core](../../../packages/sync-core/README.md) — offline bridge phase 1
+- [packages/sync](../../../packages/sync/README.md) — offline bridge phase 1
   (pass-through proxy), the seed of the one sync engine.
 
 ---
@@ -187,7 +187,7 @@ flowchart TD
 | **control plane** | `rutba-console` (planned, Workstream A) | tenant registry, domains, secrets, tenant events — **own DB, never in a tenant DB** | standalone app |
 | **media** | Rutba-Media-FileServer (external repo) | file bytes, variants | standalone service |
 | **mail transport** | Rutba-MTA / mailcow (external) | queues, mailboxes | standalone service |
-| **sync** | `packages/sync-core` + core `content-sync` module (planned) | outbox cursors, manifests | library + bridge process |
+| **sync** | `packages/sync` + core `content-sync` module (planned) | outbox cursors, manifests | library + bridge process |
 
 Cell groupings are **configuration, not commitments** — the enforced boundary is the module.
 The starting topology for every tenant is all modules in one cell; splitting is a scaling
@@ -245,8 +245,8 @@ not calendar promises. Gates are all mechanically checkable.
 Cheap, unblocking, and mostly overdue.
 
 - [ ] **Fix stale program docs**: core-server README phase table (understates Workstream B),
-      offline-desktop README ("nothing is built" vs shipped `packages/sync-core`; bridge host
-      is a UtilityProcess), `rutba-core/README.md` status block, superseded tenancy language in
+      offline-desktop README ("nothing is built" vs shipped `packages/sync`; bridge host
+      is a UtilityProcess), `services/core/README.md` status block, superseded tenancy language in
       [market-strategy](../market-strategy/README.md) / [rightapp-gap-analysis](../rightapp-gap-analysis/README.md).
 - [ ] **Record baseline metrics** (the never-done item from
       [01-contracts-freeze.md](../core-server-multitenancy-program/01-contracts-freeze.md)):
@@ -266,7 +266,7 @@ Cheap, unblocking, and mostly overdue.
 - [x] **Dead-code purge** (2026-08-17): deleted `rutba-users/`, the root
       `src/hooks/useErrorHandler.ts` stray, dead env keys, and the api-provider `temp/`
       scratch files; [tech-debt-cleanup.md](../tech-debt-cleanup.md) §5 closed. §3 (swiper)
-      deferred — three rutba-web components still import it.
+      deferred — three apps/content/storefront components still import it.
 
 **Exit gate:** `npm run verify:wiring` and `npm run verify:docs` green with the manifest live;
 baseline numbers committed to the program folder.
@@ -275,43 +275,43 @@ baseline numbers committed to the program folder.
 
 Everything that still *requires* a running Strapi, enumerated and killed.
 
-- [x] **Port the api-pro seeder** (2026-08-17): [rutba-core/src/policy/](../../../rutba-core/src/policy/)
+- [x] **Port the api-pro seeder** (2026-08-17): [services/core/src/policy/](../../../services/core/src/policy/)
       seeds the `api_pro_*` tables straight from the descriptor contract, so a descriptor edit
       reaches the route table with no Strapi process alive. It diffs instead of upserting
       (`--dry-run` prints the plan; the steady state writes nothing), reports rows no descriptor
       declares any more, and preserves admin-tuned policies. API-token **minting** ships with it.
       Proven by seeding a from-scratch copy of the live tables inside a rolled-back transaction
       and comparing: 6,359 rows and 6,163 links reproduced exactly, 44/44 checks
-      ([scripts/smoke-policy.js](../../../rutba-core/scripts/smoke-policy.js)). It also surfaced
+      ([scripts/smoke-policy.js](../../../services/core/scripts/smoke-policy.js)). It also surfaced
       54 stale rows — including 4 grants the contract had already revoked. Full write-up:
       [02-policy-seeder-port.md](02-policy-seeder-port.md).
 - [ ] **Port the remaining custom actions**: campaigns cluster + campaign cron
-      (`rutba-core/src/modules/campaigns.js`, planned), `mail-message`/`mail-link` actions +
-      mail cron (`rutba-core/src/modules/mail.js`, planned), the `media` api dir routes.
+      (`services/core/src/modules/campaigns.js`, planned), `mail-message`/`mail-link` actions +
+      mail cron (`services/core/src/modules/mail.js`, planned), the `media` api dir routes.
 - [ ] **Build the sync engine v1** (replaces `strapi-content-sync-pro`): contract-level,
       per the decided design in [06-plugin-replacement-map.md](../core-server-multitenancy-program/06-plugin-replacement-map.md)
       — manifest per connection, CMS `documentId` identity, commerce `external_ids.<origin>`
       identity, `updatedAt` cursor + tombstones. Close the open gaps in
       [cms-sync/plugin-gaps.md](../cms-sync/plugin-gaps.md). Mount as core module
-      `content-sync` (planned) + grow `packages/sync-core`. One engine, four consumers
+      `content-sync` (planned) + grow `packages/sync`. One engine, four consumers
       (desktop, CMS promotion, instance↔instance, tenant cloning).
 - [ ] **Re-home the remaining Strapi-admin screens** (the standing "no Strapi-admin
-      extensions" rule): api-pro Policy Editor → `rutba-admin`; API-token issuance →
-      `rutba-admin`; core-store settings (email templates, reset-URL) → `rutba-admin`;
-      raw content browse/edit fallback → the owning domain apps (rutba-cms already covers CMS;
+      extensions" rule): api-pro Policy Editor → `apps/admin/console`; API-token issuance →
+      `apps/admin/console`; core-store settings (email templates, reset-URL) → `apps/admin/console`;
+      raw content browse/edit fallback → the owning domain apps (apps/content/cms already covers CMS;
       CRM/stock cover theirs). Decide-by-list: anything still used monthly gets a home or an
       explicit "dies with Strapi" entry.
 - [ ] **Parity punch-list**: `/me/permissions` `role: null`; inverse-side relation writes;
       password-reset mail flow (tranche-8 deviation); seeding engine runs under
       `RUTBA_BACKEND=core` (today `rutba_seed.sh` hard-skips — move the registry/engine into
       core or run it through core's documents shim).
-- [ ] **Vendor the runtime couplings**: the 9 files requiring from `pos-strapi/node_modules`
-      get direct deps in `rutba-core/package.json` (bcryptjs, nodemailer, yup schemas,
+- [ ] **Vendor the runtime couplings**: the 9 files requiring from `services/strapi/node_modules`
+      get direct deps in `services/core/package.json` (bcryptjs, nodemailer, yup schemas,
       `@strapi/utils` session helpers, upload image-manipulation — fork-lift the last two if
       needed); schema loader keeps reading `schema.json` but from a path that survives
-      pos-strapi's removal (P2 moves the files).
+      services/strapi's removal (P2 moves the files).
 - [ ] **Schema self-hosting, step 1** (shared with the offline program): CI job boots
-      pos-strapi once against an empty SQLite file and publishes it as the replica/tenant
+      services/strapi once against an empty SQLite file and publishes it as the replica/tenant
       baseline (option A from [05-sqlite-viability.md](../offline-desktop-program/05-sqlite-viability.md)),
       gated on making `validate-schema.js` SQLite-aware.
 
@@ -331,28 +331,28 @@ The strangler's endgame — playbook steps 5–8, per tranche, plus retirement.
 - [ ] **Per-tranche flip sequence** (low-risk first, commerce last):
       goldens recorded → schema-handover migration (core-owned baseline for that module's
       tables) → gateway path-handle flips to core → 1–2 week bake with revert-by-route-flip →
-      routes deleted from pos-strapi, zero-copy sources moved (`git mv`) into
-      `rutba-core/src/modules/` ownership. Crons single-home at each flip (`RUTBA_CORE_CRONS`
+      routes deleted from services/strapi, zero-copy sources moved (`git mv`) into
+      `services/core/src/modules/` ownership. Crons single-home at each flip (`RUTBA_CORE_CRONS`
       discipline per [tranche-4](../core-server-multitenancy-program/tranche-4-inventory.md)).
       Order: mfg → hr/payroll → crm → inventory → cms-social → marketplace → **auth** (free
       flip via shared `JWT_SECRET` + `strapi_sessions`) → **commerce (tranche 7), last**.
-- [ ] **Marketplace worker + rutba-web NextAuth** repointed at core and their service tokens
+- [ ] **Marketplace worker + apps/content/storefront NextAuth** repointed at core and their service tokens
       minted by core (P1's minting work).
 - [ ] **Retirement**, once every tranche has baked:
-      - snapshot the live schema into `rutba-core/migrations/000-baseline-schema.js` (planned)
+      - snapshot the live schema into `services/core/migrations/000-baseline-schema.js` (planned)
         — generated **from the database**, not from a second DDL emitter, honoring the
         one-schema-source rule;
-      - `git mv` the `schema.json` tree into rutba-core ownership (registry input, now
+      - `git mv` the `schema.json` tree into services/core ownership (registry input, now
         core-owned);
       - `RUTBA_BACKEND=core` everywhere; remove `both` from the registry after one release;
-      - archive `pos-strapi/` (attic branch + delete from `dev`), retire the
-        `strapi-api-pro` plugin wrapper (core's `rutba-core/src/policy/` is the home) and
+      - archive `services/strapi/` (attic branch + delete from `dev`), retire the
+        `strapi-api-pro` plugin wrapper (core's `services/core/src/policy/` is the home) and
         `strapi-provider-upload-media`'s Strapi peer (provider logic lives on in core's
         upload platform);
       - delete `dev:strapi`/`build:strapi`/`start:strapi` scripts, compose services, Caddy
         handles.
 
-**Exit gate:** zero Strapi processes in every environment; `grep -r "pos-strapi" rutba-core/src`
+**Exit gate:** zero Strapi processes in every environment; `grep -r "services/strapi" services/core/src`
 returns nothing; contract smokes green against core-only; one full release cycle (deploy +
 rollback drill) executed on the core-only stack.
 
@@ -366,21 +366,23 @@ single red-to-green sweeps.
 Restructuring under a live migration multiplies every conflict — so the house move waits until
 Strapi is out.
 
-- [ ] **Regroup the tree**, manifest-driven, `git mv` preserving history — **target declared and
-      tooled 2026-08-18, execution pending a quiet tree**:
+- [x] **Regroup the tree** (2026-08-18), manifest-driven, `git mv` preserving history — **done**:
       [03-repo-restructure.md](03-repo-restructure.md) has the full 27-row mapping,
       [config/apps.manifest.json](../../../config/apps.manifest.json) carries it under `rename`,
       and [scripts/js/restructure.js](../../../scripts/js/restructure.js) executes it in four
       phases. Apps land in `apps/<category>/`, backends in `services/`, and six app keys change
       with them (`sale`→`pos`, `inventory`→`control`, `admin`→`console`, `web`→`storefront`,
       `web-user`→`portal`, `order-management`→`orders`) alongside 17 role keys, which
-      [rutba-core/migrations/022-rename-app-keys.js](../../../rutba-core/migrations/022-rename-app-keys.js)
-      applies to the api-pro rows in the same release. Measured: 27 directory moves, 3,835
-      path/package occurrences across 806 files, 1,070 identity occurrences across 253.
-      One phase per commit, red-to-green, per the strict-rollout rule.
+      [services/core/migrations/022-rename-app-keys.js](../../../services/core/migrations/022-rename-app-keys.js)
+      applied to the api-pro rows in the same release — grants survived untouched, because
+      `up_users_app_roles_lnk` references `app_role_id` rather than the key. Landed: 2,191
+      renames, ~4,900 reference rewrites, 22/22 apps building, `verify:wiring` 25/25,
+      `verify:docs` clean, `smoke-policy` 44/44, core booting from `services/core`. The six
+      bugs execution found — and the gates that caught each — are recorded in §8 of the
+      write-up. Deploy-box env and systemd renames are still owed (§9).
 - [ ] **Enforce the module boundary** (the §2.3 domain axis): each core module declares its
       owned tables; a new validator (extending the `validate-schema.js` /
-      [route-audit.js](../../../rutba-core/scripts/route-audit.js) family) fails on any
+      [route-audit.js](../../../services/core/scripts/route-audit.js) family) fails on any
       cross-module table write outside `core_events` or the owning module's service. Split the
       `catalog.js` grab-bag (76 routes) into its real homes as part of this.
 - [ ] **Codify the core-native convention**: new domains are built helpdesk-style
@@ -390,7 +392,7 @@ Strapi is out.
       `api-provider/pos` tree (named-policy follow-ups #7/#8), the `endpoints/` legacy entry,
       and the deprecated `users` app-domain alias
       ([packages/api-provider/api/users.js](../../../packages/api-provider/api/users.js) +
-      [domains.json](../../../packages/api-provider/config/domains.json) — the two pos-strapi
+      [domains.json](../../../packages/api-provider/config/domains.json) — the two services/strapi
       touchpoints disappear with P2's retirement).
 
 **Exit gate:** `verify:wiring` green from the manifest alone; boundary validator green;
@@ -507,7 +509,7 @@ continuing throughout on the same trunk.
 
 ## 7. Launch definition — "Rutba ERP 2.0 is live" when all of these are true
 
-1. Zero Strapi processes in any environment; `pos-strapi/` absent from `dev`.
+1. Zero Strapi processes in any environment; `services/strapi/` absent from `dev`.
 2. A descriptor edit → seed → serve → generated-client cycle runs entirely on core.
 3. `route-audit.js` NOT_PORTED = 0, `descriptor-audit.mjs` exit 0, contract smokes green.
 4. The repo is manifest-driven (`verify:wiring` green from one source of truth) and regrouped.

@@ -4,7 +4,7 @@ import { listParams, byIdParams } from './__param_builders.js';
 export const CategoryGroupsEndpoints = {
     meta: {
         uid: 'api::category-group.category-group',
-        domains: ['cms', 'stock', 'web', 'web-user'],
+        domains: ['cms', 'stock', 'storefront', 'portal'],
         roles: ['admin', 'manager', 'staff', 'public', 'user'],
     },
 

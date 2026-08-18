@@ -81,11 +81,11 @@ Use **`push`**. Never configure production to pull from a laptop.
 ## 2. Prerequisites
 
 1. **Identical schema on both sides.** Both instances must be running the same
-   git revision of `pos-strapi/src/api/**/schema.json`. A field that exists only
+   git revision of `services/strapi/src/api/**/schema.json`. A field that exists only
    on the source is silently dropped by Strapi's `processData`
    (`@strapi/database/dist/entity-manager/index.js:91`) — no error, no log.
 2. **Plugin enabled on both instances.**
-   `pos-strapi/config/plugins.js:144-146` → `'strapi-content-sync-pro': { enabled: true }`.
+   `services/strapi/config/plugins.js:144-146` → `'strapi-content-sync-pro': { enabled: true }`.
    Confirm the target actually loaded it: `GET https://api.rutba.pk/api/strapi-content-sync-pro/ping`
    must return 200 (that route is `auth: false`).
 3. **A full-access API token on the target.** Strapi admin → Settings → API
@@ -102,7 +102,7 @@ Use **`push`**. Never configure production to pull from a laptop.
    Connection screen on *both* sides.
 5. **A database backup of production.** This runbook writes to production.
 6. **Same `MEDIA_BASE_URL`?** Check whether both instances point at the same
-   media origin (`pos-strapi/config/plugins.js:178-192`). If they do, media byte
+   media origin (`services/strapi/config/plugins.js:178-192`). If they do, media byte
    sync will duplicate every object on `images.rutba.pk` under a fresh hash —
    annoying but harmless, and currently unavoidable
    ([GAP-11](./plugin-gaps.md#gap-11)).
@@ -166,10 +166,10 @@ not.
 
 ### 4b. `seo-meta` — recommend leaving it OFF for now
 
-`pos-strapi/src/api/cms-page/content-types/cms-page/lifecycles.js:6-18` (and the
+`services/strapi/src/api/cms-page/content-types/cms-page/lifecycles.js:6-18` (and the
 identical hook on `cms-page-group`) auto-creates an SEO sidecar on the target the
 moment a page arrives. Meanwhile **every** relation on `api::seo-meta` uses
-`inversedBy` (`pos-strapi/src/api/seo-meta/content-types/seo-meta/schema.json:53-100`),
+`inversedBy` (`services/strapi/src/api/seo-meta/content-types/seo-meta/schema.json:53-100`),
 so a synced `seo-meta` row cannot attach itself to anything
 ([GAP-1](./plugin-gaps.md#gap-1)).
 
@@ -219,7 +219,7 @@ you can attach field policies. `filterFieldsByPolicy`
 
 `owners` is a unidirectional many-to-many to
 `plugin::users-permissions.user`
-(`pos-strapi/src/api/cms-page/content-types/cms-page/schema.json:96-100`). It is
+(`services/strapi/src/api/cms-page/content-types/cms-page/schema.json:96-100`). It is
 in the plugin's owner-relation set, so the relations pass will try to connect
 staging user documentIds on production. Strapi throws
 `ValidationError: Document with id "…" not found` and **the entire relations

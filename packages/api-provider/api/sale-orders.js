@@ -15,7 +15,7 @@ const ROLE_SCOPES = {
 export const SaleOrdersEndpoints = {
     meta: {
         uid: 'api::sale-order.sale-order',
-        domains: ['delivery', 'order-management', 'sale', 'web-user'],
+        domains: ['delivery', 'orders', 'pos', 'portal'],
         roles: ['admin', 'manager', 'staff'],
     },
 
@@ -23,7 +23,7 @@ export const SaleOrdersEndpoints = {
         path: '/sale-orders',
         action: 'find',
         method: 'get',
-        apps: ['order-management', 'sale', 'delivery'],
+        apps: ['orders', 'pos', 'delivery'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
         params: listParams(
@@ -39,7 +39,7 @@ export const SaleOrdersEndpoints = {
         path: `/sale-orders/${documentId}`,
         action: 'findOne',
         method: 'get',
-        apps: ['order-management', 'sale', 'delivery'],
+        apps: ['orders', 'pos', 'delivery'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
         params: byIdParams({ populate, fields }),
@@ -48,7 +48,7 @@ export const SaleOrdersEndpoints = {
         path: '/sale-orders',
         action: 'create',
         method: 'post',
-        apps: ['order-management', 'sale', 'delivery'],
+        apps: ['orders', 'pos', 'delivery'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
         data,
@@ -57,7 +57,7 @@ export const SaleOrdersEndpoints = {
         path: `/sale-orders/${documentId}`,
         action: 'update',
         method: 'put',
-        apps: ['order-management', 'sale', 'delivery'],
+        apps: ['orders', 'pos', 'delivery'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
         data,
@@ -72,7 +72,7 @@ export const SaleOrdersEndpoints = {
         path: `/sale-orders/${documentId}/update-items`,
         action: 'updateItems',
         method: 'post',
-        apps: ['order-management', 'sale', 'delivery'],
+        apps: ['orders', 'pos', 'delivery'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
         data,
@@ -81,7 +81,7 @@ export const SaleOrdersEndpoints = {
         path: `/sale-orders/${documentId}/update-status`,
         action: 'updateStatus',
         method: 'post',
-        apps: ['order-management', 'sale', 'delivery'],
+        apps: ['orders', 'pos', 'delivery'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
         data,
@@ -90,7 +90,7 @@ export const SaleOrdersEndpoints = {
         path: `/sale-orders/${documentId}/assign-rider`,
         action: 'assignRider',
         method: 'post',
-        apps: ['order-management', 'sale', 'delivery'],
+        apps: ['orders', 'pos', 'delivery'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
         data,
@@ -102,7 +102,7 @@ export const SaleOrdersEndpoints = {
         path: `/sale-orders/${documentId}/attach-stock-item`,
         action: 'attachStockItem',
         method: 'post',
-        apps: ['order-management', 'sale', 'delivery'],
+        apps: ['orders', 'pos', 'delivery'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
         data,
@@ -113,20 +113,20 @@ export const SaleOrdersEndpoints = {
         path: `/sale-orders/${documentId}/attach-divisible`,
         action: 'attachDivisible',
         method: 'post',
-        apps: ['order-management', 'sale', 'delivery'],
+        apps: ['orders', 'pos', 'delivery'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
         data,
     }),
-    // todo: speculative stub — added so rutba-rider/pages/deliveries/[id].js
+    // todo: speculative stub — added so apps/sales/rider/pages/deliveries/[id].js
     // call site resolves at the descriptor level. Verify route path against
-    // pos-strapi (order-message content type) and confirm controller action
+    // services/strapi (order-message content type) and confirm controller action
     // exists before relying on the wire shape.
     messages: (documentId) => ({
         path: `/sale-orders/${documentId}/messages`,
         action: 'messages',
         method: 'get',
-        apps: ['order-management', 'sale', 'delivery'],
+        apps: ['orders', 'pos', 'delivery'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
     }),
@@ -135,15 +135,15 @@ export const SaleOrdersEndpoints = {
         path: `/sale-orders/${documentId}/messages`,
         action: 'sendMessage',
         method: 'post',
-        apps: ['order-management', 'sale', 'delivery'],
+        apps: ['orders', 'pos', 'delivery'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
         data,
     }),
 
     // Record a payment collection event (typically COD). Used by:
-    //   - rutba-order-management when staff/courier hands over cash
-    //   - rutba-rider when the rider collects at the door
+    //   - apps/sales/orders when staff/courier hands over cash
+    //   - apps/sales/rider when the rider collects at the door
     // Body shape: { payment_method, paid_amount,
     //               collected_by_rider_document_id?, collected_by_note?,
     //               collected_at? }
@@ -151,20 +151,20 @@ export const SaleOrdersEndpoints = {
         path: `/sale-orders/${documentId}/record-payment`,
         action: 'recordPayment',
         method: 'post',
-        apps: ['order-management', 'sale', 'delivery', 'accounts'],
+        apps: ['orders', 'pos', 'delivery', 'accounts'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
         data,
     }),
 
     // Verify (or dispute) a previously-recorded payment. Used by
-    // rutba-accounts as the cash-drop reconciliation action.
+    // apps/finance/accounts as the cash-drop reconciliation action.
     // Body shape: { status: 'verified' | 'disputed' | 'unverified', notes? }
     verifyPayment: (documentId, data) => ({
         path: `/sale-orders/${documentId}/verify-payment`,
         action: 'verifyPayment',
         method: 'post',
-        apps: ['order-management', 'accounts'],
+        apps: ['orders', 'accounts'],
         approle: ['admin', 'manager'],
         scope: ROLE_SCOPES,
         data,
@@ -180,7 +180,7 @@ export const SaleOrdersEndpoints = {
         path: `/sale-orders/${documentId}/request-cost-change-ack`,
         action: 'requestCostChangeAck',
         method: 'post',
-        apps: ['order-management', 'sale', 'delivery'],
+        apps: ['orders', 'pos', 'delivery'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
         data,
@@ -193,7 +193,7 @@ export const SaleOrdersEndpoints = {
         path: `/sale-orders/${documentId}/override-cost-change-ack`,
         action: 'overrideCostChangeAck',
         method: 'post',
-        apps: ['order-management', 'sale', 'delivery'],
+        apps: ['orders', 'pos', 'delivery'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
         data,
@@ -211,7 +211,7 @@ export const SaleOrdersEndpoints = {
         path: `/sale-orders/${documentId}/label${reprint ? '?reprint=1' : ''}`,
         action: 'getLabel',
         method: 'get',
-        apps: ['order-management', 'sale', 'delivery'],
+        apps: ['orders', 'pos', 'delivery'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
     }),
@@ -223,7 +223,7 @@ export const SaleOrdersEndpoints = {
         path: `/sale-orders/${documentId}/return-label${reprint ? '?reprint=1' : ''}`,
         action: 'getReturnLabel',
         method: 'get',
-        apps: ['order-management', 'sale', 'delivery'],
+        apps: ['orders', 'pos', 'delivery'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
     }),

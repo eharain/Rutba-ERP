@@ -3,7 +3,7 @@
 /**
  * Cron scheduler seam. Modules register tasks at port time (playbook: a
  * module's cron entries move here in its tranche, and are simultaneously
- * removed from pos-strapi's config/*-cron-tasks.js — NEVER run in both).
+ * removed from services/strapi's config/*-cron-tasks.js — NEVER run in both).
  *
  * Env-gated twice:
  *   RUTBA_CORE_CRONS=1   master switch (leader-only in multi-instance setups)

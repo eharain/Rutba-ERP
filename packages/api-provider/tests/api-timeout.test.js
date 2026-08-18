@@ -73,7 +73,7 @@ const {
 const { storage } = await import('../lib/storage.js');
 
 // ------------------ harness ------------------
-// pos-strapi/tests register cases that start immediately and are awaited
+// services/strapi/tests register cases that start immediately and are awaited
 // together, which is fine for synchronous bodies. These are not: they share
 // one loopback server and one storage map, they assert on elapsed time, and
 // the last one closes the server out from under everything. So cases are

@@ -2,7 +2,7 @@
 
 _Analysis date: 2026-07-10. Sources: `D:/Projects/RightApp` (2020–21 legacy suite), `D:/Rutba/Rutba-MTA` (ported MTA), `D:/Rutba/Rutba-Media-FileServer` (ported storage/media, RSTORAGE), `D:/Rutba/ERP` (current monorepo)._
 
-> **The ecosystem extracts infra-type capability as standalone services** — own repo/DB/port, docs-first (README + SPEC/FUNCTION), zero/near-zero-dep modular `src/`, HTTP/webhook (not code-level) integration with pos-strapi. **Rutba-MTA** is a true port of RIGHTMTA + RSMTPREST. **Rutba-Media-FileServer** is _not_ a port of RSTORAGE — different lineage (see §4a): it began as a **public media-serving origin** and RSTORAGE was a **private user Drive**; they've only recently converged on shared primitives. New infra capability becomes **features of / new standalone services in this pattern**, not monorepo ERP apps.
+> **The ecosystem extracts infra-type capability as standalone services** — own repo/DB/port, docs-first (README + SPEC/FUNCTION), zero/near-zero-dep modular `src/`, HTTP/webhook (not code-level) integration with services/strapi. **Rutba-MTA** is a true port of RIGHTMTA + RSMTPREST. **Rutba-Media-FileServer** is _not_ a port of RSTORAGE — different lineage (see §4a): it began as a **public media-serving origin** and RSTORAGE was a **private user Drive**; they've only recently converged on shared primitives. New infra capability becomes **features of / new standalone services in this pattern**, not monorepo ERP apps.
 
 RightApp was a multi-tenant SaaS ERP built as ~17 independently-deployed micro-frontends (Angular 8/9 SPAs + thin Express OIDC-BFFs) over a single Oracle data plane (RAPIS) with a central OIDC provider (RIDNTY). It was pulled off years ago for being too slow. Its MTA is now being ported to `Rutba-MTA` as the template for absorbing legacy modules. This doc inventories what RightApp had, maps it against today's Rutba ERP, and plans the apps to close the gap — with a dedicated CRM section.
 
@@ -32,15 +32,15 @@ RightApp was a multi-tenant SaaS ERP built as ~17 independently-deployed micro-f
 | — | RSHARED | Shared Angular lib | Empty scaffold |
 | — | RSRVRX | — | Empty |
 
-**Architectural DNA:** multi-tenant by subdomain (`clientId = SVSID + orgId`), central OIDC, one shared data plane, everything expressed as JSON action envelopes. Rutba keeps the "one shared backend" idea (pos-strapi) but is currently **single-tenant-per-deployment** and uses Strapi users-permissions + `api-pro` instead of a standalone OIDC provider.
+**Architectural DNA:** multi-tenant by subdomain (`clientId = SVSID + orgId`), central OIDC, one shared data plane, everything expressed as JSON action envelopes. Rutba keeps the "one shared backend" idea (services/strapi) but is currently **single-tenant-per-deployment** and uses Strapi users-permissions + `api-pro` instead of a standalone OIDC provider.
 
 ---
 
 ## 2. Current Rutba ERP apps (baseline)
 
-One shared **pos-strapi** backend (:4010) + 17 Next.js frontends + a marketplace worker. Ports 4000–4017 (next free **4018+**).
+One shared **services/strapi** backend (:4010) + 17 Next.js frontends + a marketplace worker. Ports 4000–4017 (next free **4018+**).
 
-`rutba-web` (4000) · `pos-stock` (4001) · `pos-sale` (4002) · `pos-auth` (4003) · `rutba-web-user` (4004) · `rutba-crm` (4005) · `rutba-hr` (4006) · `rutba-accounts` (4007) · `rutba-payroll` (4008) · `rutba-cms` (4009) · **pos-strapi (4010)** · `rutba-social` (4011) · `rutba-rider` (4012) · `rutba-order-management` (4013) · `rutba-manufacturing` (4014) · `rutba-ess` (4015) · `rutba-marketplace` (4016) · `rutba-inventory` (4017).
+`apps/content/storefront` (4000) · `apps/inventory/stock` (4001) · `apps/sales/pos` (4002) · `apps/admin/auth` (4003) · `apps/sales/portal` (4004) · `apps/sales/crm` (4005) · `apps/people/hr` (4006) · `apps/finance/accounts` (4007) · `apps/finance/payroll` (4008) · `apps/content/cms` (4009) · **services/strapi (4010)** · `apps/content/social` (4011) · `apps/sales/rider` (4012) · `apps/sales/orders` (4013) · `apps/inventory/manufacturing` (4014) · `apps/people/ess` (4015) · `apps/sales/marketplace` (4016) · `apps/inventory/control` (4017).
 
 Backend already models (Strapi content-types): products/brand/category, purchase+purchase-item+supplier, sale/sale-order, crm-contact/crm-lead/crm-activity, full accounting (acc-*), HR/payroll (hr-*/pay-*), manufacturing (mfg-*), marketplace, notifications+notification-template, stock/warehouse/batch, workflow engine.
 
@@ -50,18 +50,18 @@ Backend already models (Strapi content-types): products/brand/category, purchase
 
 | RightApp capability | Rutba today | Verdict |
 |---|---|---|
-| RAPIS data plane | **pos-strapi** (Strapi 5 + MySQL, api-pro authz) | ✅ Superseded (better) |
-| RIDNTY OIDC provider | pos-auth + Strapi users-permissions + api-pro | 🟡 Partial — auth yes, **not** a standalone OIDC IdP for 3rd-party RPs |
+| RAPIS data plane | **services/strapi** (Strapi 5 + MySQL, api-pro authz) | ✅ Superseded (better) |
+| RIDNTY OIDC provider | apps/admin/auth + Strapi users-permissions + api-pro | 🟡 Partial — auth yes, **not** a standalone OIDC IdP for 3rd-party RPs |
 | RORGAD org admin / multi-tenancy | — (single-tenant; rutba.pk is one tenant) | ❌ **Gap** (only if SaaS multi-tenant is a goal) |
-| RUSRPL self-service portal | rutba-web-user (:4004) | 🟡 Partial — profile/orders yes; **no billing/subscriptions, no MFA config, no create-org** |
-| RGTAPP landing | rutba-web (:4000) | ✅ |
-| RGTAPPWEB marketing CMS | rutba-cms (:4009) + rutba-web | ✅ Superseded |
-| RCRMXX CRM | rutba-crm (:4005) + crm-* backend | 🟡 Partial — big feature gaps (see §5) |
-| RPRODX PIM | product/brand/category backend; edited via pos-stock/Strapi admin | 🟡 Partial — **no dedicated PIM app**; no multi-currency price lists / marketplace-catalog import UI |
-| RORDER sales orders | rutba-order-management (:4013) + sale-order | ✅ |
+| RUSRPL self-service portal | apps/sales/portal (:4004) | 🟡 Partial — profile/orders yes; **no billing/subscriptions, no MFA config, no create-org** |
+| RGTAPP landing | apps/content/storefront (:4000) | ✅ |
+| RGTAPPWEB marketing CMS | apps/content/cms (:4009) + apps/content/storefront | ✅ Superseded |
+| RCRMXX CRM | apps/sales/crm (:4005) + crm-* backend | 🟡 Partial — big feature gaps (see §5) |
+| RPRODX PIM | product/brand/category backend; edited via apps/inventory/stock/Strapi admin | 🟡 Partial — **no dedicated PIM app**; no multi-currency price lists / marketplace-catalog import UI |
+| RORDER sales orders | apps/sales/orders (:4013) + sale-order | ✅ |
 | RORDER **purchase orders** | purchase/supplier **backend exists**; no dedicated procurement UI | 🟡 Partial — **no Procurement/Purchasing app** |
-| RINVNT inventory | rutba-inventory (:4017) + pos-stock (:4001) | ✅ Superseded (warehouse/bin/batch/FEFO) |
-| RBOOKS accounting | rutba-accounts (:4007) + acc-* | ✅ Superseded (RBOOKS was empty) |
+| RINVNT inventory | apps/inventory/control (:4017) + apps/inventory/stock (:4001) | ✅ Superseded (warehouse/bin/batch/FEFO) |
+| RBOOKS accounting | apps/finance/accounts (:4007) + acc-* | ✅ Superseded (RBOOKS was empty) |
 | RTMPLT template builder | notification-template (system notices only) | ❌ **Gap** — no user email/content template studio with tracking |
 | RMAILX email-marketing UI | — (Rutba-MTA is send-engine only) | ❌ **Gap** — no campaigns/contacts/segments/mail-agents UI |
 | RIGHTMTA + RSMTPREST send engine | **Rutba-MTA** (standalone) | ✅ Ported (ingress SMTP server optional) |
@@ -74,32 +74,32 @@ Backend already models (Strapi content-types): products/brand/category, purchase
 
 ## 4. The gaps, as an app plan
 
-Ordered by value-to-effort. Ports assume the next free slot (4018+). Follow the **Rutba-MTA porting pattern** where a capability is infra (standalone Apache-2.0 Node service, own DB/config/port, docs-first, pure-logic core, HTTP/webhook integration) and the **new-ERP-app checklist** (`roles.js` + `/auth/callback` + `domains.json`) where it's a monorepo Next.js app on pos-strapi.
+Ordered by value-to-effort. Ports assume the next free slot (4018+). Follow the **Rutba-MTA porting pattern** where a capability is infra (standalone Apache-2.0 Node service, own DB/config/port, docs-first, pure-logic core, HTTP/webhook integration) and the **new-ERP-app checklist** (`roles.js` + `/auth/callback` + `domains.json`) where it's a monorepo Next.js app on services/strapi.
 
-### Priority 1 — Email Marketing / Campaigns (`rutba-campaigns`, :4019 — since built)
-The biggest coherent gap and the natural front-end for the MTA already being ported. Rebuilds **RMAILX + RTMPLT** as one app on pos-strapi + Rutba-MTA:
+### Priority 1 — Email Marketing / Campaigns (`apps/content/campaigns`, :4019 — since built)
+The biggest coherent gap and the natural front-end for the MTA already being ported. Rebuilds **RMAILX + RTMPLT** as one app on services/strapi + Rutba-MTA:
 - Content-types: `mail-template` (subject/body/tracking/append-links/folder), `mail-template-block`, `mail-audience` (saved contact segment — reuse CRM segmentation §5), `mail-campaign` (template + audience + schedule + UTM), `mail-send-log` (mirror of MTA delivery events via webhook).
 - Screens: template studio (Mustache/`{{var}}`), audience builder, campaign composer + test-send + schedule, delivery/opens/clicks dashboard (fed by Rutba-MTA webhooks).
 - Integration: Rutba-MTA already owns sending, suppression, reputation throttle, unsubscribe, click interception — this app is the **tenant UI + template/campaign store** over it. Closes RTMPLT + RMAILX + RIGHTMTA-campaign-runner in one move.
 
-### Priority 2 — CRM feature build-out (extend `rutba-crm`, no new app)
+### Priority 2 — CRM feature build-out (extend `apps/sales/crm`, no new app)
 See §5 — this is where the richest RightApp IP lives and it directly serves rutba.pk sales. Highest ROI because the app already exists.
 
 ### Priority 3 — First-party Analytics / Activity Tracker (`rutba-analytics` service, standalone, ~:8030)
 Port **RANALYTICS** using the Rutba-MTA pattern: a standalone tracker service serving `script.js` + `track.png`, capturing visits (geo/channel/device/UTM), and POSTing **web-visit + email-open events into CRM as `crm-activity` rows**. Powers the CRM "Site" activity timeline (§5) and campaign click-through. Site registration lives in a small settings screen.
 
 ### Priority 4 — Product Information Management app (`rutba-pim`, ~:4019) — _optional_
-Backend catalog exists; this adds RPRODX's richer merchandising layer if needed: multi-currency price lists, channel/COA mapping, bulk catalog import from marketplace feeds (Amazon/Daraz equivalent of MWS lookup). Lower urgency — pos-stock + Strapi admin cover basic catalog editing today.
+Backend catalog exists; this adds RPRODX's richer merchandising layer if needed: multi-currency price lists, channel/COA mapping, bulk catalog import from marketplace feeds (Amazon/Daraz equivalent of MWS lookup). Lower urgency — apps/inventory/stock + Strapi admin cover basic catalog editing today.
 
 ### Priority 5 — Procurement / Purchasing app (`rutba-procurement`, ~:4020) — _optional_
-`purchase`/`supplier` backend already exists; a dedicated buyer UI (PO lifecycle, supplier catalogs, receiving → stock-input, three-way match into acc-bill) would surface it. Could also just be a section of rutba-order-management.
+`purchase`/`supplier` backend already exists; a dedicated buyer UI (PO lifecycle, supplier catalogs, receiving → stock-input, three-way match into acc-bill) would surface it. Could also just be a section of apps/sales/orders.
 
 ### Priority 6 — SaaS platform layer (only if Rutba goes multi-tenant SaaS)
 RightApp's RORGAD + RUSRPL-billing + RIDNTY-as-IdP only matter if Rutba is sold as multi-tenant SaaS rather than per-tenant deployments (rutba.pk model). If that's the direction:
 - `rutba-org-admin` — tenant/org console, user↔app entitlements, domain verification.
-- Billing/subscriptions in rutba-web-user (RUSRPL parity) + MFA config + create-org.
-- Promote pos-auth toward a real OIDC provider for external RPs.
-- Requires a tenancy model in pos-strapi (org scoping) — significant architecture decision, **defer until the SaaS question is answered**.
+- Billing/subscriptions in apps/sales/portal (RUSRPL parity) + MFA config + create-org.
+- Promote apps/admin/auth toward a real OIDC provider for external RPs.
+- Requires a tenancy model in services/strapi (org scoping) — significant architecture decision, **defer until the SaaS question is answered**.
 
 _(Update 2026-08-17: the SaaS question is answered — yes. Multi-tenant SaaS is [ROADMAP](../ROADMAP.md) H2, and the tenancy model is decided as database-per-tenant — [core-server-multitenancy-program README](../core-server-multitenancy-program/README.md) ground rule 4.)_
 
@@ -119,7 +119,7 @@ These started from **different problems** and are only now converging — don't 
 
 ---
 
-## 5. CRM: what to bring from Right CRM into `rutba-crm`
+## 5. CRM: what to bring from Right CRM into `apps/sales/crm`
 
 Right CRM's data lived in RAPIS (no schema in-repo), but its **feature set** is the valuable inheritance. Rutba already has `crm-contact`, `crm-lead`, `crm-activity` — so this is mostly additive. Ranked:
 
@@ -162,7 +162,7 @@ Per-contact files with generate-share-link-with-PIN. Nice-to-have; depends on wh
 
 1. **CRM core build-out** (§5.1 timeline, §5.3 segmentation, §5.4 import, §5.5 associations) — pure additive value on an app that exists and serves rutba.pk now.
 2. **CRM pipeline** (§5.2) — the net-new deal/opportunity layer.
-3. **`rutba-campaigns`** (Priority 1) — email marketing UI over the already-ported Rutba-MTA; consumes CRM segments.
+3. **`apps/content/campaigns`** (Priority 1) — email marketing UI over the already-ported Rutba-MTA; consumes CRM segments.
 4. **Tracked email in CRM** (§5.7) — wire CRM ↔ MTA.
 5. **`rutba-analytics`** (Priority 3) — unlocks §5.8 site timeline + campaign click analytics.
 6. **PIM / Procurement UIs** (Priorities 4–5) — only if the backend-only catalog/purchase modules need dedicated front-ends.

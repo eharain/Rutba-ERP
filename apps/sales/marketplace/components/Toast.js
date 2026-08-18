@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from "react";
 
 /**
- * useToast – lightweight inline toast (mirrors the rutba-social helper).
+ * useToast – lightweight inline toast (mirrors the apps/content/social helper).
  *   const { toast, ToastContainer } = useToast();
  *   toast("Saved!", "success");   // or "danger", "warning", "info"
  */

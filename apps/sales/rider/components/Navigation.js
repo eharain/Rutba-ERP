@@ -1,4 +1,4 @@
-import Topbar from "@rutba/pos-shared/components/Topbar";
+import Topbar from "@rutba/shared/components/Topbar";
 
 const SECONDARY = [
     { href: "/delivery-offers", label: "Open Offers",       variant: "primary" },

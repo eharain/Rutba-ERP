@@ -1,4 +1,4 @@
-# @rutba/video-maker
+# @rutba/video
 
 <!-- verify-docs: external desktop/lib/video-maker-path.js -->
 <!-- In the Rutba-Social-Poster desktop app repo. -->
@@ -12,7 +12,7 @@ Built to run unchanged in **two** hosts:
 
 | Host | Where it runs | How it fetches media |
 | --- | --- | --- |
-| `rutba-social` (Video Studio) | a Next.js page | through the app's own `/api/media-proxy` |
+| `apps/content/social` (Video Studio) | a Next.js page | through the app's own `/api/media-proxy` |
 | Rutba Social Poster | an Electron window | main process fetches, bytes arrive over IPC |
 
 Nothing in here knows about either. That is the whole point, and it is why
@@ -23,7 +23,7 @@ there is no framework import, no app config, and no hardcoded fetch.
 The only thing a host **must** supply is a media transport:
 
 ```js
-import { configureMediaFetch } from '@rutba/video-maker';
+import { configureMediaFetch } from '@rutba/video';
 
 // (url, { signal }) => Promise<Blob>
 configureMediaFetch(async (url, { signal } = {}) => {
@@ -42,7 +42,7 @@ mid-render, so a host that skips the transport gets no video at all.
 ## Rendering
 
 ```js
-import { loadImages, loadImage, loadAudioTrack, buildPlan, renderVideo } from '@rutba/video-maker';
+import { loadImages, loadImage, loadAudioTrack, buildPlan, renderVideo } from '@rutba/video';
 
 const { images } = await loadImages(imageUrls);
 const logo = await loadImage(logoUrl);           // optional

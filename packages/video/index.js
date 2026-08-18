@@ -1,12 +1,12 @@
 /**
- * @rutba/video-maker — turn a post's still images into a short video with the
+ * @rutba/video — turn a post's still images into a short video with the
  * post text typed over it, using only what a browser engine already ships.
  *
  * Every frame is painted onto a <canvas>; the canvas' captureStream() is fed to
  * a MediaRecorder, with an optional music track muxed in. No ffmpeg, no
  * server-side render farm, and no dependencies of any kind.
  *
- * TWO HOSTS, ONE RENDERER. rutba-social runs this in a page; the Rutba Social
+ * TWO HOSTS, ONE RENDERER. apps/content/social runs this in a page; the Rutba Social
  * Poster runs it in an Electron window. Nothing in here may assume either — so
  * there is no framework, no app config, and above all no hardcoded transport:
  * every caller passes its own `fetchMedia(url) => Promise<Blob>`. That single

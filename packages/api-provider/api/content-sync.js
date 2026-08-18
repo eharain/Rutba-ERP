@@ -3,7 +3,7 @@
  *
  * Lets an app kick off a content push/pull to the paired instance without a
  * Strapi admin session — the plugin's own controls live on admin routes that an
- * app JWT cannot reach, so pos-strapi brokers the call.
+ * app JWT cannot reach, so services/strapi brokers the call.
  *
  * Method names deliberately start with `sync`/`get`, which are on api-pro's
  * descriptor verb whitelist. A verb outside that list is skipped silently by
@@ -12,7 +12,7 @@
 export const ContentSyncEndpoints = {
     meta: {
         uid: 'api::content-sync.content-sync',
-        domains: ['cms', 'order-management'],
+        domains: ['cms', 'orders'],
         roles: ['admin', 'manager'],
     },
 

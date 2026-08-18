@@ -1,4 +1,4 @@
-import SharedSidebar from "@rutba/pos-shared/components/Sidebar";
+import SharedSidebar from "@rutba/shared/components/Sidebar";
 
 const SECTIONS = [
     { href: "/", label: "Run Seeds", icon: "fa-seedling" },
@@ -6,5 +6,5 @@ const SECTIONS = [
 ];
 
 export default function Sidebar() {
-    return <SharedSidebar sections={SECTIONS} storageKey="rutba-seed-sidebar-pinned" />;
+    return <SharedSidebar sections={SECTIONS} storageKey="apps/admin/seed-sidebar-pinned" />;
 }

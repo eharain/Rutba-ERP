@@ -10,7 +10,7 @@ import {
 /**
  * Shared lookup loader for product-list filter chips.
  *
- * Every product list (pos-stock + rutba-cms + rutba-social + rutba-inventory,
+ * Every product list (apps/inventory/stock + apps/content/cms + apps/content/social + apps/inventory/control,
  * and any future surface that needs filter dropdowns over brands / categories /
  * suppliers / terms / recent purchases) was hand-rolling the same Promise.all
  * on mount. This hook centralises that fetch so the request shape is identical

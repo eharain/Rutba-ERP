@@ -37,7 +37,7 @@ export function createStats() {
  * Is the upstream answering right now?
  *
  * Reachability means "spoke HTTP", not "returned 2xx" — a `HEAD` on the API
- * base is a 404 on both Strapi and rutba-core, and a 404 is a perfectly good
+ * base is a 404 on both Strapi and services/core, and a 404 is a perfectly good
  * proof of life. No credentials are sent, so this never depends on a session.
  *
  * Results are cached briefly so a status poll can't turn into a probe storm.

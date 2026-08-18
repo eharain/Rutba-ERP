@@ -2,7 +2,7 @@ const { mergeConfig } = require('vite');
 
 // strapi-api-pro's prebuilt admin chunks live under
 // packages/strapi-api-pro/dist/_chunks/. From there Node module
-// resolution does not walk up to pos-strapi/node_modules, so bare
+// resolution does not walk up to services/strapi/node_modules, so bare
 // imports of @strapi/strapi/admin fail. The plugin also declares
 // @strapi/strapi as an optional peer (the published-package
 // contract), which makes Vite generate an empty

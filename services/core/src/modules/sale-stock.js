@@ -7,7 +7,7 @@
  * drives; splitting it would put the exclusive-write-path rule at risk.
  *
  * Zero-copy, same model as tranches 1–6: controllers/services are require()d
- * from pos-strapi source and run against the compat strapi.
+ * from services/strapi source and run against the compat strapi.
  *
  * Auth models (mirrors the Strapi route files exactly):
  *  - auth:false routes → selfAuth here: web checkout + web-order reads,
@@ -30,7 +30,7 @@
  * order (koa-router is first-match): literal segments before :documentId
  * catch-alls, and the same shadowings live has (e.g. GET
  * /sale-orders/confirm-change is declared after GET /sale-orders/:documentId
- * in pos-strapi and therefore resolves to myOrderDetail there — parity keeps
+ * in services/strapi and therefore resolves to myOrderDetail there — parity keeps
  * that, the POST route is the functional one).
  *
  * Lifecycles NEW here: sale-item, sale-return, sale-return-item,

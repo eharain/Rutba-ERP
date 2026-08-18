@@ -16,7 +16,7 @@ now?"*; reports answer *"what happened and why?"* ([21](21-reports-and-analytics
 | **Agent** | `helpdesk_staff` | What should I work on next? | 60s |
 | **Manager** | `helpdesk_manager` | Will we miss anything today? | 60s |
 | **Executive** | `helpdesk_admin`, leadership | Is service quality improving? | 15 min |
-| **Customer** | `web_user` | What's happening with my requests? | On load |
+| **Customer** | `storefront_user` | What's happening with my requests? | On load |
 
 ## 20.3 Agent dashboard
 

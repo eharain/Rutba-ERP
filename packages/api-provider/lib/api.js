@@ -26,7 +26,7 @@ export { API_URL, IMAGE_URL };
 //   - An SSR page waits forever. getServerSideProps has no deadline of its
 //     own, so a wedged backend leaves the tab spinning until the browser
 //     abandons it. The storefront's /qr/<code> resolver had to bound its own
-//     call by hand for exactly this reason (rutba-web/src/services/qr.ts).
+//     call by hand for exactly this reason (apps/content/storefront/src/services/qr.ts).
 //   - Nothing downstream can tell "slow" from "gone". A caller that wants to
 //     make that distinction — a connectivity indicator, a retry, the offline
 //     bridge in docs/todo/offline-pos-options.md — needs a request that
@@ -150,7 +150,7 @@ export function isNetworkError(err) {
 //
 // The role header is REQUIRED when the user holds multiple roles for the
 // active app; auto-selected on the server when they hold exactly one. The
-// RoleSwitcher component in @rutba/pos-shared writes this value.
+// RoleSwitcher component in @rutba/shared writes this value.
 //
 // The deprecated X-Rutba-App-Admin header (AGP-era admin elevation) is no
 // longer sent — admin is just one of the roles the user can switch to from

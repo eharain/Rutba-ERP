@@ -2,12 +2,12 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Layout from '../../components/Layout';
-import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
+import ProtectedRoute from '@rutba/shared/components/ProtectedRoute';
 import { StockItemsEndpoints, PurchaseItemsEndpoints, ProductsEndpoints } from '@rutba/api-provider/endpoints/index.js';
 import { loadProduct } from '@rutba/api-provider/pos';
-import { useUtil } from '@rutba/pos-shared/context/UtilContext';
-import StrapiImage from '@rutba/pos-shared/components/StrapiImage';
-import ProductPageShell, { buildStockProductTabs } from '@rutba/pos-shared/components/product/ProductPageShell';
+import { useUtil } from '@rutba/shared/context/UtilContext';
+import StrapiImage from '@rutba/shared/components/StrapiImage';
+import ProductPageShell, { buildStockProductTabs } from '@rutba/shared/components/product/ProductPageShell';
 
 export default function ProductRelationsPage() {
     const router = useRouter();

@@ -1,23 +1,27 @@
 'use strict';
 
 /**
- * Environment loading for rutba-core.
+ * Environment loading for services/core.
  *
- * Mirrors scripts/js/load-env.js semantics for the subset rutba-core needs:
+ * Mirrors scripts/js/load-env.js semantics for the subset services/core needs:
  *   1. repo-root .env            → determines ENVIRONMENT (+ base vars)
  *   2. repo-root .env.<ENV>      → overrides .env
  *   3. file values take precedence over process.env
  *
  * Variable precedence for a given NAME:
- *   RUTBA_CORE__NAME  >  POS_STRAPI__NAME  >  NAME
- * (POS_STRAPI__ is honored because rutba-core connects to the same database
- *  as pos-strapi during the strangler migration.)
+ *   CORE__NAME  >  POS_STRAPI__NAME  >  NAME
+ * (POS_STRAPI__ is honored because services/core connects to the same database
+ *  as services/strapi during the strangler migration.)
  */
 
 const fs = require('fs');
 const path = require('path');
 
-const REPO_ROOT = path.resolve(__dirname, '..', '..', '..');
+// services/core/src/config -> repo root. Four levels, not three: core moved
+// from rutba-core/ into services/core/ in the P3 restructure, and getting this
+// wrong is silent — REPO_ROOT lands on services/, no .env is found there, and
+// every database credential resolves to empty.
+const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 
 function parseEnvFile(filePath) {
   if (!fs.existsSync(filePath)) return {};
@@ -40,7 +44,7 @@ function parseEnvFile(filePath) {
   return out;
 }
 
-// Per-process settings that must NOT inherit pos-strapi's value: both servers
+// Per-process settings that must NOT inherit services/strapi's value: both servers
 // run side by side during the strangler migration, so taking POS_STRAPI__PORT
 // would make core try to bind the port Strapi is already listening on.
 const CORE_OWNED = new Set(['PORT', 'HOST']);
@@ -66,8 +70,8 @@ function loadVars() {
  * Publish the resolved values back onto process.env under their bare names.
  *
  * scripts/js/load-env.js does this for every other app by spawning it with a
- * merged environment (POS_STRAPI__FRONTEND_URL → FRONTEND_URL). rutba-core is
- * started directly, so without this step the pos-strapi code it loads zero-copy
+ * merged environment (POS_STRAPI__FRONTEND_URL → FRONTEND_URL). services/core is
+ * started directly, so without this step the services/strapi code it loads zero-copy
  * reads `process.env.X` and gets nothing — silently, since almost every such
  * read has a fallback. ORDER_ALERT_EMAIL resolving to '' is the sharp case:
  * notification-service only sends when it has a recipient, so order alerts
@@ -79,11 +83,11 @@ function loadVars() {
 function hydrateProcessEnv(vars) {
   const names = new Set();
   for (const key of Object.keys(vars)) {
-    const bare = key.replace(/^(?:RUTBA_CORE__|POS_STRAPI__)/, '');
+    const bare = key.replace(/^(?:CORE__|POS_STRAPI__)/, '');
     if (bare && !CORE_OWNED.has(bare)) names.add(bare);
   }
   for (const name of names) {
-    for (const key of [`RUTBA_CORE__${name}`, `POS_STRAPI__${name}`, name]) {
+    for (const key of [`CORE__${name}`, `POS_STRAPI__${name}`, name]) {
       if (vars[key] !== undefined && vars[key] !== '') {
         process.env[name] = vars[key];
         break;
@@ -95,8 +99,8 @@ function hydrateProcessEnv(vars) {
 function get(name, fallback) {
   const { vars } = loadVars();
   const keys = CORE_OWNED.has(name)
-    ? [`RUTBA_CORE__${name}`, name]
-    : [`RUTBA_CORE__${name}`, `POS_STRAPI__${name}`, name];
+    ? [`CORE__${name}`, name]
+    : [`CORE__${name}`, `POS_STRAPI__${name}`, name];
   for (const key of keys) {
     if (vars[key] !== undefined && vars[key] !== '') return vars[key];
   }
@@ -112,7 +116,7 @@ const SQLITE_CLIENTS = new Set(['sqlite', 'sqlite3', 'better-sqlite3']);
 function sqliteConfig() {
   const filename = get(
     'DATABASE_FILENAME',
-    path.join(REPO_ROOT, '.data', 'rutba-core.sqlite'),
+    path.join(REPO_ROOT, '.data', 'services/core.sqlite'),
   );
 
   // better-sqlite3 opens the file but will not create the directory holding

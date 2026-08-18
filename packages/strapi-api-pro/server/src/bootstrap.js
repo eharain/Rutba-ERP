@@ -220,7 +220,7 @@ module.exports = async ({ strapi }) => {
     isBypassed: buildBypassMatcher(config.bypassPaths),
     clearCache: (userId) => (userId ? cache.clearUser(userId) : cache.clearAll()),
     clearAllCache: () => cache.clearAll(),
-    // pos-strapi (or any consumer) calls this from its own bootstrap to inject
+    // services/strapi (or any consumer) calls this from its own bootstrap to inject
     // additional role keys derived from external context — e.g. hr_* roles
     // pulled from HR team membership. The fn receives (user, { strapi }) and
     // should return an array of role-key strings.

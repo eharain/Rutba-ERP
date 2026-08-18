@@ -3,7 +3,7 @@
 
 /**
  * Cross-server auth contract check (tranche 8). Requires BOTH servers up:
- *   pos-strapi on :4010 (PORT=4010 DATABASE_NAME=pos_db npm run start)
+ *   services/strapi on :4010 (PORT=4010 DATABASE_NAME=pos_db npm run start)
  *   — core is booted here on :4034.
  *
  * This is the check that makes the auth flip non-disruptive: because both
@@ -55,8 +55,8 @@ async function main() {
 
   const ping = await fetch(`${STRAPI}/api`).catch(() => null);
   if (!ping) {
-    console.error(`pos-strapi is not reachable at ${STRAPI} — start it first:\n` +
-      `  cd pos-strapi && PORT=4010 DATABASE_NAME=pos_db npm run start`);
+    console.error(`services/strapi is not reachable at ${STRAPI} — start it first:\n` +
+      `  cd services/strapi && PORT=4010 DATABASE_NAME=pos_db npm run start`);
     await closeDb();
     process.exit(2);
   }
@@ -87,16 +87,16 @@ async function main() {
     const coreJwt = reg.body.jwt;
     const coreRefresh = reg.body.refreshToken;
 
-    // 2. CORE-minted access token → live pos-strapi.
+    // 2. CORE-minted access token → live services/strapi.
     const meOnStrapi = await call(STRAPI, 'GET', '/api/users/me', coreJwt);
-    check('a CORE-minted access token authenticates on pos-strapi',
+    check('a CORE-minted access token authenticates on services/strapi',
       meOnStrapi.status === 200 && meOnStrapi.body.email === EMAIL,
       `status ${meOnStrapi.status} ${JSON.stringify(meOnStrapi.body).slice(0, 150)}`);
 
     // 3. STRAPI-minted token (login through Strapi) → core.
     const loginOnStrapi = await call(STRAPI, 'POST', '/api/auth/local', null,
       { identifier: EMAIL, password: PASSWORD });
-    check('pos-strapi logs in the user core created (same password hash)',
+    check('services/strapi logs in the user core created (same password hash)',
       loginOnStrapi.status === 200 && Boolean(loginOnStrapi.body.jwt),
       `status ${loginOnStrapi.status} ${JSON.stringify(loginOnStrapi.body).slice(0, 150)}`);
     const strapiJwt = loginOnStrapi.body.jwt;
@@ -109,7 +109,7 @@ async function main() {
 
     // 4. Rotation crosses the boundary.
     //
-    // core → strapi cannot be exercised over HTTP on this DB: pos-strapi's
+    // core → strapi cannot be exercised over HTTP on this DB: services/strapi's
     // /api/auth/refresh is 403 for EVERY caller because the UP `public` role
     // has no auth.refresh grant (refresh is called unauthenticated — that is
     // the whole point of it — so it always resolves to the public role).
@@ -120,19 +120,19 @@ async function main() {
     const rotOnStrapi = await call(STRAPI, 'POST', '/api/auth/refresh', null,
       { refreshToken: coreRefresh });
     const gateIsUnconditional = rotStrapiOwn.status === 403 && rotOnStrapi.status === 403;
-    check('pos-strapi refresh is 403-gated for its OWN token too (pre-existing '
+    check('services/strapi refresh is 403-gated for its OWN token too (pre-existing '
       + 'dev-DB gap: public role lacks auth.refresh) — not a core-token issue',
       gateIsUnconditional,
       `strapi-own ${rotStrapiOwn.status}, core-issued ${rotOnStrapi.status}`);
 
     // The core-issued refresh token is still a valid Strapi session family:
-    // rotating it on core yields a child whose access token pos-strapi accepts.
+    // rotating it on core yields a child whose access token services/strapi accepts.
     const rotCoreIssued = await call(CORE, 'POST', '/api/auth/refresh', null,
       { refreshToken: coreRefresh });
     const meCoreRotOnStrapi = rotCoreIssued.body && rotCoreIssued.body.jwt
       ? await call(STRAPI, 'GET', '/api/users/me', rotCoreIssued.body.jwt)
       : { status: 0 };
-    check('a CORE-issued refresh token rotates into a token pos-strapi accepts',
+    check('a CORE-issued refresh token rotates into a token services/strapi accepts',
       rotCoreIssued.status === 200 && meCoreRotOnStrapi.status === 200,
       `rotate ${rotCoreIssued.status}, me-on-strapi ${meCoreRotOnStrapi.status}`);
 
@@ -141,7 +141,7 @@ async function main() {
       rotOnCore.status === 200 && Boolean(rotOnCore.body.jwt),
       `status ${rotOnCore.status} ${JSON.stringify(rotOnCore.body).slice(0, 150)}`);
     const meAfterCoreRot = await call(STRAPI, 'GET', '/api/users/me', rotOnCore.body.jwt);
-    check('the token core issued from that rotation works on pos-strapi',
+    check('the token core issued from that rotation works on services/strapi',
       meAfterCoreRot.status === 200, `status ${meAfterCoreRot.status}`);
 
     // 5. Revocation is shared: logging out on core kills the session for both.
@@ -150,7 +150,7 @@ async function main() {
     const logoutJwt = freshLogin.body.jwt;
     const logoutRefresh = freshLogin.body.refreshToken;
     const stillGood = await call(STRAPI, 'GET', '/api/users/me', logoutJwt);
-    check('pre-logout: the fresh core token works on pos-strapi', stillGood.status === 200,
+    check('pre-logout: the fresh core token works on services/strapi', stillGood.status === 200,
       `status ${stillGood.status}`);
 
     await call(CORE, 'POST', '/api/auth/logout', logoutJwt, { scope: 'all' });

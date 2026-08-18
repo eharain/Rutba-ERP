@@ -1,6 +1,6 @@
 @echo off
 REM Install dependencies
-cd "%~dp0..\pos-strapi"
+cd "%~dp0..\services/strapi"
 npm install
 
 REM Start Strapi server

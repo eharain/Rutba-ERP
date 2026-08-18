@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
-import { printStorage } from "@rutba/pos-shared/lib/printStorage";
+import { printStorage } from "@rutba/shared/lib/printStorage";
 import { QrImage } from "../../components/QrCode";
 
 /**
  * QR label sheet.
  *
  * Opened in a new tab by the QR dialog / builder page, which stashes the
- * payload in localStorage first (printStorage) — the same handoff pos-stock
+ * payload in localStorage first (printStorage) — the same handoff apps/inventory/stock
  * uses for barcode labels, because a batch of labels overflows a URL.
  *
  * Rendering is entirely client-side React + window.print(); there is no server

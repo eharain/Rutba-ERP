@@ -1,6 +1,6 @@
 'use strict';
 
-// Bulk-import endpoint for rutba-cms Excel I/O. Single POST takes a chunk of
+// Bulk-import endpoint for apps/content/cms Excel I/O. Single POST takes a chunk of
 // rows (capped server-side at MAX_ROWS_PER_REQUEST) and upserts them inside
 // a single request boundary, replacing what was previously 3 sequential HTTP
 // calls per row from the browser.

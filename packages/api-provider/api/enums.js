@@ -15,13 +15,13 @@ export const EnumsEndpoints = {
     // reason — the seeder only walks methods whose name matches its verb
     // whitelist (isDescriptorMethodName), and `values` is not on it. Renaming to
     // `listValues` would make it seedable, but that is a cross-package rename
-    // (pos-shared/lib/use-enum-values.js, api-provider/pos/fetchs.js, plus the
+    // (shared/lib/use-enum-values.js, api-provider/pos/fetchs.js, plus the
     // scaffolded client). Harmless today because /enums/:name/:field is declared
-    // `auth: false` in pos-strapi and never reaches the api-pro interceptor —
+    // `auth: false` in services/strapi and never reaches the api-pro interceptor —
     // but the domains above must be right before that route is ever locked down.
     meta: {
         uid: 'api::enum.enum',
-        domains: ['cms', 'ess', 'hr', 'mail', 'stock', 'admin', 'users'],
+        domains: ['cms', 'ess', 'hr', 'mail', 'stock', 'console'],
         roles: ['admin', 'manager', 'staff']
     },
 
@@ -36,7 +36,7 @@ export const EnumsEndpoints = {
         path: `/enums/${name}/${field}`,
         action: 'find',
         method: 'get',
-        apps: ['cms', 'ess', 'hr', 'mail', 'stock', 'admin', 'users', 'helpdesk'],
+        apps: ['cms', 'ess', 'hr', 'mail', 'stock', 'console', 'helpdesk'],
         approle: ['admin', 'manager', 'staff']
     }),
 

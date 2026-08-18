@@ -113,7 +113,7 @@ module.exports = createCoreController('api::product.product', ({ strapi }) => ({
         : lowFilter;
     }
 
-    // "Without social posts" filter (rutba-social's product browser uses it to
+    // "Without social posts" filter (apps/content/social's product browser uses it to
     // surface products that haven't been turned into a social post yet). The
     // link isn't a field on product — it lives on social-post.products
     // (manyToMany) — so it can't be expressed as a REST filter. We collect the

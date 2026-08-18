@@ -422,7 +422,7 @@ function documents(uid) {
 }
 
 // Mirror Strapi's `strapi.documents.use(...)` so ported registration code
-// (pos-strapi src/index.js style) reads the same in core.
+// (services/strapi src/index.js style) reads the same in core.
 documents.use = useDocumentMiddleware;
 
 // mapFileRow is exported for the upload platform: a file it creates must be

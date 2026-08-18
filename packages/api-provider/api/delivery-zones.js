@@ -3,7 +3,7 @@ import { listParams } from './__param_builders.js';
 export const DeliveryZonesEndpoints = {
     meta: {
         uid: 'api::delivery-zone.delivery-zone',
-        domains: ['cms', 'order-management', 'web', 'web-user'],
+        domains: ['cms', 'orders', 'storefront', 'portal'],
         roles: ['admin', 'manager', 'staff', 'public', 'user'],
     },
 

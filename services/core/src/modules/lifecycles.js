@@ -1,14 +1,14 @@
 'use strict';
 
 /**
- * Adapter that runs a pos-strapi DB-LIFECYCLE module (content-types/<ct>/
- * lifecycles.js) as a rutba-core document middleware.
+ * Adapter that runs a services/strapi DB-LIFECYCLE module (content-types/<ct>/
+ * lifecycles.js) as a services/core document middleware.
  *
- * Why: pos-strapi's lifecycles subscribe at Strapi's query-engine layer in the
- * pos-strapi PROCESS — writes made by rutba-core never fire them. Modules whose
+ * Why: services/strapi's lifecycles subscribe at Strapi's query-engine layer in the
+ * services/strapi PROCESS — writes made by services/core never fire them. Modules whose
  * invariants live in lifecycles (stock counters, lot balances, GL postings,
  * number defaults) must therefore run the same hooks around core's documents()
- * writes. The lifecycle FILES are required from pos-strapi source unchanged —
+ * writes. The lifecycle FILES are required from services/strapi source unchanged —
  * zero duplication; module-level recursion guards (e.g. stock-item `_updating`)
  * keep their semantics because it is the very same module instance.
  *

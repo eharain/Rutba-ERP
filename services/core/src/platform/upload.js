@@ -11,7 +11,7 @@
  *
  * WHAT IS REUSED AND WHAT IS REWRITTEN
  *
- * Reused verbatim, required straight out of pos-strapi's node_modules:
+ * Reused verbatim, required straight out of services/strapi's node_modules:
  *   - the configured provider (strapi-provider-upload-media), which decides
  *     between PUTting masters at the media service and delegating to
  *     @strapi/provider-upload-local — including its refusal to silently fall
@@ -35,7 +35,7 @@ const { REPO_ROOT, get: envGet } = require('../config/env');
 const { getDb } = require('../db/connection');
 const { documents, mapFileRow } = require('../documents');
 
-const POS_ROOT = path.join(REPO_ROOT, 'pos-strapi');
+const POS_ROOT = path.join(REPO_ROOT, 'services/strapi');
 const posModule = (name) => require(path.join(POS_ROOT, 'node_modules', name));
 
 const UPLOAD_SERVICES = path.join(
@@ -58,7 +58,7 @@ let provider = null;
 let providerName = null;
 
 /**
- * pos-strapi/config/plugins.js is the single source for provider choice and
+ * services/strapi/config/plugins.js is the single source for provider choice and
  * options; loading it (rather than re-deriving from env here) means core cannot
  * drift from Strapi on which backend the bytes land in.
  */
@@ -74,9 +74,9 @@ function getProvider() {
 
   // Same branch strapi-provider-upload-media makes internally, taken here
   // instead. Its local fallback resolves @strapi/provider-upload-local relative
-  // to process.cwd(), which is the Strapi app when Strapi runs it and rutba-core
+  // to process.cwd(), which is the Strapi app when Strapi runs it and services/core
   // when core does — so from here that lookup fails. posModule already knows
-  // where pos-strapi's node_modules are; use it and hand the local provider the
+  // where services/strapi's node_modules are; use it and hand the local provider the
   // same options Strapi would.
   if (useMediaService) {
     providerName = cfg.provider || 'strapi-provider-upload-media';
@@ -330,7 +330,7 @@ const uploadService = {
     // Per file, not just the first: a caller can mix files that came from the
     // multipart parser (which supplies a directory) with ones built by hand.
     const tmpWorkingDirectory = fileArray.some((f) => f && !f.tmpWorkingDirectory)
-      ? await fsp.mkdtemp(path.join(os.tmpdir(), 'rutba-core-upload-'))
+      ? await fsp.mkdtemp(path.join(os.tmpdir(), 'services/core-upload-'))
       : null;
 
     const out = [];

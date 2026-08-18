@@ -1,4 +1,4 @@
-import SharedSidebar from "@rutba/pos-shared/components/Sidebar";
+import SharedSidebar from "@rutba/shared/components/Sidebar";
 
 const SECTIONS = [
     { href: "/sales",                 label: "Sales",            icon: "fa-cash-register" },
@@ -19,5 +19,5 @@ const SECTIONS = [
 ];
 
 export default function Sidebar() {
-    return <SharedSidebar sections={SECTIONS} storageKey="pos-sale-sidebar-pinned" />;
+    return <SharedSidebar sections={SECTIONS} storageKey="apps/sales/pos-sidebar-pinned" />;
 }

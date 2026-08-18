@@ -4,14 +4,14 @@
  * All methods return { path, params?, data? } objects.
  * Transport execution happens via createClientProxy in /endpoints/brands.js.
  *
- * Covers both the pos-stock management UI (draft/publish flows)
+ * Covers both the apps/inventory/stock management UI (draft/publish flows)
  * and simple list/paginated lookups used across other pages.
  */
 export const BrandsEndpoints = {
 
     meta: {
         uid: 'api::brand.brand',
-        domains: ['cms', 'order-management', 'stock'],
+        domains: ['cms', 'orders', 'stock'],
         roles: ['admin', 'manager', 'staff']
     },
 
@@ -26,7 +26,7 @@ export const BrandsEndpoints = {
         action: 'find',
         method: 'get',
         // No caller of its own — falls back to the interface's declared domains.
-        apps: ['stock', 'cms', 'order-management'],
+        apps: ['stock', 'cms', 'orders'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['name:asc'],
@@ -37,7 +37,7 @@ export const BrandsEndpoints = {
 
     /**
      * Fetch all brands across all pages. Returns one page; callers loop using
-     * pagination meta (see pos-shared/hooks/useProductLookups). `page` is a real
+     * pagination meta (see shared/hooks/useProductLookups). `page` is a real
      * parameter — hardcoding page 1 silently truncated every filter dropdown to
      * the first `pageSize` brands.
      *
@@ -51,10 +51,10 @@ export const BrandsEndpoints = {
         action: 'find',
         method: 'get',
         // 'cms', 'order-management' and 'inventory' render brand filter dropdowns
-        // too (rutba-cms product list, ProductPickerTabs, rutba-inventory
+        // too (apps/content/cms product list, ProductPickerTabs, apps/inventory/control
         // stock-health). Without them the api-pro interceptor 403s the lookup and
         // the dropdown comes back empty.
-        apps: ['stock', 'cms', 'order-management', 'inventory', 'social'],
+        apps: ['stock', 'cms', 'orders', 'control', 'social'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['name:asc'],
@@ -131,7 +131,7 @@ export const BrandsEndpoints = {
      * Update a brand by documentId — body provided by caller as { data }.
      * @param {string} documentId
      */
-    // pos-stock edits brands directly; rutba-cms goes through the draft/publish
+    // apps/inventory/stock edits brands directly; apps/content/cms goes through the draft/publish
     // pair (updateDraft + publish), so 'cms' is not granted here.
     update: (documentId, data) => ({
         path: `/brands/${documentId}`,
@@ -184,7 +184,7 @@ export const BrandsEndpoints = {
      * Delete a brand by documentId.
      * @param {string} documentId
      */
-    // Only the pos-stock brand admin deletes; the rutba-cms screen unpublishes.
+    // Only the apps/inventory/stock brand admin deletes; the apps/content/cms screen unpublishes.
     del: (documentId) => ({
         path: `/brands/${documentId}`,
         action: 'delete',

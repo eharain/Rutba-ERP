@@ -16,8 +16,8 @@ It also includes a reusable template/checklist for similar products.
 ### 1.1 Repository shape
 - Root uses npm workspaces (`package.json`):
   - `packages/*`
-  - App workspaces like `pos-auth`, `pos-stock`, `rutba-web`, etc.
-  - Strapi app at `pos-strapi` (via `--prefix` scripts)
+  - App workspaces like `apps/admin/auth`, `apps/inventory/stock`, `apps/content/storefront`, etc.
+  - Strapi app at `services/strapi` (via `--prefix` scripts)
 
 ### 1.2 Root script orchestration
 From root `package.json`:
@@ -51,7 +51,7 @@ Behavior:
 
 ## 2) Strapi Build Settings & Runtime Setup
 
-Primary Strapi package: `pos-strapi/package.json`
+Primary Strapi package: `services/strapi/package.json`
 
 ### 2.1 Strapi scripts
 - `build`: `strapi build`
@@ -61,43 +61,43 @@ Primary Strapi package: `pos-strapi/package.json`
 - `deploy`: `strapi deploy`
 
 ### 2.2 Core Strapi config files
-- `pos-strapi/config/server.js`
+- `services/strapi/config/server.js`
   - Host from `HOST` (default `0.0.0.0`)
   - Port from `PORT` (default `1337`)
   - App keys from `APP_KEYS`
   - Public directory configurable with `PUBLIC_DIR`
 
-- `pos-strapi/config/database.js`
+- `services/strapi/config/database.js`
   - Supports mysql/postgres/sqlite based on `DATABASE_CLIENT`
   - Uses `DATABASE_*` variables
   - Connection pool and timeout configurable
 
-- `pos-strapi/config/admin.js`
+- `services/strapi/config/admin.js`
   - Admin JWT and token salts from env vars
   - Session lifespan configured
   - Encryption key required
 
-- `pos-strapi/config/plugins.js`
+- `services/strapi/config/plugins.js`
   - Enables the `api-pro` plugin and `strapi-content-sync-pro`
   - Configures users-permissions session token lifespans
   - Configures email provider (nodemailer)
   - Configures upload size limits
 
-- `pos-strapi/config/middlewares.js`
+- `services/strapi/config/middlewares.js`
   - CORS origins from `CORS_ORIGINS`
   - Allows custom Rutba headers (`X-Rutba-App`, `X-Rutba-App-Admin`)
 
-- `pos-strapi/config/api.js`
+- `services/strapi/config/api.js`
   - API pagination defaults (`defaultLimit`, `maxLimit`, `withCount`)
 
 ### 2.3 Strapi bootstrap and seeding
-- `pos-strapi/src/index.js`
+- `services/strapi/src/index.js`
   - Bootstraps role/permission structures
   - Seeds data and synchronizes access/permission structures
 
 ### 2.4 Strapi plugin helper scripts
-- `pos-strapi/scripts/setup-data-sync-plugin.js`
-- `pos-strapi/scripts/sync-data-sync-plugin.js`
+- `services/strapi/scripts/setup-data-sync-plugin.js`
+- `services/strapi/scripts/sync-data-sync-plugin.js`
 
 Used to switch plugin mode (local/package) and sync local plugin source into Strapi.
 
@@ -187,7 +187,7 @@ This keeps environment loading and app startup behavior consistent with local sc
   - Converts workspace env model into `.env.docker`
   - Maps app-specific keys:
     - `POS_STRAPI__*` → `STRAPI_*`
-    - `RUTBA_WEB__*` → `WEB_*`
+    - `STOREFRONT__*` → `WEB_*`
   - Produces `PORT_*` values and computed `CORS_ORIGINS`
 
 ### 5.4 Typical Docker commands
@@ -301,14 +301,14 @@ Copy this section and replace values.
 - `scripts/js/env-config.js`
 - `scripts/js/run-app.js`
 - `scripts/js/run-all.js`
-- `pos-strapi/package.json`
-- `pos-strapi/config/server.js`
-- `pos-strapi/config/database.js`
-- `pos-strapi/config/admin.js`
-- `pos-strapi/config/plugins.js`
-- `pos-strapi/config/middlewares.js`
-- `pos-strapi/config/api.js`
-- `pos-strapi/src/index.js`
+- `services/strapi/package.json`
+- `services/strapi/config/server.js`
+- `services/strapi/config/database.js`
+- `services/strapi/config/admin.js`
+- `services/strapi/config/plugins.js`
+- `services/strapi/config/middlewares.js`
+- `services/strapi/config/api.js`
+- `services/strapi/src/index.js`
 - `scripts/setup-systemd-services.sh`
 - `scripts/rutba_deployed_environment.sh`
 - `scripts/rutba_services.sh`

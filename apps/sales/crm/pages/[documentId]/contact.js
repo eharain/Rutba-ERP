@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import WorkItemPanel from "@rutba/pos-shared/components/workflow/WorkItemPanel";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import { useAuth } from "@rutba/shared/context/AuthContext";
+import WorkItemPanel from "@rutba/shared/components/workflow/WorkItemPanel";
 import { CrmContactsEndpoints, CrmActivitiesEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 import ContactForm from "../../components/form/ContactForm";
@@ -212,7 +212,7 @@ export default function ContactDetail() {
                                         refreshKey={timelineKey}
                                         onEdit={openActivityForEdit}
                                     />
-                                    {/* Linked email from rutba-mail. Kept beside the
+                                    {/* Linked email from apps/content/mail. Kept beside the
                                         activity feed rather than given its own tab:
                                         it self-hides when there are no links or the
                                         caller has no mail role, and an empty tab

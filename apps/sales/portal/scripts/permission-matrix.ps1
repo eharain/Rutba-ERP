@@ -75,8 +75,8 @@ $rolesRes = Invoke-Api -Method 'GET' -Path '/auth-admin/roles' -Headers $authHea
 Assert-Status -Name 'load roles' -Expected 200 -Result $rolesRes
 $roles = @($rolesRes.data.roles)
 $appRole = $roles | Where-Object { $_.type -eq 'rutba_app_user' } | Select-Object -First 1
-$webRole = $roles | Where-Object { $_.type -eq 'rutba_web_user' } | Select-Object -First 1
-if (-not $appRole -or -not $webRole) { throw 'Missing rutba_app_user or rutba_web_user role' }
+$webRole = $roles | Where-Object { $_.type -eq 'rutba_portal' } | Select-Object -First 1
+if (-not $appRole -or -not $webRole) { throw 'Missing rutba_app_user or rutba_portal role' }
 
 $appRes = Invoke-Api -Method 'GET' -Path '/app-accesses' -Headers $authHeaders
 Assert-Status -Name 'load app-accesses' -Expected 200 -Result $appRes
@@ -100,7 +100,7 @@ $matrix = @(
   @{ app='rider'; user='api::rider.rider.find'; admin='api::rider-settings.rider-settings.find'; role='rutba_app_user' },
   @{ app='crm'; user='api::crm-contact.crm-contact.find'; admin='api::crm-segment.crm-segment.find'; role='rutba_app_user' },
   @{ app='auth'; user='api::auth-admin.auth-admin.find'; admin='api::role-permission.role-permission.find'; role='rutba_app_user' },
-  @{ app='web-user'; user='api::sale-order.sale-order.find'; admin=''; role='rutba_web_user' },
+  @{ app='web-user'; user='api::sale-order.sale-order.find'; admin=''; role='rutba_portal' },
   @{ app='hr'; user='api::hr-employee.hr-employee.find'; admin='api::hr-policy.hr-policy.find'; role='rutba_app_user' },
   @{ app='payroll'; user='api::pay-salary-structure.pay-salary-structure.find'; admin='api::pay-settings.pay-settings.find'; role='rutba_app_user' },
   @{ app='cms'; user='api::cms-page.cms-page.find'; admin='api::cms-workflow.cms-workflow.find'; role='rutba_app_user' },
@@ -112,7 +112,7 @@ $suffix = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
 
 foreach ($m in $matrix) {
   $appId = Get-AppId $m.app
-  $roleId = if ($m.role -eq 'rutba_web_user') { [int]$webRole.id } else { [int]$appRole.id }
+  $roleId = if ($m.role -eq 'rutba_portal') { [int]$webRole.id } else { [int]$appRole.id }
 
   $uName = "perm.user.$($m.app).$suffix"
   $aName = "perm.admin.$($m.app).$suffix"

@@ -1,18 +1,18 @@
 import { useState, useEffect, useCallback } from "react";
 import Layout from "../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import { SeoMetasEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
-import ListPageLayout from "@rutba/pos-shared/components/ListPageLayout";
-import ListPagination from "@rutba/pos-shared/components/ListPagination";
+import ListPageLayout from "@rutba/shared/components/ListPageLayout";
+import ListPagination from "@rutba/shared/components/ListPagination";
 import ExcelIO from "../components/ExcelIO";
 
 const DEFAULT_PAGE_SIZE = 25;
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100, 200];
 
 // Map entity_type → { route slug for /[documentId]/<slug>, populated relation key }.
-// Mirrors pos-strapi/src/utils/seo-meta-helper.js.
+// Mirrors services/strapi/src/utils/seo-meta-helper.js.
 const ENTITY_TYPE_META = {
     "cms-page":       { route: "cms-page",       relation: "cms_page",       label: "CMS Page" },
     "product":        { route: "product",        relation: "product",        label: "Product" },

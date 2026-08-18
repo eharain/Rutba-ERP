@@ -7,7 +7,7 @@ import { listParams, byIdParams } from './__param_builders.js';
 export const NotificationTemplatesEndpoints = {
     meta: {
         uid: 'api::notification-template.notification-template',
-        domains: ['auth', 'cms', 'order-management', 'sale', 'social'],
+        domains: ['auth', 'cms', 'orders', 'pos', 'social'],
         roles: ['admin', 'manager', 'staff']
     },
 
@@ -15,7 +15,7 @@ export const NotificationTemplatesEndpoints = {
         path: '/notification-templates',
         action: 'find',
         method: 'get',
-        apps: ['auth', 'cms', 'sale', 'social'],
+        apps: ['auth', 'cms', 'pos', 'social'],
         approle: ['admin', 'manager', 'staff'],
         params: listParams({ page, pageSize, sort, populate, filters, fields }),
     }),
@@ -24,7 +24,7 @@ export const NotificationTemplatesEndpoints = {
         path: `/notification-templates/${documentId}`,
         action: 'findOne',
         method: 'get',
-        apps: ['auth', 'cms', 'sale', 'social'],
+        apps: ['auth', 'cms', 'pos', 'social'],
         approle: ['admin', 'manager', 'staff'],
         params: byIdParams({ populate, fields }),
     }),
@@ -33,7 +33,7 @@ export const NotificationTemplatesEndpoints = {
         path: '/notification-templates',
         action: 'create',
         method: 'post',
-        apps: ['auth', 'cms', 'sale', 'social'],
+        apps: ['auth', 'cms', 'pos', 'social'],
         approle: ['admin', 'manager', 'staff'],
         data,
     }),
@@ -42,7 +42,7 @@ export const NotificationTemplatesEndpoints = {
         path: `/notification-templates/${documentId}`,
         action: 'update',
         method: 'put',
-        apps: ['auth', 'cms', 'sale', 'social'],
+        apps: ['auth', 'cms', 'pos', 'social'],
         approle: ['admin', 'manager', 'staff'],
         data,
     }),
@@ -51,7 +51,7 @@ export const NotificationTemplatesEndpoints = {
         path: `/notification-templates/${documentId}`,
         action: 'delete',
         method: 'delete',
-        apps: ['auth', 'cms', 'sale', 'social'],
+        apps: ['auth', 'cms', 'pos', 'social'],
         approle: ['admin', 'manager'],
     }),
 

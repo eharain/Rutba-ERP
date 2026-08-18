@@ -48,7 +48,7 @@ function noteAuthFailure({ status, method, path, message } = {}) {
     console.error(
       `[marketplace] Strapi rejected our service token (${status}). ` +
       `Scheduled syncs are standing down until it works. ` +
-      `Fix RUTBA_MARKETPLACE__STRAPI_SERVICE_TOKEN and restart the worker. ` +
+      `Fix MARKETPLACE__STRAPI_SERVICE_TOKEN and restart the worker. ` +
       `Last error: ${state.lastError}`
     );
   }

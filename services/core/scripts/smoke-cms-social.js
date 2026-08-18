@@ -382,7 +382,7 @@ async function main() {
 
     const badCallback = await req('GET', '/api/social-accounts/oauth/callback?state=bogus.nonce&code=x');
     check('oauth callback renders the popup-closer HTML on failure',
-      badCallback.status === 200 && /html/.test(badCallback.type) && /rutba-social-oauth/.test(badCallback.text),
+      badCallback.status === 200 && /html/.test(badCallback.type) && /apps/content/social-oauth/.test(badCallback.text),
       `status ${badCallback.status} type ${badCallback.type}`);
 
     // -- G. social-post ------------------------------------------------------
@@ -436,7 +436,7 @@ async function main() {
 
     // -- H. crons registered (dormant) --------------------------------------
     const { tasks } = require('../src/platform/cron');
-    check('social crons registered with pos-strapi rules',
+    check('social crons registered with services/strapi rules',
       tasks.has('socialPublishScheduled') && tasks.get('socialPublishScheduled').rule === '* * * * *'
       && tasks.has('socialSyncReplies') && tasks.get('socialSyncReplies').rule === '*/10 * * * *'
       && tasks.has('socialRefreshTokens') && tasks.get('socialRefreshTokens').rule === '0 */6 * * *');

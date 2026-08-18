@@ -3,7 +3,7 @@
 /**
  * Workflow service — the Core platform's configurable state machine (P2).
  *
- * Promoted from pos-strapi/src/utils/workflow-engine.js, which deliberately
+ * Promoted from services/strapi/src/utils/workflow-engine.js, which deliberately
  * stays where it is: HR leave requests and manufacturing work orders consume it
  * zero-copy through posRequire() and must not be dragged under a Core-native
  * module's build. This file is the Core-native successor; the two run side by
@@ -33,7 +33,7 @@
  * here denies with reason 'no_workflow' and `configured: false` so a caller that
  * forgot fails visibly instead of silently locking every transition.
  *
- * WHAT THIS ADDS over the pos-strapi engine (spec 09 §9.3, W2–W5). All of it is
+ * WHAT THIS ADDS over the services/strapi engine (spec 09 §9.3, W2–W5). All of it is
  * additive with a permissive default, so existing HR and mfg workflow rows keep
  * behaving exactly as they do today:
  *   - transition.allowed_roles   role gating; falls back to the legacy
@@ -47,7 +47,7 @@
  * CONSTRAINT worth knowing before investigating a "my new field is ignored"
  * report: workflow rows are read through documents(), which projects only the
  * attributes declared in the component schema.json files. Until
- * pos-strapi/src/components/workflow/{stage,transition}.json gain the fields
+ * services/strapi/src/components/workflow/{stage,transition}.json gain the fields
  * above they arrive here undefined and every default applies — which is exactly
  * the no-op behaviour described above, not a failure.
  *

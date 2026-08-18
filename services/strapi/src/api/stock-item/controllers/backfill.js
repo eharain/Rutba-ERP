@@ -15,7 +15,7 @@
  * it can be re-triggered after suspected drift. Auth is enforced manually
  * (auth: false on the route) so Strapi doesn't reject the custom action name —
  * same pattern as stock-items/recompute-product-stock and stock-items/transfer.
- * Called from rutba-inventory's maintenance page, which already tells the
+ * Called from apps/inventory/control's maintenance page, which already tells the
  * operator a non-admin gets a 403 back.
  */
 

@@ -14,7 +14,7 @@
  * delegates to the shared seeder. Idempotent: the seeder skips if
  * mfg-operations already contain rows.
  *
- * Run from pos-strapi:  DATABASE_NAME=pos_db node scripts/seed-tailoring-unit.js
+ * Run from services/strapi:  DATABASE_NAME=pos_db node scripts/seed-tailoring-unit.js
  */
 
 const { createStrapi, compileStrapi } = require('@strapi/strapi');

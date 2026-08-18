@@ -14,7 +14,7 @@ set -euo pipefail
 #      size at JOURNAL_MAX_SIZE.  (journalctl vacuum and
 #      disk-usage are global -- per-unit filtering is not
 #      supported by these operations.)
-#   2. Clean up Strapi file-based logs (pos-strapi/logs/) in the
+#   2. Clean up Strapi file-based logs (services/strapi/logs/) in the
 #      active build directory.
 #   3. Remove stale npm-debug.log* files from the active build.
 #   4. Rotate and trim the deploy log file. The current log is
@@ -123,7 +123,7 @@ log_ok "Journal vacuum complete."
 ###########################################
 # 2. CLEAN STRAPI FILE-BASED LOGS
 ###########################################
-# Strapi writes runtime logs to pos-strapi/logs/ inside the
+# Strapi writes runtime logs to services/strapi/logs/ inside the
 # build directory.  Old log files are removed; the current one
 # is truncated if it exceeds 50 MB to avoid breaking a running
 # Strapi instance that holds the file descriptor open.
@@ -135,7 +135,7 @@ elif [ -d "$ACTIVE_LINK" ]; then
     ACTIVE_BUILD="$ACTIVE_LINK"
 fi
 
-STRAPI_LOGS_DIR="${ACTIVE_BUILD}/pos-strapi/logs"
+STRAPI_LOGS_DIR="${ACTIVE_BUILD}/services/strapi/logs"
 
 if [ -n "$ACTIVE_BUILD" ] && [ -d "$STRAPI_LOGS_DIR" ]; then
     log "Cleaning Strapi file logs in ${STRAPI_LOGS_DIR} ..."

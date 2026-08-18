@@ -1,6 +1,6 @@
 # 06 — Plugin & package replacement map
 
-How each load-bearing package/plugin maps into the rutba-core world, and how
+How each load-bearing package/plugin maps into the services/core world, and how
 inter-instance data integration (copy-over) survives the migration.
 
 ## api-provider — KEEP, unchanged (it is the contract, not a Strapi artifact)
@@ -10,10 +10,10 @@ scaffolder + generated clients. It is precisely the asset that makes replacement
 possible, so it must not change:
 
 - Frontends keep consuming generated clients exactly as today.
-- rutba-core reads the **same descriptor files** to register routes and policies
+- services/core reads the **same descriptor files** to register routes and policies
   (already the plan in 04 §3.4).
 - Later, optionally, the scaffolder gains a small "server manifest" emit for
-  rutba-core (route table pre-compiled instead of parsed at boot) — an
+  services/core (route table pre-compiled instead of parsed at boot) — an
   optimization, not a requirement.
 
 Rule: any change a migration step wants to make to a descriptor's shape is a
@@ -21,9 +21,9 @@ red flag (program ground rule 1).
 
 ## strapi-api-pro — PORT (it's our code; the plugin wrapper is the only Strapi part)
 
-Decomposition into rutba-core modules:
+Decomposition into services/core modules:
 
-| Plugin piece | rutba-core home | Notes |
+| Plugin piece | services/core home | Notes |
 |---|---|---|
 | Descriptor loader + seeder (verb whitelist, method/scope, custom-action rules) | `src/policy/seeder` | Same DB mirror tables — the api-pro CTs are already in the registry and schema-validated |
 | Request interceptor (hybrid + denyByDefault) | Koa middleware `src/policy/interceptor` | Ports near-verbatim (Strapi is Koa) |
@@ -31,8 +31,8 @@ Decomposition into rutba-core modules:
 | `$user.*` token evaluation, ownership (`owners`), scopes, requireAppRole | `src/policy/evaluate` | Pure functions, direct port |
 | `/me/permissions` | core route | Byte-compatible (contract test) |
 | **API-token verification** | `src/policy/api-token` | MUST be in the first port: inter-instance sync and the marketplace worker authenticate with API tokens (`strapi_api_tokens` table — core reads it; own token CT only at endgame) |
-| JWT handling | verify-only until Phase 7 (issuer stays pos-strapi) | Shared per-tenant secret |
-| Policy Editor admin UI | **moves to a rutba app** (rutba-seed control app or rutba-console) | Consistent with the standing "no Strapi-admin extensions" rule; the admin `admin::hasPermissions` routes die with the admin panel |
+| JWT handling | verify-only until Phase 7 (issuer stays services/strapi) | Shared per-tenant secret |
+| Policy Editor admin UI | **moves to a rutba app** (apps/admin/seed control app or rutba-console) | Consistent with the standing "no Strapi-admin extensions" rule; the admin `admin::hasPermissions` routes die with the admin panel |
 
 ## strapi-content-sync-pro — REPLACE with a contract-level sync engine
 
@@ -49,7 +49,7 @@ Today there are **two** inter-instance integration paths:
    dies with Strapi and because DB-level/internal sync breaks the moment one
    side is migrated and the other isn't.
 
-### Replacement: `rutba-core` content-sync module (or standalone worker)
+### Replacement: `services/core` content-sync module (or standalone worker)
 
 Design principle: **sync speaks the wire contract, never the database**, so any
 pairing works during and after the strangler — Strapi↔Strapi, Strapi↔core,
@@ -70,11 +70,11 @@ core↔core. Components:
   the media file server (namespace-to-namespace), not re-uploaded through
   entity endpoints.
 - **Runs & audit**: keep the `sync_logs` / `sync_run_reports` table shapes
-  (register their schemas in rutba-core when sync-pro is retired) so history
+  (register their schemas in services/core when sync-pro is retired) so history
   and the existing reporting UI patterns carry over.
 - **Triggers**: cron + manual run endpoint + optional webhook on publish.
-- **UI**: run status/history moves to a rutba app (rutba-cms for CMS sync,
-  rutba-marketplace already owns commerce sync) — same rule as the Policy
+- **UI**: run status/history moves to a rutba app (apps/content/cms for CMS sync,
+  apps/sales/marketplace already owns commerce sync) — same rule as the Policy
   Editor: no admin-panel UIs to rebuild.
 
 ### Multitenancy bonus
@@ -82,7 +82,7 @@ core↔core. Components:
 The same engine covers tenant-scoped copy-over inside one fleet: golden/demo
 content into a freshly provisioned tenant (provisioning step 4 can call it),
 staging→production promotion, and tenant export/import (pairs with the
-CMS export/import work already planned inside rutba-cms).
+CMS export/import work already planned inside apps/content/cms).
 
 ## The rest ("etc.")
 

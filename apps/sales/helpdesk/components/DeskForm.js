@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { HelpdeskDesksEndpoints } from "@rutba/api-provider/endpoints";
-import { useEnumValues } from "@rutba/pos-shared/lib/use-enum-values";
+import { useEnumValues } from "@rutba/shared/lib/use-enum-values";
 
 const humanize = (v) =>
     String(v).replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -33,7 +33,7 @@ const distinct = (rows, column) =>
 /**
  * A select when /enums answers, a suggestion-backed text box when it does not.
  *
- * /enums/:name/:field is served by rutba-core but its route is registered under
+ * /enums/:name/:field is served by services/core but its route is registered under
  * `api::product.product`.`find`, and no policy for that pair is seeded for the
  * helpdesk_* roles — so the request 403s from this app today and the field falls
  * back rather than rendering a dead select. `suggest` carries values observed in

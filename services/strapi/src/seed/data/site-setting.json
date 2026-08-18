@@ -19,7 +19,7 @@
         "site_description": "Rutba ERP platform for inventory, sales, accounting, HR, delivery and CMS operations.",
         "site_logo": {
           "$seedMedia": {
-            "path": "rutba-web/public/rutba_erp_logo.png",
+            "path": "apps/content/storefront/public/rutba_erp_logo.png",
             "alternativeText": "Rutba ERP Logo"
           }
         }

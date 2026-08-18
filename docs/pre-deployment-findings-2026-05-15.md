@@ -26,7 +26,7 @@ Three probes that should have been denied came back 200:
 
 Plus: `/api/api-pro/me/permissions` returns `permissions: {}` for a user that
 holds 49 `app_roles`, despite
-[.api-pro/seed-checkpoint.json](../pos-strapi/.api-pro/seed-checkpoint.json)
+[.api-pro/seed-checkpoint.json](../services/strapi/.api-pro/seed-checkpoint.json)
 showing 1794 policies written.
 
 **Most likely root cause: middleware ordering.** The interceptor is installed via
@@ -53,7 +53,7 @@ raw row count before the filter.
   out of plugin-bootstrap `server.use` into one of:
   - a Strapi global policy registered on every route (descriptor-driven),
   - a strapi middleware registered in
-    [pos-strapi/config/middlewares.js](../pos-strapi/config/middlewares.js)
+    [services/strapi/config/middlewares.js](../services/strapi/config/middlewares.js)
     so it runs in the correct order,
   - or attach the check via a `routes.config.policies` injection during route
     registration.
@@ -80,11 +80,11 @@ is consulted:
 
 | Endpoint | Page that breaks |
 | --- | --- |
-| `/api/notification-templates` | [rutba-cms/pages/notification-templates.js](../rutba-cms/pages/notification-templates.js) |
-| `/api/delivery-methods` | [rutba-cms/pages/delivery-methods.js](../rutba-cms/pages/delivery-methods.js) |
+| `/api/notification-templates` | [apps/content/cms/pages/notification-templates.js](../apps/content/cms/pages/notification-templates.js) |
+| `/api/delivery-methods` | [apps/content/cms/pages/delivery-methods.js](../apps/content/cms/pages/delivery-methods.js) |
 | `/api/delivery-zones` | populated by the delivery-methods page |
-| `/api/hr-teams` | rutba-hr |
-| `/api/riders` | rutba-rider, rutba-order-management |
+| `/api/hr-teams` | apps/people/hr |
+| `/api/riders` | apps/sales/rider, apps/sales/orders |
 | `/api/sale-audit-logs` | rutba-sale (audit drawer) |
 
 ## 404 — path / route issues

@@ -30,7 +30,7 @@ export default operatorGet(async () => {
       probe.status = e?.status ?? null;
     }
   } else {
-    probe.error = 'RUTBA_MARKETPLACE__STRAPI_SERVICE_TOKEN is not set';
+    probe.error = 'MARKETPLACE__STRAPI_SERVICE_TOKEN is not set';
     probe.status = 401;
   }
 

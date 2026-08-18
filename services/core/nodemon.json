@@ -1,10 +1,10 @@
 {
-  "watch": ["src", "../pos-strapi/src", "../packages/strapi-api-pro/server/src"],
+  "watch": ["src", "../../services/strapi/src", "../../packages/strapi-api-pro/server/src"],
   "ext": "js,json",
   "ignore": [
     "src/**/*.test.js",
-    "../pos-strapi/src/admin",
-    "../pos-strapi/src/seed/data"
+    "../../services/strapi/src/admin",
+    "../../services/strapi/src/seed/data"
   ],
   "delay": 400,
   "verbose": false

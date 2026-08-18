@@ -26,7 +26,7 @@ function pickEditable(body) {
 
 let SCHEMA_CATEGORY_ENUM = null;
 function categoryValues(strapi) {
-  // rutba-core's compat strapi has no contentType registry — fall back to the
+  // services/core's compat strapi has no contentType registry — fall back to the
   // schema file itself (zero-copy, same source of truth).
   const fromRegistry = strapi.contentType?.(UID)?.attributes?.category?.enum;
   if (Array.isArray(fromRegistry) && fromRegistry.length) return fromRegistry;
@@ -61,7 +61,7 @@ module.exports = factories.createCoreController(UID, ({ strapi }) => {
       if (!me) return ctx.unauthorized();
       const targetId = await resolveTarget(ctx, ctx.query?.userId);
       if (!targetId) return;
-      // documents(), not db.query: rutba-core's compat query layer neither
+      // documents(), not db.query: services/core's compat query layer neither
       // filters nor writes relations — documents() is the cross-server path.
       const rows = await strapi.documents(UID).findMany({
         filters: { user: { id: targetId } },

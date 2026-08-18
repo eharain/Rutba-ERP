@@ -2,7 +2,7 @@
 
 // Shared helpers for the marketplace provider adapters, app-side edition.
 //
-// Ported from pos-strapi/src/marketplace-providers/base.js — same transport +
+// Ported from services/strapi/src/marketplace-providers/base.js — same transport +
 // error shape + signing primitives, but config now comes from the app's env
 // (lib/config.js) instead of strapi.config, and there is no `strapi` handle.
 

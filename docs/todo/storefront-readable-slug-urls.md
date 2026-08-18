@@ -1,7 +1,7 @@
-# rutba-web: replace documentId-based URLs with readable slugs
+# apps/content/storefront: replace documentId-based URLs with readable slugs
 
 > **Status (2026-05-19): ✅ shipped** in commit `4bb1dd7` —
-> `feat(pos-strapi,rutba-cms,rutba-web,rutba-social): product slug as canonical URL key`.
+> `feat(services/strapi,apps/content/cms,apps/content/storefront,apps/content/social): product slug as canonical URL key`.
 > Product, product-group, CMS page, brand, category storefront links now
 > use slugs; lifecycle hooks generate unique slugs on create + a backfill
 > seeder filled existing rows. Public detail services accept slug-or-documentId
@@ -26,11 +26,11 @@ This hurts:
 
 1. ✓ **Ensure every public content type has a `slug` field** (string, unique, URL-safe). Done — `product`, `cms-page`, `product-group`, brand, category all carry slugs; lifecycle hooks generate unique slugs on create and a backfill seeder filled existing rows.
 
-2. ✓ **Make `slug` the URL parameter** instead of `documentId`. Done — `rutba-web/src/pages/product/[slug].tsx` resolves via `router.query.slug` → `getProductDetailSSR(slug)`, and storefront `<Link>`s emit `product.slug`. (Recently-viewed and breadcrumbs use `product.slug || product.documentId`.)
+2. ✓ **Make `slug` the URL parameter** instead of `documentId`. Done — `apps/content/storefront/src/pages/product/[slug].tsx` resolves via `router.query.slug` → `getProductDetailSSR(slug)`, and storefront `<Link>`s emit `product.slug`. (Recently-viewed and breadcrumbs use `product.slug || product.documentId`.)
 
 3. ✓ **Backend lookups by slug** — done. The web detail services accept slug-or-documentId so legacy/cached URLs keep resolving; `[slug].tsx` and `sitemap.xml.ts` both use `product.slug || product.documentId` as the key.
 
-4. ✓ **Generate sitemap** from slugs — done in `rutba-web/src/pages/sitemap.xml.ts` (products emit `/product/${slug || documentId}`; resolves `site_url` at request time). Canonical `<link rel="canonical">` + product JSON-LD on `[slug].tsx` also key off the slug.
+4. ✓ **Generate sitemap** from slugs — done in `apps/content/storefront/src/pages/sitemap.xml.ts` (products emit `/product/${slug || documentId}`; resolves `site_url` at request time). Canonical `<link rel="canonical">` + product JSON-LD on `[slug].tsx` also key off the slug.
 
 (No redirect for documentId URLs — site hasn't launched, no old links to preserve.)
 
@@ -41,11 +41,11 @@ This hurts:
 
 ## Affected files (initial inventory)
 
-- `rutba-web/src/pages/product/[slug].tsx` — link generation + getServerSideProps lookup
-- `rutba-web/src/pages/shop/[slug].tsx` — already slug-based, verify
-- `rutba-web/src/pages/product-groups/[slug].tsx` — verify
+- `apps/content/storefront/src/pages/product/[slug].tsx` — link generation + getServerSideProps lookup
+- `apps/content/storefront/src/pages/shop/[slug].tsx` — already slug-based, verify
+- `apps/content/storefront/src/pages/product-groups/[slug].tsx` — verify
 - All `<Link href="/product/...">` call sites across components (search: `href="/product/`)
-- `rutba-web/src/services/products.ts` — `getProductDetailSSR` may need slug-vs-id branching during the migration
+- `apps/content/storefront/src/services/products.ts` — `getProductDetailSSR` may need slug-vs-id branching during the migration
 
 ## Trigger
 

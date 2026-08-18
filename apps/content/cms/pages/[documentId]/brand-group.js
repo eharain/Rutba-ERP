@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
+import { useAuth } from "@rutba/shared/context/AuthContext";
 import { BrandGroupsEndpoints, BrandsEndpoints, MediaUtilsEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 import { useToast } from "../../components/Toast";
@@ -10,7 +10,7 @@ import InlineSeoPanel from "../../components/InlineSeoPanel";
 import OrderableRelationList from "../../components/OrderableRelationList";
 import { persistSeoMeta } from "../../components/SeoMetaFields";
 import { toOrderedRelation } from "../../components/orderedRelation";
-import MarkdownEditor from "@rutba/pos-shared/components/MarkdownEditor";
+import MarkdownEditor from "@rutba/shared/components/MarkdownEditor";
 
 export default function BrandGroupDetail() {
     const router = useRouter();

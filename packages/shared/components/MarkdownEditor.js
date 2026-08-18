@@ -13,7 +13,7 @@ marked.use(markedCollapse());
 // Repair markdown that landed on a single line (common in AI-generated CSV/
 // xlsx imports). Mid-line `### Heading` and ` - **Label:**` patterns get a
 // newline injected so marked picks them up as block-level. Kept identical to
-// rutba-web/src/lib/render-markdown.ts — duplicated because pos-shared can't
+// apps/content/storefront/src/lib/render-markdown.ts — duplicated because pos-shared can't
 // import from a sibling app.
 function normalizeMarkdown(input) {
     if (input == null) return '';

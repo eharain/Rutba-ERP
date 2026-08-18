@@ -1,8 +1,8 @@
 'use strict';
 
-// Defaults are merged with whatever pos-strapi (or any consuming app) sets in
+// Defaults are merged with whatever services/strapi (or any consuming app) sets in
 // config/plugins.js under the 'api-pro' key. The shape here is load-bearing —
-// frontend apps in the ERP monorepo (via packages/pos-shared/context/AuthContext.js)
+// frontend apps in the ERP monorepo (via packages/shared/context/AuthContext.js)
 // rely on the headerDomainKey / headerElevatedKey / bypassPaths / domains contract.
 //
 // See memory: project_pos_strapi_contracts.
@@ -32,7 +32,7 @@ module.exports = {
 
     // ── Bypass paths ────────────────────────────────────────────────────
     // Prefix-matched paths that skip interceptor + context validation.
-    // pos-strapi extends this with public routes derived from @rutba/api-provider.
+    // services/strapi extends this with public routes derived from @rutba/api-provider.
     bypassPaths: [
       '/admin',
       '/content-manager',
@@ -50,7 +50,7 @@ module.exports = {
     ],
 
     // ── Domain registry ─────────────────────────────────────────────────
-    // pos-strapi populates this from @rutba/api-provider/config/domains.
+    // services/strapi populates this from @rutba/api-provider/config/domains.
     // Each entry: { key: string, name: string, aliasKeys?: string[] }.
     domains: [],
 

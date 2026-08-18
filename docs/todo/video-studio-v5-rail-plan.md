@@ -12,7 +12,7 @@ of the way.
 
 ## 0. Item 1 — the sound library was invisible (FIXED, landed 3c2b9f6)
 
-Not a studio bug. The dev stack points at **rutba-core :4020**
+Not a studio bug. The dev stack points at **services/core :4020**
 (`NEXT_PUBLIC_API_URL`), and core never read a filter operand in the
 column's type. Every REST filter arrives from the query string as a string,
 so `filters[is_active][$eq]=true` reached knex as the **string** `'true'`;

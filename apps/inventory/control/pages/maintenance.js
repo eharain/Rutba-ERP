@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import Layout from "../components/Layout";
-import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
+import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
 import { StockLevelsEndpoints, StockItemsEndpoints } from "@rutba/api-provider/endpoints";
 
 // Admin maintenance jobs — each is an idempotent, server-side reconcile exposed

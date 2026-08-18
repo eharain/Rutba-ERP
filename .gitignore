@@ -7,7 +7,7 @@
 /generators/data
 node
 # The controller below is NO LONGER ignored: it is ordinary source, and
-# rutba-core posRequire()s it at boot (src/modules/catalog.js), so a build
+# services/core posRequire()s it at boot (src/modules/catalog.js), so a build
 # without it crash-loops. Strapi was quieter about the same absence - it simply
 # never registered the controller - which is why this went unnoticed for so
 # long.
@@ -16,11 +16,11 @@ node
 # declared `auth: false`, so committing it would publish
 # /api/validator/validate/:uid and /api/validator/content-type-fields/:name as
 # unauthenticated schema introspection on every deploy box - endpoints that
-# have never actually existed there. rutba-core serves the same two handlers
+# have never actually existed there. services/core serves the same two handlers
 # from its own descriptors, permission-gated. Add auth before un-ignoring.
-/pos-strapi/src/api/utils/routes/validator.js
-/pos-strapi/types/generated/*
-/pos-strapi/src/.vs
+/services/strapi/src/api/utils/routes/validator.js
+/services/strapi/types/generated/*
+/services/strapi/src/.vs
 /data
 /pos-desk/package-lock.json
 .next
@@ -38,10 +38,10 @@ node_modules
 .env.*
 !.env.example
 /ssh-history.txt
-/pos-strapi/database/migrations/20260306-rutba-cms-seed.js
-/pos-strapi/scripts/generate-cms-seed-excel.js
-/pos-strapi/scripts/rutba-cms-seed-data.xlsx
-/pos-strapi/scripts/~$rutba-cms-seed-data.xlsx
+/services/strapi/database/migrations/20260306-rutba-cms-seed.js
+/services/strapi/scripts/generate-cms-seed-excel.js
+/services/strapi/scripts/rutba-cms-seed-data.xlsx
+/services/strapi/scripts/~$rutba-cms-seed-data.xlsx
 /dev-error.log
 /dev-output.log
 /next
@@ -51,9 +51,9 @@ node_modules
 /packages/strapi-api-pro/.claude
 /packages/strapi-api-pro/dist
 /.claude
-/pos-strapi/.api-pro
-# rutba-core scratch output (contract-diff runs write here)
-/rutba-core/.tmp
+/services/strapi/.api-pro
+# services/core scratch output (contract-diff runs write here)
+/services/core/.tmp
 
 # Strapi CLI update-check cache
 .strapi-updater.json

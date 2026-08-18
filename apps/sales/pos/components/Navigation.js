@@ -1,7 +1,7 @@
 import { useEffect } from "react";
-import Topbar from "@rutba/pos-shared/components/Topbar";
-import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { getBranch } from "@rutba/pos-shared/lib/utils";
+import Topbar from "@rutba/shared/components/Topbar";
+import { useAuth } from "@rutba/shared/context/AuthContext";
+import { getBranch } from "@rutba/shared/lib/utils";
 
 const SECONDARY = [
     { href: "/new/sale",        label: "Sale",     icon: "fa-plus",          variant: "success" },

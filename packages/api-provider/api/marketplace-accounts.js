@@ -4,7 +4,7 @@ import { listParams, byIdParams } from './__param_builders.js';
  * MarketplaceAccountsEndpoints
  * Endpoint descriptors for the /marketplace-accounts resource — the operator
  * UI's view of connected accounts. The sync ENGINE (connect/validate/sync) lives
- * in the rutba-marketplace app's own API routes, not in Strapi, so only the data
+ * in the apps/sales/marketplace app's own API routes, not in Strapi, so only the data
  * CRUD is described here. Credential writes are admin-gated in the controller;
  * the worker's `secrets` + `ingest-orders` endpoints are API-token-only (no
  * api-pro policy / not called by the UI).

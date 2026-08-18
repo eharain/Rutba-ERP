@@ -38,11 +38,11 @@ read-after-write that follows every offline create.
 
 | App | L0 | L1 | L2 | L3 | The one hard thing |
 |---|---|---|---|---|---|
-| **POS** (`pos-sale`) | ✓ | ✓ | stock items — the one search box that justifies the cost | sales, payments, stock consumption | Replay granularity — settled in [06](06-sync-back-granularity.md) |
-| **Mail** (`rutba-mail`) | ✓ | ✓ | the local IMAP cache | sends, flags, moves | `uid` is only valid with `uidvalidity` |
-| **Studio** (`rutba-social`) | ✓ | ✓ | posts + media library | recipe saves, queued publishes | Assets are large; the render is already local |
+| **POS** (`apps/sales/pos`) | ✓ | ✓ | stock items — the one search box that justifies the cost | sales, payments, stock consumption | Replay granularity — settled in [06](06-sync-back-granularity.md) |
+| **Mail** (`apps/content/mail`) | ✓ | ✓ | the local IMAP cache | sends, flags, moves | `uid` is only valid with `uidvalidity` |
+| **Studio** (`apps/content/social`) | ✓ | ✓ | posts + media library | recipe saves, queued publishes | Assets are large; the render is already local |
 
-## POS — `pos-sale`
+## POS — `apps/sales/pos`
 
 **Defer to [`offline-pos-options.md`](../offline-pos-options.md).** POS is the app
 that document was written for, it is the proving ground, and nothing here
@@ -61,7 +61,7 @@ design decision in the whole program and it sits inside D4:
 > when another till already sold one; or
 >
 > **(b) degrade the sale to product + quantity** and let
-> [`stock-item.allocateSellableUnits`](../../../pos-strapi/src/api/stock-item/services/stock-item.js)
+> [`stock-item.allocateSellableUnits`](../../../services/strapi/src/api/stock-item/services/stock-item.js)
 > (line 555; FEFO, opened-first, product-locked) pick real units at sync?
 >
 > (b) is strictly less conflict-prone: *"this specific unit was already sold"*
@@ -93,9 +93,9 @@ The oversell policy *is* decided and does not reopen: the sale **posts**, the
 already-sold unit is **not** consumed twice, and the discrepancy is recorded for a
 human ([§5](../offline-pos-options.md#5-what-the-server-still-owes-the-proxy)).
 
-## Mail — `rutba-mail` (:4021)
+## Mail — `apps/content/mail` (:4021)
 
-`rutba-mail` is M0–M6 built and imports from live IMAP on demand, so an outage
+`apps/content/mail` is M0–M6 built and imports from live IMAP on demand, so an outage
 today leaves it with **almost nothing to show**. It has the most to gain from L1
 alone.
 
@@ -110,7 +110,7 @@ The email program took a deliberate architecture decision, and it is load-bearin
 > — [`email-program/00-overview-and-roadmap.md`](../email-program/00-overview-and-roadmap.md), the ADR
 
 The same rule is written into the schema itself:
-[`mail-message`'s own `info.description`](../../../pos-strapi/src/api/mail-message/content-types/mail-message/schema.json)
+[`mail-message`'s own `info.description`](../../../services/strapi/src/api/mail-message/content-types/mail-message/schema.json)
 says the row is created *only* via import-on-link or a triage action, and that
 "the mailbox stays the source of truth for everything else."
 
@@ -204,15 +204,15 @@ all.
       for — [§12](../offline-pos-options.md#12-amendment-2026-08-13--one-engine-three-apps)'s
       `reject` column.
 
-## Studio — `rutba-social` (:4011)
+## Studio — `apps/content/social` (:4011)
 
-`rutba-social/pages/posts/video-studio.js` plus
-[`packages/video-maker`](../../../packages/video-maker). Studio is the odd one out
+`apps/content/social/pages/posts/video-studio.js` plus
+[`packages/video`](../../../packages/video). Studio is the odd one out
 in the best way.
 
 ### Rendering is already 100% local
 
-`@rutba/video-maker` is browser-engine only — canvas → `captureStream()` →
+`@rutba/video` is browser-engine only — canvas → `captureStream()` →
 `MediaRecorder`, **no ffmpeg**. The heavy part of the workload never touched the
 network in the first place. What needs the network is **loading assets** and
 **saving the project**.
@@ -247,7 +247,7 @@ The editor plan recorded the original problem:
 > **A correction worth recording.** That describes the pre-v4 state, and it has
 > largely been fixed. `social-post.video_settings` (json) exists on the schema,
 > and the studio writes the full recipe to it — `saveRecipe` at
-> [`video-studio.js:1735`](../../../rutba-social/pages/posts/video-studio.js)
+> [`video-studio.js:1735`](../../../apps/content/social/pages/posts/video-studio.js)
 > persists `{ template, options, layers, savedAt }` so *"re-opening the post
 > restores exactly this state"* and *"the poster reproduces this render"*
 > (line 737). Do not spec this as outstanding work.
@@ -283,7 +283,7 @@ costs, in order:
 1. **L0 + L1: nothing.** Bundle it, and it has a window, a secure origin and
    cached reads.
 2. **L2:** name its collections in the manifest, and confirm its read routes are
-   ported in rutba-core. Unported custom actions answer 501 — that is the real
+   ported in services/core. Unported custom actions answer 501 — that is the real
    ceiling ([04 §The offline-readiness gate](04-server-prerequisites.md#the-offline-readiness-gate)).
 3. **L3:** annotate its write descriptors with `offline:`, decide its refusals up
    front, and pay for whatever `mints` / `group` ordering its flows need.

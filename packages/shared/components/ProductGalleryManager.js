@@ -569,7 +569,7 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
             setLoading(true);
             const parentDocumentId = getEntryId(product);
             // 'term-gallery' mode = same payload as 'term', but never touches stock items.
-            // This component is mounted in a publishing/gallery context (rutba-cms) where
+            // This component is mounted in a publishing/gallery context (apps/content/cms) where
             // stock-item migration is out of scope.
             const created = await createVariant(parentDocumentId, 'term-gallery', {
                 term,

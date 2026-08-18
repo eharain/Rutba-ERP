@@ -2,7 +2,7 @@
 
 // Claim resolution for api-pro.
 //
-// pos-strapi sends TWO authorization-affecting headers:
+// services/strapi sends TWO authorization-affecting headers:
 //   x-rutba-app       â€” which app/domain the user is acting in
 //   x-rutba-app-role  â€” which of the user's roles for that app is active
 //                       (client renders a role-selector menu when the user

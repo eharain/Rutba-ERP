@@ -30,7 +30,7 @@ const { REPO_ROOT } = require('../config/env');
 // ─── locating the api-provider package ──────────────────────────────────────
 // api-provider's package.json is not in its `exports` map, so the package root
 // is found by resolving a file that IS exported and walking up two levels —
-// the same trick pos-strapi/config/plugins.js uses. The workspace directory is
+// the same trick services/strapi/config/plugins.js uses. The workspace directory is
 // the fallback for contexts where node module resolution can't see it.
 function resolveApiProviderRoot() {
   try {
