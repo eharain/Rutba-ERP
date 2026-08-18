@@ -197,6 +197,51 @@ for (const e of ENTRIES) {
   }
 }
 
+// ── 4b. The identity each app announces on the wire ────────
+//
+// Every frontend calls setAppName('<key>') once at boot; that string becomes
+// the X-Rutba-App header, and api-pro resolves the caller's domain by matching
+// it against api_pro_app_domains.key. Nothing else checks it — the value is a
+// bare string in _app.js, so renaming a domain and forgetting the announcement
+// leaves an app that builds, boots and then has every authenticated request
+// denied. That is precisely what the P3 key rename did to all six renamed apps.
+//
+// The announced name is NOT always the app's own key: `rider` legitimately
+// announces `delivery`. So the assertion is "it names a real domain", which is
+// the property that actually matters, not "it equals the key".
+{
+  const domainsJson = read('packages/api-provider/config/domains.json');
+  if (!domainsJson) {
+    warn('*', 'packages/api-provider/config/domains.json not readable — skipped the announced-identity check');
+  } else {
+    let knownDomains;
+    try {
+      const parsed = JSON.parse(domainsJson);
+      knownDomains = new Set(Array.isArray(parsed) ? parsed.map((d) => d.key || d) : Object.keys(parsed));
+    } catch (e) {
+      knownDomains = null;
+      fail('*', `could not parse domains.json: ${e.message}`);
+    }
+    if (knownDomains) {
+      for (const entry of ENTRIES) {
+        if (entry.kind === 'backend' || entry.launcher === false) continue;
+        const appFile = ['pages/_app.js', 'src/pages/_app.tsx', 'pages/_app.tsx', 'src/pages/_app.js']
+          .map((rel) => path.join(entry.workspace, rel))
+          .find((p) => fs.existsSync(path.join(ROOT, p)));
+        if (!appFile) continue;
+        const announced = read(appFile)?.match(/setAppName\(\s*['"]([\w-]+)['"]\s*\)/)?.[1];
+        if (!announced) {
+          warn(entry.key, `${appFile} never calls setAppName — requests carry no X-Rutba-App header`);
+        } else if (!knownDomains.has(announced)) {
+          fail(entry.key,
+            `announces setAppName('${announced}') in ${appFile}, which is not a domain in ` +
+            `domains.json — api-pro cannot resolve it and every authenticated request is denied`);
+        }
+      }
+    }
+  }
+}
+
 // ── 5. Per-service checks ──────────────────────────────────
 
 const rows = [];

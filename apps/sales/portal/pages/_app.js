@@ -4,7 +4,7 @@ import { AuthProvider } from "@rutba/shared/context/AuthContext";
 import { UtilProvider } from "@rutba/shared/context/UtilContext";
 import { AppContextEndpoints } from "@rutba/api-provider/endpoints";
 
-AppContextEndpoints.setAppName('web-user');
+AppContextEndpoints.setAppName('portal');
 
 import 'bootstrap/dist/css/bootstrap.min.css';
 import '@fortawesome/fontawesome-free/css/all.min.css';

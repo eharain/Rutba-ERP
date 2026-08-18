@@ -283,12 +283,36 @@ as `SERVICES/STRAPI`. The signal was 125 `WARN: Missing …` lines inside a run 
 Both functions now resolve `envPrefix` through `config/apps.manifest.json`, accepting a package
 name, a workspace path or a bare key; the 24 known prefixes match `.env.development` exactly.
 
-Three of these — the corrupted mapping table, the skipped env rules, and the broken env target —
-produced a **green-looking run that had done nothing**, which is the failure mode worth
-remembering: the sweep's own output said `763 occurrence(s) rewritten` while the half that
-mattered had quietly matched zero, and a 22-app build went green while no app could read its own
-port. The lesson is the same each time — *assert on the end state, never on the tool's report of
-its own work*.
+**8. The rename had a third half nobody listed: the identity on the wire.** §4a moved the app
+keys in the repo and migration 022 moved them in `api_pro_app_domains`. Both were verified. But
+each frontend also *announces* its identity — one bare `setAppName('<key>')` call in `_app.js`
+that becomes the `X-Rutba-App` header api-pro matches against `api_pro_app_domains.key`. Nothing
+referenced those strings, so the sweep never saw them, and **all six renamed apps were left
+announcing a domain that no longer exists** — pos as `sale`, orders as `order-management`,
+control as `inventory`, portal as `web-user`, console as `admin`, storefront as `web`. Every one
+builds, boots, serves its public routes, and has every *authenticated* request denied. The server
+side agreed with the stale value (`requireApp(ctx, 'web')`), which is exactly why nothing failed:
+client and server were consistent with each other and inconsistent with the database.
+
+The same header also keys `site_settings.app_slug`, which resolves an app's branding row. That
+half fails *soft* — no error, just the default instance logo and the default tracking ids, the
+symptom the console's own editor warns is "the usual reason someone concludes tracking is
+broken". Migration `023-site-settings-app-slug.js` carries those rows across.
+
+`verify:wiring` now asserts that every app's announced name is a real domain — the property that
+actually matters, since `rider` legitimately announces `delivery`. Proven non-vacuous by
+restoring the pre-fix value and confirming the gate fails.
+
+Four of these — the corrupted mapping table, the skipped env rules, the broken env target, and the
+stale announcements — produced a **green-looking run that had done nothing**, which is the failure
+mode worth remembering: the sweep's own output said `763 occurrence(s) rewritten` while the half
+that mattered had quietly matched zero, a 22-app build went green while no app could read its own
+port, and every gate passed while six apps announced a dead identity. The lesson is the same each
+time — *assert on the end state, never on the tool's report of its own work*. Findings 7 and 8
+share a sharper edge: both were **self-consistent**. The env target matched nothing but was
+derived the same wrong way everywhere; the announced app name matched the server's check exactly.
+A pair of values that agree with each other tells you nothing about whether either agrees with the
+system of record — so check identity against the DB, not against its own mirror in the code.
 
 ### The gates that caught them
 
@@ -301,7 +325,8 @@ its own work*.
 | `seed-policy --dry-run` | 1,328 superseded policy rows after the role rename |
 | `smoke-policy` | the whole policy layer still correct under the new keys |
 
-Note what is *missing* from that table: nothing caught finding 7. `build:all` deserves its own
+Note what is *missing* from that table: nothing caught findings 7 or 8 — both were found by
+reading a build log and a database, not by a gate. `verify:wiring` now covers 8. `build:all` deserves its own
 note — **the runner exits 0 even when an app fails to build**, so the first green run was hiding
 `build:marketplace failed`; checking the exit code is not enough, grep the log for
 `[run-app] … failed`. And a missing env variable is only a `WARN`, which is how 125 of them rode

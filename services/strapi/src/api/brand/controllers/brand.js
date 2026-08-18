@@ -6,7 +6,7 @@ const { requireApp } = require('../../../utils/require-app');
 
 module.exports = createCoreController('api::brand.brand', ({ strapi }) => ({
   async publicList(ctx) {
-    if (!requireApp(ctx, 'web')) return;
+    if (!requireApp(ctx, 'storefront')) return;
     const data = await strapi.service('api::brand.brand').findPublicList();
     return ctx.send({ data });
   },

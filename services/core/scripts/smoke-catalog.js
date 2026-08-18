@@ -9,8 +9,9 @@
  *  A. public storefront catalog (auth:false): list / search / by-id / by-ids
  *     / highest-price, brands public list — anonymous must work, and drafts
  *     must NOT leak into public reads
- *  B. catalog draft & publish triad: publish makes the product visible to the
- *     public read, discard-draft reverts edits, unpublish removes it again
+ *  B. the publish image gate refuses an image-less product, and the catalog
+ *     draft & publish triad: publish makes the product visible to the public
+ *     read, discard-draft reverts edits, unpublish removes it again
  *  C. products/published-status batch lookup
  *  D. accounting reports respond (tranche-7 misses now served)
  *  E. utils: enums lookup + validator content-type-fields
@@ -56,6 +57,7 @@ async function main() {
 
   const db = getDb();
   const created = [];
+  const createdFileIds = [];
   let server = null;
 
   try {
@@ -78,12 +80,41 @@ async function main() {
     });
     created.push([PRODUCT_UID, product.documentId]);
 
+    // ── the publish image gate ────────────────────────────────────────────
+    // "A product with no image does not go out" is enforced as a documents()
+    // middleware, so it applies to core's publish route too. Assert the refusal
+    // first — this product is deliberately image-less at this point — and only
+    // then give it a photo, because everything below publishes it.
+    const refused = await req('POST', `/api/products/${product.documentId}/publish`, token);
+    check('publish is REFUSED while the product has no image',
+      refused.status === 400 && /Add at least one image/.test(refused.body?.error?.message || ''),
+      `status ${refused.status} ${JSON.stringify(refused.body).slice(0, 120)}`);
+
+    // Satisfy the gate the way the app does: a media row linked through the
+    // polymorphic media table on `gallery`. documentHasAnyImage reads exactly
+    // this, so nothing here re-implements the rule.
+    const productRow = await db('products')
+      .where({ document_id: product.documentId }).first('id');
+    const [fileId] = await db('files').insert({
+      name: `${MARK}.png`, hash: `${MARK}_hash`, ext: '.png', mime: 'image/png',
+      size: 1, url: `/uploads/${MARK}.png`, provider: 'local',
+      created_at: new Date(), updated_at: new Date(),
+    });
+    createdFileIds.push(fileId);
+    await db('files_related_mph').insert({
+      file_id: fileId,
+      related_id: productRow.id,
+      related_type: PRODUCT_UID,
+      field: 'gallery',
+      order: 1,
+    });
+
     // ── A. public storefront catalog ──────────────────────────────────────
-    // These are auth:false but app-scoped: requireApp(ctx,'web') 404s anything
+    // These are auth:false but app-scoped: requireApp(ctx, 'storefront') 404s anything
     // without the storefront's X-Rutba-App header so the endpoints are not
     // enumerable. The storefront bakes that header into its client.
     console.log('A. public catalog (anonymous, storefront header)');
-    const WEB = { 'x-rutba-app': 'web' };
+    const WEB = { 'x-rutba-app': 'storefront' };
 
     const noHeader = await req('GET', '/api/products/public/list');
     check('public list 404s WITHOUT the storefront app header (anti-enumeration)',
@@ -117,7 +148,7 @@ async function main() {
     check('a published row now exists', Boolean(publishedRow));
 
     const detail = await req('GET', `/api/products/public/by-id/${product.documentId}`,
-      null, undefined, { 'x-rutba-app': 'web' });
+      null, undefined, { 'x-rutba-app': 'storefront' });
     check('the published product is readable on the public detail route',
       detail.status === 200 && detail.body.data, `status ${detail.status}`);
 
@@ -185,6 +216,14 @@ async function main() {
       }
     }
     try { await db('products').where('sku', 'like', `%${MARK}%`).del(); } catch {}
+    for (const fileId of createdFileIds) {
+      try {
+        await db('files_related_mph').where({ file_id: fileId }).del();
+        await db('files').where({ id: fileId }).del();
+      } catch (e) {
+        console.log(`  (cleanup file ${fileId}: ${e.message})`);
+      }
+    }
     if (server) server.close();
     await closeDb();
   }

@@ -10,7 +10,7 @@
  * so the endpoint isn't enumerable.
  *
  * Usage:
- *   if (!requireApp(ctx, 'web')) return;     // 404 already sent
+ *   if (!requireApp(ctx, 'storefront')) return;     // 404 already sent
  *   ... continue handling ...
  */
 function requireApp(ctx, expected) {

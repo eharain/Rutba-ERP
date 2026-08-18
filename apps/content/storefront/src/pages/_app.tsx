@@ -21,7 +21,7 @@ import type { CmsPageDetailInterface } from "@/types/api/cms-page";
 // claim middleware can pick the correct policy. The storefront acts in the
 // 'web' domain; anonymous calls resolve to the storefront_public role, signed-in
 // calls to storefront_user (server-side fallback or explicit X-Rutba-App-Role).
-AppContextEndpoints.setAppName('web');
+AppContextEndpoints.setAppName('storefront');
 
 type RutbaAppProps = AppProps & { siteSettings?: SiteSettings };
 

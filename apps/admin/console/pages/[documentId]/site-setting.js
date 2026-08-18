@@ -280,18 +280,18 @@ export default function SiteSettingDetail() {
                                     <div className="alert alert-warning small">
                                         <i className="fas fa-triangle-exclamation me-1"></i>
                                         <strong>These only affect the storefront when set on the right row.</strong>{" "}
-                                        The storefront identifies itself as <code>web</code>, so it reads the row whose
-                                        app slug is <code>web</code> — falling back to the default row only when no
-                                        <code className="mx-1">web</code> row exists. Ids set on any other row have no
+                                        The storefront identifies itself as <code>storefront</code>, so it reads the row
+                                        whose app slug is <code>storefront</code> — falling back to the default row only
+                                        when no <code className="mx-1">storefront</code> row exists. Ids set on any other row have no
                                         effect on the storefront; this is the usual reason someone concludes tracking
                                         is broken.
-                                        {appSlug !== "web" && (
+                                        {appSlug !== "storefront" && (
                                             <div className="mt-2 mb-0">
                                                 {/* Deliberately warns on the default row too. `is_default` is NOT a
                                                     substitute for app_slug: the resolver matches the slug first, so a
-                                                    separate `web` row wins over the default and the ids entered here
-                                                    would go nowhere. This editor can't see the other rows, so it warns
-                                                    on anything that isn't literally the web row. */}
+                                                    separate `storefront` row wins over the default and the ids entered
+                                                    here would go nowhere. This editor can't see the other rows, so it
+                                                    warns on anything that isn't literally the storefront row. */}
                                                 This row is{" "}
                                                 {appSlug ? <><code>{appSlug}</code></> : "unkeyed"}
                                                 {isDefault ? " and is the default" : ""}. It only reaches the storefront

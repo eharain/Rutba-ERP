@@ -7,7 +7,7 @@ import { UtilProvider, useUtil } from "@rutba/shared/context/UtilContext";
 import BranchDeskModal from "@rutba/shared/components/BranchDeskModal";
 import { AppContextEndpoints } from "@rutba/api-provider/endpoints/index.js";
 
-AppContextEndpoints.setAppName('sale');
+AppContextEndpoints.setAppName('pos');
 
 import 'bootstrap/dist/css/bootstrap.min.css';
 import '@fortawesome/fontawesome-free/css/all.min.css';

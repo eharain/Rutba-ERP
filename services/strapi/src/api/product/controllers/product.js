@@ -168,7 +168,7 @@ module.exports = createCoreController('api::product.product', ({ strapi }) => ({
   },
 
   async publicDetail(ctx) {
-    if (!requireApp(ctx, 'web')) return;
+    if (!requireApp(ctx, 'storefront')) return;
     // The route param is named `documentId` for backward compat; in practice
     // it carries a product slug (the canonical identifier) and the service
     // transparently falls back to documentId lookup for legacy URLs.
@@ -214,7 +214,7 @@ module.exports = createCoreController('api::product.product', ({ strapi }) => ({
    * gesture on a fetch makes Safari reject the share.
    */
   async publicShare(ctx) {
-    if (!requireApp(ctx, 'web')) return;
+    if (!requireApp(ctx, 'storefront')) return;
     const slugOrDocumentId = ctx.params?.documentId;
     if (!slugOrDocumentId) return ctx.badRequest('slug is required');
 
@@ -226,7 +226,7 @@ module.exports = createCoreController('api::product.product', ({ strapi }) => ({
   },
 
   async publicByIds(ctx) {
-    if (!requireApp(ctx, 'web')) return;
+    if (!requireApp(ctx, 'storefront')) return;
     const raw = ctx.query?.ids;
     const ids = Array.isArray(raw)
       ? raw
@@ -238,7 +238,7 @@ module.exports = createCoreController('api::product.product', ({ strapi }) => ({
   },
 
   async publicSearch(ctx) {
-    if (!requireApp(ctx, 'web')) return;
+    if (!requireApp(ctx, 'storefront')) return;
     const q = ctx.query?.q ?? '';
     const pageSize = clampInt(ctx.query?.pageSize, 5, 1, 50);
     const data = await strapi
@@ -248,7 +248,7 @@ module.exports = createCoreController('api::product.product', ({ strapi }) => ({
   },
 
   async publicHighestPrice(ctx) {
-    if (!requireApp(ctx, 'web')) return;
+    if (!requireApp(ctx, 'storefront')) return;
     const data = await strapi
       .service('api::product.product')
       .findPublicHighestPrice();
@@ -256,7 +256,7 @@ module.exports = createCoreController('api::product.product', ({ strapi }) => ({
   },
 
   async publicList(ctx) {
-    if (!requireApp(ctx, 'web')) return;
+    if (!requireApp(ctx, 'storefront')) return;
     const q = ctx.query ?? {};
     const filter = {
       collection: q.collection || undefined,

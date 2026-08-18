@@ -555,17 +555,17 @@ export const api = {
 
 // ------------------ Storefront public API (X-Rutba-App: web baked in) ------------------
 // The storefront's public Strapi routes (under /products/public/*, /cms-pages/
-// public/*, etc.) are guarded by `requireApp(ctx, 'web')` and return 404
+// public/*, etc.) are guarded by `requireApp(ctx, 'storefront')` and return 404
 // without the X-Rutba-App: web header. Earlier this header rode along on
-// module-level `_appName` set by `setAppName('web')` in _app.tsx. That breaks
+// module-level `_appName` set by `setAppName('storefront')` in _app.tsx. That breaks
 // for SSR (getServerSideProps runs before _app.tsx) and for HMR (Turbopack
 // can replace api.js without re-running the side-effect that mutates state).
 //
 // Generated clients under providers/generated/client/web/ import `webApi`
 // instead of `api` so the app identity is baked into the request itself, not
 // inferred from runtime state. Reliable across SSR / HMR / tree-shaking.
-const WEB_CTX = Object.freeze({ appName: 'web' });
-// The baked `appName: 'web'` is the whole point of this surface, so a per-call
+const WEB_CTX = Object.freeze({ appName: 'storefront' });
+// The baked `appName: 'storefront'` is the whole point of this surface, so a per-call
 // ctx extends it rather than replacing it — a storefront descriptor that widens
 // its bound must not silently lose the app identity that makes the route
 // resolve at all.

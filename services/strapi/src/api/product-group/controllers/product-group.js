@@ -33,7 +33,7 @@ module.exports = createCoreController('api::product-group.product-group', ({ str
   // needs to see every linked product in order to manage it.
   async find(ctx) {
     const response = await super.find(ctx);
-    if (!isApp(ctx, 'web') || !Array.isArray(response?.data)) return response;
+    if (!isApp(ctx, 'storefront') || !Array.isArray(response?.data)) return response;
 
     const groups = response.data.filter((g) => Array.isArray(g?.products) && g.products.length > 0);
     const documentIds = [...new Set(groups.flatMap((g) => g.products.map((p) => p?.documentId).filter(Boolean)))];
