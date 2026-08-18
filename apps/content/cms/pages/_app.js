@@ -7,7 +7,6 @@ import { AppContextEndpoints } from "@rutba/api-provider/endpoints";
 AppContextEndpoints.setAppName('cms');
 
 import 'bootstrap/dist/css/bootstrap.min.css';
-import '@fortawesome/fontawesome-free/css/all.min.css';
 import '@rutba/shared/styles/layout.css';
 import '@rutba/shared/components/list-page.css';
 import '../src/styles/globals.css';

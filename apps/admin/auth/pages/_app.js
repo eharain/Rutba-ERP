@@ -6,7 +6,6 @@ import { AppContextEndpoints } from "@rutba/api-provider/endpoints/index.js";
 AppContextEndpoints.setAppName('auth');
 
 import 'bootstrap/dist/css/bootstrap.min.css';
-import '@fortawesome/fontawesome-free/css/all.min.css';
 import '@rutba/shared/styles/layout.css';
 import '../src/styles/globals.css';
 import { Geist, Geist_Mono } from "next/font/google";

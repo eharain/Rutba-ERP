@@ -6,7 +6,6 @@ import { AppContextEndpoints } from "@rutba/api-provider/endpoints";
 AppContextEndpoints.setAppName('delivery');
 
 import 'bootstrap/dist/css/bootstrap.min.css';
-import '@fortawesome/fontawesome-free/css/all.min.css';
 import '@rutba/shared/styles/layout.css';
 import '../src/styles/globals.css';
 
