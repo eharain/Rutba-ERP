@@ -22,6 +22,11 @@ async function getOrgChart(arg1 = {}) {
     return authApi.fetch(ep.path, ep.params, epCtx(ep));
 }
 
+async function setReportingLine(documentId, manager, dryRun = true) {
+    const ep = HrEmployeesEndpointsApi.setReportingLine(documentId, manager, dryRun);
+    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data), epCtx(ep));
+}
+
 async function listWithoutReportingLine() {
     const ep = HrEmployeesEndpointsApi.listWithoutReportingLine();
     return authApi.fetch(ep.path, ep.params, epCtx(ep));
@@ -59,6 +64,7 @@ const endpoints = strictEndpointGuard(
         updateMyProfile,
         getDashboard,
         getOrgChart,
+        setReportingLine,
         listWithoutReportingLine,
         runReportingLineBackfill,
         list,
@@ -67,7 +73,7 @@ const endpoints = strictEndpointGuard(
         update,
         meta: HrEmployeesEndpointsApi.meta,
     },
-    ["getMyProfile","updateMyProfile","getDashboard","getOrgChart","listWithoutReportingLine","runReportingLineBackfill","list","byId","create","update","meta"],
+    ["getMyProfile","updateMyProfile","getDashboard","getOrgChart","setReportingLine","listWithoutReportingLine","runReportingLineBackfill","list","byId","create","update","meta"],
 );
 
 export default endpoints;

@@ -86,7 +86,7 @@ if (!targetDir) {
 // Only the manifest knows which env block each one belongs to, so resolve
 // through it rather than upper-casing whatever npm was handed.
 const targetPrefix = resolveEnvPrefix(targetDir);
-if (!targetPrefix) {
+if (targetPrefix === null) {
   console.error(
     `[env] Could not resolve an env prefix for "${targetDir}".\n` +
     `  It must match a package name, workspace path or key in ` +

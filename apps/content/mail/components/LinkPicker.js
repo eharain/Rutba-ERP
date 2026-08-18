@@ -44,10 +44,9 @@ export default function LinkPicker({ account, folder, uid, fromEmail, onLinked, 
                     });
                     setResults((res?.data || []).map((r) => ({ documentId: r.documentId, title: r.name, sub: r.email || r.phone })));
                 } else if (type.key === "customer") {
-                    const res = await CustomersEndpoints.list({
-                        pageSize: 10,
-                        filters: { $or: [{ name: { $containsi: q } }, { email: { $containsi: q } }, { phone: { $containsi: q } }] },
-                    });
+                    // CustomersEndpoints exposes no `list` — `search` is the only
+                    // find member on the guard. It filters name/phone server-side.
+                    const res = await CustomersEndpoints.search(q, 10);
                     setResults((res?.data || []).map((r) => ({ documentId: r.documentId, title: r.name, sub: r.email || r.phone })));
                 } else {
                     const res = await SaleOrdersEndpoints.list({

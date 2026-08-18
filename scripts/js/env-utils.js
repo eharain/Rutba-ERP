@@ -85,8 +85,14 @@ function getAppPrefixes() {
  * Accepts a package name (@rutba/pos), a workspace path (apps/sales/pos, with
  * either slash style, trailing slash optional) or a bare key (pos).
  *
+ * A shared package (packages/*) resolves to the empty string rather than null:
+ * it is a legitimate build target with no env block of its own, so it gets the
+ * globals and no app-specific vars. Only a target that is in neither list is
+ * unresolvable — that is a wiring mistake and the caller should fail on it.
+ *
  * @param {string} target
- * @returns {string|null} the env prefix, or null when nothing matches
+ * @returns {string|null} the env prefix, '' for a shared package, or null when
+ *                        the target matches nothing in the manifest
  */
 function resolveEnvPrefix(target) {
   if (!target) return null;
@@ -104,6 +110,9 @@ function resolveEnvPrefix(target) {
     ) {
       return svc.envPrefix;
     }
+  }
+  for (const p of manifest.packages || []) {
+    if (norm(p.npm || '') === want || norm(p.path || '') === want) return '';
   }
   return null;
 }

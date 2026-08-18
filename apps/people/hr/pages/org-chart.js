@@ -39,6 +39,8 @@ export default function OrgChartPage() {
 
     const uncovered = gap?.meta?.uncovered ?? 0;
     const total = gap?.meta?.total ?? 0;
+    const orgRoots = gap?.meta?.org_roots || [];
+    const cutoverReady = gap?.meta?.cutover_ready === true;
 
     return (
         <ProtectedRoute>
@@ -46,6 +48,8 @@ export default function OrgChartPage() {
                 <h2 className="mb-1">Org Chart</h2>
                 <p className="text-muted small mb-3">
                     Who reports to whom, and how teams nest. Switch views with the toggle.
+                    Dotted-line managers appear beside a person; add or change them under{" "}
+                    <a href="/reporting-lines">Matrix Reporting</a>.
                 </p>
 
                 {gap && total > 0 && (
@@ -59,7 +63,12 @@ export default function OrgChartPage() {
                                         team manager either — nobody can currently approve for {uncovered === 1 ? "them" : "them"}.
                                     </>
                                 ) : (
-                                    " All of them are still covered by a team manager, so approvals keep working."
+                                    <>
+                                        {" "}All of them are still covered by a team manager, so approvals keep
+                                        working today — but only because the team graph is still granting
+                                        authority. This number, not the uncovered one, is what has to reach
+                                        zero before that can be switched off.
+                                    </>
                                 )}
                             </div>
                             <div className="d-flex gap-2">
@@ -94,15 +103,28 @@ export default function OrgChartPage() {
                     </div>
                 )}
 
-                {gap && total === 0 && (
+                {gap && cutoverReady && (
                     <div className="alert alert-success py-2 small">
-                        Every active employee has a reporting line.
+                        Every active employee has a reporting line
+                        {orgRoots.length > 0 && (
+                            <> (other than {orgRoots.join(", ")}, marked as the top of the organisation)</>
+                        )}.
+                        Approval authority can now be moved off the team graph and onto the reporting
+                        line alone — see the cutover note in{" "}
+                        <code>docs/todo/hr-org-chart-and-reporting-line.md</code>.
                     </div>
+                )}
+
+                {gap && orgRoots.length > 0 && !cutoverReady && (
+                    <p className="small text-muted">
+                        Excluded from the count above: {orgRoots.join(", ")} — marked as the top of the
+                        organisation, so having no manager is correct.
+                    </p>
                 )}
 
                 <div className="card">
                     <div className="card-body">
-                        <OrgChart key={nonce} defaultView="reporting" />
+                        <OrgChart key={nonce} defaultView="reporting" editable />
                     </div>
                 </div>
             </Layout>

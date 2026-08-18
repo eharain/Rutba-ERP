@@ -1,6 +1,7 @@
 # HR — Org chart + reporting-line authority
 
-_Status: planned. Follows the HRMS build (phases 0–15, shipped)._
+_Status: shipped through step 4 (commit 366a6b8), plus the three open decisions
+below resolved. Remaining: the cutover itself, which is gated on data._
 
 Two deliverables that share one data model:
 
@@ -114,18 +115,103 @@ a lot in practice — that divergence is itself the signal.
 
 ---
 
-## Things worth deciding before building
+## Things worth deciding before building — resolved
 
-- **Matrix reporting.** `reports_to` is a single manyToOne, so it models one
-  line. Dotted-line/secondary managers need either a second field or a join
-  content-type. Worth confirming this is out of scope before (1), because it
-  changes the walk.
-- **Delegation during absence.** The workflow engine already has
-  `delegate_to_role` (phase 8). If a manager is on leave, does their authority
-  pass down the reporting line automatically or only via explicit delegation?
+### Matrix reporting — BUILT, as a join content-type
+
+`api::hr-reporting-line` (`employee`, `manager`, `kind`, `grants_authority`,
+`valid_from`, `valid_to`, `note`). The primary line stays on
+`hr-employee.reports_to`; this table carries the additional lines a single
+manyToOne cannot express.
+
+A second `dotted_reports_to` field was rejected: it buys exactly one dotted line
+with nowhere to record what it is for or when it applies. The dated join row
+also means a line can lapse on its own rather than needing someone to remember
+to delete it.
+
+`grants_authority` is the field that does the real work, and it **defaults to
+false**. A dotted line is documentation unless someone deliberately says
+otherwise: recording that a person advises a team must not silently hand them
+the ability to approve its leave, and a permission whose column defaults to
+`true` gets granted by whoever forgets to send the field. Only rows with
+`grants_authority` set AND a currently-valid window are unioned into
+`reportingLineDocIds`; the rest render on the chart, marked "advisory", and
+change no permission.
+
+`reportingLineDocIds` walks both edge kinds in ONE BFS rather than two passes.
+A mixed chain (solid → dotted → solid) then resolves in a single walk, and the
+shared visited-set catches a cycle that only exists across both edge types —
+which a per-edge guard would miss.
+
+### Delegation during absence — NOT BUILT, deliberately
+
+Note first that `delegate_to_role` does not solve this and was never going to:
+it is a **role key**, not a person (`workflow-engine.js`,
+`transitionAllowsApprover` compares `actorRoleKey === delegate`). It expresses
+"anyone holding role X may also act", never "Ali covers for Sara this week".
+
+Automatic cascade off approved leave was rejected on two grounds beyond
+visibility:
+
+- **Direction.** Cascading *down* the reporting line hands authority to the
+  absent manager's own reports, who would then approve each other's leave. If
+  absence authority moves at all it should go up or sideways, never down.
+- **Cost.** Deriving it would put a per-approver leave query on the hot path
+  that all ~14 approval call sites share.
+
+Nothing is broken today: an HR claim is org-wide, so an absent manager's queue
+is already coverable. If this ever becomes real friction, the shape is an
+explicit dated `hr-delegation` row (same pattern as `hr-reporting-line`, which
+is why that one is dated), with approvals stamped "by Ali on behalf of Sara".
+
+### The cutover gate — READ `total`, NOT `uncovered`
+
+`GET /hr-employees/without-reporting-line` returns both. Only one is the gate,
+and picking the wrong one causes exactly the outage this whole design avoids:
+
+| field | means | use |
+|---|---|---|
+| `uncovered` | neither graph reaches them — nobody can approve **today** | fix immediately; live outage |
+| `total` | everyone with a blank `reports_to` | **the gate** |
+| `cutover_ready` | `total === 0` | the flag to branch on |
+
+Everyone in the list who is not `uncovered` is reachable **only** because the
+team half of the union is still carrying them. Drop that half while `total > 0`
+and every one of them loses their approver at once. `uncovered === 0` says
+nothing about whether the cutover is safe.
+
+Employees flagged `is_org_root` are excluded from both counts. The top of an org
+reports to nobody, and counting them would leave the gate permanently
+unsatisfiable — the union would then become permanent by accident rather than by
+decision. They are reported separately in `meta.org_roots` so the exclusion is
+visible and a mistaken flag is easy to spot.
+
+**When `cutover_ready` is true**, `managedReportDocIds` collapses to
+`reportingLineDocIds` alone — delete the `teamManagedDocIds` half of the union
+in `services/strapi/src/utils/hr-access.js`. Nothing else changes; all ~14 call sites
+inherit it.
+
+### Drag-to-reparent — BUILT, with a confirmation that names names
+
+`PUT /hr-employees/:id/reporting-line`, defaulting to a dry run that returns the
+authority impact. The drop does not write — it asks the server what the change
+would do and shows it: who gains the ability to approve, who loses it, and how
+many people travel with the dragged node (dragging a director moves their whole
+department). Only the reporting view is draggable; dragging in the team view
+would have to mean "change team membership", and one control doing both is a
+trap.
+
+Server-side it rejects a re-parent under the dragged node's own descendant —
+that would detach the subtree into a free-floating ring. The cycle guards
+elsewhere stop that hanging a request; they do not make the result meaningful.
+
+### Still true
+
 - **Grievances stay out of this.** They deliberately have no manager scope — a
   grievance is frequently about the reporting manager. Whatever happens to
-  `managedReportDocIds`, the grievance queue must remain HR-claim only.
+  `managedReportDocIds`, the grievance queue remains HR-claim only. There is now
+  a regression test asserting `hr-grievance` imports no manager-scope helper
+  (`services/strapi/tests/hr-reporting-graph.test.js`).
 - **Chart depth vs payload.** A 500-person org returned as one tree is a large
   response. Default to a bounded depth with lazy expansion rather than shipping
   the whole graph and filtering client-side.

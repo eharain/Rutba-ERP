@@ -94,6 +94,22 @@
       "target": "api::hr-employee.hr-employee",
       "mappedBy": "reports_to"
     },
+    "is_org_root": {
+      "type": "boolean",
+      "default": false
+    },
+    "reporting_lines": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::hr-reporting-line.hr-reporting-line",
+      "mappedBy": "employee"
+    },
+    "managed_reporting_lines": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::hr-reporting-line.hr-reporting-line",
+      "mappedBy": "manager"
+    },
     "position": {
       "type": "relation",
       "relation": "manyToOne",

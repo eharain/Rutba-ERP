@@ -83,6 +83,7 @@ export * from './hr-lifecycle-events.js';
 export * from './hr-offers.js';
 export * from './hr-overtime-rules.js';
 export * from './hr-positions.js';
+export * from './hr-reporting-lines.js';
 export * from './hr-rosters.js';
 export * from './hr-shifts.js';
 export * from './hr-skills.js';
