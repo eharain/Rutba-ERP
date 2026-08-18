@@ -8,12 +8,16 @@
  * operator reading container logs) had no idea what the server was doing —
  * which request 404'd, which one was slow, which one threw.
  *
- * Format mirrors Strapi's http line closely enough to read the two side by side
- * during the migration:
+ * One line per request, fixed columns, cheapest to scan first:
  *
- *   [21:04:19.812] GET  /api/products?filters… 200 12ms
- *   [21:04:20.104] POST /api/auth/local        400 361ms  ValidationError
- *   [21:04:22.900] GET  /api/me/permissions    401 3ms    anon
+ *   time            ms status method url
+ *   21:04:19.812  12ms 200 GET    http://localhost:4020/api/products?filters[…]
+ *   21:04:20.104 361ms 400 POST   http://localhost:4020/api/auth/local ValidationError
+ *   21:04:22.900   3ms 401 GET    http://localhost:4020/api/me/permissions UnauthorizedError anon
+ *
+ * The url comes last and is never truncated: everything left of it is a fixed
+ * width, so the columns stay aligned however long the query string runs, and the
+ * url stays whole enough to click or paste into curl straight from the terminal.
  *
  * Controlled by RUTBA_CORE_LOG:
  *   requests  every request                             (default in development)
@@ -121,16 +125,22 @@ function stamp() {
 }
 
 /**
- * Long query strings dominate the line and push the status column out of
- * alignment, which is the whole point of the column. Fixed width: the path is
- * what you scan, the query is context.
+ * The whole url, host included. It is the last column, so its length costs no
+ * alignment, and a complete url is the one you can paste into curl or a browser
+ * without rebuilding it from the boot banner. Falls back to the path alone when
+ * a request arrives with no Host header.
  */
-const PATH_WIDTH = 52;
-function shortPath(ctx) {
-  const full = ctx.querystring ? `${ctx.path}?${ctx.querystring}` : ctx.path;
-  return full.length > PATH_WIDTH
-    ? `${full.slice(0, PATH_WIDTH - 1)}…`
-    : full.padEnd(PATH_WIDTH);
+function fullUrl(ctx) {
+  const path = ctx.querystring ? `${ctx.path}?${ctx.querystring}` : ctx.path;
+  return ctx.host ? `${ctx.protocol}://${ctx.host}${path}` : path;
+}
+
+/** Right-aligned so the digits line up and a slow outlier reads at a glance. */
+const MS_WIDTH = 5;
+function duration(ms) {
+  const text = `${ms.toFixed(0)}ms`.padStart(MS_WIDTH);
+  // Slow requests are the ones worth spotting; bold past 500ms.
+  return ms >= 500 ? bold(text) : dim(text);
 }
 
 /** Who made the call — the thing you actually want when a 403 shows up. */
@@ -159,11 +169,10 @@ function createRequestLogger() {
 
       const parts = [
         dim(stamp()),
-        ctx.method.padEnd(6),
-        shortPath(ctx),
+        duration(ms),
         paint(statusColour(status), String(status)),
-        // Slow requests are the ones worth spotting; bold past 500ms.
-        ms >= 500 ? bold(`${ms.toFixed(0)}ms`) : dim(`${ms.toFixed(0)}ms`),
+        ctx.method.padEnd(6),
+        fullUrl(ctx),
       ];
       // The error name is what turns "400" into something actionable.
       if (status >= 400 && ctx.body && ctx.body.error && ctx.body.error.name) {

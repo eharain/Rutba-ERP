@@ -3859,6 +3859,7 @@ export interface ApiHrEmployeeHrEmployee extends Struct.CollectionTypeSchema {
       'api::hr-family-member.hr-family-member'
     >;
     gender: Schema.Attribute.Enumeration<['Male', 'Female', 'Other']>;
+    is_org_root: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     leave_requests: Schema.Attribute.Relation<
       'oneToMany',
       'api::hr-leave-request.hr-leave-request'
@@ -3873,6 +3874,10 @@ export interface ApiHrEmployeeHrEmployee extends Struct.CollectionTypeSchema {
       'api::hr-employee.hr-employee'
     > &
       Schema.Attribute.Private;
+    managed_reporting_lines: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::hr-reporting-line.hr-reporting-line'
+    >;
     managed_teams: Schema.Attribute.Relation<
       'oneToMany',
       'api::hr-team.hr-team'
@@ -3890,6 +3895,10 @@ export interface ApiHrEmployeeHrEmployee extends Struct.CollectionTypeSchema {
     >;
     publishedAt: Schema.Attribute.DateTime;
     religion: Schema.Attribute.String;
+    reporting_lines: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::hr-reporting-line.hr-reporting-line'
+    >;
     reports_to: Schema.Attribute.Relation<
       'manyToOne',
       'api::hr-employee.hr-employee'
@@ -4803,6 +4812,54 @@ export interface ApiHrPositionHrPosition extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+  };
+}
+
+export interface ApiHrReportingLineHrReportingLine
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'hr_reporting_lines';
+  info: {
+    description: 'Secondary (matrix / dotted-line) reporting relationships. The primary line stays on hr-employee.reports_to.';
+    displayName: 'HR Reporting Line';
+    pluralName: 'hr-reporting-lines';
+    singularName: 'hr-reporting-line';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    employee: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-employee.hr-employee'
+    >;
+    grants_authority: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
+    kind: Schema.Attribute.Enumeration<['Dotted', 'Solid']> &
+      Schema.Attribute.DefaultTo<'Dotted'>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::hr-reporting-line.hr-reporting-line'
+    > &
+      Schema.Attribute.Private;
+    manager: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-employee.hr-employee'
+    >;
+    note: Schema.Attribute.Text;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    valid_from: Schema.Attribute.Date;
+    valid_to: Schema.Attribute.Date;
   };
 }
 
@@ -9077,6 +9134,7 @@ export interface ApiSocialAccountSocialAccount
         'tiktok',
         'youtube',
         'whatsapp',
+        'pinterest',
       ]
     > &
       Schema.Attribute.Required;
@@ -11312,6 +11370,7 @@ declare module '@strapi/strapi' {
       'api::hr-offer.hr-offer': ApiHrOfferHrOffer;
       'api::hr-overtime-rule.hr-overtime-rule': ApiHrOvertimeRuleHrOvertimeRule;
       'api::hr-position.hr-position': ApiHrPositionHrPosition;
+      'api::hr-reporting-line.hr-reporting-line': ApiHrReportingLineHrReportingLine;
       'api::hr-roster.hr-roster': ApiHrRosterHrRoster;
       'api::hr-shift.hr-shift': ApiHrShiftHrShift;
       'api::hr-skill.hr-skill': ApiHrSkillHrSkill;
