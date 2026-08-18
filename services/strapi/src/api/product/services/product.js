@@ -451,14 +451,20 @@ module.exports = createCoreService('api::product.product', ({ strapi }) => ({
         filters,
         sort,
         populate: PUBLIC_POPULATE,
-        // start/limit, not page/pageSize and not a nested `pagination:{...}`.
-        // Both of the other forms are accepted and then dropped: `pagination`
-        // never reaches the query transformer (pickAllowedQueryParams), and
-        // flat page/pageSize survive it only to be discarded by the db query
-        // builder, which reads `offset`/`limit` and nothing else — page/pageSize
-        // are translated exclusively by `findPage`, which documents() never
-        // calls. Either way no LIMIT was emitted and every page returned the
-        // whole catalogue.
+        // start/limit — NOT page/pageSize, and NOT nested `pagination:{...}`.
+        //
+        // Three shapes, only one of which actually pages a documents() read:
+        //   pagination:{...}  allow-listed at the root, then dropped outright
+        //                     (SHARED_QUERY_PARAM_KEYS has no `pagination`)
+        //   page/pageSize     survive validation and reach the query as
+        //                     `query.page`/`query.pageSize`, but convert-query-
+        //                     params only maps start→offset and limit→limit, and
+        //                     the DB query builder applies nothing else. They are
+        //                     understood solely by db.query().findPage(), which
+        //                     the document service never calls.
+        //   start/limit       become offset/limit and actually page.
+        // Both of the first two fail silently — the read returns the WHOLE table
+        // while meta.pagination reports a page size that never happened.
         start: (page - 1) * pageSize,
         limit: pageSize,
       }),

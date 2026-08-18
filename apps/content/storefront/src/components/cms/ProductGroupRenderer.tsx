@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { renderMarkdown } from "@/lib/render-markdown";
 import { cn } from "@/lib/utils";
+import { findLiveOffer, findUpcomingOffer, useOfferClock } from "@/lib/offer-live";
 import { CmsProductGroupInterface } from "@/types/api/cms-page";
 import GroupHeader, { type SortOption, type ViewMode } from "./layouts/GroupHeader";
 import HeroSliderLayout from "./layouts/HeroSliderLayout";
@@ -31,6 +32,8 @@ export default function ProductGroupRenderer({
 
   const [sort, setSort] = useState<SortOption>(group.default_sort || "default");
   const [viewMode, setViewMode] = useState<ViewMode>("summary");
+  // Must sit above the early return below — hooks can't run conditionally.
+  const now = useOfferClock();
 
   const showSort = !hideControls && group.enable_sort_dropdown !== false;
   const showViewToggle = !hideControls && group.enable_view_toggle !== false;
@@ -44,20 +47,11 @@ export default function ProductGroupRenderer({
   );
   if (allProducts.length === 0) return null;
 
-  // Resolve active offer from offers relation
-  const now = Date.now();
-  const activeOffer = (group.offers ?? []).find(o => {
-    if (!o.active) return false;
-    if (o.start_date && new Date(o.start_date).getTime() > now) return false;
-    if (o.end_date && new Date(o.end_date).getTime() < now) return false;
-    return true;
-  });
-
-  const upcomingOffer = !activeOffer
-    ? (group.offers ?? []).find(o =>
-        o.active && !!o.start_date && new Date(o.start_date).getTime() > now
-      )
-    : undefined;
+  // Resolve active offer from offers relation. The rule lives in
+  // @/lib/offer-live so this listing and the product page it links to can never
+  // disagree about whether an offer is in force.
+  const activeOffer = findLiveOffer(group.offers, now);
+  const upcomingOffer = !activeOffer ? findUpcomingOffer(group.offers, now) : undefined;
 
   const offerActive = !!activeOffer;
   const activeOfferId = activeOffer?.documentId;

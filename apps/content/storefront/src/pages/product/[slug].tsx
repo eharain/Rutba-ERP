@@ -28,6 +28,8 @@ import ProductShare from "@/components/share/product-share";
 // import Reviews from "@/components/product-detail/reviews";
 // import useReviewsService from "@/services/reviews";
 import { createWebProductsService, getProductDetailSSR } from "@/services";
+import { isOfferLive, useOfferClock } from "@/lib/offer-live";
+import GroupRail from "@/components/product-list/group-rail";
 import { currencyFormat } from "@/lib/use-currency";
 import { renderMarkdown } from "@/lib/render-markdown";
 import { IMAGE_URL, BASE_URL } from "@/static/const";
@@ -104,7 +106,14 @@ export default function ProductDetail({
   });
   const product = detail?.data;
   const offerContext = detail?.offerContext ?? null;
-  const offerActive = !!offerContext?.offer;
+  // `offerContext` is what the server resolved when this response was built —
+  // which is not the same as "the offer is valid while the shopper is looking
+  // at it". A tab left open past end_date, or a page served from the react-query
+  // cache, would otherwise keep painting a discount that checkout will reject.
+  // The clock re-ticks on focus/visibility/bfcache so the gate re-evaluates in
+  // place, and the rule itself is the shared one the group listings use.
+  const offerNow = useOfferClock();
+  const offerActive = isOfferLive(offerContext?.offer, offerNow);
   // The server decides whether this product may be sold online (it's hidden
   // from grids for the same reasons — no image yet, or not pinned in any
   // published group). The page still renders so QR scans and old links land
@@ -710,8 +719,15 @@ export default function ProductDetail({
               {/* Group-level promos surfaced as badges. Free shipping is
                   resolved server-side from the group's offer set so it can
                   ride alongside a price discount (e.g. "20% off + free
-                  shipping" expressed as two offers on the same group). */}
-              {(offerContext?.freeShipping || offerContext?.offer?.name) && (
+                  shipping" expressed as two offers on the same group).
+                  Gated on `offerActive`: once the offer has lapsed the page
+                  must make no claim at all — no name badge, and no free
+                  shipping promise the checkout would not honour. The server
+                  ORs freeShipping across every live offer but only returns the
+                  priced one, so tying the badge to that offer's liveness can
+                  understate a surviving shipping-only promo — under-claiming is
+                  the safe direction, and the cart re-resolves it server-side. */}
+              {offerActive && (offerContext?.freeShipping || offerContext?.offer?.name) && (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {offerContext?.offer?.name && (
                     <span className="inline-flex items-center rounded-full border border-brand/30 bg-brand/10 text-brand text-[11px] font-bold tracking-wide px-2.5 py-1">
@@ -936,6 +952,15 @@ export default function ProductDetail({
       </div>
 
       <RecentlyViewed excludeDocumentId={product?.documentId} />
+
+      {/* Sideways step inside the container the shopper arrived through. Only
+          renders when there IS such a container — a bare /product/<slug> visit
+          has nothing to be "more from". Cards carry the groupId forward so the
+          offer context survives the next click. */}
+      <GroupRail
+        groupId={sourceGroupId}
+        excludeDocumentId={product?.documentId}
+      />
 
       {/* Mobile sticky Add-to-Cart bar — sticks to the bottom on phones so
           the CTA is always reachable. The desktop right column already
