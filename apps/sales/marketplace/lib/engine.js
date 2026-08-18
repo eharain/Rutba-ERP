@@ -339,6 +339,29 @@ function mediaOut(m) {
   return { url: m.url, name: m.name || null, alternativeText: m.alternativeText || null, mime: m.mime || null, width: m.width || null, height: m.height || null, formats: m.formats || null };
 }
 
+/**
+ * Does this product have a photo to sell with — its own, or one on any of the
+ * variants riding under it?
+ *
+ * "A product with no image does not go out" is enforced in services/strapi by
+ * utils/public-product.js. Its set-based helper (imagedProductIdSet) reads the
+ * files_related_mph morph table directly and so needs a database handle; this
+ * worker runs outside services/strapi and has none. It does not need one: the
+ * catalog fetch already populates `logo` and `gallery` for the parent AND for
+ * its published variants (see catalogPopulate in lib/strapi.js), so the same
+ * rule is applied here to media the API has already handed over.
+ *
+ * The variant leg is the part that matters. Photography frequently lives only
+ * on the colour variants, and a check that looked at the parent alone would
+ * quietly stop pushing products that are perfectly sellable. Pinned by tests in
+ * test/unit.js.
+ */
+function productHasImage(product, variants) {
+  const has = (p) => !!(p && (p.logo || (Array.isArray(p.gallery) && p.gallery.length > 0)));
+  if (has(product)) return true;
+  return (variants || []).some(has);
+}
+
 // name+slug pairs — the target find-or-creates its own category/brand/term rows
 // by slug, so Rutba↔Rutba taxonomy needs no operator mapping.
 function taxonomyOut(arr) {
@@ -382,11 +405,34 @@ function assembleCatalogPayload({ parents, variantsByParent, listingByProduct, a
   const payload = [];
   const metaByOrigin = new Map();
   let skipped = 0;
+  // Every skip is recorded with WHY. A catalog run that quietly drops 40
+  // products and then reports a clean success is indistinguishable from one
+  // that pushed everything, which is how a broken integration hides.
+  const skippedDetail = [];
+  const drop = (product, reason) => {
+    skipped += 1;
+    skippedDetail.push({
+      origin_document_id: product && product.documentId,
+      sku: (product && product.sku) || null,
+      name: (product && product.name) || null,
+      reason,
+    });
+  };
+
   for (const product of parents || []) {
     // A "parent" itself flagged is_variant is a data anomaly (a variant whose
     // own parent wasn't published) — skip rather than push a malformed row.
-    if (product.is_variant === true) { skipped += 1; continue; }
-    if (product.is_active === false || !product.sku) { skipped += 1; continue; }
+    if (product.is_variant === true) { drop(product, 'variant-anomaly'); continue; }
+    if (product.is_active === false) { drop(product, 'inactive'); continue; }
+    if (!product.sku) { drop(product, 'no-sku'); continue; }
+
+    const productVariants = (variantsByParent && variantsByParent.get(product.documentId)) || [];
+
+    // The image gate, applied at SELECTION: an image-less product never reaches
+    // buildCatalogProduct, rather than being pushed with an empty media block.
+    // Credits the parent with its variants' photos — see productHasImage.
+    if (!productHasImage(product, productVariants)) { drop(product, 'no-image'); continue; }
+
     const listing = (listingByProduct && listingByProduct.get(product.documentId)) || null;
     const adj = effectiveAdjustment(product, listing, account, rules);
     const entry = buildCatalogProduct(product, adj);
@@ -395,7 +441,7 @@ function assembleCatalogPayload({ parents, variantsByParent, listingByProduct, a
     // carry null/0 prices — see the variant-price fallback convention).
     const parentSelling = Number(product.selling_price) || 0;
     const parentOffer = Number(product.offer_price) > 0 ? Number(product.offer_price) : null;
-    entry.variants = ((variantsByParent && variantsByParent.get(product.documentId)) || [])
+    entry.variants = productVariants
       .filter((v) => v && v.sku && v.is_active !== false)
       .map((v) => {
         const ve = buildCatalogProduct(v, adj);
@@ -410,7 +456,14 @@ function assembleCatalogPayload({ parents, variantsByParent, listingByProduct, a
     payload.push(entry);
     metaByOrigin.set(product.documentId, { product, listing });
   }
-  return { payload, metaByOrigin, skipped };
+  return { payload, metaByOrigin, skipped, skippedDetail };
+}
+
+/** Counts per skip reason, e.g. { 'no-image': 40, inactive: 3 }. */
+function countSkipsByReason(skippedDetail) {
+  const out = {};
+  for (const s of skippedDetail || []) out[s.reason] = (out[s.reason] || 0) + 1;
+  return out;
 }
 
 // Group PUBLISHED variant rows by their parent documentId.
@@ -448,7 +501,11 @@ async function syncCatalogForAccount(accountDocumentId) {
     marketplace_account: account.documentId, platform: account.platform,
     kind: 'catalog', status: 'running', started_at: new Date().toISOString(),
   });
-  const counts = { fetched: 0, created: 0, updated: 0, skipped: 0, failed: 0 };
+  // `attention` is a real marketplace-sync-log column (see the orders sync):
+  // rows that completed but need a human look. An image-less product is exactly
+  // that — nothing failed, but a product the operator expected on the
+  // marketplace is not there, and only a photo will fix it.
+  const counts = { fetched: 0, created: 0, updated: 0, skipped: 0, failed: 0, attention: 0 };
   const detail = [];
   try {
     const { wantedIds, listingByProduct } = await resolvePublishSet(account);
@@ -468,7 +525,7 @@ async function syncCatalogForAccount(accountDocumentId) {
       strapi.getCatalogProducts([...parentDocIds]),
       strapi.getPublishedVariants([...parentDocIds]),
     ]);
-    const { payload, metaByOrigin, skipped } = assembleCatalogPayload({
+    const { payload, metaByOrigin, skipped, skippedDetail } = assembleCatalogPayload({
       parents,
       variantsByParent: groupVariantsByParent(variantRows),
       listingByProduct,
@@ -477,6 +534,20 @@ async function syncCatalogForAccount(accountDocumentId) {
     });
     counts.skipped += skipped;
     counts.fetched = payload.length;
+
+    // Make the skips legible in the audit trail: a per-reason summary, plus the
+    // products themselves (capped, so one bad run can't bloat the log row).
+    const byReason = countSkipsByReason(skippedDetail);
+    if (skippedDetail.length) {
+      detail.push({ skipped_by_reason: byReason, skipped_products: skippedDetail.slice(0, 200) });
+      const noImage = byReason['no-image'] || 0;
+      if (noImage > 0) {
+        counts.attention += noImage;
+        console.warn(
+          `[marketplace] ${account.platform} ${account.documentId}: ${noImage} product(s) not pushed — no image on the product or any of its variants`
+        );
+      }
+    }
 
     if (payload.length) {
       const { results } = await adapter.pushCatalog({ account, products: payload });
@@ -494,7 +565,12 @@ async function syncCatalogForAccount(accountDocumentId) {
     }
 
     await strapi.updateAccount(account.documentId, { last_inventory_synced_at: new Date().toISOString() });
-    const status = counts.failed > 0 ? ((counts.created + counts.updated) > 0 ? 'partial' : 'error') : 'success';
+    // A run that withheld products for want of a photo is 'partial', not
+    // 'success' — same rule the orders sync applies to unmatched SKUs. Without
+    // this, a catalog sync that pushed 10 of 50 products reads as clean.
+    const status = counts.failed > 0
+      ? ((counts.created + counts.updated) > 0 ? 'partial' : 'error')
+      : (counts.attention > 0 ? 'partial' : 'success');
     await strapi.updateSyncLog(log.documentId, { status, ...counts, detail, finished_at: new Date().toISOString() });
     return { ...counts, status };
   } catch (e) {
@@ -942,6 +1018,8 @@ module.exports = {
     groupVariantsByParent,
     parentDocIdOf,
     buildCatalogProduct,
+    productHasImage,
+    countSkipsByReason,
     mediaOut,
     taxonomyOut,
   },

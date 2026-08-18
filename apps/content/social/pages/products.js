@@ -103,6 +103,14 @@ export default function SocialProducts() {
     }, [sortField, sortDir, updateQuery]);
 
     const applyExtraFilters = useCallback((filters) => {
+        // Every post here starts from a product, and a product with no image
+        // has nothing to post. Passing the hint unconditionally is the point of
+        // it being opt-in: this browser is a post picker, while the CMS and
+        // stock lists that share this component still need to SEE image-less
+        // products in order to fix them, so the server default stays unfiltered.
+        // Counts an image on any colour variant, so a parent photographed only
+        // through its variants is still offered.
+        filters.hasImage = true;
         if (missingContent) filters.missingContent = true;
         if (missingLogo) filters.missingLogo = true;
         if (missingGallery) filters.missingGallery = true;
@@ -271,7 +279,10 @@ export default function SocialProducts() {
                 <ToastContainer />
                 <ListPageLayout
                     title="Products"
-                    subtitle={`${total} products found — start a social post from any product`}
+                    // Say that the list is filtered. A product quietly missing
+                    // from a picker reads as a bug; "it has no photo yet" is
+                    // something the operator can act on.
+                    subtitle={`${total} products with a photo — start a social post from any of them. Products with no image (their own or a variant's) aren't listed.`}
                     headerActions={<AddButton label="New Post" href="/posts/create" />}
                     filters={
                         <ProductFilter

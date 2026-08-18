@@ -80,18 +80,33 @@ export default function BulkProductActions({
             }
         }
 
-        let ok = 0, fail = 0;
+        let ok = 0;
+        const reasons = [];
         for (const docId of allIds) {
             try {
                 await ProductsEndpoints.publish(docId);
                 ok++;
                 if (onPublished) onPublished(docId);
             } catch (err) {
-                fail++;
+                reasons.push(err?.response?.data?.error?.message || err?.message || "Unknown error");
                 console.error("Failed to publish", docId, err);
             }
         }
-        toast(`Published ${ok} product(s)${fail ? `, ${fail} failed` : ""}.`, fail ? "warning" : "success");
+        if (reasons.length === 0) {
+            toast(`Published ${ok} product(s).`, "success");
+        } else {
+            // A bare "30 failed" hides the one thing the operator needs to know.
+            // Most bulk failures share a cause (typically the image gate), so
+            // report the commonest reason with its count instead of a number.
+            const byReason = reasons.reduce((m, r) => m.set(r, (m.get(r) || 0) + 1), new Map());
+            const [reason, n] = [...byReason.entries()].sort((a, b) => b[1] - a[1])[0];
+            const others = reasons.length - n;
+            toast(
+                `Published ${ok} product(s). ${reasons.length} refused — ${n}: ${reason}` +
+                    (others ? ` (+${others} for other reasons — see the console)` : ""),
+                "warning"
+            );
+        }
         setBulkUpdating(false);
         if (onComplete) onComplete();
     };

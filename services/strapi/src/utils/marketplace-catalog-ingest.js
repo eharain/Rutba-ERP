@@ -13,10 +13,33 @@
 // incoming barcode collides with a *different* product we index-suffix it
 // (`code-2`, `code-3`, …) rather than overwrite — see uniqueBarcode.
 
+const { isNoImageError } = require('../api/product/publish-image-guard');
+
 const PRODUCT_UID = 'api::product.product';
 const CATEGORY_UID = 'api::category.category';
 const BRAND_UID = 'api::brand.brand';
 const FILE_UID = 'plugin::upload.file';
+
+/**
+ * Publish an ingested product, tolerating one refusal: the image gate.
+ *
+ * A peer can push a product with no media, and the rule is that such a product
+ * does not go live here either. But the row itself has already been written by
+ * the time we publish, so a refusal is not an ingest failure — it lands as a
+ * DRAFT (invisible to the storefront, exactly as intended) and the caller
+ * reports it as held. Reporting it as a hard failure would have the peer retry
+ * a push that did in fact succeed. Any other error still propagates.
+ */
+async function publishIngested(strapi, documentId) {
+  try {
+    await strapi.documents(PRODUCT_UID).publish({ documentId });
+    return { published: true, held: null };
+  } catch (e) {
+    if (!isNoImageError(e)) throw e;
+    strapi.log.warn(`[marketplace-ingest] ${documentId} kept as draft: no image`);
+    return { published: false, held: 'no-image' };
+  }
+}
 
 function slugify(s) {
   return String(s || '')
@@ -173,8 +196,8 @@ async function upsertOne(strapi, p, originAccountId, caches, parentDocId) {
     }
     action = 'created';
   }
-  await strapi.documents(PRODUCT_UID).publish({ documentId });
-  return { documentId, action };
+  const { held } = await publishIngested(strapi, documentId);
+  return { documentId, action, held };
 }
 
 /**
@@ -201,7 +224,14 @@ async function ingestCatalog(strapi, { origin_account_id: originAccountId, produ
           strapi.log.warn(`[marketplace-ingest] variant ${v && v.sku} failed: ${e.message}`);
         }
       }
-      results.push({ origin_document_id: p.origin_document_id, sku: p.sku, ok: true, external_id: parent.documentId, action: parent.action, variants: { ok: vOk, failed: vFail } });
+      results.push({
+        origin_document_id: p.origin_document_id, sku: p.sku, ok: true,
+        external_id: parent.documentId, action: parent.action,
+        // Written, but withheld from the storefront for want of an image —
+        // surfaced so a peer's log distinguishes "live" from "landed as draft".
+        ...(parent.held ? { held: parent.held } : {}),
+        variants: { ok: vOk, failed: vFail },
+      });
     } catch (e) {
       strapi.log.warn(`[marketplace-ingest] product ${p && p.sku} failed: ${e.message}`);
       results.push({ origin_document_id: p && p.origin_document_id, sku: p && p.sku, ok: false, error: e.message });
@@ -230,8 +260,8 @@ async function updateInventory(strapi, updates) {
       // been taken off sale — mirror it so our copy stops selling too.
       if (typeof u.is_active === 'boolean') data.is_active = u.is_active;
       await strapi.documents(PRODUCT_UID).update({ documentId: existing.documentId, data });
-      await strapi.documents(PRODUCT_UID).publish({ documentId: existing.documentId });
-      results.push({ sku: u.sku, ok: true, action: 'updated' });
+      const { held } = await publishIngested(strapi, existing.documentId);
+      results.push({ sku: u.sku, ok: true, action: 'updated', ...(held ? { held } : {}) });
     } catch (e) {
       results.push({ sku: u.sku, ok: false, error: e.message });
     }

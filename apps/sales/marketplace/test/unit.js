@@ -405,7 +405,7 @@ async function test(name, fn) {
     assert.strictEqual(g.has('v3'), false);
   });
   await test('assemble: variant nested, positive-or-parent price fallback', () => {
-    const parents = [{ documentId: 'p1', sku: 'PSKU', name: 'Parent', selling_price: 200, offer_price: 150, is_active: true }];
+    const parents = [{ documentId: 'p1', sku: 'PSKU', name: 'Parent', selling_price: 200, offer_price: 150, is_active: true, gallery: [{ url: '/uploads/p1.jpg' }] }];
     const variantsByParent = new Map([['p1', [
       { documentId: 'v1', sku: 'V1', selling_price: 250, is_active: true },   // own price
       { documentId: 'v2', sku: 'V2', selling_price: 0, is_active: true },     // falls back to parent 200
@@ -425,7 +425,7 @@ async function test(name, fn) {
       { documentId: 'a', sku: 'A', is_active: false },                 // inactive
       { documentId: 'b', is_active: true },                            // no sku
       { documentId: 'c', sku: 'C', is_variant: true, parent: { documentId: 'x' } }, // anomaly
-      { documentId: 'd', sku: 'D', selling_price: 10, is_active: true }, // ok
+      { documentId: 'd', sku: 'D', selling_price: 10, is_active: true, logo: { url: '/uploads/d.jpg' } }, // ok
     ];
     const { payload, skipped } = CT.assembleCatalogPayload({ parents, variantsByParent: new Map(), listingByProduct: new Map(), account: acct, rules: [] });
     assert.strictEqual(skipped, 3);
@@ -433,7 +433,7 @@ async function test(name, fn) {
     assert.strictEqual(payload[0].sku, 'D');
   });
   await test('assemble: inactive variant is dropped from the nested set', () => {
-    const parents = [{ documentId: 'p', sku: 'P', selling_price: 100, is_active: true }];
+    const parents = [{ documentId: 'p', sku: 'P', selling_price: 100, is_active: true, gallery: [{ url: '/uploads/p.jpg' }] }];
     const variantsByParent = new Map([['p', [
       { documentId: 'v1', sku: 'V1', selling_price: 100, is_active: true },
       { documentId: 'v2', sku: 'V2', selling_price: 100, is_active: false },
@@ -442,6 +442,72 @@ async function test(name, fn) {
     const { payload } = CT.assembleCatalogPayload({ parents, variantsByParent, listingByProduct: new Map(), account: acct, rules: [] });
     assert.strictEqual(payload[0].variants.length, 1);
     assert.strictEqual(payload[0].variants[0].sku, 'V1');
+  });
+
+  console.log('— catalog image gate (a product with no image does not go out) —');
+  await test('productHasImage: own logo, own gallery, or ANY variant\'s image', () => {
+    assert.strictEqual(CT.productHasImage({ logo: { url: '/u/a.jpg' } }, []), true);
+    assert.strictEqual(CT.productHasImage({ gallery: [{ url: '/u/a.jpg' }] }, []), true);
+    // The case a naive parent-only check gets wrong: photos live on the variants.
+    assert.strictEqual(
+      CT.productHasImage({ gallery: [] }, [{ sku: 'V1' }, { gallery: [{ url: '/u/v.jpg' }] }]),
+      true
+    );
+    assert.strictEqual(CT.productHasImage({ gallery: [] }, []), false);
+    assert.strictEqual(CT.productHasImage({ gallery: [], logo: null }, [{ gallery: [] }]), false);
+  });
+  await test('assemble: image-less product is skipped with reason no-image', () => {
+    const parents = [
+      { documentId: 'i', sku: 'I', selling_price: 10, is_active: true, gallery: [{ url: '/u/i.jpg' }] },
+      { documentId: 'n', sku: 'N', name: 'No photo', selling_price: 10, is_active: true, gallery: [] },
+    ];
+    const { payload, skipped, skippedDetail } = CT.assembleCatalogPayload({
+      parents, variantsByParent: new Map(), listingByProduct: new Map(), account: acct, rules: [],
+    });
+    assert.strictEqual(payload.length, 1);
+    assert.strictEqual(payload[0].sku, 'I');
+    assert.strictEqual(skipped, 1);
+    assert.deepStrictEqual(skippedDetail, [
+      { origin_document_id: 'n', sku: 'N', name: 'No photo', reason: 'no-image' },
+    ]);
+    assert.deepStrictEqual(CT.countSkipsByReason(skippedDetail), { 'no-image': 1 });
+  });
+  await test('assemble: PARENT with no own image but an imaged variant IS pushed', () => {
+    // The regression this gate is most likely to introduce. The parent carries
+    // no photo of its own; its colour variant does, and that must be enough.
+    const parents = [{ documentId: 'p', sku: 'P', selling_price: 100, is_active: true, gallery: [], logo: null }];
+    const variantsByParent = new Map([['p', [
+      { documentId: 'v1', sku: 'V1', selling_price: 100, is_active: true, gallery: [{ url: '/u/v1.jpg' }] },
+    ]]]);
+    const { payload, skipped, skippedDetail } = CT.assembleCatalogPayload({
+      parents, variantsByParent, listingByProduct: new Map(), account: acct, rules: [],
+    });
+    assert.strictEqual(skipped, 0, 'parent must not be skipped — its variant has the photo');
+    assert.deepStrictEqual(skippedDetail, []);
+    assert.strictEqual(payload.length, 1);
+    assert.strictEqual(payload[0].sku, 'P');
+    assert.strictEqual(payload[0].variants.length, 1);
+  });
+  await test('assemble: an image-less VARIANT still rides under an imaged parent', () => {
+    // Variants are sold from the parent's page, so the parent's photo covers
+    // them — dropping them would silently shrink the pushed catalog.
+    const parents = [{ documentId: 'p', sku: 'P', selling_price: 100, is_active: true, gallery: [{ url: '/u/p.jpg' }] }];
+    const variantsByParent = new Map([['p', [
+      { documentId: 'v1', sku: 'V1', selling_price: 100, is_active: true, gallery: [] },
+    ]]]);
+    const { payload, skipped } = CT.assembleCatalogPayload({
+      parents, variantsByParent, listingByProduct: new Map(), account: acct, rules: [],
+    });
+    assert.strictEqual(skipped, 0);
+    assert.strictEqual(payload[0].variants.length, 1);
+  });
+  await test('countSkipsByReason tallies a mixed run', () => {
+    assert.deepStrictEqual(
+      CT.countSkipsByReason([
+        { reason: 'no-image' }, { reason: 'no-image' }, { reason: 'inactive' },
+      ]),
+      { 'no-image': 2, inactive: 1 }
+    );
   });
 
   console.log('— inventory publish set (active gate + delisting) —');

@@ -42,6 +42,7 @@
 
 const path = require('path');
 const { posRequire, instantiateController } = require('../compat/strapi');
+const { useDocumentMiddleware } = require('../documents');
 const { registerLifecycles } = require('./lifecycles');
 
 function ctrl(apiName, file, strapi) {
@@ -72,6 +73,13 @@ function registerCatalogModule() {
       posRequire(`api/${ct}/content-types/${ct}/lifecycles.js`)
     );
   }
+
+  // "A product with no image does not go out" — same registration as services/strapi
+  // src/index.js, so the rule is enforced identically whichever backend serves
+  // the publish. The guard module is required from services/strapi source (zero-copy),
+  // so the image test itself has exactly one definition.
+  posRequire('api/product/publish-image-guard.js')
+    .registerPublishImageGuard({ use: useDocumentMiddleware }, strapi);
 
   // Factory-built controllers (need instantiateController for super.*).
   const product = ctrl('product', null, strapi);

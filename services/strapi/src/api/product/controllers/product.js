@@ -5,6 +5,7 @@ const { ensureUser } = require('../../../utils/ensure-user');
 const { requireApp } = require('../../../utils/require-app');
 const { isServiceToken } = require('../../../utils/is-service-token');
 const catalogIngest = require('../../../utils/marketplace-catalog-ingest');
+const { imagedProductDocumentIdSet } = require('../../../utils/public-product');
 
 function clampInt(value, fallback, min, max) {
   const n = Number.parseInt(value, 10);
@@ -138,6 +139,31 @@ module.exports = createCoreController('api::product.product', ({ strapi }) => ({
           : exclude;
       }
     }
+
+    // "Has an image" filter — OPT-IN, and deliberately so. apps/content/social's
+    // product browser passes it so an image-less product is never offered as
+    // something to build a post around ("a product with no image does not go
+    // out"). POS, stock, inventory and CMS all call this same list to WORK on
+    // products — including precisely the image-less ones someone needs to find
+    // and fix — so the default must stay unfiltered.
+    //
+    // Like noSocialPosts / publishState above, this can't be a REST filter:
+    // media live in the files_related_mph morph table, which Strapi filters
+    // can't reach. Resolved here with full privileges and ANDed on top, so any
+    // policy filter injected as a sibling key is preserved.
+    if (ctx.query?.hasImage) {
+      delete ctx.query.hasImage;
+      const imagedDocIds = await imagedProductDocumentIdSet(strapi);
+      // Nothing imaged at all → an unsatisfiable filter yields an empty page
+      // rather than silently returning everything.
+      const imagedFilter = imagedDocIds.size > 0
+        ? { documentId: { $in: [...imagedDocIds] } }
+        : { documentId: { $in: ['__none__'] } };
+      ctx.query.filters = ctx.query.filters
+        ? { $and: [ctx.query.filters, imagedFilter] }
+        : imagedFilter;
+    }
+
     return await super.find(ctx);
   },
 
