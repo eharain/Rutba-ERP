@@ -21,6 +21,7 @@
 
 const { status, up, down } = require('../src/platform/migrations');
 const { getDb, closeDb } = require('../src/db/connection');
+const { describeTarget } = require('./lib/db-target');
 
 function parseArgs(argv) {
   const out = { command: null, name: null, dryRun: false };
@@ -55,7 +56,10 @@ function printStatus(report) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  console.log(`[migrate] database: ${getDb().client.config.connection.database}`);
+  // The name alone is not enough to tell you where you are: dev, the LAN box
+  // and live all call it pos_db on 127.0.0.1. ENVIRONMENT is the part that
+  // discriminates, because it picks the .env file the credentials come from.
+  console.log(`[migrate] database: ${describeTarget(getDb())}`);
 
   if (args.command === 'status') {
     const report = await status();

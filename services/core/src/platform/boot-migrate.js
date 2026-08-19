@@ -48,14 +48,20 @@ function enabled() {
  *
  * Returns `{ ran, applied, waited, skipped }`. Throws on anything that leaves
  * the schema not-current — the caller is expected to let that kill the process.
+ *
+ * `dir` overrides which migration set is applied. src/index.js never passes it;
+ * it exists so the four rules above can be tested against a set the test is
+ * allowed to break, in a database it is allowed to destroy. Testing them
+ * against the real set means applying real DDL to whatever .env resolves to —
+ * see the header of scripts/smoke-packaging.js.
  */
-async function migrateOnBoot({ log = console } = {}) {
+async function migrateOnBoot({ log = console, dir = undefined } = {}) {
   if (!enabled()) {
     log.log('[migrate] on-boot migration disabled (RUTBA_CORE_MIGRATE_ON_BOOT=0)');
     return { ran: false, applied: [], waited: false, skipped: 'disabled' };
   }
 
-  const before = await status();
+  const before = await status({ dir });
   if (before.drift.length) {
     // Rule 4. Say which ones, because the fix depends on whether the edit was
     // intentional (write a new migration) or accidental (restore the file).
@@ -75,16 +81,16 @@ async function migrateOnBoot({ log = console } = {}) {
   const outcome = await withAdvisoryLock(LOCK_NAME, async () => {
     // Re-read inside the lock: the pending list from before the wait may have
     // been applied by whoever held it.
-    const inside = await status();
+    const inside = await status({ dir });
     if (!inside.pending.length) return { applied: [], note: 'another instance applied them' };
-    return { applied: await up(), note: null };
+    return { applied: await up({ dir }), note: null };
   }, { timeoutMs: LOCK_TIMEOUT_MS });
 
   if (!outcome.acquired) {
     // Rule 3: we waited out the whole timeout and never got in. The holder may
     // have finished anyway, so check the schema rather than the lock.
     log.warn(`[migrate] could not take the migration lock within ${LOCK_TIMEOUT_MS}ms — checking whether another instance finished the work`);
-    const after = await status();
+    const after = await status({ dir });
     if (after.pending.length) {
       throw new Error(
         `[migrate] refusing to boot: ${after.pending.length} migration(s) still pending and the migration lock is `
@@ -103,7 +109,7 @@ async function migrateOnBoot({ log = console } = {}) {
 
   // Rule 2 is mostly `up()` throwing, but a partial apply that somehow returned
   // is still a boot we must not complete.
-  const after = await status();
+  const after = await status({ dir });
   if (after.pending.length) {
     throw new Error(
       `[migrate] refusing to boot: ${after.pending.length} migration(s) still pending after applying `

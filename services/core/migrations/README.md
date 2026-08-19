@@ -27,9 +27,19 @@ npm --prefix services/core run migrate:down -- --name=004-helpdesk-desks
 loads the repo-root `.env` itself, so it needs no `load-env.js` wrapper. Every
 command prints the target database first; check it before pressing on.
 
-**Migrations never run at boot.** Nothing in `src/index.js` requires the runner.
-Applying schema changes to a database a live services/strapi is also serving is an
-explicit, operator-timed act.
+**Migrations run at boot**, since portal task E4: `src/index.js` calls
+`migrateOnBoot()` before it serves, because an instance the control plane
+provisions has no operator to run `npm run migrate` for it. It is held under an
+advisory lock so a rolling deploy cannot have two processes applying the same
+DDL, and it refuses to boot rather than serve a half-migrated schema — see
+`src/platform/boot-migrate.js`. Set `RUTBA_CORE_MIGRATE_ON_BOOT=0` where
+migrations are applied out of band.
+
+That means **anything calling `migrateOnBoot()` migrates whatever `.env`
+resolves to**, without asking — dev, the LAN box or live. Tests must not: pass
+the `dir` option and point the connection at a throwaway database, the way
+`scripts/smoke-packaging.js` does. Applying schema changes to a database a live
+services/strapi is also serving remains an explicit, operator-timed act.
 
 ## File contract
 

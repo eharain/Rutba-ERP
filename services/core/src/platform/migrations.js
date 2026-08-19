@@ -11,9 +11,18 @@
  * one. Tables created here are deliberately invisible to the schema registry,
  * to documents() and to Strapi admin; repositories on them use knex directly.
  *
- * Migrations NEVER run at boot — src/index.js does not require this file. Core
- * shares a database with a live services/strapi, so a schema change is an explicit,
- * operator-timed act: `node scripts/migrate.js up`.
+ * Migrations DO run at boot, since portal task E4: src/index.js calls
+ * migrateOnBoot() before it serves, because an instance the control plane
+ * provisions has no operator to run `npm run migrate` for it. See
+ * ./boot-migrate.js, which holds it under an advisory lock and refuses to boot
+ * rather than serve a half-migrated schema. Set RUTBA_CORE_MIGRATE_ON_BOOT=0
+ * where migrations are applied out of band.
+ *
+ * The consequence worth keeping in mind: anything that calls up() or
+ * migrateOnBoot() applies real DDL to whatever src/config/env.js resolves —
+ * dev, the LAN box or live, and it does not ask. `node scripts/migrate.js up`
+ * prints the target first for exactly that reason. Tests take the `dir`
+ * parameter below and a throwaway database instead.
  *
  * Three constraints shape everything below.
  *
@@ -50,8 +59,8 @@ function hashContents(contents) {
     .digest('hex');
 }
 
-function loadMigration(file) {
-  const full = path.join(MIGRATIONS_DIR, file);
+function loadMigration(file, dir = MIGRATIONS_DIR) {
+  const full = path.join(dir, file);
   const name = file.replace(/\.js$/, '');
   let mod;
   try {
@@ -88,14 +97,22 @@ function loadMigration(file) {
  * so byte order is apply order — that is the whole reason for the padding.
  * Loading here rather than lazily means `status` and `--dry-run` validate the
  * shape of every file without touching the database.
+ *
+ * `dir` defaults to the checked-in set, and production never passes anything
+ * else. It is injectable for the same reason health() takes an injectable
+ * `db`: this runner's refusal paths — drift, and a migration that throws — can
+ * only be exercised against a migration set the caller is allowed to break,
+ * and breaking the real set means breaking a real database. See
+ * scripts/smoke-packaging.js, which runs the boot path against a throwaway
+ * set in a throwaway SQLite file.
  */
-function discover() {
-  if (!fs.existsSync(MIGRATIONS_DIR)) return [];
+function discover(dir = MIGRATIONS_DIR) {
+  if (!fs.existsSync(dir)) return [];
   return fs
-    .readdirSync(MIGRATIONS_DIR)
+    .readdirSync(dir)
     .filter((f) => f.endsWith('.js') && !f.startsWith('.') && !f.startsWith('_'))
     .sort()
-    .map(loadMigration);
+    .map((file) => loadMigration(file, dir));
 }
 
 async function ensureTable() {
@@ -152,8 +169,8 @@ function assertNoDrift(drift) {
 }
 
 /** { files, applied, pending, drift }. Read-only: never creates the tracking table. */
-async function status() {
-  const files = discover();
+async function status(options = {}) {
+  const files = discover(options.dir);
   const applied = await readApplied();
   const appliedNames = new Set(applied.map((r) => r.name));
   return {
@@ -170,7 +187,7 @@ async function status() {
  * ahead would apply 003 against a schema 002 never built).
  */
 async function up(options = {}) {
-  const { pending, drift } = await status();
+  const { pending, drift } = await status({ dir: options.dir });
   assertNoDrift(drift);
 
   let plan = pending;
@@ -214,7 +231,7 @@ async function up(options = {}) {
 
 /** Roll back the most recently applied migration, or the named one. */
 async function down(options = {}) {
-  const { files, applied, drift } = await status();
+  const { files, applied, drift } = await status({ dir: options.dir });
   assertNoDrift(drift);
 
   if (!applied.length) {
