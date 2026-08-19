@@ -21,7 +21,7 @@ on any surface that disagrees with it. `npm run verify:wiring` went from **9 err
 | roles.js `VALID_APP_KEYS` | 21 | excludes `web` — deliberate (D1) |
 | roles.js `APP_META` | 22 | includes `web` with `public: true` |
 | [domains.json](../../../packages/api-provider/config/domains.json) | 27 domains | 22 app domains + `users` + `delivery` + 3 `accounts-*` sub-domains |
-| [.env.development](../../../.env.development) | 22 `*__PORT` + 2 dead | see A2 |
+| `.env.development` | 22 `*__PORT` + 2 dead | see A2 |
 
 ## Accidental drift — status
 
