@@ -1,19 +1,50 @@
 /**
- * @rutba/sync — the offline sync-bridge.
+ * @rutba/sync — the sync package.
  *
- * Phase 1 (docs/todo/offline-pos-options.md §10.2): a transparent
- * pass-through proxy in front of the Rutba API, plus `GET /bridge/status`.
- * No cache, no replica, no outbox, no offline behaviour of any kind. The
- * bridge earns trust as a proxy before it is allowed to be clever.
+ * Two things live here, both in service of the same decision: **one sync
+ * engine, four consumers** (docs/todo/erp2-program/README.md §3a) — the offline
+ * desktop replica, CMS staging→production promotion, instance↔instance
+ * copy-over, and cloning golden content into a freshly provisioned tenant.
  *
- *   import { createBridge } from '@rutba/sync';
+ *   createBridge   the offline sync-bridge, phase 1 (docs/todo/offline-pos-options.md
+ *                  §10.2): a transparent pass-through proxy in front of the
+ *                  Rutba API, plus `GET /bridge/status`. No cache, no replica,
+ *                  no outbox. The bridge earns trust as a proxy before it is
+ *                  allowed to be clever.
  *
- *   const bridge = createBridge({ upstream: 'http://localhost:4020', port: 4030 });
- *   await bridge.listen();
- *   // …
- *   await bridge.close();
+ *   planRun etc.   the replication engine — manifest, identity, schema
+ *                  analysis and planning. Pure: it performs no I/O, so a plan
+ *                  can be produced, printed, read by a person and only then
+ *                  applied. Also available as `@rutba/sync/engine`.
+ *
+ * They are independent today. The bridge's later phases (replica + outbox)
+ * become a consumer of the engine rather than a second implementation of it.
  */
 
 export { createBridge } from './lib/bridge.js';
 export { resolveConfig, parseUpstream, DEFAULTS } from './lib/config.js';
 export { VERSION } from './lib/version.js';
+
+export {
+    // schema
+    analyzeScope,
+    classifyAttributes,
+    isMultipleRelation,
+    isOwnerSide,
+    topoOrder,
+    typeKind,
+    // identity
+    createIdentity,
+    indexByKey,
+    SINGLETON_KEY,
+    // planning
+    contentFields,
+    fingerprint,
+    planLinks,
+    planRun,
+    planType,
+    resolveLink,
+    // manifest
+    ManifestError,
+    parseManifest,
+} from './lib/engine/index.js';

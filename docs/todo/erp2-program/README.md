@@ -338,13 +338,28 @@ Everything that still *requires* a running Strapi, enumerated and killed.
       closed 2026-08-19 by **deleting** the dir. Nothing called it and it was open to the
       internet; see [§3b](#3b-the-media-api-dir-was-a-hole-not-a-port). With this, every custom
       action outside `/api/content-sync/*` is either served by core or gone.
-- [ ] **Build the sync engine v1** (replaces `strapi-content-sync-pro`): contract-level,
+- [~] **Build the sync engine v1** (replaces `strapi-content-sync-pro`): contract-level,
       per the decided design in [06-plugin-replacement-map.md](../core-server-multitenancy-program/06-plugin-replacement-map.md)
       — manifest per connection, CMS `documentId` identity, commerce `external_ids.<origin>`
-      identity, `updatedAt` cursor + tombstones. Close the open gaps in
-      [cms-sync/plugin-gaps.md](../cms-sync/plugin-gaps.md). Mount as core module
+      identity, `updatedAt` cursor + tombstones. Mount as core module
       `content-sync` (planned) + grow `packages/sync`. One engine, four consumers
       (desktop, CMS promotion, instance↔instance, tenant cloning).
+      - [x] **The planner, 2026-08-19** — [packages/sync/lib/engine/](../../../packages/sync/lib/engine/),
+            exported as `@rutba/sync/engine`, 45 assertions. Pure: manifest + schemas +
+            two snapshots in, a printable plan out, no I/O. Four gaps are now invariants
+            with a regression test each (GAP-1 `inversedBy` owns; GAP-3 an out-of-scope
+            relation costs the field not the record; GAP-4 links replace; GAP-10 set
+            difference never deletes), and the design makes GAP-2/6/7/11 unreachable by
+            not writing at the database layer at all. Verified against the live CMS, not
+            just fixtures: 59 records, 169 link operations, 0 unresolved, every non-empty
+            link table resolving and every empty one staying empty — and a snapshot
+            planned against itself produces no work, which is the property that stops a
+            sync rewriting everything forever.
+      - [ ] **The apply phase** — execute a plan over HTTP with an API token, media
+            hand-off through the file server, tombstone collection, run log
+            (`sync_logs`/`sync_run_reports` shapes), cron + manual-run endpoint, and the
+            `content-sync` core module. Two-way stays refused until a provenance field
+            exists (GAP-8); `parseManifest` rejects it with that reason today.
 - [ ] **Re-home the remaining Strapi-admin screens** (the standing "no Strapi-admin
       extensions" rule): api-pro Policy Editor → `apps/admin/console`; API-token issuance →
       `apps/admin/console`; core-store settings (email templates, reset-URL) → `apps/admin/console`;

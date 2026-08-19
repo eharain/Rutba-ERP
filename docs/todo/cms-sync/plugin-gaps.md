@@ -323,6 +323,28 @@ peer simply hasn't sent yet.
 <a id="gap-5"></a>
 ## GAP-5 — Single types are unsyncable (high)
 
+> **The Rutba symptom below is STALE, corrected 2026-08-19.** `site-setting`
+> stopped being a single type in commit `3a4348d8` ("site-settings +
+> return-policy: singleType -> collectionType, resolved per app") — it is now a
+> **collectionType with one row per `app_slug`**, and this repo has **no
+> `singleType` left in `services/strapi/src/api/**` at all**. Found by running
+> the replacement engine's scope analysis over the real schemas, which reported
+> `site-setting` as a collection; verified with
+> `grep -rl '"kind": *"singleType"'` returning zero files.
+>
+> So the gap in the *plugin* is real and unfixed, but it costs Rutba nothing
+> today. What `site-setting` actually needs is the right **identity**: its rows
+> are seeded independently per instance, so their `documentId`s do not agree
+> across instances and `naturalKey(['app_slug'])` is the correct match key.
+> Measured on the live DB: 2 wire records, of which **1 is keyable** — the
+> `is_default` fallback row carries `app_slug = NULL` and needs a decision
+> (either give the default row a reserved slug, or key site-settings on
+> `documentId` and seed both instances from the same fixture) before it can
+> sync. Nothing else in the CMS scope has this problem.
+>
+> The replacement engine supports single types anyway (`identity: 'singleton'`),
+> because the cost was one strategy and a future type may need it.
+
 **Where**
 
 - `server/src/services/content-type-discovery.js:17` — `if (ct.kind !== 'collectionType') continue;` → single types never appear in the Content Types tab

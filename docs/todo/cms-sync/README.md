@@ -42,8 +42,15 @@ What configuration **cannot** fix — see the linked gaps:
   `seo-meta` link — all use `inversedBy` → [GAP-1](./plugin-gaps.md#gap-1).
 - ❌ Images on **published** pages — morph links land on the draft row only →
   [GAP-2](./plugin-gaps.md#gap-2).
-- ❌ Site Settings (logo, favicon, meta defaults, default footer) — it is a
-  single type → [GAP-5](./plugin-gaps.md#gap-5).
+- ⚠️ Site Settings (logo, favicon, meta defaults, default footer) — **this
+  entry is stale, corrected 2026-08-19.** `site-setting` stopped being a single
+  type in `3a4348d8`; it is a collection with one row per `app_slug`, and the
+  repo now has no single type at all. The plugin's [GAP-5](./plugin-gaps.md#gap-5)
+  is still unfixed but no longer applies here. What blocks Site Settings from
+  syncing cleanly is **identity**: the rows are seeded per instance so their
+  `documentId`s do not agree, and the `is_default` fallback row has
+  `app_slug = NULL`, so a natural key on the slug leaves it unmatched. Decide
+  that before enabling it.
 
 So: follow this runbook to get the content across, then finish the nav, the
 group membership and the images by hand (or apply the plugin fixes first — GAP-1

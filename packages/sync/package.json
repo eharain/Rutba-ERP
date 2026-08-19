@@ -2,16 +2,19 @@
   "name": "@rutba/sync",
   "version": "0.1.0",
   "private": true,
-  "description": "The offline sync-bridge, phase 1: a transparent pass-through proxy in front of the Rutba API. No cache, no replica, no outbox — see docs/todo/offline-pos-options.md §10.2.",
+  "description": "The Rutba sync package: the offline sync-bridge (phase 1, pass-through proxy) and the contract-level replication engine that replaces strapi-content-sync-pro. One engine, four consumers — desktop replica, CMS promotion, instance-to-instance copy-over, tenant cloning.",
   "type": "module",
   "main": "./index.js",
   "module": "./index.js",
   "exports": {
-    ".": "./index.js"
+    ".": "./index.js",
+    "./engine": "./lib/engine/index.js"
   },
   "scripts": {
     "start": "node bin/bridge.js",
-    "test": "node test/unit.js"
+    "test": "node test/unit.js && node test/engine.js",
+    "test:bridge": "node test/unit.js",
+    "test:engine": "node test/engine.js"
   },
   "files": [
     "index.js",
