@@ -40,11 +40,12 @@ Each workspace app gates its navigation, routes, and APIs on its entitlement key
 | `apps/sales/rider` | `erp.delivery` | `apps/content/cms` | `erp.cms` |
 | `apps/sales/crm` | `erp.crm` | `apps/content/campaigns` | `erp.campaigns` |
 | `apps/sales/portal` | `erp.leads`/`erp.quotes` | `apps/content/social` | `erp.social` (see below) |
+| `apps/sales/helpdesk` | `erp.helpdesk` (see below) | | |
 
 **Special cases — align, don't duplicate:**
 - **`apps/content/social` + `services/strapi` social types → retire (portal task E6).** The Social Relay is the sole social engine; `erp.social` becomes a UI over the published `@rutba/relay-sdk` against the org's Relay tenant, authenticated by the user's own portal token. Migrate social-accounts → Relay connections (re-auth), scheduled posts → Relay posts.
 - **`apps/content/mail`** — mailboxes are the Wave-2 `comm.mail` product (Mailcow + first-party client, portal direction Aug 2026). This app must not grow into a mail server or an independent mail client; near-term it may only *send* via Rutba MTA. Flag any further work here against the portal Wave-2 plan first.
-- **`apps/sales/helpdesk`** — the portal owns the *cross-product customer support desk* (Support Service + Console queue). If helpdesk is an ERP domain feature (e.g., a business's own customer-service module for *their* customers), it is a legitimate ERP module — but it must not become the channel for "help me with Rutba" tickets; those go to the portal. Decide and record its scope before further development.
+- **`apps/sales/helpdesk` — RESOLVED (Aug 2026): a full ERP module (`erp.helpdesk`) for an org's own customer-service needs — and Rutba's own support desk runs as an org-zero instance of it.** The portal keeps only a thin facade (Rutba-Portal plan 07): portal customers' tickets arrive via a service account, with each portal org mapped to a customer *party* in the org-zero instance. This raises the module's bar — it is Rutba's production desk, so it must be **API-first**: service-account ticket intake (create/thread/attachments against a party), SLA timers, agent assignment, knowledge base with a published/draft distinction and public-read API, and CSAT. Domain logic (SLA, escalation, assignment) lives here, never in the portal facade.
 - **`apps/sales/marketplace`, `apps/admin/console`, `apps/admin/seed`** — instance-internal; console must not duplicate portal Super Console functions (org admin, licensing, billing views live in the portal).
 
 ## Workers & background jobs
