@@ -26,6 +26,7 @@
  */
 
 const { get: envGet, loadVars } = require('../config/env');
+const { subjectOf, IDENTITY_SOURCES } = require('../platform/identity');
 
 const MODES = new Set(['requests', 'errors', 'off']);
 
@@ -143,15 +144,41 @@ function duration(ms) {
   return ms >= 500 ? bold(text) : dim(text);
 }
 
-/** Who made the call — the thing you actually want when a 403 shows up. */
+/**
+ * Who made the call — the thing you actually want when a 403 shows up.
+ *
+ * Read from the identity seam, so one line renders every door: a local JWT
+ * today, a portal assertion when that opens, and no second rendering to keep in
+ * step. subjectOf() is synchronous and touches no database, which is what makes
+ * it safe here — this runs in a finally block on every single request.
+ *
+ * The token NAME is looked up separately and only as a label: it is not part of
+ * an identity (the subject is `token:<id>`), but "token:marketplace-worker"
+ * is what makes a log line readable at 2am.
+ */
 function actor(ctx) {
-  if (ctx.state.user) {
-    const app = ctx.get('x-rutba-app');
-    const role = ctx.get('x-rutba-app-role');
-    return dim(`u${ctx.state.user.id}${app ? `@${app}` : ''}${role ? `/${role}` : ''}`);
+  let who;
+  try {
+    who = subjectOf(ctx);
+  } catch {
+    // A log line must never change a response. The one thing subjectOf refuses
+    // on is an assertion naming another org, which the gate has already turned
+    // into a 403 — this line still has to print, and this is what it prints.
+    return dim('foreign-org');
   }
-  if (ctx.state.apiToken) return dim(`token:${ctx.state.apiToken.name || ctx.state.apiToken.id}`);
-  return dim('anon');
+  const trace = who.req_id ? dim(` #${who.req_id}`) : '';
+
+  if (who.source === IDENTITY_SOURCES.SERVICE) {
+    const label = (ctx.state.apiToken && ctx.state.apiToken.name) || who.sub;
+    return dim(`token:${label}`) + trace;
+  }
+  if (who.source === IDENTITY_SOURCES.ANONYMOUS) return dim('anon') + trace;
+
+  // A person, local or portal: the app and role they claimed are what turn a
+  // 403 into a diagnosis, and both arrive as headers on the request.
+  const app = ctx.get('x-rutba-app');
+  const role = ctx.get('x-rutba-app-role');
+  return dim(`${who.sub}${app ? `@${app}` : ''}${role ? `/${role}` : ''}`) + trace;
 }
 
 function createRequestLogger() {

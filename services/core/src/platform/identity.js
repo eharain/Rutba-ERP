@@ -61,6 +61,22 @@ class PortalAuthNotWired extends Error {
 }
 
 /**
+ * An assertion that names a different org than the one this instance serves.
+ *
+ * Its own error because the answer is neither "unauthenticated" nor "not
+ * allowed": the credential is fine, it simply arrived at the wrong instance.
+ * Saying exactly that is what makes a misrouted gateway debuggable, instead of
+ * it reading as a permissions bug in whichever module the request landed on.
+ */
+class PortalOrgMismatch extends Error {
+  constructor(claimed, served) {
+    super(`portal assertion is for org ${claimed}, but this instance serves ${served}`);
+    this.name = 'PortalOrgMismatch';
+    this.status = 403;
+  }
+}
+
+/**
  * True only when this instance has been told where the portal is. Unset env
  * means the door does not exist — never that it is open.
  */
@@ -136,69 +152,69 @@ function toRoleClaim(key) {
  */
 async function localRoleClaims(userId) {
   if (!userId) return [];
+  const keys = await appRoleKeys(userId);
+  return keys.filter(Boolean).map(toRoleClaim).sort();
+}
+
+/**
+ * The raw api-pro role keys a local user holds.
+ *
+ * Read through api-pro's own loader rather than through a second query of the
+ * same two tables. That loader is memoised in strapi.apiPro.cache and cleared
+ * when a grant changes, so resolving an identity adds no round-trip to a
+ * request whose claim the interceptor is resolving anyway — and, the half that
+ * matters more, the roles in a caller's claims cannot disagree with the roles
+ * their request was policed against. Two private queries would drift apart the
+ * first time one cache was invalidated and the other was not.
+ *
+ * The direct query stays for contexts with no plugin loaded — scripts, the
+ * smoke test — and reads the same two tables.
+ */
+async function appRoleKeys(userId) {
+  const strapi = global.strapi;
+  if (strapi && strapi.apiPro) {
+    try {
+      // Required lazily: the compat layer builds the very `strapi` global this
+      // reads, so importing it at module load would close a cycle.
+      // eslint-disable-next-line global-require
+      const { loadApiProServices } = require('../compat/strapi');
+      const roles = await loadApiProServices().context.loadUserAppRoles(strapi, userId);
+      if (Array.isArray(roles)) return roles.map((r) => r && r.key);
+    } catch {
+      // A plugin that cannot answer is not a reason to answer wrongly — fall
+      // through to the query it would have made.
+    }
+  }
   const rows = await getDb()('up_users_app_roles_lnk as l')
     .join('api_pro_app_roles as r', 'r.id', 'l.app_role_id')
     .where('l.user_id', userId)
     .select('r.key');
-  return rows
-    .map((r) => r.key)
-    .filter(Boolean)
-    .map(toRoleClaim)
-    .sort();
+  return rows.map((r) => r.key);
 }
 
 /**
- * The identity of whoever made this request.
+ * Who is calling, without asking the database.
  *
- * Resolved once per request and cached on ctx.state: several modules ask, and
- * the local path costs a query.
+ * Every field of an identity except `roles` is already on the context: the
+ * subject, the org this instance serves, the gateway's correlation id and which
+ * door the caller came through are all free to read. Only role claims cost a
+ * query — and most readers never look at them. A request log line, an "is
+ * anyone authenticated" gate and an audit correlation id each want the subject
+ * and nothing else.
  *
- * `org_id` comes from the instance rather than the caller, and that is correct
- * for as long as an instance serves exactly one org (Tenant-Catalog model,
- * portal task E4). When portal assertions arrive they carry their own org
- * claim, and it must be CHECKED against this one rather than trusted — a token
- * for another org reaching this instance is the failure mode that matters.
- *
- * `entitlements` is empty today because nothing issues them yet. Readers should
- * treat empty as "unknown", not as "nothing licensed" — the same fail-open rule
- * the client-side gate uses (packages/shared/lib/entitlements.js).
+ * So the seam answers at two depths rather than making every reader pay for the
+ * deeper one. `subjectOf` is synchronous and safe to call anywhere, including
+ * inside a logger's finally block; `identityOf` is the same answer plus roles
+ * and entitlements. The two cannot disagree, because the second is built from
+ * the first.
  *
  * @param {object} ctx Koa context
- * @returns {Promise<{sub: string|null, org_id: string|null, roles: string[],
- *   entitlements: string[], req_id: string|null, source: string}>}
+ * @returns {{sub: string|null, org_id: string|null, req_id: string|null, source: string}}
  */
-async function identityOf(ctx) {
-  if (!ctx) return anonymousIdentity(null);
-  if (ctx.state && ctx.state[CACHE_KEY]) return ctx.state[CACHE_KEY];
-
-  const identity = await resolveIdentity(ctx);
-  if (ctx.state) ctx.state[CACHE_KEY] = identity;
-  return identity;
-}
-
-function requestId(ctx) {
-  if (!ctx) return null;
-  // The gateway stamps a request id so one user action can be followed across
-  // portal, gateway and instance logs. Honour whichever header it uses rather
-  // than minting a competing id that correlates with nothing.
-  return ctx.get('x-request-id') || ctx.get('x-correlation-id') || null;
-}
-
-function anonymousIdentity(ctx) {
-  return {
-    sub: null,
-    org_id: instance().orgId,
-    roles: [],
-    entitlements: [],
-    req_id: requestId(ctx),
-    source: IDENTITY_SOURCES.ANONYMOUS,
-  };
-}
-
-async function resolveIdentity(ctx) {
+function subjectOf(ctx) {
   const org_id = instance().orgId;
+  const state = (ctx && ctx.state) || {};
   const req_id = requestId(ctx);
-  const state = ctx.state || {};
 
   // A verified portal assertion wins outright when one exists. Nothing sets
   // this yet; the door that will is verifyPortalAssertion() above.
@@ -206,9 +222,7 @@ async function resolveIdentity(ctx) {
     const claims = state.portalClaims;
     return {
       sub: claims.sub || null,
-      org_id: claims.org_id || org_id,
-      roles: Array.isArray(claims.roles) ? claims.roles : [],
-      entitlements: Array.isArray(claims.entitlements) ? claims.entitlements : [],
+      org_id: orgOfAssertion(claims.org_id, org_id),
       req_id: claims.req_id || req_id,
       source: IDENTITY_SOURCES.PORTAL,
     };
@@ -220,8 +234,6 @@ async function resolveIdentity(ctx) {
       // once both exist in the same logs and audit rows.
       sub: `up:${state.user.id}`,
       org_id,
-      roles: await localRoleClaims(state.user.id),
-      entitlements: [],
       req_id,
       source: IDENTITY_SOURCES.LOCAL,
     };
@@ -231,17 +243,115 @@ async function resolveIdentity(ctx) {
     return {
       sub: `token:${state.apiToken.id}`,
       org_id,
-      // A service token is not a person and holds no app roles. Callers that
-      // need to know it is machine traffic read `source`, which is why this is
-      // not given a synthetic role that would collide with a real one.
-      roles: [],
-      entitlements: [],
       req_id,
       source: IDENTITY_SOURCES.SERVICE,
     };
   }
 
-  return anonymousIdentity(ctx);
+  return { sub: null, org_id, req_id, source: IDENTITY_SOURCES.ANONYMOUS };
+}
+
+/**
+ * The org an assertion is allowed to act on.
+ *
+ * An instance serves exactly one org (Tenant-Catalog model, portal task E4), so
+ * an assertion naming a different one is not a caller to be served — it is a
+ * token that reached the wrong instance. It is refused rather than trusted, and
+ * refused rather than quietly downgraded to anonymous: a downgrade would answer
+ * it with this org's public reads, which is the leak the check exists to stop.
+ *
+ * When this instance does not know its own org — a developer box with no
+ * Tenant-Catalog references — there is nothing to check against, so the claim
+ * is taken as given. The check is only ever as strong as the instance's own
+ * identity, and failing every request on such a box would not make it stronger.
+ */
+function orgOfAssertion(claimed, served) {
+  if (!claimed) return served;
+  if (!served) return claimed;
+  if (String(claimed) !== String(served)) throw new PortalOrgMismatch(claimed, served);
+  return served;
+}
+
+/**
+ * Is this caller a person?
+ *
+ * The question every gate on the request path is actually asking. api-pro
+ * enforces per-action policy against app roles, and only a person holds those:
+ * a service token's authority is the token itself (parity with Strapi, where an
+ * API-token request skips the interceptor entirely), and an anonymous caller
+ * only ever reaches a bypassed path.
+ *
+ * Asked of the source rather than of ctx.state.user, it keeps answering
+ * correctly when the portal door opens. A gate written as `if (ctx.state.user)`
+ * would skip every policy check for a portal-authenticated caller, because a
+ * verified assertion sets claims and never a local user row — a fail-open that
+ * would arrive with the switch rather than with the change that caused it.
+ */
+function isPerson(identity) {
+  return Boolean(identity) && (
+    identity.source === IDENTITY_SOURCES.LOCAL
+    || identity.source === IDENTITY_SOURCES.PORTAL
+  );
+}
+
+function requestId(ctx) {
+  if (!ctx) return null;
+  // The gateway stamps a request id so one user action can be followed across
+  // portal, gateway and instance logs. Honour whichever header it uses rather
+  // than minting a competing id that correlates with nothing. One precedence,
+  // decided once here, so readers that used to pick their own order agree.
+  return ctx.get('x-request-id') || ctx.get('x-correlation-id') || null;
+}
+
+/**
+ * The identity of whoever made this request, role claims included.
+ *
+ * Resolved once per request and cached on ctx.state: several modules ask, and
+ * the local path costs a query. Readers that only need to know *who* is calling
+ * should use subjectOf() instead and pay nothing for roles they never read.
+ *
+ * `org_id` comes from the instance rather than the caller, and that is correct
+ * for as long as an instance serves exactly one org (Tenant-Catalog model,
+ * portal task E4). A portal assertion carries its own org claim, and it is
+ * CHECKED against this one rather than trusted — see orgOfAssertion().
+ *
+ * `entitlements` is empty today because nothing issues them yet. Readers should
+ * treat empty as "unknown", not as "nothing licensed" — the same fail-open rule
+ * the client-side gate uses (packages/shared/lib/entitlements.js).
+ *
+ * @param {object} ctx Koa context
+ * @returns {Promise<{sub: string|null, org_id: string|null, req_id: string|null,
+ *   source: string, roles: string[], entitlements: string[]}>}
+ */
+async function identityOf(ctx) {
+  if (ctx && ctx.state && ctx.state[CACHE_KEY]) return ctx.state[CACHE_KEY];
+
+  const identity = await resolveIdentity(ctx);
+  if (ctx && ctx.state) ctx.state[CACHE_KEY] = identity;
+  return identity;
+}
+
+async function resolveIdentity(ctx) {
+  const subject = subjectOf(ctx);
+
+  if (subject.source === IDENTITY_SOURCES.PORTAL) {
+    const claims = ((ctx && ctx.state) || {}).portalClaims || {};
+    return {
+      ...subject,
+      roles: Array.isArray(claims.roles) ? claims.roles : [],
+      entitlements: Array.isArray(claims.entitlements) ? claims.entitlements : [],
+    };
+  }
+
+  if (subject.source === IDENTITY_SOURCES.LOCAL) {
+    return { ...subject, roles: await localRoleClaims(ctx.state.user.id), entitlements: [] };
+  }
+
+  // A service token is not a person and holds no app roles; an anonymous caller
+  // holds none either. Callers that need to know it is machine traffic read
+  // `source`, which is why neither is given a synthetic role that would collide
+  // with a real one.
+  return { ...subject, roles: [], entitlements: [] };
 }
 
 module.exports = {
@@ -249,8 +359,11 @@ module.exports = {
   ROLE_LEVELS,
   toRoleClaim,
   PortalAuthNotWired,
+  PortalOrgMismatch,
   isPortalAuthEnabled,
   verifyPortalAssertion,
+  subjectOf,
+  isPerson,
   identityOf,
   localRoleClaims,
 };

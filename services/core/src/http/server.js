@@ -33,6 +33,7 @@ const { coreHandler, sendError } = require('./rest');
 const { health, version } = require('../platform/health');
 const { createEntitlementMiddleware } = require('./entitlement');
 const { createEntitlementResolver } = require('../platform/entitlements');
+const { subjectOf, isPerson } = require('../platform/identity');
 const { allKeys, catalogue } = require('../platform/app-entitlements');
 
 const CORE_ACTIONS = new Set(['find', 'findOne', 'create', 'update', 'delete']);
@@ -266,6 +267,11 @@ async function buildServer() {
   // /me/permissions — the login-time contract endpoint every app calls.
   // Ported straight from the plugin's me controller + mePermissions service.
   const { mePermissions } = loadApiProServices();
+  // Reads ctx.state.user deliberately: this endpoint IS the local door's
+  // contract — it answers with the api-pro grants stored against a local user
+  // row. Under portal identity the permissions arrive as claims instead, and
+  // this handler is replaced rather than adapted, so pointing it at the seam
+  // now would only hide which surface still depends on local auth.
   const mePermissionsHandler = async (ctx) => {
     if (!ctx.state.user) {
       return sendError(ctx, 401, 'UnauthorizedError', 'Authenticated user required');
@@ -306,7 +312,11 @@ async function buildServer() {
     } else {
       const gate = async (ctx, next) => {
         ctx.state.route = { handler: `${r.uid}.${r.action}` };
-        if (ctx.state.user && !isBypassed(ctx.path)) {
+        // Policy applies to people. Asked of the identity seam rather than of
+        // ctx.state.user, because a portal-authenticated caller is a person who
+        // has no local user row — and a gate that tested for one would skip
+        // every policy check the day that door opens.
+        if (isPerson(subjectOf(ctx)) && !isBypassed(ctx.path)) {
           const result = await interceptor.process(ctx, strapi);
           if (result.status === 'denied') {
             return sendError(ctx, 403, 'PolicyError', result.reason);
@@ -329,13 +339,16 @@ async function buildServer() {
     const gate = async (ctx, next) => {
       // Same shape Strapi gives api-pro: route handler = "<uid>.<action>".
       ctx.state.route = { handler: `${route.uid}.${route.action}` };
-      if (ctx.state.user && !isBypassed(ctx.path)) {
+      // Same question as the module gate above, asked the same way: policy is
+      // enforced for people, whichever door let them in.
+      if (isPerson(subjectOf(ctx)) && !isBypassed(ctx.path)) {
         const result = await interceptor.process(ctx, strapi);
         if (result.status === 'denied') {
           return sendError(ctx, 403, 'PolicyError', result.reason);
         }
       }
-      // API-token requests carry no user → interceptor skipped (parity with services/strapi).
+      // A service token is not a person → interceptor skipped, and its
+      // authority is the token itself (parity with services/strapi).
       return next();
     };
 

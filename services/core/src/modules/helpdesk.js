@@ -93,6 +93,7 @@
 
 const { documents } = require('../documents');
 const { get } = require('../config/env');
+const { subjectOf } = require('../platform/identity');
 const { registerSubscriber } = require('../platform/events');
 const entitlement = require('../domain/helpdesk/policy/entitlement');
 const ticketRepo = require('../domain/helpdesk/repository/ticket.repo');
@@ -192,12 +193,23 @@ function pick(source, fields) {
  * The single actor factory. Carries ip / user-agent / correlation id into the
  * actor so spec 30's audit rows get them without every service re-reading Koa,
  * and pins the audit `source` per namespace.
+ *
+ * The correlation id comes from the identity seam rather than from a second
+ * reading of the headers here. Both orders were in the tree — this file
+ * preferred x-correlation-id, the seam prefers x-request-id — so an audit row
+ * and the request log line that produced it could name a request differently.
+ * One precedence, decided in one place.
+ *
+ * The actor itself is still built from the local user row, and deliberately:
+ * resolveActor() turns a user id into desks, bands and managed employees, all
+ * of which are local facts. When portal identity arrives, THIS is the line that
+ * has to change, and leaving it visible is how it gets found.
  */
 function actorOf(ctx, source = 'api') {
   return entitlement.resolveActor(ctx.state.user || GUEST, {
     ip: ctx.ip || null,
     userAgent: ctx.get('user-agent') || null,
-    correlationId: ctx.get('x-correlation-id') || ctx.get('x-request-id') || null,
+    correlationId: subjectOf(ctx).req_id,
     source,
   });
 }

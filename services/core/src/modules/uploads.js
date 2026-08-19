@@ -19,12 +19,20 @@
  * explicit user check here rather than an interceptor.
  */
 
+const { subjectOf, isPerson } = require('../platform/identity');
 const { uploadService } = require('../platform/upload');
 const { isMultipart } = require('../http/multipart');
 const { getDb } = require('../db/connection');
 
+/**
+ * A person, not merely a credential. Service tokens are refused here exactly as
+ * they were when this read ctx.state.user — an API token authenticates the
+ * marketplace worker and inter-instance sync, neither of which uploads — and a
+ * portal-authenticated user passes, which is the part that changes when the
+ * door opens.
+ */
 function requireUser(ctx) {
-  if (!ctx.state.user) {
+  if (!isPerson(subjectOf(ctx))) {
     ctx.unauthorized('Authenticated user required');
     return false;
   }

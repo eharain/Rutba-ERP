@@ -5,6 +5,14 @@
  * endpoint surface, so core can issue and rotate its own tokens instead of
  * depending on Strapi as the sole JWT issuer.
  *
+ * THIS FILE READS ctx.state.user ON PURPOSE. Everything else on the request
+ * path now asks src/platform/identity.js who is calling, so that the day login
+ * moves to auth.rutba.io (portal task E3) no reader has to change. These
+ * handlers are the exception because they ARE the local door: sessions,
+ * password resets and /me operate on a local user row, and under portal
+ * identity they are retired rather than ported. Pointing them at the seam would
+ * only disguise which surface still depends on local authentication.
+ *
  * SHARED-STATE DESIGN (this is what makes the flip safe): both servers sign
  * with the same JWT_SECRET and read/write the same `strapi_sessions` rows in
  * the same format, so a token minted by services/strapi validates on core and vice
