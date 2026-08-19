@@ -1,7 +1,6 @@
 {
   "name": "rutba",
   "version": "1.0.0",
-  
   "private": true,
   "workspaces": [
     "packages/*",
@@ -87,7 +86,6 @@
     "start:mail": "node scripts/js/load-env.js -- npm run start --workspace=@rutba/mail",
     "start:console": "node scripts/js/load-env.js -- npm run start --workspace=@rutba/console",
     "start:helpdesk": "node scripts/js/load-env.js -- npm run start --workspace=@rutba/helpdesk",
-
     "build:api": "node scripts/js/load-env.js -- npm run build --workspace=@rutba/api-provider",
     "build:api-pro": "node scripts/js/load-env.js -- npm run build --workspace=strapi-api-pro",
     "build:auth": "node scripts/js/load-env.js -- npm run build --workspace=@rutba/auth",
@@ -113,20 +111,16 @@
     "build:console": "node scripts/js/load-env.js -- npm run build --workspace=@rutba/console",
     "build:helpdesk": "node scripts/js/load-env.js -- npm run build --workspace=@rutba/helpdesk",
     "build:strapi": "node scripts/js/load-env.js -- npm --prefix services/strapi run build",
-
     "build:all": "node scripts/js/run-app.js build",
     "start:all": "node scripts/js/run-app.js start",
-
     "docker:env": "node scripts/js/generate-docker-env.js",
-
     "verify:wiring": "node scripts/js/verify-app-wiring.js",
     "verify:docs": "node scripts/js/verify-docs.js",
     "baseline": "node services/core/scripts/baseline-metrics.js",
-
     "build": "node scripts/js/run-app.js build",
     "start": "node scripts/js/run-app.js start",
-
-    "postinstall": "node scripts/js/postinstall.js"
+    "postinstall": "node scripts/js/postinstall.js",
+    "audit:coupling": "node services/core/scripts/audit-strapi-coupling.js"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.3.1",

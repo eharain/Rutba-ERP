@@ -323,11 +323,36 @@ Everything that still *requires* a running Strapi, enumerated and killed.
       password-reset mail flow (tranche-8 deviation); seeding engine runs under
       `RUTBA_BACKEND=core` (today `rutba_seed.sh` hard-skips — move the registry/engine into
       core or run it through core's documents shim).
-- [ ] **Vendor the runtime couplings**: the 9 files requiring from `services/strapi/node_modules`
-      get direct deps in `services/core/package.json` (bcryptjs, nodemailer, yup schemas,
-      `@strapi/utils` session helpers, upload image-manipulation — fork-lift the last two if
-      needed); schema loader keeps reading `schema.json` but from a path that survives
-      services/strapi's removal (P2 moves the files).
+- [x] **Vendor the runtime couplings** — **re-scoped by measurement 2026-08-19, and it is nearly
+      done.** The original line ("the 9 files requiring from `services/strapi/node_modules` get
+      direct deps") was stale in both directions. Measured by
+      [audit-strapi-coupling.js](../../../services/core/scripts/audit-strapi-coupling.js)
+      (`npm run audit:coupling`), which reports rather than tabulates:
+
+      - core already declares **every** npm package its own source requires — zero undeclared.
+      - exactly **one** file resolves a package through Strapi's tree:
+        `compat/strapi.js` → `@strapi/strapi`, for the factory stub the zero-copy modules need.
+      - the transitive walk over everything core `posRequire`s reaches only **two** undeclared
+        packages: **`@strapi/utils`** (3 files) and **`pluralize`** (1). Both live *only* in
+        `services/strapi/node_modules` — not root, not core — so they resolve today purely
+        because the required file sits inside Strapi's tree and Node walks up. Declare both in
+        `services/core/package.json` and this item is closed.
+
+      Two of the three `@strapi/utils` users (`publish-image-guard.js`,
+      `product-post-image-guard.js`) arrived in the 2026-08-18 merge, so the surface grows with
+      ordinary feature work — which is the argument for the audit being a script.
+- [ ] **The coupling that actually blocks retirement is source, not packages** — and it is an order
+      of magnitude larger than the line above implied. Core loads **69 Strapi source files**
+      zero-copy: 54 literal `posRequire('<path>')` entry points plus everything they pull in
+      relatively, and a further **10 dynamic call sites** resolving `api/<uid>/services/<name>.js`
+      per request, which no static list can enumerate. Separately, `compat/strapi.js` reaches into
+      the **47-file** `strapi-api-pro` plugin tree.
+
+      None of that is fixed by vendoring — it is fixed by P2's `git mv` of those files into core
+      ownership, tranche by tranche, and by retiring the plugin wrapper in favour of
+      `services/core/src/policy/`. **Deleting `services/strapi` without moving them breaks core at
+      require time.** Re-run the audit before each tranche flip; the number should fall to zero by
+      retirement.
 - [ ] **Schema self-hosting, step 1** (shared with the offline program): CI job boots
       services/strapi once against an empty SQLite file and publishes it as the replica/tenant
       baseline (option A from [05-sqlite-viability.md](../offline-desktop-program/05-sqlite-viability.md)),
