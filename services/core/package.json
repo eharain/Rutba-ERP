@@ -19,7 +19,8 @@
     "smoke:policy": "node scripts/smoke-policy.js",
     "token": "node scripts/api-token.js",
     "baseline": "node scripts/baseline-metrics.js",
-    "audit:coupling": "node scripts/audit-strapi-coupling.js"
+    "audit:coupling": "node scripts/audit-strapi-coupling.js",
+    "smoke:packaging": "node scripts/smoke-packaging.js"
   },
   "dependencies": {
     "@koa/router": "^15.7.0",

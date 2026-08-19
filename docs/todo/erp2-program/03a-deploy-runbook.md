@@ -142,8 +142,17 @@ sudo systemctl enable --now rutba_console
 ```bash
 node scripts/js/rename-env-prefixes.js .env.production   # must print "already current"
 systemctl list-units "rutba_*" --no-pager                # all NEW names, all active
-curl -sf localhost:4020/_health || echo FAIL             # core answers
+curl -sf localhost:4020/_health || echo FAIL             # core is listening (liveness)
+curl -sf localhost:4020/health  || echo NOT-READY        # db reachable + schema current
+curl -s  localhost:4020/version                          # which build is actually serving
 ```
+
+Use the right one for the right question. `/_health` answers "the process is up" and is what
+systemd and `rutba_deploy.sh` poll — it must never depend on the database, or a database blip
+would restart a process that is fine. `/health` is the readiness check: it round-trips the
+database and fails with **503** when migrations are still pending, which is exactly what a
+deploy needs to know. `/version` is the only one that distinguishes the new instance from the
+old — both answer 200 to the other two.
 
 An app that starts but 500s on every authenticated route almost always means its env block did
 not resolve — check that its `PREFIX__PORT` uses the new prefix.

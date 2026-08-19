@@ -129,6 +129,13 @@ services:
     build:
       context: .
       target: core
+      args:
+        # Stamped into GET /version so a deploy checker can tell this instance
+        # from the one it replaced. Empty is fine — /version then reports the
+        # package version, which is true but not unique to a build.
+        RUTBA_BUILD_VERSION: ${RUTBA_BUILD_VERSION:-}
+        RUTBA_BUILD_COMMIT: ${RUTBA_BUILD_COMMIT:-}
+        RUTBA_BUILD_TIME: ${RUTBA_BUILD_TIME:-}
     restart: unless-stopped
     depends_on:
       mysql:
@@ -141,6 +148,10 @@ services:
       PORT: ${PORT_CORE:-4020}
       RUTBA_CORE_CRONS: ${CORE_CRONS:-}
       RUTBA_CORE_EMAIL: ${CORE_EMAIL_MODE:-send}
+      # Default 1 (see services/core/src/platform/boot-migrate.js). Named here
+      # so the escape hatch is discoverable from the compose file rather than
+      # only from the source.
+      RUTBA_CORE_MIGRATE_ON_BOOT: ${CORE_MIGRATE_ON_BOOT:-1}
     volumes:
       # The same uploads volume strapi mounts. Whichever server the apps point
       # at has to answer /uploads/*, and the files predating the media provider

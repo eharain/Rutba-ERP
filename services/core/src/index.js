@@ -22,6 +22,11 @@
  *   RUTBA_CORE_CRONS=1   master switch for the scheduler. Leave OFF while
  *                        services/strapi still schedules the same tasks — the two
  *                        must never run the same cron at the same time.
+ *   RUTBA_CORE_MIGRATE_ON_BOOT
+ *                        default 1. Applies pending migrations before serving,
+ *                        under an advisory lock, and refuses to boot when the
+ *                        schema cannot be brought current. Set 0 where a deploy
+ *                        pipeline migrates out of band.
  */
 
 const { get, loadVars } = require('./config/env');
@@ -29,6 +34,7 @@ const { start } = require('./http/server');
 const { getRegistry } = require('./documents');
 const { ensurePolicySeed } = require('./policy');
 const { startCrons, stopCrons, tasks } = require('./platform/cron');
+const { migrateOnBoot } = require('./platform/boot-migrate');
 const { closeDb } = require('./db/connection');
 const { flushLogs } = require('./http/logger');
 
@@ -74,11 +80,20 @@ async function main() {
   const { environment } = loadVars();
   const port = parseInt(get('PORT', '4020'), 10);
 
-  // Before the server, not after: buildServer() reads the route table out of
-  // the api_pro_* tables, so a descriptor added since the last boot only gets
-  // a mounted route if the seed has already run. This is what makes core
-  // Strapi-free in the daily loop — edit a descriptor, restart, it serves.
-  // Skips itself in ~10ms when nothing changed (src/policy/checkpoint.js).
+  // Schema first, and it may refuse to continue (portal task E4). An instance
+  // the control plane provisions has to bring its own schema up on start —
+  // there is no operator to run `npm run migrate` in that flow. Held under an
+  // advisory lock so a rolling deploy cannot have two processes applying the
+  // same DDL, and it throws rather than serving on a half-migrated schema.
+  // Set RUTBA_CORE_MIGRATE_ON_BOOT=0 where migrations are run out of band.
+  const migration = await migrateOnBoot();
+
+  // Then the policy seed, and only then the server: buildServer() reads the
+  // route table out of the api_pro_* tables, so a descriptor added since the
+  // last boot only gets a mounted route if the seed has already run. This is
+  // what makes core Strapi-free in the daily loop — edit a descriptor, restart,
+  // it serves. Skips itself in ~10ms when nothing changed
+  // (src/policy/checkpoint.js).
   const policy = await ensurePolicySeed({ registry: getRegistry() });
 
   server = await start(port);
@@ -87,7 +102,9 @@ async function main() {
   console.log(
     `[core] ready — env=${environment} db=${get('DATABASE_NAME')}@${get('DATABASE_HOST')} `
     + `port=${port} crons=${started}/${tasks.size} mail=${get('RUTBA_CORE_EMAIL', 'send')} `
-    + `policy=${policy.skipped ? 'unchanged' : 'seeded'}`
+    + `policy=${policy.skipped ? 'unchanged' : 'seeded'} `
+    // A boot that quietly applied DDL is a boot nobody can reconstruct later.
+    + `schema=${migration.ran ? `+${migration.applied.length}` : (migration.skipped || 'current')}`
   );
 
   for (const signal of ['SIGTERM', 'SIGINT']) {

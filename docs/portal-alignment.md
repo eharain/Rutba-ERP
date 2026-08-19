@@ -1,5 +1,12 @@
 # Portal Alignment — ERP × rutba.io
 
+<!-- verify-docs: external plan/** specs/** -->
+<!-- `plan/…` and `specs/…` below are paths inside the Rutba-Portal repo
+     (D:\Rutba\Rutba-Portal), not this one — all four verified present there on
+     2026-08-20. Without this marker verify-docs reads them as four broken
+     links and fails the whole run, which is how a validator stops being a gate
+     anyone trusts. -->
+
 **Source of truth:** the Rutba-Portal repo (`D:\Rutba\Rutba-Portal`) — `plan/11-product-integrations.md` (ERP workstream E1–E6 + coherence rules), `specs/GLOBAL-AUTH.md` (identity & tokens), `specs/SERVICE-SUITES.md` (suites, entitlement keys), `specs/TENANCY-DATA-ARCHITECTURE.md` (per-org instances, Tenant Catalog). This document translates those into this repo's own terms. When they disagree, the portal specs win; fix the disagreement in the same PR that touches both repos.
 
 ## Division of ownership

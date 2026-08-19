@@ -30,6 +30,7 @@ const { createUploadsMiddleware } = require('./uploads');
 const { isMultipart, parseMultipart } = require('./multipart');
 const { createRequestLogger } = require('./logger');
 const { coreHandler, sendError } = require('./rest');
+const { health, version } = require('../platform/health');
 
 const CORE_ACTIONS = new Set(['find', 'findOne', 'create', 'update', 'delete']);
 
@@ -187,7 +188,24 @@ async function buildServer() {
     return next();
   });
 
+  // Three probe endpoints, all unauthenticated, answering three questions.
+  //
+  //   /_health   LIVENESS — "the process is up". Unchanged and kept as-is:
+  //              rutba_deploy.sh and the systemd units already poll it, and it
+  //              must never start depending on the database, or a database
+  //              blip would make the supervisor kill a process that is fine.
+  //   /health    READINESS (portal task E4) — "this instance can serve": the
+  //              database answers and the schema is current. 200 or 503.
+  //   /version   what is actually running, so a deploy checker can tell the
+  //              new instance from the old one. A readiness probe cannot: both
+  //              answer 200.
   router.get('/_health', (ctx) => { ctx.body = { status: 'ok', server: 'services/core' }; });
+  router.get('/health', async (ctx) => {
+    const { healthy, body } = await health();
+    ctx.status = healthy ? 200 : 503;
+    ctx.body = body;
+  });
+  router.get('/version', (ctx) => { ctx.body = version(); });
 
   router.get(/^\/uploads\/.+/, (ctx) =>
     sendError(ctx, 404, 'NotFoundError', 'file not found on disk or on MEDIA_BASE_URL'));

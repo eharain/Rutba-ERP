@@ -97,8 +97,31 @@ COPY --from=deps       /app/packages       ./packages
 # variables, which get() picks up as the bare-name fallback.
 COPY --from=deps       /app/package.json   ./package.json
 
+# Build identity, served by GET /version (portal task E4). A deploy checker
+# cannot tell the new instance from the old one with a readiness probe — both
+# answer 200 — so the image stamps what it is. Left unset these are null and
+# /version falls back to the package version, which is true but not unique.
+#   docker build --target core \
+#     --build-arg RUTBA_BUILD_COMMIT=$(git rev-parse HEAD) \
+#     --build-arg RUTBA_BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ) .
+ARG RUTBA_BUILD_VERSION
+ARG RUTBA_BUILD_COMMIT
+ARG RUTBA_BUILD_TIME
+ENV RUTBA_BUILD_VERSION=${RUTBA_BUILD_VERSION} \
+    RUTBA_BUILD_COMMIT=${RUTBA_BUILD_COMMIT} \
+    RUTBA_BUILD_TIME=${RUTBA_BUILD_TIME}
+
 ENV NODE_ENV=production
 WORKDIR /app/services/core
+
+# Readiness, not liveness: /health round-trips the database and checks the
+# schema is current, so an instance whose per-org database has been detached
+# reports unhealthy instead of quietly serving errors. start-period covers the
+# on-boot migration, which on a fresh per-org database is the slowest thing
+# this container ever does.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=120s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||4020)+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+
 CMD ["node", "src/index.js"]
 
 # ============================================================
