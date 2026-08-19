@@ -27,6 +27,7 @@
  * The reason for a failure goes to the log, where it is already privileged.
  */
 
+const { get } = require('../config/env');
 const { getDb } = require('../db/connection');
 const { status: migrationStatus } = require('./migrations');
 
@@ -54,8 +55,47 @@ function version() {
     commit: process.env.RUTBA_BUILD_COMMIT || null,
     builtAt: process.env.RUTBA_BUILD_TIME || null,
     node: process.version,
+    instance: instance(),
   });
   return cachedVersion;
+}
+
+let cachedInstance = null;
+
+/**
+ * WHICH ORG this container was handed — the other half of "what is running".
+ *
+ * The build identity above says what code answers; this says who it answers
+ * for. The Console needs both to make sense of a fleet of per-org instances,
+ * and "whose data did that request touch" is unanswerable from a version
+ * string alone.
+ *
+ * Every value is a TENANT-CATALOG REFERENCE, not a copy. The catalog owns the
+ * org record; the container is only told which one it serves, and never keeps
+ * a second copy to drift from. That is also what keeps the instance stateless
+ * outside its per-org database — the property the provision/suspend/migrate
+ * lifecycle depends on.
+ *
+ * All of it is optional. A self-hosted or development instance has no portal
+ * org, and reporting that honestly as null beats inventing an id the catalog
+ * has never heard of. `managed` is the one derived field: a catalog URL is
+ * what distinguishes a portal-managed instance from a standalone one, and it
+ * is how the Console decides whether this instance belongs in its inventory.
+ *
+ * Safe on an unauthenticated endpoint by the same rule as the rest of this
+ * file: these are identifiers the control plane assigned, not credentials and
+ * not connection details.
+ */
+function instance() {
+  if (cachedInstance) return cachedInstance;
+  cachedInstance = Object.freeze({
+    orgId: get('RUTBA_ORG_ID', '') || null,
+    orgSlug: get('RUTBA_ORG_SLUG', '') || null,
+    instanceId: get('RUTBA_INSTANCE_ID', '') || null,
+    region: get('RUTBA_INSTANCE_REGION', '') || null,
+    managed: Boolean(get('RUTBA_TENANT_CATALOG_URL', '')),
+  });
+  return cachedInstance;
 }
 
 function withTimeout(promise, ms, label) {
@@ -113,4 +153,4 @@ async function health({ log = console, db = null } = {}) {
   };
 }
 
-module.exports = { health, version, STARTED_AT, CHECK_TIMEOUT_MS };
+module.exports = { health, version, instance, STARTED_AT, CHECK_TIMEOUT_MS };

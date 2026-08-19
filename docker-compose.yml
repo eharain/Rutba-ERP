@@ -148,6 +148,16 @@ services:
       PORT: ${PORT_CORE:-4020}
       RUTBA_CORE_CRONS: ${CORE_CRONS:-}
       RUTBA_CORE_EMAIL: ${CORE_EMAIL_MODE:-send}
+      # Instance identity (portal task E4). Tenant-Catalog REFERENCES, not a
+      # second copy of org state: the catalog owns the org record, and the
+      # container is only told which one it serves so /version and the logs
+      # can say so. All empty for a standalone deployment, which /version
+      # reports as managed=false rather than inventing an identity.
+      RUTBA_ORG_ID: ${RUTBA_ORG_ID:-}
+      RUTBA_ORG_SLUG: ${RUTBA_ORG_SLUG:-}
+      RUTBA_INSTANCE_ID: ${RUTBA_INSTANCE_ID:-}
+      RUTBA_INSTANCE_REGION: ${RUTBA_INSTANCE_REGION:-}
+      RUTBA_TENANT_CATALOG_URL: ${RUTBA_TENANT_CATALOG_URL:-}
       # Default 1 (see services/core/src/platform/boot-migrate.js). Named here
       # so the escape hatch is discoverable from the compose file rather than
       # only from the source.
