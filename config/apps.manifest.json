@@ -33,9 +33,14 @@
     "  launcher      false = not a launchable app, so no roles.js APP_URLS entry",
     "  descriptorScan false = excluded from APP_FOLDERS in discover-descriptor-meta.mjs"
   ],
-
-  "categories": ["sales","inventory","people","finance","content","admin"],
-
+  "categories": [
+    "sales",
+    "inventory",
+    "people",
+    "finance",
+    "content",
+    "admin"
+  ],
   "services": [
     {
       "key": "strapi",
@@ -50,7 +55,9 @@
       "npmWorkspace": false,
       "launcher": false,
       "descriptorScan": false,
-      "note": "Legacy Strapi backend. Retires in ERP 2.0 phase P2; every frontend reaches it via NEXT_PUBLIC_API_URL, not a per-app URL var."
+      "note": "Legacy Strapi backend. Retires in ERP 2.0 phase P2; every frontend reaches it via NEXT_PUBLIC_API_URL, not a per-app URL var.",
+      "entitlement": null,
+      "entitlementNote": "backend"
     },
     {
       "key": "core",
@@ -66,30 +73,407 @@
       "build": false,
       "launcher": false,
       "descriptorScan": false,
-      "note": "Koa/Knex backend serving the same descriptor contract. Plain Node — no bundling step, hence build:false. Shares NEXT_PUBLIC_API_URL with strapi because RUTBA_BACKEND picks which one listens."
+      "note": "Koa/Knex backend serving the same descriptor contract. Plain Node — no bundling step, hence build:false. Shares NEXT_PUBLIC_API_URL with strapi because RUTBA_BACKEND picks which one listens.",
+      "entitlement": null,
+      "entitlementNote": "backend — it enforces entitlements, it is not gated by one"
     },
-    {"key":"storefront","unit":"rutba_storefront","workspace":"apps/content/storefront","npm":"@rutba/storefront","kind":"app","port":4000,"category":"content","envPrefix":"STOREFRONT","urlVar":"NEXT_PUBLIC_STOREFRONT_URL","domains":["storefront"],"public":true,"descriptorScan":true},
-    {"key":"stock","unit":"rutba_stock","workspace":"apps/inventory/stock","npm":"@rutba/stock","kind":"app","port":4001,"category":"inventory","envPrefix":"STOCK","urlVar":"NEXT_PUBLIC_STOCK_URL","domains":["stock"],"descriptorScan":true},
-    {"key":"pos","unit":"rutba_pos","workspace":"apps/sales/pos","npm":"@rutba/pos","kind":"app","port":4002,"category":"sales","envPrefix":"POS","urlVar":"NEXT_PUBLIC_POS_URL","domains":["pos"],"descriptorScan":true},
-    {"key":"auth","unit":"rutba_auth","workspace":"apps/admin/auth","npm":"@rutba/auth","kind":"app","port":4003,"category":"admin","envPrefix":"AUTH","urlVar":"NEXT_PUBLIC_AUTH_URL","domains":["auth"],"descriptorScan":true},
-    {"key":"portal","unit":"rutba_portal","workspace":"apps/sales/portal","npm":"@rutba/portal","kind":"app","port":4004,"category":"sales","envPrefix":"PORTAL","urlVar":"NEXT_PUBLIC_PORTAL_URL","domains":["portal"],"descriptorScan":true},
-    {"key":"crm","unit":"rutba_crm","workspace":"apps/sales/crm","npm":"@rutba/crm","kind":"app","port":4005,"category":"sales","envPrefix":"CRM","urlVar":"NEXT_PUBLIC_CRM_URL","domains":["crm"],"descriptorScan":true},
-    {"key":"hr","unit":"rutba_hr","workspace":"apps/people/hr","npm":"@rutba/hr","kind":"app","port":4006,"category":"people","envPrefix":"HR","urlVar":"NEXT_PUBLIC_HR_URL","domains":["hr"],"descriptorScan":true},
-    {"key":"accounts","unit":"rutba_accounts","workspace":"apps/finance/accounts","npm":"@rutba/accounts","kind":"app","port":4007,"category":"finance","envPrefix":"ACCOUNTS","urlVar":"NEXT_PUBLIC_ACCOUNTS_URL","domains":["accounts","accounts-ap","accounts-ar","accounts-viewer"],"descriptorScan":true},
-    {"key":"payroll","unit":"rutba_payroll","workspace":"apps/finance/payroll","npm":"@rutba/payroll","kind":"app","port":4008,"category":"finance","envPrefix":"PAYROLL","urlVar":"NEXT_PUBLIC_PAYROLL_URL","domains":["payroll"],"descriptorScan":true},
-    {"key":"cms","unit":"rutba_cms","workspace":"apps/content/cms","npm":"@rutba/cms","kind":"app","port":4009,"category":"content","envPrefix":"CMS","urlVar":"NEXT_PUBLIC_CMS_URL","domains":["cms"],"descriptorScan":true},
-    {"key":"social","unit":"rutba_social","workspace":"apps/content/social","npm":"@rutba/social","kind":"app","port":4011,"category":"content","envPrefix":"SOCIAL","urlVar":"NEXT_PUBLIC_SOCIAL_URL","domains":["social"],"descriptorScan":true},
-    {"key":"rider","unit":"rutba_rider","workspace":"apps/sales/rider","npm":"@rutba/rider","kind":"app","port":4012,"category":"sales","envPrefix":"RIDER","urlVar":"NEXT_PUBLIC_RIDER_URL","domains":["rider"],"descriptorScan":true},
-    {"key":"orders","unit":"rutba_orders","workspace":"apps/sales/orders","npm":"@rutba/orders","kind":"app","port":4013,"category":"sales","envPrefix":"ORDERS","urlVar":"NEXT_PUBLIC_ORDERS_URL","domains":["orders"],"descriptorScan":true},
-    {"key":"manufacturing","unit":"rutba_manufacturing","workspace":"apps/inventory/manufacturing","npm":"@rutba/manufacturing","kind":"app","port":4014,"category":"inventory","envPrefix":"MANUFACTURING","urlVar":"NEXT_PUBLIC_MANUFACTURING_URL","domains":["manufacturing"],"descriptorScan":true},
-    {"key":"ess","unit":"rutba_ess","workspace":"apps/people/ess","npm":"@rutba/ess","kind":"app","port":4015,"category":"people","envPrefix":"ESS","urlVar":"NEXT_PUBLIC_ESS_URL","domains":["ess"],"descriptorScan":true},
-    {"key":"marketplace","unit":"rutba_marketplace","workspace":"apps/sales/marketplace","npm":"@rutba/marketplace","kind":"app","port":4016,"category":"sales","envPrefix":"MARKETPLACE","urlVar":"NEXT_PUBLIC_MARKETPLACE_URL","domains":["marketplace"],"descriptorScan":true},
-    {"key":"control","unit":"rutba_control","workspace":"apps/inventory/control","npm":"@rutba/control","kind":"app","port":4017,"category":"inventory","envPrefix":"CONTROL","urlVar":"NEXT_PUBLIC_CONTROL_URL","domains":["control"],"descriptorScan":true},
-    {"key":"seed","unit":"rutba_seed","workspace":"apps/admin/seed","npm":"@rutba/seed","kind":"app","port":4018,"category":"admin","envPrefix":"SEED","urlVar":"NEXT_PUBLIC_SEED_URL","domains":["seed"],"descriptorScan":true},
-    {"key":"campaigns","unit":"rutba_campaigns","workspace":"apps/content/campaigns","npm":"@rutba/campaigns","kind":"app","port":4019,"category":"content","envPrefix":"CAMPAIGNS","urlVar":"NEXT_PUBLIC_CAMPAIGNS_URL","domains":["campaigns"],"descriptorScan":true},
-    {"key":"mail","unit":"rutba_mail","workspace":"apps/content/mail","npm":"@rutba/mail","kind":"app","port":4021,"category":"content","envPrefix":"MAIL","urlVar":"NEXT_PUBLIC_MAIL_URL","domains":["mail"],"descriptorScan":true},
-    {"key":"console","unit":"rutba_console","workspace":"apps/admin/console","npm":"@rutba/console","kind":"app","port":4022,"category":"admin","envPrefix":"CONSOLE","urlVar":"NEXT_PUBLIC_CONSOLE_URL","domains":["console"],"descriptorScan":true},
-    {"key":"helpdesk","unit":"rutba_helpdesk","workspace":"apps/sales/helpdesk","npm":"@rutba/helpdesk","kind":"app","port":4023,"category":"sales","envPrefix":"HELPDESK","urlVar":"NEXT_PUBLIC_HELPDESK_URL","domains":["helpdesk"],"descriptorScan":true},
+    {
+      "key": "storefront",
+      "unit": "rutba_storefront",
+      "workspace": "apps/content/storefront",
+      "npm": "@rutba/storefront",
+      "kind": "app",
+      "port": 4000,
+      "category": "content",
+      "envPrefix": "STOREFRONT",
+      "urlVar": "NEXT_PUBLIC_STOREFRONT_URL",
+      "domains": [
+        "storefront"
+      ],
+      "public": true,
+      "descriptorScan": true,
+      "entitlement": [
+        "erp.storefront"
+      ]
+    },
+    {
+      "key": "stock",
+      "unit": "rutba_stock",
+      "workspace": "apps/inventory/stock",
+      "npm": "@rutba/stock",
+      "kind": "app",
+      "port": 4001,
+      "category": "inventory",
+      "envPrefix": "STOCK",
+      "urlVar": "NEXT_PUBLIC_STOCK_URL",
+      "domains": [
+        "stock"
+      ],
+      "descriptorScan": true,
+      "entitlement": [
+        "erp.stock"
+      ]
+    },
+    {
+      "key": "pos",
+      "unit": "rutba_pos",
+      "workspace": "apps/sales/pos",
+      "npm": "@rutba/pos",
+      "kind": "app",
+      "port": 4002,
+      "category": "sales",
+      "envPrefix": "POS",
+      "urlVar": "NEXT_PUBLIC_POS_URL",
+      "domains": [
+        "pos"
+      ],
+      "descriptorScan": true,
+      "entitlement": [
+        "erp.pos"
+      ]
+    },
+    {
+      "key": "auth",
+      "unit": "rutba_auth",
+      "workspace": "apps/admin/auth",
+      "npm": "@rutba/auth",
+      "kind": "app",
+      "port": 4003,
+      "category": "admin",
+      "envPrefix": "AUTH",
+      "urlVar": "NEXT_PUBLIC_AUTH_URL",
+      "domains": [
+        "auth"
+      ],
+      "descriptorScan": true,
+      "entitlement": null,
+      "entitlementNote": "the OIDC client shell (E3) — gating the way in on a licence you check after logging in is a lockout"
+    },
+    {
+      "key": "portal",
+      "unit": "rutba_portal",
+      "workspace": "apps/sales/portal",
+      "npm": "@rutba/portal",
+      "kind": "app",
+      "port": 4004,
+      "category": "sales",
+      "envPrefix": "PORTAL",
+      "urlVar": "NEXT_PUBLIC_PORTAL_URL",
+      "domains": [
+        "portal"
+      ],
+      "descriptorScan": true,
+      "entitlement": [
+        "erp.leads",
+        "erp.quotes"
+      ]
+    },
+    {
+      "key": "crm",
+      "unit": "rutba_crm",
+      "workspace": "apps/sales/crm",
+      "npm": "@rutba/crm",
+      "kind": "app",
+      "port": 4005,
+      "category": "sales",
+      "envPrefix": "CRM",
+      "urlVar": "NEXT_PUBLIC_CRM_URL",
+      "domains": [
+        "crm"
+      ],
+      "descriptorScan": true,
+      "entitlement": [
+        "erp.crm"
+      ]
+    },
+    {
+      "key": "hr",
+      "unit": "rutba_hr",
+      "workspace": "apps/people/hr",
+      "npm": "@rutba/hr",
+      "kind": "app",
+      "port": 4006,
+      "category": "people",
+      "envPrefix": "HR",
+      "urlVar": "NEXT_PUBLIC_HR_URL",
+      "domains": [
+        "hr"
+      ],
+      "descriptorScan": true,
+      "entitlement": [
+        "erp.hr"
+      ]
+    },
+    {
+      "key": "accounts",
+      "unit": "rutba_accounts",
+      "workspace": "apps/finance/accounts",
+      "npm": "@rutba/accounts",
+      "kind": "app",
+      "port": 4007,
+      "category": "finance",
+      "envPrefix": "ACCOUNTS",
+      "urlVar": "NEXT_PUBLIC_ACCOUNTS_URL",
+      "domains": [
+        "accounts",
+        "accounts-ap",
+        "accounts-ar",
+        "accounts-viewer"
+      ],
+      "descriptorScan": true,
+      "entitlement": [
+        "erp.gl",
+        "erp.ap-ar"
+      ]
+    },
+    {
+      "key": "payroll",
+      "unit": "rutba_payroll",
+      "workspace": "apps/finance/payroll",
+      "npm": "@rutba/payroll",
+      "kind": "app",
+      "port": 4008,
+      "category": "finance",
+      "envPrefix": "PAYROLL",
+      "urlVar": "NEXT_PUBLIC_PAYROLL_URL",
+      "domains": [
+        "payroll"
+      ],
+      "descriptorScan": true,
+      "entitlement": [
+        "erp.payroll"
+      ]
+    },
+    {
+      "key": "cms",
+      "unit": "rutba_cms",
+      "workspace": "apps/content/cms",
+      "npm": "@rutba/cms",
+      "kind": "app",
+      "port": 4009,
+      "category": "content",
+      "envPrefix": "CMS",
+      "urlVar": "NEXT_PUBLIC_CMS_URL",
+      "domains": [
+        "cms"
+      ],
+      "descriptorScan": true,
+      "entitlement": [
+        "erp.cms"
+      ]
+    },
+    {
+      "key": "social",
+      "unit": "rutba_social",
+      "workspace": "apps/content/social",
+      "npm": "@rutba/social",
+      "kind": "app",
+      "port": 4011,
+      "category": "content",
+      "envPrefix": "SOCIAL",
+      "urlVar": "NEXT_PUBLIC_SOCIAL_URL",
+      "domains": [
+        "social"
+      ],
+      "descriptorScan": true,
+      "entitlement": [
+        "erp.social"
+      ]
+    },
+    {
+      "key": "rider",
+      "unit": "rutba_rider",
+      "workspace": "apps/sales/rider",
+      "npm": "@rutba/rider",
+      "kind": "app",
+      "port": 4012,
+      "category": "sales",
+      "envPrefix": "RIDER",
+      "urlVar": "NEXT_PUBLIC_RIDER_URL",
+      "domains": [
+        "rider"
+      ],
+      "descriptorScan": true,
+      "entitlement": [
+        "erp.delivery"
+      ]
+    },
+    {
+      "key": "orders",
+      "unit": "rutba_orders",
+      "workspace": "apps/sales/orders",
+      "npm": "@rutba/orders",
+      "kind": "app",
+      "port": 4013,
+      "category": "sales",
+      "envPrefix": "ORDERS",
+      "urlVar": "NEXT_PUBLIC_ORDERS_URL",
+      "domains": [
+        "orders"
+      ],
+      "descriptorScan": true,
+      "entitlement": [
+        "erp.orders"
+      ]
+    },
+    {
+      "key": "manufacturing",
+      "unit": "rutba_manufacturing",
+      "workspace": "apps/inventory/manufacturing",
+      "npm": "@rutba/manufacturing",
+      "kind": "app",
+      "port": 4014,
+      "category": "inventory",
+      "envPrefix": "MANUFACTURING",
+      "urlVar": "NEXT_PUBLIC_MANUFACTURING_URL",
+      "domains": [
+        "manufacturing"
+      ],
+      "descriptorScan": true,
+      "entitlement": [
+        "erp.mrp"
+      ]
+    },
+    {
+      "key": "ess",
+      "unit": "rutba_ess",
+      "workspace": "apps/people/ess",
+      "npm": "@rutba/ess",
+      "kind": "app",
+      "port": 4015,
+      "category": "people",
+      "envPrefix": "ESS",
+      "urlVar": "NEXT_PUBLIC_ESS_URL",
+      "domains": [
+        "ess"
+      ],
+      "descriptorScan": true,
+      "entitlement": [
+        "erp.ess"
+      ]
+    },
+    {
+      "key": "marketplace",
+      "unit": "rutba_marketplace",
+      "workspace": "apps/sales/marketplace",
+      "npm": "@rutba/marketplace",
+      "kind": "app",
+      "port": 4016,
+      "category": "sales",
+      "envPrefix": "MARKETPLACE",
+      "urlVar": "NEXT_PUBLIC_MARKETPLACE_URL",
+      "domains": [
+        "marketplace"
+      ],
+      "descriptorScan": true,
+      "entitlement": null,
+      "entitlementNote": "instance-internal"
+    },
+    {
+      "key": "control",
+      "unit": "rutba_control",
+      "workspace": "apps/inventory/control",
+      "npm": "@rutba/control",
+      "kind": "app",
+      "port": 4017,
+      "category": "inventory",
+      "envPrefix": "CONTROL",
+      "urlVar": "NEXT_PUBLIC_CONTROL_URL",
+      "domains": [
+        "control"
+      ],
+      "descriptorScan": true,
+      "entitlement": [
+        "erp.warehousing"
+      ]
+    },
+    {
+      "key": "seed",
+      "unit": "rutba_seed",
+      "workspace": "apps/admin/seed",
+      "npm": "@rutba/seed",
+      "kind": "app",
+      "port": 4018,
+      "category": "admin",
+      "envPrefix": "SEED",
+      "urlVar": "NEXT_PUBLIC_SEED_URL",
+      "domains": [
+        "seed"
+      ],
+      "descriptorScan": true,
+      "entitlement": null,
+      "entitlementNote": "instance-internal tooling"
+    },
+    {
+      "key": "campaigns",
+      "unit": "rutba_campaigns",
+      "workspace": "apps/content/campaigns",
+      "npm": "@rutba/campaigns",
+      "kind": "app",
+      "port": 4019,
+      "category": "content",
+      "envPrefix": "CAMPAIGNS",
+      "urlVar": "NEXT_PUBLIC_CAMPAIGNS_URL",
+      "domains": [
+        "campaigns"
+      ],
+      "descriptorScan": true,
+      "entitlement": [
+        "erp.campaigns"
+      ]
+    },
+    {
+      "key": "mail",
+      "unit": "rutba_mail",
+      "workspace": "apps/content/mail",
+      "npm": "@rutba/mail",
+      "kind": "app",
+      "port": 4021,
+      "category": "content",
+      "envPrefix": "MAIL",
+      "urlVar": "NEXT_PUBLIC_MAIL_URL",
+      "domains": [
+        "mail"
+      ],
+      "descriptorScan": true,
+      "entitlement": null,
+      "entitlementNote": "Wave-2 comm.mail product, not an erp.* module — must not grow here"
+    },
+    {
+      "key": "console",
+      "unit": "rutba_console",
+      "workspace": "apps/admin/console",
+      "npm": "@rutba/console",
+      "kind": "app",
+      "port": 4022,
+      "category": "admin",
+      "envPrefix": "CONSOLE",
+      "urlVar": "NEXT_PUBLIC_CONSOLE_URL",
+      "domains": [
+        "console"
+      ],
+      "descriptorScan": true,
+      "entitlement": null,
+      "entitlementNote": "instance-internal; org admin, licensing and billing views live in the portal"
+    },
+    {
+      "key": "helpdesk",
+      "unit": "rutba_helpdesk",
+      "workspace": "apps/sales/helpdesk",
+      "npm": "@rutba/helpdesk",
+      "kind": "app",
+      "port": 4023,
+      "category": "sales",
+      "envPrefix": "HELPDESK",
+      "urlVar": "NEXT_PUBLIC_HELPDESK_URL",
+      "domains": [
+        "helpdesk"
+      ],
+      "descriptorScan": true,
+      "entitlement": [
+        "erp.helpdesk"
+      ]
+    },
     {
       "key": "marketplace-worker",
       "unit": "rutba_marketplace_worker",
@@ -100,19 +484,37 @@
       "domains": [],
       "launcher": false,
       "descriptorScan": false,
-      "note": "Background sync worker sharing the apps/sales/marketplace workspace. No HTTP surface, so no port and no URL var; the registry records its port as '-'."
+      "note": "Background sync worker sharing the apps/sales/marketplace workspace. No HTTP surface, so no port and no URL var; the registry records its port as '-'.",
+      "entitlement": null,
+      "entitlementNote": "instance-internal"
     }
   ],
-
   "packages": [
-    {"path":"packages/api-provider","npm":"@rutba/api-provider"},
-    {"path":"packages/shared","npm":"@rutba/shared"},
-    {"path":"packages/sync","npm":"@rutba/sync"},
-    {"path":"packages/video","npm":"@rutba/video"},
-    {"path":"packages/strapi-api-pro","npm":"strapi-api-pro"},
-    {"path":"packages/strapi-provider-upload-media","npm":"strapi-provider-upload-media"}
+    {
+      "path": "packages/api-provider",
+      "npm": "@rutba/api-provider"
+    },
+    {
+      "path": "packages/shared",
+      "npm": "@rutba/shared"
+    },
+    {
+      "path": "packages/sync",
+      "npm": "@rutba/sync"
+    },
+    {
+      "path": "packages/video",
+      "npm": "@rutba/video"
+    },
+    {
+      "path": "packages/strapi-api-pro",
+      "npm": "strapi-api-pro"
+    },
+    {
+      "path": "packages/strapi-provider-upload-media",
+      "npm": "strapi-provider-upload-media"
+    }
   ],
-
   "domainsWithoutApps": [
     {
       "domain": "delivery",

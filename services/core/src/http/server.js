@@ -31,6 +31,9 @@ const { isMultipart, parseMultipart } = require('./multipart');
 const { createRequestLogger } = require('./logger');
 const { coreHandler, sendError } = require('./rest');
 const { health, version } = require('../platform/health');
+const { createEntitlementMiddleware } = require('./entitlement');
+const { createEntitlementResolver } = require('../platform/entitlements');
+const { allKeys, catalogue } = require('../platform/app-entitlements');
 
 const CORE_ACTIONS = new Set(['find', 'findOne', 'create', 'update', 'delete']);
 
@@ -103,6 +106,11 @@ async function loadRouteTable() {
   }
   return routes;
 }
+
+// One resolver per process. The last-known-good cache and the collapsing of
+// concurrent refreshes are the whole point of it; a per-request resolver would
+// have neither and would ask the licence service once per request.
+const entitlementResolver = createEntitlementResolver();
 
 async function buildServer() {
   const app = new Koa();
@@ -207,6 +215,33 @@ async function buildServer() {
   });
   router.get('/version', (ctx) => { ctx.body = version(); });
 
+  // What this org is licensed for, in the shape a navigation builder needs, so
+  // that 22 apps do not each invent their own answer to "which modules do we
+  // have". Unauthenticated on purpose: it is a property of the INSTANCE rather
+  // than of the caller, the login screen needs it before there is a session,
+  // and it reveals only which modules were bought.
+  router.get('/api/entitlements', async (ctx) => {
+    let entitlement;
+    try {
+      entitlement = await entitlementResolver.resolve(ctx.state.orgId || null);
+    } catch {
+      return sendError(ctx, 503, 'ServiceUnavailableError', 'Entitlements could not be verified');
+    }
+    const held = entitlement.keys;
+    ctx.body = {
+      status: entitlement.status,
+      stale: Boolean(entitlement.stale),
+      source: entitlement.source,
+      // `keys: null` from the stub means every key this build knows about — not
+      // "none", which is the opposite and the more dangerous reading.
+      keys: held === null ? allKeys() : [...held].sort(),
+      apps: catalogue().map((a) => ({
+        ...a,
+        entitled: !a.gated || held === null || a.required.some((k) => held.has(k)),
+      })),
+    };
+  });
+
   router.get(/^\/uploads\/.+/, (ctx) =>
     sendError(ctx, 404, 'NotFoundError', 'file not found on disk or on MEDIA_BASE_URL'));
 
@@ -215,6 +250,13 @@ async function buildServer() {
   const cfg = strapi.config.get('plugin::api-pro') || {};
   const bypassPrefixes = (cfg.bypassPaths || []).map((p) => String(p).replace(/\/+$/, ''));
   const isBypassed = (p) => bypassPrefixes.some((b) => p === b || p.startsWith(`${b}/`));
+
+  // Entitlement runs BEFORE auth and before the interceptor, because it is the
+  // prior question: an org that never licensed a module has no roles in it to
+  // check. It is also the cheapest — one cached lookup, no database round-trip
+  // per request. See src/http/entitlement.js for what it deliberately does not
+  // gate (headerless callers, unknown apps).
+  app.use(createEntitlementMiddleware({ resolver: entitlementResolver, isBypassed }));
 
   const auth = createAuthMiddleware({ isBypassed });
   // For module selfAuth routes (auth:false in Strapi): identify when possible,

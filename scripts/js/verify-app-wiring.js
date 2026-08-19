@@ -562,6 +562,39 @@ for (const d of declaredOrphans.keys()) {
   }
 }
 
+// ── 6b. Every service has an entitlement decision ──────────
+// Portal task E2. Adding an app without deciding this would default it to
+// ungated — the silent-permissive direction, and the one nobody notices until
+// an org is using a module it never bought. `null` IS a valid decision, it just
+// has to be a stated one: `entitlement: null` plus an `entitlementNote` saying
+// why. The keys themselves are the portal's (docs/portal-alignment.md); this
+// only checks that a decision exists and is shaped right.
+
+for (const e of ENTRIES) {
+  const has = Object.prototype.hasOwnProperty.call(e, 'entitlement');
+  if (!has) {
+    fail(e.key, 'no `entitlement` in config/apps.manifest.json — set an array of keys ' +
+      '(e.g. ["erp.hr"]) or null with an `entitlementNote` explaining why it is ungated');
+    continue;
+  }
+  if (e.entitlement === null) {
+    if (!e.entitlementNote) {
+      fail(e.key, 'entitlement is null but there is no `entitlementNote` — an ungated app ' +
+        'has to say why, or the next person cannot tell a decision from an omission');
+    }
+    continue;
+  }
+  if (!Array.isArray(e.entitlement) || e.entitlement.length === 0) {
+    fail(e.key, `entitlement must be a non-empty array of keys or null, got ${JSON.stringify(e.entitlement)}`);
+    continue;
+  }
+  for (const key of e.entitlement) {
+    if (typeof key !== 'string' || !/^erp\.[a-z][a-z0-9-]*$/.test(key)) {
+      fail(e.key, `entitlement key ${JSON.stringify(key)} is not of the form erp.<name>`);
+    }
+  }
+}
+
 // ── 7. Report ──────────────────────────────────────────────
 
 if (!QUIET) {
