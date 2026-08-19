@@ -12,7 +12,12 @@ import dynamic from 'next/dynamic';
  * pages the user has no role for at all, and to hide admin-only chrome.
  *
  * Props:
- *   required  — comma-separated app-domain keys (e.g. "sale", "stock,cms");
+ *   required  — comma-separated app-domain keys (e.g. "pos", "stock,cms")
+ *               as listed in packages/api-provider/config/domains.json. NOT a
+ *               permission action ("api::sale.sale.delete") and NOT "admin" —
+ *               a key absent from that file can be held by nobody, so the gate
+ *               closes for every user including admins, silently. Use
+ *               `adminOnly` / `showIf="admin"` for admin gating;
  *               shows access-denied message if the user has NO role in
  *               ANY of those domains.
  *   has       — comma-separated app-domain keys; hides children silently

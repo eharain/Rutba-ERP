@@ -198,7 +198,7 @@ export default function SiteSettingDetail() {
         <Layout>
             <ProtectedRoute>
                 <AppAccessGate>
-                <PermissionCheck adminOnly appKey="admin" required="admin">
+                <PermissionCheck adminOnly>
                 <ToastContainer />
                 <div className="d-flex align-items-center mb-3">
                     <Link href="/site-settings" className="btn btn-sm btn-outline-secondary me-2">

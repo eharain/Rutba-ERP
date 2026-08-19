@@ -501,6 +501,49 @@ for (const entry of ENTRIES) {
   rows.push(row);
 }
 
+// ── 5b. Every UI gate names a domain that exists ───────────
+// PermissionCheck denies access when the user holds no role in `required`.
+// A domain key that is not in domains.json can never be held by anyone, so the
+// gate is not strict — it is closed, permanently, for every user including
+// admins, and it fails silently at runtime with no server-side error to notice.
+//
+// This is not hypothetical: the POS sale pages gated on "sale" and the whole
+// admin console on "admin", neither of which has existed since the domains
+// were renamed (pos, console). Both were unreachable for everyone.
+
+function scanPermissionGates(dir, out = new Map()) {
+  let entries;
+  try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return out; }
+  for (const e of entries) {
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) {
+      if (!/^(node_modules|\.next|\.git|dist|build)$/.test(e.name)) scanPermissionGates(p, out);
+      continue;
+    }
+    if (!/\.(js|jsx|ts|tsx)$/.test(e.name)) continue;
+    let src;
+    try { src = fs.readFileSync(p, 'utf8'); } catch { continue; }
+    if (!src.includes('PermissionCheck')) continue;
+    for (const m of src.matchAll(/<PermissionCheck[^>]*?\b(required|has)="([^"]+)"/g)) {
+      for (const d of m[2].split(',').map((s) => s.trim()).filter(Boolean)) {
+        if (Object.prototype.hasOwnProperty.call(DOMAINS, d)) continue;
+        const rel = path.relative(ROOT, p).split(path.sep).join('/');
+        if (!out.has(d)) out.set(d, new Set());
+        out.get(d).add(rel);
+      }
+    }
+  }
+  return out;
+}
+
+const staleGates = scanPermissionGates(path.join(ROOT, 'apps'));
+scanPermissionGates(path.join(ROOT, 'packages'), staleGates);
+for (const [domain, files] of staleGates) {
+  fail('PermissionCheck', `gates on domain "${domain}" which is not in ` +
+    `packages/api-provider/config/domains.json — nobody can hold it, so these ` +
+    `pages are closed to every user: ${[...files].join(', ')}`);
+}
+
 // ── 6. Every domain is accounted for ───────────────────────
 // A domain with no app is legitimate (an authorization-only sub-domain, or a
 // deprecated alias) but it has to be declared as such, so a genuinely orphaned

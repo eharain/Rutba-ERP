@@ -204,7 +204,7 @@ export default function RelaysPage() {
         <ProtectedRoute>
             <Layout>
                 <ToastContainer />
-                <PermissionCheck adminOnly appKey="admin" required="admin">
+                <PermissionCheck adminOnly>
                 <div className="d-flex justify-content-between align-items-center mb-3">
                     <h3><i className="fas fa-tower-broadcast me-2"></i>Social Relay Providers</h3>
                     <button className="btn btn-primary btn-sm" onClick={openCreate} disabled={!providerMeta.length}>

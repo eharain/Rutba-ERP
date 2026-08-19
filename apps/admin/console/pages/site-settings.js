@@ -71,7 +71,7 @@ export default function SiteSettingsPage() {
         <Layout>
             <ProtectedRoute>
                 <AppAccessGate>
-                <PermissionCheck adminOnly appKey="admin" required="admin">
+                <PermissionCheck adminOnly>
                 <ToastContainer />
                 <div className="d-flex justify-content-between align-items-center mb-3">
                     <h2><i className="fas fa-sliders me-2"></i>Site Settings</h2>

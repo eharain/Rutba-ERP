@@ -54,7 +54,7 @@ export default function Cart() {
 
     return (
         <ProtectedRoute>
-            <PermissionCheck required="sale">
+            <PermissionCheck required="pos">
                 <Layout>
                     <h1>Cart</h1>
                     {cartItems.length === 0 ? <p>No items.</p> : (

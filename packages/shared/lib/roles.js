@@ -362,8 +362,16 @@ function groupLinksByCategory(links) {
 //    <AdminDashboard />
 //</PermissionCheck>
 
-//// Combine admin check with permission check
-//<PermissionCheck showIf="admin" required="api::sale.sale.delete">
+//// Combine admin check with a domain gate.
+//// `required` / `has` take APP-DOMAIN keys from
+//// packages/api-provider/config/domains.json — never a permission action
+//// like "api::sale.sale.delete", and never "admin". A key that is not in
+//// that file can be held by nobody, so the gate is permanently closed for
+//// every user, admins included, and it fails silently with nothing logged.
+//// (This example used to show an action string, and the POS and console
+//// pages that copied it were unreachable for everyone until 2026-08-19.)
+//// scripts/js/verify-app-wiring.js now fails the build on an unknown key.
+//<PermissionCheck showIf="admin" required="pos">
 //    <button>Force Delete Sale</button>
 //</PermissionCheck>
 

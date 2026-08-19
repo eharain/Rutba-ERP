@@ -75,7 +75,7 @@ export default function AppDomainsPage() {
         <Layout>
             <ProtectedRoute>
                 <AppAccessGate>
-                <PermissionCheck adminOnly appKey="admin" required="admin">
+                <PermissionCheck adminOnly>
                 <div className="d-flex justify-content-between align-items-center mb-3">
                     <h2><i className="fas fa-key me-2"></i>App Domains</h2>
                     <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>

@@ -66,12 +66,16 @@ function get24hAgo() {
 export default function Sales() {
     const [sales, setSales] = useState([]);
     const { jwt, adminAppAccess, activeRoleKey } = useAuth();
-    const admin = isAppAdmin(adminAppAccess, "sale");
+    // "pos", not "sale": this app's key (pages/_app.js setAppName, and the
+    // manifest) is pos. The pre-rename "sale" matches no app, so both of these
+    // were permanently false and the admin-only Cancel button never appeared
+    // for anyone — including a pos_admin.
+    const admin = isAppAdmin(adminAppAccess, "pos");
     // Cancel is admin-only. Gate on the ACTIVE role (with the capability
     // fallback for the bootstrap window where activeRoleKey is still null) —
     // `admin && isActiveAdminRole()` hid the button from real admins until the
     // role header landed.
-    const elevated = isEffectiveAdmin(activeRoleKey, adminAppAccess, "sale");
+    const elevated = isEffectiveAdmin(activeRoleKey, adminAppAccess, "pos");
     // Holds admin but is currently acting as staff/manager: explain the missing
     // button instead of silently dropping it.
     const needsRoleSwitch = admin && !elevated;
@@ -404,7 +408,7 @@ export default function Sales() {
 
     return (
         <ProtectedRoute>
-            <PermissionCheck required="sale">
+            <PermissionCheck required="pos">
                 <Layout>
                     <ListPageLayout
                         title="Sales"

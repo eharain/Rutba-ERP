@@ -27,10 +27,14 @@ async function fetchPermissions(jwt) {
             });
             const data = res.data;
 
+            // `domains[]` carries one entry per domain × ROLE, so a user with
+            // three roles in `accounts` yields `accounts` three times. Left
+            // undeduplicated it only ever fed `includes()` checks, which do not
+            // care — until the access-denied message started listing what the
+            // user holds and printed "accounts, accounts, accounts, console,
+            // console, console, …" across seventy entries.
             const derivedAppAccess = Array.isArray(data?.domains)
-                ? data.domains
-                    .map((d) => d?.key)
-                    .filter(Boolean)
+                ? [...new Set(data.domains.map((d) => d?.key).filter(Boolean))]
                 : [];
 
             const appAccess = Array.isArray(data?.appAccess) && data.appAccess.length

@@ -549,7 +549,7 @@ export default function SalePage() {
     return (
         <Layout fullWidth>
             <ProtectedRoute>
-                <PermissionCheck required="sale">
+                <PermissionCheck required="pos">
                     <CashRegisterGuard>
                     <div className="d-flex align-items-start" style={{ minHeight: '100vh' }}>
                         {/* Main content column — everything that was the page */}
@@ -1159,7 +1159,7 @@ function SaleButtons({ handlePrint, handleSave, saleModel, setShowCheckout, isDi
             >
                 <i className="fas fa-save me-1" />Save
             </button>
-            <PermissionCheck has="sale">
+            <PermissionCheck has="pos">
                 <button
                     className={`btn ${canCheckout ? 'btn-success' : 'btn-outline-secondary'}`}
                     onClick={handleCheckoutClick}
