@@ -32,6 +32,7 @@ const { registerAuthModule } = require('./auth');
 const { registerCatalogModule } = require('./catalog');
 const { registerUploadsModule } = require('./uploads');
 const { registerUserMgmtModule } = require('./user-mgmt');
+const { registerCampaignsModule } = require('./campaigns');
 
 let initialized = null;
 
@@ -50,6 +51,7 @@ function initModules() {
     registerCatalogModule(),
     registerUploadsModule(),
     registerUserMgmtModule(),
+    registerCampaignsModule(),
   ];
   const routes = modules.flatMap((m) => m.routes || []);
   initialized = { modules: modules.map((m) => m.name), routes };
