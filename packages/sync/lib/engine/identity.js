@@ -139,6 +139,46 @@ export function createIdentity(spec) {
 }
 
 /**
+ * Did the target actually keep the identity we asked it to?
+ *
+ * This exists because of a measured, silent failure. A `documentId` identity
+ * only works if the target stores the id the source sent, and whether it does
+ * depends entirely on which backend is on the far end:
+ *
+ *   services/core   keeps it. `documents.create` reads `data.documentId` before
+ *                   generating one, and core's REST layer hands `body.data`
+ *                   through untouched. Verified over the wire against a running
+ *                   core: create → 201, returned documentId identical, GET by
+ *                   that id → 200.
+ *   Strapi          does NOT. `@strapi/utils` `sanitizeInput` runs
+ *                   `omit(DOC_ID_ATTRIBUTE)` on every content-API write, before
+ *                   the document service ever sees it, so the target assigns its
+ *                   own. (The plugin this engine replaces avoided that by POSTing
+ *                   to its own plugin route, which bypassed the sanitizer.)
+ *
+ * The dangerous part is that the create still returns **201**. Nothing fails.
+ * The run looks perfect, and the *next* run matches nothing and creates every
+ * record again — a target that fills with duplicates, one full copy per run,
+ * discovered in production or not at all.
+ *
+ * So the apply phase checks the echo on its first create per type and stops
+ * rather than continuing. Loud on run one beats silent until run two.
+ */
+export function verifyIdentityEcho({ intended, created, identity }) {
+    if (intended === null || intended === undefined) {
+        return { ok: false, got: null, reason: 'no-intended-key' };
+    }
+    const got = identity.key(created);
+    if (got === null) {
+        return { ok: false, got: null, reason: 'target-returned-no-key' };
+    }
+    if (got !== intended) {
+        return { ok: false, got, reason: 'target-assigned-its-own' };
+    }
+    return { ok: true, got, reason: null };
+}
+
+/**
  * Index a list of records by key.
  *
  * Splits into what can be acted on and what cannot, because both halves are

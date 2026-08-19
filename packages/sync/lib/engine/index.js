@@ -17,7 +17,7 @@ import { analyzeScope, classifyAttributes } from './schema.js';
 import { contentFields, planLinks, planType } from './plan.js';
 
 export { analyzeScope, classifyAttributes, isOwnerSide, isMultipleRelation, topoOrder, typeKind } from './schema.js';
-export { createIdentity, indexByKey, SINGLETON_KEY } from './identity.js';
+export { createIdentity, indexByKey, verifyIdentityEcho, SINGLETON_KEY } from './identity.js';
 export { contentFields, fingerprint, planLinks, planType, resolveLink } from './plan.js';
 export { ManifestError, parseManifest } from './manifest.js';
 

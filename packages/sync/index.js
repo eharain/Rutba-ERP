@@ -36,6 +36,7 @@ export {
     // identity
     createIdentity,
     indexByKey,
+    verifyIdentityEcho,
     SINGLETON_KEY,
     // planning
     contentFields,

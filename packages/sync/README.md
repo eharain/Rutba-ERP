@@ -49,7 +49,10 @@ const manifest = parseManifest({
     types: [
         { uid: 'api::cms-menu.cms-menu',           plural: 'cms-menus' },
         { uid: 'api::cms-menu-item.cms-menu-item', plural: 'cms-menu-items' },
-        { uid: 'api::site-setting.site-setting',   kind: 'singleType' },
+        // site-setting is a per-app collection, one row per app_slug — not a
+        // single type, whatever the older cms-sync docs say.
+        { uid: 'api::site-setting.site-setting',   plural: 'site-settings',
+          identity: { strategy: 'naturalKey', fields: ['app_slug'] } },
     ],
 });
 
@@ -96,8 +99,12 @@ Two more things the shape buys, rather than the rules:
   time and the run simply does not attempt it. The plugin discovered them one
   record at a time, at write time, and failed the whole record: a single
   `cms-page.owners` pointing at a users-permissions user took the page with it.
-- **Single types sync** (GAP-5). `site-setting` — logo, favicon, meta defaults,
-  default footer — had to be copied by hand every time.
+- **Single types sync** (GAP-5), via `identity: 'singleton'`. Worth noting that
+  this repo has **no single type left** — `site-setting` became a per-app
+  collection in `3a4348d8`, so the gap that once blocked it no longer applies
+  here. The strategy costs one function and a future type may want it. What
+  site-settings actually needs is the right *key*: `app_slug`, not a
+  `documentId` two instances never agreed on.
 
 ## Identity
 
@@ -117,6 +124,32 @@ and absence is never a match.** Two records that both fail to produce a key are
 two records the engine will not touch. A key claimed by two records is withheld
 from both — "pick the first one" is how a sync silently overwrites the wrong
 row, so an ambiguous key is reported and acted on by nobody.
+
+### `documentId` identity depends on the target, and the failure is silent
+
+Measured, because guessing here is expensive:
+
+| Target | Keeps a `documentId` sent on create? | Why |
+|---|---|---|
+| `services/core` | **yes** | `documents.create` reads `data.documentId` before generating one, and core's REST layer passes `body.data` through untouched. Verified over the wire against a running core: create → 201 with the same id, `GET` by that id → 200. |
+| Strapi | **no** | `@strapi/utils` `sanitizeInput` runs `omit(DOC_ID_ATTRIBUTE)` on **every** content-API write, before the document service sees it. The target assigns its own. |
+
+The dangerous part is that Strapi still answers **201**. Nothing fails, the run
+log looks perfect, and the *next* run matches nothing and creates every record
+again — one complete duplicate copy per run, found in production or not at all.
+(This is also why the plugin this engine replaces shipped its own
+`/api/strapi-content-sync-pro/receive` route on the target: a plugin route
+bypasses the content-API sanitiser. Speaking the wire is the right trade, but
+it costs this.)
+
+So:
+
+- **Pushing to core** — use `documentId`. It works.
+- **Pushing to Strapi** — use `naturalKey` on a real attribute (`slug`, `key`,
+  `app_slug`). No sanitiser strips a declared field.
+- Either way the apply phase calls `verifyIdentityEcho` on its **first create
+  per type** and stops the run on a mismatch. Loud on run one beats silent
+  until run two.
 
 ## Conflict policy
 
@@ -152,7 +185,7 @@ staging content lands unpublished until somebody looks at it.
 npm test --workspace=@rutba/sync
 ```
 
-44 engine assertions (`test/engine.js`) on top of the bridge's 46. The last
+49 engine assertions (`test/engine.js`) on top of the bridge's 46. The last
 section is regressions: one case per plugin gap, each asserting the engine does
 not have that bug. They were mutation-checked rather than trusted — putting
 GAP-1 back into `isOwnerSide` fails 5 tests including its own regression case;

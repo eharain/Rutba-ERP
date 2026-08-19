@@ -32,6 +32,36 @@
 > Companion: [README.md](./README.md) — the configuration runbook for what
 > *does* work today, plus the workarounds for everything listed here.
 
+## A twelfth thing, found 2026-08-19 while building the replacement
+
+Not a plugin bug — a **property of the target** that the plugin's architecture
+hid, and that anything speaking the content API has to handle:
+
+> **A Strapi target silently discards a `documentId` sent on create.**
+> `@strapi/utils`' `sanitizeInput` runs `omit(DOC_ID_ATTRIBUTE)` on every
+> content-API write, before the document service (which *does* honour
+> `data.documentId` — `@strapi/core/dist/services/document-service/entries.js:22`)
+> ever sees it. `services/core` keeps it: `documents.create` reads
+> `data.documentId` first, and core's REST layer passes `body.data` through
+> untouched. Verified over the wire against a running core — create → 201 with
+> the same id, `GET` by that id → 200, delete → 204.
+
+The plugin never met this because it POSTed to its own
+`/api/strapi-content-sync-pro/receive` route, and a plugin route bypasses the
+content-API sanitiser. An engine that speaks only the documented wire pays for
+that portability here.
+
+It matters because **the failure is silent**: the create still returns 201, the
+run log looks clean, and the next run matches nothing and creates every record
+again — one full duplicate copy of the CMS per run. So:
+
+- pushing **to core** → `documentId` identity works;
+- pushing **to Strapi** (rutba.pk today) → key on a declared attribute (`slug`,
+  `app_slug`); no sanitiser strips a real field;
+- and the engine verifies the echo on its first create per type rather than
+  trusting either (`verifyIdentityEcho` in
+  [packages/sync/lib/engine/identity.js](../../../packages/sync/lib/engine/identity.js)).
+
 ## TL;DR
 
 Syncing Rutba's CMS between two Strapi instances is **not** a pure configuration

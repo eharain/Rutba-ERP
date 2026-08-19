@@ -360,6 +360,16 @@ Everything that still *requires* a running Strapi, enumerated and killed.
             (`sync_logs`/`sync_run_reports` shapes), cron + manual-run endpoint, and the
             `content-sync` core module. Two-way stays refused until a provenance field
             exists (GAP-8); `parseManifest` rejects it with that reason today.
+      - **Constraint the planner work uncovered, and it shapes the CMS use case:** a
+            **Strapi target silently drops a `documentId` sent on create** —
+            `@strapi/utils`' `sanitizeInput` runs `omit(DOC_ID_ATTRIBUTE)` on every
+            content-API write — while **core keeps it** (verified over the wire against
+            a running core). The old plugin never met this because it POSTed to its own
+            plugin route, which bypasses the sanitiser. Since the create still returns
+            201, the damage shows up on the *second* run as a full duplicate copy. So
+            LAN→rutba.pk promotion must key on a declared attribute (`slug`) until
+            rutba.pk is on core, and the engine verifies the echo on its first create
+            per type rather than trusting either end.
 - [ ] **Re-home the remaining Strapi-admin screens** (the standing "no Strapi-admin
       extensions" rule): api-pro Policy Editor → `apps/admin/console`; API-token issuance →
       `apps/admin/console`; core-store settings (email templates, reset-URL) → `apps/admin/console`;

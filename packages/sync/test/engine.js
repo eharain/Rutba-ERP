@@ -27,6 +27,7 @@ import {
     planType,
     resolveLink,
     topoOrder,
+    verifyIdentityEcho,
 } from '../lib/engine/index.js';
 
 let passed = 0;
@@ -243,6 +244,51 @@ await test('unknown identity strategies are rejected by name', () => {
     assert.throws(() => createIdentity('vibes'), /unknown identity strategy "vibes"/);
     assert.throws(() => createIdentity({ strategy: 'externalIds' }), /requires a non-empty `origin`/);
     assert.throws(() => createIdentity({ strategy: 'naturalKey', fields: [] }), /non-empty `fields`/);
+});
+
+await test('verifyIdentityEcho accepts a target that kept the documentId (core)', () => {
+    // Measured against a running services/core: create with data.documentId
+    // returns 201 and the same documentId back.
+    const r = verifyIdentityEcho({
+        intended: 'm1',
+        created: { documentId: 'm1', name: 'Main' },
+        identity: createIdentity('documentId'),
+    });
+    assert.deepEqual(r, { ok: true, got: 'm1', reason: null });
+});
+
+await test('verifyIdentityEcho catches a target that assigned its own id (Strapi)', () => {
+    // @strapi/utils sanitizeInput runs omit(DOC_ID_ATTRIBUTE) on every
+    // content-API write, so a Strapi target stores an id of its own — and
+    // still answers 201. Without this check the next run matches nothing and
+    // recreates everything, one full copy per run.
+    const r = verifyIdentityEcho({
+        intended: 'm1',
+        created: { documentId: 'whatever-strapi-made', name: 'Main' },
+        identity: createIdentity('documentId'),
+    });
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, 'target-assigned-its-own');
+    assert.equal(r.got, 'whatever-strapi-made');
+});
+
+await test('verifyIdentityEcho catches a target that returned no key at all', () => {
+    const r = verifyIdentityEcho({
+        intended: 'm1',
+        created: { name: 'Main' },
+        identity: createIdentity('documentId'),
+    });
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, 'target-returned-no-key');
+});
+
+await test('verifyIdentityEcho passes for a natural key the target cannot rewrite', () => {
+    // The reason naturalKey is the answer for a Strapi target: the key lives
+    // in a real schema attribute, which no sanitiser strips.
+    const identity = createIdentity({ strategy: 'naturalKey', fields: ['slug'] });
+    const intended = identity.key({ slug: 'main-menu' });
+    const r = verifyIdentityEcho({ intended, created: { documentId: 'reassigned', slug: 'main-menu' }, identity });
+    assert.equal(r.ok, true);
 });
 
 await test('indexByKey withholds duplicates instead of picking one', () => {
