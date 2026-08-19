@@ -585,16 +585,51 @@ module.exports = createCoreController('api::cash-register.cash-register', ({ str
       const already = await accounting.findBySource('Cash Register Close', register.id);
       if (!already || already.length === 0) {
         const glDrawer = Math.round((expectedCash - cashAdjustments) * 100) / 100;
-        // Force close: nothing was recovered into the safe, so the whole drawer
-        // balance lands on Cash Short/Over. Leaving it on CASH_DRAWER instead
-        // would keep an account open against a register nobody can reconcile.
         const counted = Math.round(Number(countedValue || 0) * 100) / 100;
         const variance = Math.round((counted - glDrawer) * 100) / 100;
         const lines = [];
-        if (counted > 0) lines.push({ account: await resolver.resolve('CASH_SAFE', branchId), debit: counted, credit: 0, description: 'Counted cash to safe' });
-        if (variance < 0) lines.push({ account: await resolver.resolve('CASH_SHORT_OVER', branchId), debit: -variance, credit: 0, description: forceClose ? 'Unaccounted cash (force close)' : 'Cash short' });
-        if (glDrawer > 0) lines.push({ account: await resolver.resolve('CASH_DRAWER', branchId), debit: 0, credit: glDrawer, description: 'Clear drawer' });
-        if (variance > 0) lines.push({ account: await resolver.resolve('CASH_SHORT_OVER', branchId), debit: 0, credit: variance, description: 'Cash over' });
+
+        if (forceClose) {
+          // Nothing was counted and nothing was recovered, so the whole drawer
+          // balance lands on Cash Short/Over. Leaving it on CASH_DRAWER would
+          // keep a balance open against a register nobody can reconcile.
+          if (glDrawer > 0) {
+            lines.push({ account: await resolver.resolve('CASH_SHORT_OVER', branchId), debit: glDrawer, credit: 0, description: 'Unaccounted cash (force close)' });
+            lines.push({ account: await resolver.resolve('CASH_DRAWER', branchId), debit: 0, credit: glDrawer, description: 'Clear drawer' });
+          }
+        } else {
+          // Only the cash DRAWN OUT moves to the safe. What the cashier left in
+          // the drawer stays on CASH_DRAWER as the next shift's float — booking
+          // it to the safe (which is what this did until 2026-08-19) overstated
+          // the safe by the float and reported an empty drawer that physically
+          // still held money.
+          //
+          // The drawer must end holding exactly `cash_left`, so the variance is
+          // booked against the DRAWER, not the safe:
+          //     drawer = glDrawer − drawn + variance
+          //            = glDrawer − drawn + (counted − glDrawer)
+          //            = counted − drawn
+          //            = left                                            ✓
+          // A legacy client posts a single counted_cash with no left/drawn
+          // split, and its established meaning was "the drawer was swept into
+          // the safe". Keep that, rather than silently reinterpreting an old
+          // client's close as "everything stayed in the drawer".
+          const legacySingleCount = leftVal == null && drawnVal == null;
+          const drawn = legacySingleCount
+            ? counted
+            : Math.round(Number(drawnVal || 0) * 100) / 100;
+          if (drawn > 0) {
+            lines.push({ account: await resolver.resolve('CASH_SAFE', branchId), debit: drawn, credit: 0, description: 'Cash drawn to safe' });
+            lines.push({ account: await resolver.resolve('CASH_DRAWER', branchId), debit: 0, credit: drawn, description: 'Drawn from drawer' });
+          }
+          if (variance < 0) {
+            lines.push({ account: await resolver.resolve('CASH_SHORT_OVER', branchId), debit: -variance, credit: 0, description: 'Cash short' });
+            lines.push({ account: await resolver.resolve('CASH_DRAWER', branchId), debit: 0, credit: -variance, description: 'Drawer shortfall' });
+          } else if (variance > 0) {
+            lines.push({ account: await resolver.resolve('CASH_DRAWER', branchId), debit: variance, credit: 0, description: 'Drawer overage' });
+            lines.push({ account: await resolver.resolve('CASH_SHORT_OVER', branchId), debit: 0, credit: variance, description: 'Cash over' });
+          }
+        }
         if (lines.length >= 2) {
           await accounting.createAndPost({
             date: new Date(),

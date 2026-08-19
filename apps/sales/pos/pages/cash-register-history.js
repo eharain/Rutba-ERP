@@ -5,7 +5,7 @@ import CloseRegisterModal from "../components/CloseRegisterModal";
 import ProtectedRoute from "@rutba/shared/components/ProtectedRoute";
 import { AppContextEndpoints, CashRegistersEndpoints } from "@rutba/api-provider/endpoints/index.js";
 import { useAuth } from "@rutba/shared/context/AuthContext";
-import { isAppAdmin, isActiveManagerRole, isEffectiveAdmin } from "@rutba/shared/lib/roles";
+import { isActiveManagerRole, isEffectiveAdmin } from "@rutba/shared/lib/roles";
 import { useUtil } from "@rutba/shared/context/UtilContext";
 import ListPageLayout from "@rutba/shared/components/ListPageLayout";
 import ListPagination from "@rutba/shared/components/ListPagination";
@@ -26,10 +26,15 @@ const COLUMNS = [
     { key: "opened_by", label: "Opened By" },
     { key: "opened_at", label: "Open Time" },
     { key: "closed_at", label: "Close Time" },
-    { key: "opening_cash", label: "Opening", align: "right" },
-    { key: "expected_cash", label: "Expected", align: "right" },
-    { key: "counted_cash", label: "Counted", align: "right" },
-    { key: "difference", label: "Difference", align: "right" },
+    { key: "opening_cash", label: "Opening", align: "right", total: true },
+    { key: "expected_cash", label: "Expected", align: "right", total: true },
+    { key: "counted_cash", label: "Counted", align: "right", total: true },
+    // Counted splits into what stayed in the drawer and what was taken out.
+    // Drawn-out cash is what moves to the safe at close, so it belongs on the
+    // summary rather than only inside the close dialog.
+    { key: "cash_left", label: "Left", align: "right", total: true },
+    { key: "cash_drawn", label: "Drawn", align: "right", total: true },
+    { key: "difference", label: "Difference", align: "right", total: true },
     { key: "status", label: "Status" },
 ];
 
@@ -37,12 +42,17 @@ export default function CashRegisterHistoryPage() {
     const { currency, desk, user } = useUtil();
     const { adminAppAccess, activeRoleKey } = useAuth();
     const appName = AppContextEndpoints.getAppName();
-    const userIsAdmin = isAppAdmin(adminAppAccess, appName);
     // Who may close someone else's register: an admin (active, or before the
     // active role resolves) or a manager. Mirrors the /cash-register rule that
     // an expired register needs a manager or admin.
     const canCloseAny = isEffectiveAdmin(activeRoleKey, adminAppAccess, appName)
         || isActiveManagerRole(activeRoleKey);
+    // Who sees the FULL history rather than the last 7 days. This must track the
+    // server, not `userIsAdmin`: the api-pro scope on cash-register `find` is
+    // `{}` for both admin AND manager, and owner+last-7-days only for staff. The
+    // clamp below used to exempt admins alone, so a manager was silently shown a
+    // 7-day window of registers the server was perfectly willing to return.
+    const canSeeFullHistory = canCloseAny;
     const [registers, setRegisters] = useState([]);
     const [loading, setLoading] = useState(false);
     const [page, setPage] = useState(1);
@@ -99,9 +109,10 @@ export default function CashRegisterHistoryPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [page, pageSize, sortField, sortOrder, searchKey]);
 
-    // Apply the non-admin recency clamp: staff only ever see the last 7 days.
+    // Apply the staff recency clamp: staff only ever see the last 7 days.
+    // Admins and managers are unrestricted, matching the server scope.
     const clampRecency = (filters) => {
-        if (userIsAdmin) return filters;
+        if (canSeeFullHistory) return filters;
         const oneWeekAgo = new Date();
         oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
         const minDate = oneWeekAgo.toISOString().split('T')[0];
@@ -162,7 +173,7 @@ export default function CashRegisterHistoryPage() {
             setOpenCount(null);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [userIsAdmin, canCloseAny]);
+    }, [canSeeFullHistory, canCloseAny]);
 
     useEffect(() => { loadOpenCount(); }, [loadOpenCount]);
 
@@ -322,7 +333,7 @@ export default function CashRegisterHistoryPage() {
             <Layout>
                 <ListPageLayout
                     title={title}
-                    subtitle={total != null ? `${total} total${!userIsAdmin ? ' • last 7 days' : ''}` : undefined}
+                    subtitle={total != null ? `${total} total${!canSeeFullHistory ? ' • last 7 days' : ''}` : undefined}
                     headerActions={headerActions}
                     filters={filterNodes}
                     loading={loading}
@@ -382,6 +393,8 @@ export default function CashRegisterHistoryPage() {
                                         <td style={{ textAlign: 'right' }}>{fmt(reg.opening_cash)}</td>
                                         <td style={{ textAlign: 'right' }}>{reg.expected_cash != null ? fmt(reg.expected_cash) : '-'}</td>
                                         <td style={{ textAlign: 'right' }}>{reg.counted_cash != null ? fmt(reg.counted_cash) : '-'}</td>
+                                        <td style={{ textAlign: 'right' }}>{reg.cash_left != null ? fmt(reg.cash_left) : '-'}</td>
+                                        <td style={{ textAlign: 'right' }}>{reg.cash_drawn != null ? fmt(reg.cash_drawn) : '-'}</td>
                                         <td style={{ textAlign: 'right' }}>
                                             {reg.difference != null ? (
                                                 <span className={reg.difference >= 0 ? 'text-success' : 'text-danger'}>
@@ -418,6 +431,32 @@ export default function CashRegisterHistoryPage() {
                                     </tr>
                                 ))}
                             </tbody>
+                            {registers.length > 0 && (
+                                /* Totals cover the rows ON SCREEN. The list is paged
+                                   server-side, so summing the fetched page and calling it
+                                   "Total" would understate every figure the moment there is
+                                   a second page — the label says which it is. */
+                                <tfoot className="table-light fw-semibold">
+                                    <tr>
+                                        <td colSpan={5} className="text-end small text-muted">
+                                            Page totals ({registers.length} of {total ?? registers.length})
+                                        </td>
+                                        {COLUMNS.filter(c => c.total).map(col => {
+                                            const sum = registers.reduce(
+                                                (acc, r) => acc + (r[col.key] != null ? Number(r[col.key]) : 0), 0);
+                                            const isDiff = col.key === 'difference';
+                                            return (
+                                                <td key={col.key} style={{ textAlign: 'right' }}
+                                                    className={isDiff ? (sum >= 0 ? 'text-success' : 'text-danger') : undefined}>
+                                                    {isDiff && sum >= 0 ? '+' : ''}{fmt(sum)}
+                                                </td>
+                                            );
+                                        })}
+                                        <td />
+                                        <td />
+                                    </tr>
+                                </tfoot>
+                            )}
                         </table>
                     </div>
                 </ListPageLayout>

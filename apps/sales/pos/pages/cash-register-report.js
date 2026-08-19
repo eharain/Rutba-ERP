@@ -160,6 +160,11 @@ export default function CashRegisterReportPage() {
             shortTotal: 0,
             overTotal: 0,
             netDiff: 0,
+            // Cash taken out of the drawer at close. This is the amount that
+            // moves to the safe in the closing journal entry, so it is the
+            // figure to reconcile the safe against — the audit is incomplete
+            // without it.
+            drawnTotal: 0,
         };
         for (const a of analyzed) {
             if (a.flags.length) s.flagged += 1;
@@ -174,6 +179,7 @@ export default function CashRegisterReportPage() {
             if (diff < 0) s.shortTotal += diff;
             else if (diff > 0) s.overTotal += diff;
             s.netDiff += diff;
+            if (a.reg.cash_drawn != null) s.drawnTotal += Number(a.reg.cash_drawn) || 0;
         }
         return s;
     }, [analyzed, registers.length]);
@@ -240,6 +246,7 @@ export default function CashRegisterReportPage() {
                         <Metric label="Total Short" value={fmt(Math.abs(summary.shortTotal))} cls="text-danger" />
                         <Metric label="Total Over" value={fmt(summary.overTotal)} cls="text-success" />
                         <Metric label="Net Diff" value={`${summary.netDiff >= 0 ? "+" : ""}${fmt(summary.netDiff)}`} cls={summary.netDiff >= 0 ? "text-success" : "text-danger"} />
+                        <Metric label="Drawn Out" value={fmt(summary.drawnTotal)} />
                         <Metric label="Neg. Expected" value={summary.negExpected} cls={summary.negExpected > 0 ? "text-danger" : ""} />
                         <Metric label="Uncounted" value={summary.uncounted} cls={summary.uncounted > 0 ? "text-warning" : ""} />
                         <Metric label="Never Closed" value={summary.notClosed} cls={summary.notClosed > 0 ? "text-danger" : ""} />
