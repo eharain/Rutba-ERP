@@ -15,7 +15,7 @@ They differ in manifest, not in mechanism, so they get one implementation.
 | | What it is | Status |
 |---|---|---|
 | [**the bridge**](#the-bridge) | a transparent pass-through proxy in front of the Rutba API | phase 1, done |
-| [**the engine**](#the-engine) | contract-level replication — the replacement for `strapi-content-sync-pro` | v1 planner, done; apply phase next |
+| [**the engine**](#the-engine) | contract-level replication — the replacement for `strapi-content-sync-pro` | v1: plan + apply, done; media hand-off and the core module next |
 
 The two are independent today. The bridge's later phases (replica + outbox)
 become a consumer of the engine rather than a second implementation of it.
@@ -59,14 +59,34 @@ const manifest = parseManifest({
 const plan = planRun({ manifest, schemas, snapshots });
 console.log(plan.summary);
 // { creates: 3, updates: 0, unchanged: 0, conflicts: 0, deletes: 0, orphans: 0,
-//   links: 4, unresolvedLinks: 0, relationsOutOfScope: 1, typesWithoutSchema: 0 }
+//   links: 4, linksSettled: 0, unresolvedLinks: 0, relationsOutOfScope: 1,
+//   typesWithoutSchema: 0 }
 ```
 
-## The four rules
+Applying it is a separate call, so the plan above can be printed, approved, or
+thrown away first:
 
-Each one is a bug `strapi-content-sync-pro` shipped, turned into an invariant
-with a test that fails if it comes back
-([plugin-gaps.md](../../docs/todo/cms-sync/plugin-gaps.md)).
+```js
+import { applyPlan, createClient } from '@rutba/sync/engine';
+
+const client = createClient({ baseUrl: manifest.target.baseUrl, token: process.env[manifest.target.tokenEnv] });
+
+const report = await applyPlan({ plan, manifest, client, snapshots, dryRun: true });
+console.log(report.summary);
+// { created: 3, updated: 0, deleted: 0, errors: 0,
+//   linksApplied: 4, linksSkipped: 0, linkErrors: 0, typesAborted: 0 }
+```
+
+`dryRun` performs no writes and still reports the full shape of the work, so
+"what would this do?" and "do it" are the same code path with one flag between
+them.
+
+## The five rules
+
+The first four are bugs `strapi-content-sync-pro` shipped, turned into
+invariants with a test that fails if they come back
+([plugin-gaps.md](../../docs/todo/cms-sync/plugin-gaps.md)). The fifth is this
+engine's own, found by running it against a live instance.
 
 **1. `inversedBy` is the owning side.** Re-derived from
 `@strapi/database/dist/metadata/relations.js` with the citation in the source,
@@ -90,6 +110,19 @@ once both ends exist. Reference cycles — `cms-menu-item.parent`,
 owner-side set, so a value removed at source is removed at target. The plugin
 left the old file attached to a single-value `featured_image`, giving one field
 two media rows (GAP-4).
+
+**5. An idle run writes nothing — links included.** A relation already correct
+on the target is reported as `linksSettled` and no request goes out. This is not
+just about saving traffic: every write bumps the target's `updatedAt`, so a
+`lastWriteWins` type whose links were re-asserted on every run would drift into
+being permanently "target-newer" and turn every record into a conflict. Found by
+running the engine against a live instance, where a repeat run wanted to re-PUT
+all 175 links to change nothing.
+
+> The settle check compares the target's *populated* relation against the
+> source's. Build both snapshots the same way — with `populate` — or the
+> comparison sees a bare id against an object, concludes they differ, and
+> writes anyway.
 
 Two more things the shape buys, rather than the rules:
 
@@ -171,9 +204,10 @@ staging content lands unpublished until somebody looks at it.
   plugin's loop guard keyed on a `syncId` field no schema declared, so
   `processData` dropped it silently and records ping-ponged between instances
   forever (GAP-8). `parseManifest` refuses `direction: 'two-way'` and says why.
-- **No apply phase.** `planRun` is the read-only half. Executing a plan over
-  HTTP, the media hand-off through the file server, tombstone collection, the
-  run log, the cron and the `content-sync` core module are the next slice.
+- **No media hand-off yet.** Copying file bytes namespace-to-namespace through
+  the media file server, tombstone collection, the run log
+  (`sync_logs`/`sync_run_reports`), the cron and the `content-sync` core module
+  are the next slice.
 - **No components or dynamic zones yet.** They are classified and carried as
   content fields, which is right for the CMS types in scope; the plugin's
   corruption of them (GAP-6) came from writing at the database layer, which
@@ -185,11 +219,22 @@ staging content lands unpublished until somebody looks at it.
 npm test --workspace=@rutba/sync
 ```
 
-49 engine assertions (`test/engine.js`) on top of the bridge's 46. The last
-section is regressions: one case per plugin gap, each asserting the engine does
-not have that bug. They were mutation-checked rather than trusted — putting
-GAP-1 back into `isOwnerSide` fails 5 tests including its own regression case;
-letting set difference delete fails rule 2's.
+114 assertions: 52 planner (`test/engine.js`), 16 apply (`test/apply.js`), and
+the bridge's 46. The apply half runs a real HTTP server on loopback, the same
+way the bridge's round-trip tests do, with a fake target that can behave like
+core *or* like Strapi — because the difference between them is a measured fact
+the engine has to act on.
+
+The planner's last section is regressions: one case per plugin gap, each
+asserting the engine does not have that bug. They were mutation-checked rather
+than trusted — putting GAP-1 back into `isOwnerSide` fails 5 tests including
+its own regression case; letting set difference delete fails rule 2's.
+
+End to end, the engine has also been pointed at a **live core as its own
+target** over the real wire: 52 records read, and the plan comes back
+`creates: 0, updates: 0, links: 0, linksSettled: 175`. A run against a target
+that already matches has to be completely silent, and that is the cheapest way
+to prove identity and the fingerprint agree.
 
 ---
 

@@ -355,11 +355,21 @@ Everything that still *requires* a running Strapi, enumerated and killed.
             link table resolving and every empty one staying empty — and a snapshot
             planned against itself produces no work, which is the property that stops a
             sync rewriting everything forever.
-      - [ ] **The apply phase** — execute a plan over HTTP with an API token, media
-            hand-off through the file server, tombstone collection, run log
-            (`sync_logs`/`sync_run_reports` shapes), cron + manual-run endpoint, and the
-            `content-sync` core module. Two-way stays refused until a provenance field
-            exists (GAP-8); `parseManifest` rejects it with that reason today.
+      - [x] **The apply phase, 2026-08-19** — `createClient` + `applyPlan`, 16 assertions
+            against a real loopback HTTP server whose fake target can behave like core
+            *or* like Strapi. It stops a type on its first identity mismatch, isolates
+            per-record failures, groups links into one request per record, and `dryRun`
+            reports the whole shape of the work without sending anything. Running it
+            against the live core as its own target returns `creates: 0, updates: 0,
+            links: 0, linksSettled: 175` — an idle run must be completely silent, which
+            is also a correctness requirement: re-asserting settled links bumps the
+            target's `updatedAt` and would leave every `lastWriteWins` type permanently
+            "target-newer".
+      - [ ] **The rest of v1** — media hand-off through the file server, tombstone
+            collection, run log (`sync_logs`/`sync_run_reports` shapes), cron +
+            manual-run endpoint, and the `content-sync` core module. Two-way stays
+            refused until a provenance field exists (GAP-8); `parseManifest` rejects it
+            with that reason today.
       - **Constraint the planner work uncovered, and it shapes the CMS use case:** a
             **Strapi target silently drops a `documentId` sent on create** —
             `@strapi/utils`' `sanitizeInput` runs `omit(DOC_ID_ATTRIBUTE)` on every

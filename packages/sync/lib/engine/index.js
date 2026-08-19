@@ -20,6 +20,8 @@ export { analyzeScope, classifyAttributes, isOwnerSide, isMultipleRelation, topo
 export { createIdentity, indexByKey, verifyIdentityEcho, SINGLETON_KEY } from './identity.js';
 export { contentFields, fingerprint, planLinks, planType, resolveLink } from './plan.js';
 export { ManifestError, parseManifest } from './manifest.js';
+export { applyPlan, buildPayload } from './apply.js';
+export { createClient, TransportError } from './transport.js';
 
 /**
  * Plan a complete run.
@@ -74,7 +76,7 @@ export function planRun({ manifest, schemas, snapshots = {}, tombstones = {} }) 
         sourceKeys[uid] = new Set(plan.keys);
     }
 
-    const { links, unresolved } = planLinks({
+    const { links, unresolved, settled } = planLinks({
         writable: scope.writable,
         snapshots,
         identities,
@@ -89,11 +91,12 @@ export function planRun({ manifest, schemas, snapshots = {}, tombstones = {} }) 
         types: Object.freeze(types),
         links: Object.freeze(links),
         unresolved: Object.freeze(unresolved),
-        summary: summarize(types, links, unresolved, scope),
+        linksSettled: settled,
+        summary: summarize(types, links, unresolved, scope, settled),
     });
 }
 
-function summarize(types, links, unresolved, scope) {
+function summarize(types, links, unresolved, scope, settled) {
     const totals = { creates: 0, updates: 0, unchanged: 0, conflicts: 0, deletes: 0, orphans: 0 };
     for (const plan of types) {
         if (plan.skipped) continue;
@@ -102,6 +105,9 @@ function summarize(types, links, unresolved, scope) {
     return Object.freeze({
         ...totals,
         links: links.length,
+        // Relations already correct on the target. A healthy repeat run has
+        // everything here and nothing in `links`.
+        linksSettled: settled,
         unresolvedLinks: unresolved.length,
         // Surfaced at the top because these are the answers to "why is this
         // field empty on the target?", and nobody scrolls to find them.

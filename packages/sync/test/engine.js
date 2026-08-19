@@ -461,6 +461,62 @@ await test('planLinks emits an empty set for a cleared relation', () => {
     assert.equal(links[0].mode, 'replace');
 });
 
+await test('planLinks says nothing about a link the target already has right', () => {
+    const writable = [{ from: 'api::cms-menu-item.cms-menu-item', attr: 'menu', target: 'api::cms-menu.cms-menu', multiple: false }];
+    const identities = { 'api::cms-menu-item.cms-menu-item': menuIdentity, 'api::cms-menu.cms-menu': menuIdentity };
+    const sourceKeys = { 'api::cms-menu.cms-menu': new Set(['m1']) };
+
+    const { links, settled } = planLinks({
+        writable,
+        snapshots: {
+            'api::cms-menu-item.cms-menu-item': {
+                source: [{ documentId: 'i1', menu: { documentId: 'm1' } }],
+                target: [{ documentId: 'i1', menu: { documentId: 'm1' } }],
+            },
+        },
+        identities,
+        sourceKeys,
+    });
+    assert.equal(links.length, 0, 'an already-correct link is not re-asserted');
+    assert.equal(settled, 1);
+});
+
+await test('planLinks writes a link the target has wrong', () => {
+    const writable = [{ from: 'api::cms-menu-item.cms-menu-item', attr: 'menu', target: 'api::cms-menu.cms-menu', multiple: false }];
+    const identities = { 'api::cms-menu-item.cms-menu-item': menuIdentity, 'api::cms-menu.cms-menu': menuIdentity };
+    const { links, settled } = planLinks({
+        writable,
+        snapshots: {
+            'api::cms-menu-item.cms-menu-item': {
+                source: [{ documentId: 'i1', menu: { documentId: 'm2' } }],
+                target: [{ documentId: 'i1', menu: { documentId: 'm1' } }],
+            },
+        },
+        identities,
+        sourceKeys: { 'api::cms-menu.cms-menu': new Set(['m1', 'm2']) },
+    });
+    assert.equal(settled, 0);
+    assert.deepEqual(links[0].targets, ['m2']);
+});
+
+await test('planLinks compares link sets without caring about order', () => {
+    const writable = [{ from: 'api::cms-page-group.cms-page-group', attr: 'pages', target: 'api::cms-page.cms-page', multiple: true }];
+    const identities = { 'api::cms-page-group.cms-page-group': menuIdentity, 'api::cms-page.cms-page': menuIdentity };
+    const { links, settled } = planLinks({
+        writable,
+        snapshots: {
+            'api::cms-page-group.cms-page-group': {
+                source: [{ documentId: 'g1', pages: [{ documentId: 'p1' }, { documentId: 'p2' }] }],
+                target: [{ documentId: 'g1', pages: [{ documentId: 'p2' }, { documentId: 'p1' }] }],
+            },
+        },
+        identities,
+        sourceKeys: { 'api::cms-page.cms-page': new Set(['p1', 'p2']) },
+    });
+    assert.equal(links.length, 0, 'the same two pages in a different order is not a change');
+    assert.equal(settled, 1);
+});
+
 await test('planLinks skips a relation the source never populated', () => {
     const { links } = planLinks({
         writable: [{ from: 'api::cms-menu-item.cms-menu-item', attr: 'menu', target: 'api::cms-menu.cms-menu', multiple: false }],

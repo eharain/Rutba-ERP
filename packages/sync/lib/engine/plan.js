@@ -269,6 +269,17 @@ export function resolveLink({ value, identity, known, multiple }) {
 export function planLinks({ writable, snapshots, identities, sourceKeys }) {
     const links = [];
     const unresolved = [];
+    let settled = 0;
+
+    // Target records by key, so a link that is already correct can be left
+    // alone. Building this once per type beats rebuilding it per relation.
+    const targetIndex = {};
+    for (const uid of Object.keys(identities)) {
+        const identity = identities[uid];
+        const records = (snapshots[uid] && snapshots[uid].target) || [];
+        if (!identity || records.length === 0) continue;
+        targetIndex[uid] = indexByKey(records, identity).byKey;
+    }
 
     for (const rel of writable) {
         const identity = identities[rel.from];
@@ -288,6 +299,28 @@ export function planLinks({ writable, snapshots, identities, sourceKeys }) {
                 multiple: rel.multiple,
             });
 
+            for (const item of resolved.unresolved) {
+                unresolved.push(Object.freeze({ uid: rel.from, key, attr: rel.attr, ...item }));
+            }
+
+            // Already correct on the target? Then say nothing.
+            //
+            // This is not only about saving a request. Every write bumps the
+            // target's `updatedAt`, and a `lastWriteWins` type whose links are
+            // re-asserted on every run ends up permanently "target-newer" —
+            // so an idle sync would turn every record into a conflict. A run
+            // over an already-correct target has to be genuinely silent.
+            const existing = targetIndex[rel.from] && targetIndex[rel.from].get(key);
+            if (existing && Object.prototype.hasOwnProperty.call(existing, rel.attr)) {
+                const current = resolveLink({
+                    value: existing[rel.attr],
+                    identity: targetIdentity,
+                    known: null,          // whatever the target already points at counts
+                    multiple: rel.multiple,
+                });
+                if (sameSet(current.targets, resolved.targets)) { settled += 1; continue; }
+            }
+
             // Emitted even when empty: an empty set is how a cleared relation
             // reaches the target. Rule 3 — links replace, they do not append.
             links.push(Object.freeze({
@@ -299,12 +332,19 @@ export function planLinks({ writable, snapshots, identities, sourceKeys }) {
                 mode: 'replace',
                 targets: Object.freeze(resolved.targets),
             }));
-
-            for (const item of resolved.unresolved) {
-                unresolved.push(Object.freeze({ uid: rel.from, key, attr: rel.attr, ...item }));
-            }
         }
     }
 
-    return Object.freeze({ links: Object.freeze(links), unresolved: Object.freeze(unresolved) });
+    return Object.freeze({
+        links: Object.freeze(links),
+        unresolved: Object.freeze(unresolved),
+        settled,
+    });
+}
+
+/** Order-insensitive comparison of two key lists. */
+function sameSet(a, b) {
+    if (a.length !== b.length) return false;
+    const seen = new Set(a);
+    return b.every((k) => seen.has(k));
 }

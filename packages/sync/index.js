@@ -48,4 +48,9 @@ export {
     // manifest
     ManifestError,
     parseManifest,
+    // apply
+    applyPlan,
+    buildPayload,
+    createClient,
+    TransportError,
 } from './lib/engine/index.js';

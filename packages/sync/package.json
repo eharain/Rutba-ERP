@@ -12,9 +12,10 @@
   },
   "scripts": {
     "start": "node bin/bridge.js",
-    "test": "node test/unit.js && node test/engine.js",
+    "test": "node test/unit.js && node test/engine.js && node test/apply.js",
     "test:bridge": "node test/unit.js",
-    "test:engine": "node test/engine.js"
+    "test:engine": "node test/engine.js",
+    "test:apply": "node test/apply.js"
   },
   "files": [
     "index.js",
