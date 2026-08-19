@@ -387,12 +387,22 @@ Everything that still *requires* a running Strapi, enumerated and killed.
 exit 0; a descriptor edit → seed → serve cycle completes with **no Strapi process alive**; sync
 engine passes the CMS-promotion smoke; `RUTBA_CORE_EMAIL=send` covers every mail the system sends.
 
-> **NOT_PORTED = 0 is not the same as "core serves what Strapi serves."** The same audit still
-> reports **287 routes MISSING from core** — mounted by Strapi, absent from core's table
-> entirely, mostly `DELETE` on the `acc-*` / `cmp-*` clusters. NOT_PORTED only counts routes core
-> *mounted and then refused*; a route with no seeded row is invisible to it. Whether those 287 are
-> deliberate (core withholding destructive verbs) or a gap is **not yet established** — establish
-> it before reading this gate as "core is complete".
+> **NOT_PORTED = 0 is not the same as "core serves what Strapi serves."** The same audit reports
+> **287 routes MISSING from core**. NOT_PORTED only counts routes core *mounted and then refused*;
+> a route with no seeded row is invisible to it. Probed 2026-08-19, those 287 are **not one
+> thing**:
+>
+> - **Mostly by design.** Strapi's core router auto-generates full CRUD for every content type;
+>   core only serves what a **descriptor declares**. `api::customer.customer` is seeded
+>   `find/create/update` with **no delete**, and `api::cmp-run.cmp-run` likewise — so
+>   `DELETE /api/customers/:id` answers **405 Method Not Allowed** on core. That is the
+>   descriptor-driven contract working as intended, not a porting gap. Whether each entity
+>   *should* expose delete is a per-entity product decision, not migration work.
+> - **Partly the audit over-reporting.** `DELETE /api/acc-accounts/:id` is listed as MISSING, yet
+>   core answers it **204** — `api::acc-account.acc-account` does carry `DELETE:delete`. The audit
+>   also counts core at **1153 routes while core itself mounts 1197**, because
+>   `collectCoreRoutes()` skips any interface whose uid is absent from the schema registry. **Fix
+>   the audit before trusting this number**; until then treat 287 as an upper bound.
 
 ### P2 — Cutover and Strapi retirement (~6–10 weeks elapsed, bake windows included)
 
