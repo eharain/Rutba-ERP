@@ -71,10 +71,14 @@ is much further along than its README's phase table implies:
   `services/strapi/src/api/*/content-types/*/schema.json` at boot; the real axis is custom actions.
 - ~~**Still Strapi-only** (custom actions answer 501 on core): the campaigns cluster,
   `mail-message`/`mail-link` actions~~ — **ported 2026-08-19**; `route-audit.js` NOT_PORTED is
-  **0**. Still Strapi-only: the `media` api dir and `/api/content-sync/*` (which calls
-  `strapi-content-sync-pro`, a plugin core's compat layer cannot load — the P1 sync engine
-  replaces it rather than porting it). Mail and campaigns **crons** still have no core home, by
-  choice: single-homing a cron belongs to its tranche flip under `RUTBA_CORE_CRONS`.
+  **0**. The `media` api dir was **deleted, not ported, 2026-08-19** — six `auth: false` routes
+  with zero callers anywhere in this repo or the five sibling repos, two of which
+  (`POST /media/files`, `POST /media/publish/:type/:documentId`) were an unauthenticated write
+  on any content type; see [§3b](#3b-the-media-api-dir-was-a-hole-not-a-port). Still Strapi-only:
+  `/api/content-sync/*` (which calls `strapi-content-sync-pro`, a plugin core's compat layer
+  cannot load — the P1 sync engine replaces it rather than porting it). Mail and campaigns
+  **crons** still have no core home, by choice: single-homing a cron belongs to its tranche flip
+  under `RUTBA_CORE_CRONS`.
 - ~~**The hardest residual dependency:** the api-pro descriptor seeder runs only inside
   Strapi~~ — **closed 2026-08-17.** Core's route table is still read from
   `api_pro_interfaces`/`api_pro_interface_methods`, but
@@ -330,7 +334,10 @@ Everything that still *requires* a running Strapi, enumerated and killed.
 
       Crons are deliberately still Strapi-homed for both clusters; single-homing them belongs to
       the tranche flip under the `RUTBA_CORE_CRONS` discipline.
-- [ ] **The `media` api dir routes** — the remainder of the original "custom actions" item.
+- [x] ~~**The `media` api dir routes**~~ — the remainder of the original "custom actions" item,
+      closed 2026-08-19 by **deleting** the dir. Nothing called it and it was open to the
+      internet; see [§3b](#3b-the-media-api-dir-was-a-hole-not-a-port). With this, every custom
+      action outside `/api/content-sync/*` is either served by core or gone.
 - [ ] **Build the sync engine v1** (replaces `strapi-content-sync-pro`): contract-level,
       per the decided design in [06-plugin-replacement-map.md](../core-server-multitenancy-program/06-plugin-replacement-map.md)
       — manifest per connection, CMS `documentId` identity, commerce `external_ids.<origin>`
@@ -618,6 +625,67 @@ drill** completed on each.
 P3's remaining items fold into P2's per-tranche ownership moves, where the module-boundary
 validator has something real to enforce. One of them is already done: the deprecated `users`
 app-domain alias was removed during the restructure.
+
+---
+
+## 3b. The `media` api dir was a hole, not a port
+
+The last unported custom-action surface turned out not to be worth porting. Recording it here
+because the *method* generalises to every remaining item on the P1 list: **before porting a
+surface, measure whether anything calls it.**
+
+`services/strapi/src/api/media/` declared six routes, every one of them `config: { auth: false }`:
+<!-- verify-docs: removed services/strapi/src/api/media/ -->
+
+| Route | What it did |
+|---|---|
+| `GET /api/media/folders` | list every upload folder |
+| `GET /api/media/files` | list every uploaded file |
+| `POST /api/media/folders` | create a folder |
+| `PUT /api/media/folders/:documentId/files` | attach files to a folder |
+| `POST /api/media/files` | create an upload-file row from raw JSON (`name`/`hash`/`url`) |
+| `POST /api/media/publish/:type/:documentId` | `documents(api::<type>.<type>).update(documentId, body.data)` then `.publish()` |
+
+**Nothing calls them.** Zero hits for the paths across `apps/`, `packages/`, `services/`,
+`scripts/`, the `@rutba/api-provider` descriptors, and the five sibling repos
+(`Rutba-Media-FileServer`, `Rutba-Social-Poster`, `Rutba-Social-Relay`, `wapp-catalog`,
+`strapi-plugins`) — the single sibling match was an unrelated archive directory name. The
+overlapping surface the apps *do* use is `/api/media-library/*`, already zero-copy ported by the
+catalog module, plus `/upload` served by the uploads module.
+
+Two independent confirmations that the dir was dead rather than merely quiet:
+
+- It has no descriptor in `packages/api-provider/api/`, so it was never in the generated clients
+  and never seeded a policy — `api_pro_interfaces` has no row for it.
+- `listFolders`/`listFiles` destructure `pagination: { page }` straight out of `ctx.request.query`,
+  which throws `TypeError` on any request that omits `?pagination[...]`. `GET /api/media/folders`
+  **500s** in its plainest form. A route that cannot serve its own base case has no live caller.
+
+**And it was reachable unauthenticated.** `auth: false` skips users-permissions, and api-pro's
+interceptor returns `{ status: 'skipped', reason: 'no authenticated user' }` before it reaches
+any policy check ([request-interceptor.js](../../../packages/strapi-api-pro/server/src/services/request-interceptor.js)) —
+`denyByDefault` never gets a chance to fire, because deny-by-default is evaluated *per role* and
+an anonymous caller has no role. The path is not on `bypassPaths` either; it did not need to be.
+So on any box that proxies `/api/*` to Strapi, an anonymous caller could enumerate the whole
+media library, forge upload rows pointing at arbitrary URLs, and — via `publish/:type/:documentId` --
+write attacker-supplied fields into, and publish, any collection whose singular and plural names
+match (the repo's convention: `api::product.product`, `api::cms-page.cms-page`, ...).
+
+**Decision: delete, not port, and not fix-in-place.** Porting would have carried a hole into
+core; adding auth would have carried dead code into core behind a login. The dir is gone.
+`/api/media-library/*` and `/upload` are unaffected.
+
+**No DB cleanup needed, and checked rather than assumed** — after the table-drop incident above,
+"Strapi tidies up after itself" is not a claim to make from memory. The dir left 8 orphan
+`up_permissions` rows (`api::media.media.{listFolders,listFiles,createFolder,createFile}` × 2
+roles). `plugin-users-permissions`' `syncPermissions()` deletes exactly
+`difference(permissionsInDB, allActions)` on every boot, per action row — not a table sync — so
+the orphans clear themselves on each box's next start with nothing else at risk.
+
+**Exposure note for Item 0.** These routes existed on every deployed box until this commit, so
+the fix ships with the same deploy that carries the rename. Nothing in the estate depended on
+them, so there is no compensating change — but the LAN box and the VPS stay exposed until they
+deploy. That is one more reason Item 0 is item zero.
 
 ---
 
