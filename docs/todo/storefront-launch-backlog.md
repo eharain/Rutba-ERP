@@ -4,7 +4,7 @@ Working list of pre-launch and just-after-launch fixes / features for the
 storefront. Started from a batch of user notes in mid-2026; this is the
 authoritative status tracker.
 
-Sister doc: [contact-unification-launch-test-plan.md](./contact-unification-launch-test-plan.md)
+Sister doc: contact-unification-launch-test-plan.md
 (test plan for the Phase 1A work that landed in this same week).
 
 ## ✓ Landed this cycle
@@ -68,7 +68,7 @@ Sister doc: [contact-unification-launch-test-plan.md](./contact-unification-laun
 - xlsx bulk I/O includes the SEO columns so they survive round-trip.
 
 ### Product slug as canonical URL key (2026-05-19)
-- Shipped — see [storefront-readable-slug-urls.md](./storefront-readable-slug-urls.md).
+- Shipped — see storefront-readable-slug-urls.md.
 
 ### POS sale invoice — extra barcode above QR
 - [SaleInvoice.js:339](../../apps/sales/pos/components/print/SaleInvoice.js#L339)

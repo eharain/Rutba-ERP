@@ -36,11 +36,11 @@
 > **Status:** the accounting *engine* is built and working; this doc specs what
 > remains to make it a usable module.
 > **Read first:** [`docs/accounting-architecture.md`](../accounting-architecture.md)
-> (design) and [`docs/todo/accounting-engine-implementation.md`](./accounting-engine-implementation.md)
+> (design) and `(removed — shipped)`
 > (detail). This document does **not** repeat them — it reconciles them with the
 > *actual* build state and specifies the unfinished work: posting wiring,
 > reporting layer, and the `apps/finance/accounts` frontend.
-> **Sibling:** [`payroll-module-implementation.md`](./payroll-module-implementation.md)
+> **Sibling:** `(removed — shipped)`
 > — payroll posts into this ledger; see its "Accounting Bridge" section.
 
 ---
@@ -376,7 +376,7 @@ SaleInvoicePrint).
 5. **Purchase→bill** (§4.4) — payables automation.
 
 Payroll posting into this ledger is specified separately in
-[`payroll-module-implementation.md`](./payroll-module-implementation.md).
+`(removed — shipped)`.
 
 ---
 

@@ -409,7 +409,7 @@ row counts are small and the dedup risk is lower. Each one is its own PR.
 
 ### 1C.1 — crm-contact  ✓ Landed
 
-Landed with roadmap item 0.6 (see [crm-core-buildout.md](./crm-core-buildout.md)),
+Landed with roadmap item 0.6 (see crm-core-buildout.md),
 because the CRM saved-segment engine has to resolve audiences to person
 identity — a segment returning CRM-local rows would be a parallel contact
 entity, which is what unification exists to prevent.

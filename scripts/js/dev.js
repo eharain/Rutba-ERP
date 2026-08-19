@@ -295,6 +295,24 @@ function main() {
     setTimeout(() => process.exit(0), 1500).unref();
   }
 
+  // Last resort. This process holds every app and the backend, so dying takes
+  // the whole environment with it — and the thing that killed it was a stray
+  // socket reset from an app being reaped, not anything wrong with the 21 apps
+  // still running. Staying up is strictly better than exiting, provided the
+  // fault is reported rather than swallowed: it goes to the error store under
+  // its own kind, so it shows up in `npm run dev:errors` and gets fixed at the
+  // source instead of living here forever.
+  function survive(kind) {
+    return (err) => {
+      if (shuttingDown) return;
+      const detail = err?.stack || err?.message || String(err);
+      errors.lifecycle('supervisor', `${kind}: ${detail.split('\n')[0]}`);
+      say(C(31, `${kind} — kept running, recorded for dev:errors`));
+      say(C(2, `  ${detail.split('\n').slice(0, 3).join('\n  ')}`));
+    };
+  }
+  process.on('unhandledRejection', survive('unhandledRejection'));
+
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
   // Ctrl-C in a Windows console does not always deliver SIGINT to a piped

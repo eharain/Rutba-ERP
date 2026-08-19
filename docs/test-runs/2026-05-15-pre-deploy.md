@@ -33,7 +33,7 @@ Legend: ✅ pass · ❌ fail · ⚠️ partial / inconclusive · ⏸ requires re
 | Valid claim `cms_staff` → `/api/products` | 200 | 200 | ✅ |
 
 **Verdict: api-pro is not enforcing any of its declared invariants.** The
-interceptor is effectively a no-op (see [../pre-deployment-findings-2026-05-15.md](../pre-deployment-findings-2026-05-15.md)
+interceptor is effectively a no-op (see ../pre-deployment-findings-2026-05-15.md
 for root cause analysis — middleware ordering in plugin bootstrap).
 
 ### T0.2 Per-policy scope injection

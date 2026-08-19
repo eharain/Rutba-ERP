@@ -273,7 +273,7 @@ Two symptoms, one cause, and neither points at the window:
 
 - [ ] `backgroundThrottling: false` on every `BrowserWindow`, including hidden
       render windows. Already named as the fix in
-      [`video-studio-v4-plan.md:331`](../video-studio-v4-plan.md).
+      `video-studio-v4-plan.md:331`.
 - [ ] **Probe `document.visibilityState` before believing any UI failure.** Make
       this a first-line diagnostic in the shell's own error reporting, not folk
       knowledge — a hidden-window hang and a genuine app bug look identical in a

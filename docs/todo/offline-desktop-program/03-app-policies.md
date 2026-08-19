@@ -242,7 +242,7 @@ The editor plan recorded the original problem:
 
 > *"Settings are per-browser (`localStorage`), so a render is not reproducible from
 > the post, and the poster can't honour choices made in the studio."*
-> — [`video-studio-editor-plan.md:66`](../video-studio-editor-plan.md)
+> — `video-studio-editor-plan.md:66`
 
 > **A correction worth recording.** That describes the pre-v4 state, and it has
 > largely been fixed. `social-post.video_settings` (json) exists on the schema,

@@ -130,6 +130,11 @@ function stop(entry, reason = '') {
   entry.stopping = true;
   entry.state = 'stopping';
   notify(`stopping ${entry.service.key}${reason ? ` (${reason})` : ''}`);
+
+  // Close our own sockets before killing the app. Letting the process die
+  // underneath a live HMR websocket is what produced the ECONNRESET in the
+  // first place; tearing them down deliberately means there is no reset to
+  // handle, and the browser reconnects on the next request as it always does.
   killTree(entry.child);
   entry.child = null;
   entry.state = 'idle';
@@ -171,6 +176,11 @@ function proxy(entry, req, res) {
       // Every request for every app crosses this line, which makes it the one
       // place that sees the whole environment's HTTP failures.
       errors.httpFailure(entry.service.key, req.method, req.url, up.statusCode);
+      // The upstream RESPONSE is a separate stream from the request, with its
+      // own error channel. Killing the app mid-response resets it, and an
+      // unhandled 'error' here is as fatal to the supervisor as one on a
+      // websocket — same crash, different stream.
+      up.on('error', () => { up.destroy(); res.destroy(); });
       res.writeHead(up.statusCode, up.headers);
       up.pipe(res);
     }
@@ -182,6 +192,11 @@ function proxy(entry, req, res) {
     res.writeHead(502, { 'content-type': 'text/html; charset=utf-8' });
     res.end(page(entry, `Upstream error: ${escapeHtml(err.message)}`, false));
   });
+
+  // The browser navigating away mid-request aborts these; without listeners
+  // that is another unhandled 'error'.
+  res.on('error', () => upstream.destroy());
+  req.on('error', () => upstream.destroy());
 
   req.pipe(upstream);
 }
@@ -226,6 +241,16 @@ function upgrade(entry, req, socket, head) {
   if (entry.state !== 'ready') return socket.destroy();
   entry.lastHit = Date.now();
 
+  // A raw socket that emits 'error' with no listener throws, and an unhandled
+  // 'error' event takes down the whole supervisor — all 22 apps and the
+  // backend with it. That is precisely what happened whenever an idle app was
+  // reaped while a browser still held its HMR websocket: killing the app reset
+  // the upstream socket, nothing was listening for it, and the environment
+  // died. Both ends are now guarded, and both are torn down together.
+  const shutBoth = () => { socket.destroy(); };
+  socket.on('close', () => entry.sockets.delete(socket));
+  entry.sockets.add(socket);
+
   const up = http.request({
     host: '127.0.0.1',
     port: entry.shadowPort,
@@ -235,6 +260,9 @@ function upgrade(entry, req, socket, head) {
   });
 
   up.on('upgrade', (upRes, upSocket, upHead) => {
+    entry.sockets.add(upSocket);
+    upSocket.on('close', () => entry.sockets.delete(upSocket));
+
     const lines = Object.entries(upRes.headers).map(([k, v]) => `${k}: ${v}`);
     socket.write(
       `HTTP/1.1 101 Switching Protocols\r\n${lines.join('\r\n')}\r\n\r\n`
@@ -242,7 +270,7 @@ function upgrade(entry, req, socket, head) {
     if (upHead && upHead.length) socket.unshift(upHead);
     upSocket.pipe(socket).pipe(upSocket);
   });
-  up.on('error', () => socket.destroy());
+  up.on('error', shutBoth);
   if (head && head.length) up.write(head);
   up.end();
 }
@@ -432,11 +460,15 @@ function startGateway({ keys, log = console.log, idleMinutes } = {}) {
     if (!service || service.kind !== 'app') continue;
 
     const entry = { service, state: 'idle', stopping: false, child: null, shadowPort: null,
-                    lastHit: null, startedAt: null, log: [] };
+                    lastHit: null, startedAt: null, log: [], sockets: new Set() };
     registry.set(key, entry);
 
     const server = http.createServer((req, res) => handle(entry, req, res));
     server.on('upgrade', (req, socket, head) => upgrade(entry, req, socket, head));
+    // A malformed or abruptly-reset client connection reaches the server as
+    // 'clientError'; the default action is fine, but the socket still needs
+    // destroying explicitly or it can surface as an unhandled error.
+    server.on('clientError', (_err, sock) => { try { sock.destroy(); } catch {} });
     server.on('error', (err) => {
       log(`cannot front ${key} on :${service.port} — ${err.code === 'EADDRINUSE'
         ? 'port already in use (started elsewhere?)' : err.message}`);

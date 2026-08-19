@@ -1,27 +1,43 @@
 # Rutba ERP — Modular Business Management Platform
 
-An open-source, modular business management system built as an **npm workspaces monorepo**. Each domain (stock, sales, order operations, CRM, HR, accounting, payroll) lives in its own Next.js 16 app, sharing authentication and UI through a common library. Strapi 5 provides the headless API backend.
+An open-source, modular business management system built as an **npm workspaces monorepo**. Each domain (stock, sales, order operations, CRM, HR, accounting, payroll) lives in its own Next.js 16 app, sharing authentication and UI through a common library.
+
+> ## Where the work is right now
+>
+> **[docs/todo/erp2-program/README.md](docs/todo/erp2-program/README.md) — read §3a first.** It carries
+> the current standing and the reworked phase order. The estate is **mid-migration on two axes**:
+>
+> - **Backends.** Strapi 5 (`services/strapi`, :4010) and Rutba Core (`services/core`, :4020) run
+>   side by side on one database, selected by `RUTBA_BACKEND=strapi|core|both`. Core is the target;
+>   [the measured baseline](docs/todo/erp2-program/04-baseline-metrics.md) is why.
+> - **Layout.** The tree was regrouped on 2026-08-18 into `apps/<category>/` + `services/`. The repo
+>   half is done and pushed; **the deploy boxes are not converted yet**, which blocks deploying from
+>   `dev` — see [the runbook](docs/todo/erp2-program/03a-deploy-runbook.md), and do its **§0 before
+>   ever starting Strapi on a box**.
+>
+> `config/apps.manifest.json` is the single source for app identity (key, port, workspace, env
+> prefix, systemd unit). `npm run verify:wiring` fails on anything that disagrees with it.
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                      services/strapi (Strapi 5)                      │
-│                  Headless API — port 4010 (dev)                  │
-└──┬───────┬───────┬───────┬───────┬───────┬───────┬───────┬──────┘
-   │       │       │       │       │       │       │       │
- pos-    pos-    pos-   rutba-  rutba-  rutba-  rutba-   rutba-
- auth    stock   sale   web     web-    cms     social   order-
- :4003   :4001   :4002  :4000   user    :4009   :4011    mgmt
-                                :4004                     :4013
+│  services/strapi (Strapi 5) :4010   ·   services/core :4020      │
+│  one database — RUTBA_BACKEND selects which serves a route       │
+└─────────────────────────────────────────────────────────────────┘
 
- rutba-  rutba-  rutba-  rutba-  rutba-  rutba-  rutba-  rutba-
- rider   crm     hr      ess     acct    payroll mfg     inventory
- :4012   :4005   :4006   :4015   :4007   :4008   :4014   :4017
+ storefront stock    pos      auth     portal   crm      hr       accounts
+ :4000      :4001    :4002    :4003    :4004    :4005    :4006    :4007
 
- Shared:  packages/shared  (UI + context)
-          packages/api-provider (descriptor-driven Strapi clients)
-          packages/strapi-api-pro (Strapi plugin: auth + scope enforcement)
+ payroll    cms      social   rider    orders   mfg      ess      marketplace
+ :4008      :4009    :4011    :4012    :4013    :4014    :4015    :4016
+
+ control    seed     campaigns mail    console  helpdesk
+ :4017      :4018    :4019     :4021   :4022    :4023
+
+ Shared:  packages/shared        (UI + context)
+          packages/api-provider  (descriptor-driven clients — the route contract)
+          packages/strapi-api-pro(Strapi plugin: auth + scope enforcement)
 ```
 
 ## Applications
@@ -236,7 +252,7 @@ Key domain groupings:
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — full deployment guide
 - [docs/BUILD-DEPLOYMENT-SETUP-TEMPLATE.md](docs/BUILD-DEPLOYMENT-SETUP-TEMPLATE.md) — per-app build template
 - [docs/pre-deployment-test-plan.md](docs/pre-deployment-test-plan.md) — Tier 1–5 test plan
-- [docs/SHOP-PAGE-REDESIGN-PLAN.md](docs/SHOP-PAGE-REDESIGN-PLAN.md) — storefront redesign reference
+- docs/SHOP-PAGE-REDESIGN-PLAN.md — storefront redesign reference
 
 ### Architecture & design
 
@@ -259,19 +275,19 @@ Key domain groupings:
 Forward-looking work, organised by surface. Items marked ✓ have shipped. Cross-cutting cleanup / tech-debt (dead code, stale scripts, config drift) is tracked in [tech-debt-cleanup.md](docs/todo/tech-debt-cleanup.md).
 
 - [order-lifecycle-plan.md](docs/todo/order-lifecycle-plan.md) — payment / packaging / delivery / refund / returns / audit-log roadmap. **Recently shipped (2026-05-21):** stock-item state-machine closed on CANCELLED + DELIVERED (E.1/B.0); returns workflow end-to-end (F.1/F.2/F.3/F.5) — customer self-serve, staff console, restock-decision walk, return-policy window; label-provider registry + print pages (C.5). **Next up:** A.0 (tighten `verifyPayment`), then A.4 (pre-dispatch confirmation queue), with G.1 (audit log + buyer timeline) flagged priority.
-- [accounting-engine-implementation.md](docs/todo/accounting-engine-implementation.md) — 19-phase accounting engine spec. The accounting engine + double-entry posting + reports are **built** (see [accounting-completion-spec.md](docs/todo/accounting-completion-spec.md) for the actual build state vs. spec); remaining work is frontend polish and the wider COA/reporting surface.
-- [payroll-module-implementation.md](docs/todo/payroll-module-implementation.md) — payroll module spec. **Built:** the `pay-payroll-run` engine, configurable deduction engine (`pay-deduction-rule`), employee profiles, and adjustments; posts into the accounting ledger.
+- accounting-engine-implementation.md — 19-phase accounting engine spec. The accounting engine + double-entry posting + reports are **built** (see [accounting-completion-spec.md](docs/todo/accounting-completion-spec.md) for the actual build state vs. spec); remaining work is frontend polish and the wider COA/reporting surface.
+- payroll-module-implementation.md — payroll module spec. **Built:** the `pay-payroll-run` engine, configurable deduction engine (`pay-deduction-rule`), employee profiles, and adjustments; posts into the accounting ledger.
 - [contact-entity-unification.md](docs/todo/contact-entity-unification.md) — Phase 1A (person + address + sale-order rewire) and 1C.5 (contact-ticket), 3.3 (UP signup promotion) ✓. Phase 1B (customer backfill) is next.
-- [contact-unification-launch-test-plan.md](docs/todo/contact-unification-launch-test-plan.md) — Tier P0/P1/P2 test plan for the unification work.
+- contact-unification-launch-test-plan.md — Tier P0/P1/P2 test plan for the unification work.
 - [storefront-launch-backlog.md](docs/todo/storefront-launch-backlog.md) — storefront pre/post-launch backlog.
-- [storefront-readable-slug-urls.md](docs/todo/storefront-readable-slug-urls.md) — ✓ shipped (commit `4bb1dd7`).
-- [address-book-server-side.md](docs/todo/address-book-server-side.md) — ✓ server-side address book shipped (`/me/addresses` on the person/address model); only fold-anonymous-on-login + a checkout multi-address picker remain.
-- [barcode-qr-deep-link.md](docs/todo/barcode-qr-deep-link.md) — storefront-URL QR + POS scanner strip. Blocked on the slug pass (now done).
-- [cms-preview-from-storefront.md](docs/todo/cms-preview-from-storefront.md) — draft-mode preview from CMS to storefront.
+- storefront-readable-slug-urls.md — ✓ shipped (commit `4bb1dd7`).
+- address-book-server-side.md — ✓ server-side address book shipped (`/me/addresses` on the person/address model); only fold-anonymous-on-login + a checkout multi-address picker remain.
+- barcode-qr-deep-link.md — storefront-URL QR + POS scanner strip. Blocked on the slug pass (now done).
+- cms-preview-from-storefront.md — draft-mode preview from CMS to storefront.
 - [site-settings-multi-tenant.md](docs/todo/site-settings-multi-tenant.md) — singleType → collectionType per app, with SEO follow-ups.
 - [project_api_provider_named_policy_architecture.md](docs/todo/project_api_provider_named_policy_architecture.md) — target architecture for descriptor-driven Strapi policies.
 - [project_api_provider_wire_codec.md](docs/todo/project_api_provider_wire_codec.md) — short-name URL codec for public `api/web/*` traffic; closes schema-enumeration vector.
-- [feedback_generated_code_verbosity.md](docs/todo/feedback_generated_code_verbosity.md), [feedback_scaffolder_inline_generation.md](docs/todo/feedback_scaffolder_inline_generation.md), [feedback_strict_rollout_no_warn_phase.md](docs/todo/feedback_strict_rollout_no_warn_phase.md) — design-rule notes used by the scaffolder and validator work.
+- [feedback_generated_code_verbosity.md](docs/todo/feedback_generated_code_verbosity.md), feedback_scaffolder_inline_generation.md, [feedback_strict_rollout_no_warn_phase.md](docs/todo/feedback_strict_rollout_no_warn_phase.md) — design-rule notes used by the scaffolder and validator work.
 
 ## Contributing
 

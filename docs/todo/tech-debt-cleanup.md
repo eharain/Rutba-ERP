@@ -27,7 +27,7 @@ Server-side scope enforcement is done via the api-pro **seeder** (DB policy rows
 
 The shop redesign replaced Swiper with a custom `ScrollSlider`, but `apps/content/storefront/package.json` still depends on `swiper@^10.3.1`, still imported by `components/home/hero-slider.tsx`, `components/home/collection-list.tsx`, and `components/brands/index.tsx`.
 
-- **Action:** migrate those three components to `ScrollSlider`, then `npm uninstall swiper`. (See [`SHOP-PAGE-REDESIGN-PLAN.md`](../SHOP-PAGE-REDESIGN-PLAN.md) step 14.)
+- **Action:** migrate those three components to `ScrollSlider`, then `npm uninstall swiper`. (See `(removed — shipped)` step 14.)
 
 ## 4. Finish wiring `apps/inventory/manufacturing` into config surfaces
 
@@ -60,4 +60,4 @@ The shipped `docs/todo/` specs and the 2026-05-15 pre-deploy snapshots are banne
 
 ---
 
-> Module-specific open work is tracked in its own spec: accounting frontend pages (Bills / Banking & Registers / Tax & Periods) in [`accounting-completion-spec.md`](accounting-completion-spec.md); production-labour capitalization in [`payroll-module-implementation.md`](payroll-module-implementation.md) §7.3; address-book fold-on-login in [`address-book-server-side.md`](address-book-server-side.md).
+> Module-specific open work is tracked in its own spec: accounting frontend pages (Bills / Banking & Registers / Tax & Periods) in [`accounting-completion-spec.md`](accounting-completion-spec.md); production-labour capitalization in `(removed — shipped)` §7.3; address-book fold-on-login in `(removed — shipped)`.

@@ -734,8 +734,8 @@ recorder to give.
   [00-overview-and-roadmap](./email-program/00-overview-and-roadmap.md); the
   [IMAP gateway](./email-program/02-imap-gateway.md) is what a replica would sit in
   front of.
-- **Video Studio** — [v3](./video-studio-timeline-plan.md) (BUILT) is the
-  everything-is-a-layer engine model; [v4](./video-studio-v4-plan.md) and
+- **Video Studio** — v3 (BUILT) is the
+  everything-is-a-layer engine model; v4 and
   [v5](./video-studio-v5-rail-plan.md) are the current work.
 - **The host itself** — the bridge lands inside the
   [core-server/multitenancy program](./core-server-multitenancy-program/), per §6 and

@@ -5,7 +5,7 @@ block deployment. Each item lists what to verify and the signal that says it's
 broken.
 
 Context for the current state of the system is in
-[pre-deployment-findings-2026-05-15.md](./pre-deployment-findings-2026-05-15.md)
+pre-deployment-findings-2026-05-15.md
 — Tier 0 items below were not passing at that snapshot and must be re-verified
 once fixed.
 
