@@ -311,6 +311,7 @@ function main() {
       say(C(2, `  ${detail.split('\n').slice(0, 3).join('\n  ')}`));
     };
   }
+  process.on('uncaughtException', survive('uncaughtException'));
   process.on('unhandledRejection', survive('unhandledRejection'));
 
   process.on('SIGINT', shutdown);

@@ -27,6 +27,7 @@
  */
 
 const fs = require('fs');
+const net = require('net');
 const path = require('path');
 
 const { ROOT } = require('./dev-runtime');
@@ -149,23 +150,28 @@ const transitions = [];            // [{ at, up }]
 /**
  * @param {string} url  the API base the apps are configured to call
  */
-function watchBackend(url, intervalMs = 5000) {
+function watchBackend(url, intervalMs = 15000) {
   if (!url) return null;
   backendUrl = url;
 
-  let origin;
-  try { origin = new URL(url).origin; } catch { return null; }
+  let host, port;
+  try {
+    const u = new URL(url);
+    host = u.hostname;
+    port = Number(u.port) || (u.protocol === 'https:' ? 443 : 80);
+  } catch { return null; }
 
+  // A TCP connect, not an HTTP request. The question is only "is anything
+  // listening", and asking it over HTTP made the backend log a 404 every few
+  // seconds — the diagnostic filling the log it exists to help you read.
+  // Connecting and hanging up answers the same question silently.
   const probe = () => {
-    const req = require('http').request(origin, { method: 'HEAD', timeout: 3000 }, (res) => {
-      res.resume();
-      setUp(true);
-    });
-    // Any answer at all means something is listening — a 404 or a 302 from the
-    // API root still proves reachability, which is the only thing being asked.
-    req.on('error', () => setUp(false));
-    req.on('timeout', () => { req.destroy(); setUp(false); });
-    req.end();
+    const sock = net.connect({ host, port });
+    const done = (up) => { sock.destroy(); setUp(up); };
+    sock.setTimeout(3000);
+    sock.once('connect', () => done(true));
+    sock.once('error', () => done(false));
+    sock.once('timeout', () => done(false));
   };
 
   const setUp = (up) => {

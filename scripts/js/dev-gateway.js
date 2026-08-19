@@ -135,6 +135,11 @@ function stop(entry, reason = '') {
   // underneath a live HMR websocket is what produced the ECONNRESET in the
   // first place; tearing them down deliberately means there is no reset to
   // handle, and the browser reconnects on the next request as it always does.
+  for (const s of entry.sockets) {
+    try { s.destroy(); } catch { /* already gone */ }
+  }
+  entry.sockets.clear();
+
   killTree(entry.child);
   entry.child = null;
   entry.state = 'idle';
@@ -248,6 +253,7 @@ function upgrade(entry, req, socket, head) {
   // the upstream socket, nothing was listening for it, and the environment
   // died. Both ends are now guarded, and both are torn down together.
   const shutBoth = () => { socket.destroy(); };
+  socket.on('error', shutBoth);
   socket.on('close', () => entry.sockets.delete(socket));
   entry.sockets.add(socket);
 
@@ -260,6 +266,7 @@ function upgrade(entry, req, socket, head) {
   });
 
   up.on('upgrade', (upRes, upSocket, upHead) => {
+    upSocket.on('error', shutBoth);
     entry.sockets.add(upSocket);
     upSocket.on('close', () => entry.sockets.delete(upSocket));
 
