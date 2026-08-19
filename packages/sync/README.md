@@ -15,7 +15,7 @@ They differ in manifest, not in mechanism, so they get one implementation.
 | | What it is | Status |
 |---|---|---|
 | [**the bridge**](#the-bridge) | a transparent pass-through proxy in front of the Rutba API | phase 1, done |
-| [**the engine**](#the-engine) | contract-level replication — the replacement for `strapi-content-sync-pro` | v1: plan + apply, done; media hand-off and the core module next |
+| [**the engine**](#the-engine) | contract-level replication — the replacement for `strapi-content-sync-pro` | v1: read + plan + apply, done; media hand-off and the core module next |
 
 The two are independent today. The bridge's later phases (replica + outbox)
 become a consumer of the engine rather than a second implementation of it.
@@ -80,6 +80,35 @@ console.log(report.summary);
 `dryRun` performs no writes and still reports the full shape of the work, so
 "what would this do?" and "do it" are the same code path with one flag between
 them.
+
+### Or all three steps at once
+
+`runSync` reads both sides, plans and applies. Read-plan-apply stay separately
+callable — that is the shape's whole point — but a caller who just wants "sync
+this" should not have to assemble them, and above all should not have to get the
+populate sets right by hand:
+
+```js
+import { createClient, runSync } from '@rutba/sync/engine';
+
+const { plan, report, readErrors } = await runSync({
+    manifest,
+    schemas,
+    sourceClient: createClient({ baseUrl: 'http://127.0.0.1:4020', token: local }),
+    targetClient: createClient({ baseUrl: manifest.target.baseUrl, token: remote }),
+    status: 'published',        // which version of a draft&publish type to move
+});
+```
+
+`status` has no safe default and the engine will not invent one: `'published'`
+promotes what is live, `'draft'` promotes what is being worked on, and it is
+applied to **both** sides so the comparison means something.
+
+A type that will not read comes back in `readErrors` with an empty record list
+rather than taking the run down — but note what that combination looks like to a
+planner: an empty source is indistinguishable from "everything was deleted". It
+is safe only because set difference never deletes (rule 2), and there is a test
+that says so.
 
 ## The five rules
 
@@ -219,8 +248,8 @@ staging content lands unpublished until somebody looks at it.
 npm test --workspace=@rutba/sync
 ```
 
-114 assertions: 52 planner (`test/engine.js`), 16 apply (`test/apply.js`), and
-the bridge's 46. The apply half runs a real HTTP server on loopback, the same
+118 assertions: 52 planner (`test/engine.js`), 20 apply and transport
+(`test/apply.js`), and the bridge's 46. The apply half runs a real HTTP server on loopback, the same
 way the bridge's round-trip tests do, with a fake target that can behave like
 core *or* like Strapi — because the difference between them is a measured fact
 the engine has to act on.
@@ -230,11 +259,12 @@ asserting the engine does not have that bug. They were mutation-checked rather
 than trusted — putting GAP-1 back into `isOwnerSide` fails 5 tests including
 its own regression case; letting set difference delete fails rule 2's.
 
-End to end, the engine has also been pointed at a **live core as its own
-target** over the real wire: 52 records read, and the plan comes back
-`creates: 0, updates: 0, links: 0, linksSettled: 175`. A run against a target
-that already matches has to be completely silent, and that is the cheapest way
-to prove identity and the fingerprint agree.
+End to end, `runSync` has been pointed at a **live core as its own target** over
+the real wire — a real run, not a dry one. It read 52 records, planned
+`creates: 0, updates: 0, links: 0, linksSettled: 175`, and emitted zero write
+events. A run against a target that already matches has to be completely silent,
+and that is the cheapest way to prove identity, the fingerprint and the populate
+sets all agree.
 
 ---
 

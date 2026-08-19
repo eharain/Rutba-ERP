@@ -365,6 +365,12 @@ Everything that still *requires* a running Strapi, enumerated and killed.
             is also a correctness requirement: re-asserting settled links bumps the
             target's `updatedAt` and would leave every `lastWriteWins` type permanently
             "target-newer".
+      - [x] **Reading a side, and `runSync`, 2026-08-19** — the engine no longer needs
+            hand-built snapshots. It derives the populate set from the scope (owner-side,
+            in-manifest relations only — not `populate=*`) and applies it to *both*
+            sides, which is what makes the settle comparison mean anything. Verified as a
+            **real** run against the live core as its own target: 52 records, plan
+            `creates: 0, updates: 0, links: 0, linksSettled: 175`, zero write events.
       - [ ] **The rest of v1** — media hand-off through the file server, tombstone
             collection, run log (`sync_logs`/`sync_run_reports` shapes), cron +
             manual-run endpoint, and the `content-sync` core module. Two-way stays

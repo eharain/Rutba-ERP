@@ -15,12 +15,15 @@
 
 import { analyzeScope, classifyAttributes } from './schema.js';
 import { contentFields, planLinks, planType } from './plan.js';
+import { applyPlan } from './apply.js';
+import { readSnapshots } from './snapshot.js';
 
 export { analyzeScope, classifyAttributes, isOwnerSide, isMultipleRelation, topoOrder, typeKind } from './schema.js';
 export { createIdentity, indexByKey, verifyIdentityEcho, SINGLETON_KEY } from './identity.js';
 export { contentFields, fingerprint, planLinks, planType, resolveLink } from './plan.js';
 export { ManifestError, parseManifest } from './manifest.js';
 export { applyPlan, buildPayload } from './apply.js';
+export { populateFor, readSide, readSnapshots, readType } from './snapshot.js';
 export { createClient, TransportError } from './transport.js';
 
 /**
@@ -114,4 +117,33 @@ function summarize(types, links, unresolved, scope, settled) {
         relationsOutOfScope: scope.outOfScope.length,
         typesWithoutSchema: types.filter((t) => t.skipped === 'no-schema').length,
     });
+}
+
+/**
+ * One run, end to end: read both sides, plan, apply.
+ *
+ * The three steps stay separately callable — that is the point of the engine's
+ * shape — but a caller that just wants "sync this" should not have to wire them
+ * together and get the populate set right by hand.
+ *
+ * Returns `{ plan, report, readErrors }`. With `dryRun` the report says what
+ * would have happened and nothing is written.
+ */
+export async function runSync({
+    manifest,
+    schemas,
+    sourceClient,
+    targetClient,
+    tombstones = {},
+    status,
+    dryRun = false,
+    onProgress,
+}) {
+    const scope = analyzeScope(manifest.types.map((t) => t.uid), schemas);
+    const { snapshots, errors: readErrors } = await readSnapshots({
+        sourceClient, targetClient, manifest, scope, status,
+    });
+    const plan = planRun({ manifest, schemas, snapshots, tombstones });
+    const report = await applyPlan({ plan, manifest, client: targetClient, snapshots, dryRun, onProgress });
+    return { plan, report, readErrors };
 }

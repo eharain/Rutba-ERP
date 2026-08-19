@@ -21,6 +21,9 @@ import {
     createClient,
     parseManifest,
     planRun,
+    populateFor,
+    analyzeScope,
+    runSync,
     TransportError,
 } from '../lib/engine/index.js';
 
@@ -470,6 +473,73 @@ await test('a link that actually changed is still written', async () => {
         assert.deepEqual(plan.links[0].targets, []);
         assert.ok(target.requests.length > afterFirst);
         assert.equal(target.records('cms-menu-items').find((r) => r.label === 'Shoes').parent, null);
+    } finally { await target.close(); }
+});
+
+// ------------------ reading a side, and the whole run ------------------
+
+section('snapshot + runSync');
+
+await test('populateFor asks for exactly the relations the run may write', () => {
+    const scope = analyzeScope(['api::cms-menu.cms-menu', 'api::cms-menu-item.cms-menu-item'], SCHEMAS);
+    assert.deepEqual(populateFor('api::cms-menu-item.cms-menu-item', scope), { menu: true, parent: true });
+    assert.deepEqual(populateFor('api::cms-menu.cms-menu', scope), {}, 'the mappedBy side is not fetched');
+});
+
+await test('reading serialises populate the long way, never populate=*', async () => {
+    const target = await startTarget({ seed: { 'cms-menu-items': [{ documentId: 'i1', label: 'Home' }] } });
+    try {
+        const client = createClient({ baseUrl: target.url, token: 't', fetchImpl: fetch });
+        await runSync({ manifest: manifest(), schemas: SCHEMAS, sourceClient: client, targetClient: client, dryRun: true });
+        const itemGets = target.requests.filter((r) => r.method === 'GET' && r.path.includes('cms-menu-items'));
+        assert.ok(itemGets.length > 0);
+        assert.ok(itemGets[0].query.includes('populate%5Bmenu%5D=true'), `got ${itemGets[0].query}`);
+        assert.ok(!itemGets[0].query.includes('populate=*'));
+        assert.ok(!itemGets[0].query.includes('populate%5Bchildren%5D'), 'the inverse side is not fetched');
+    } finally { await target.close(); }
+});
+
+await test('runSync against an instance as its own target plans nothing', async () => {
+    const target = await startTarget({
+        personality: 'core',
+        seed: {
+            'cms-menus': [{ documentId: 'm1', name: 'Main', slug: 'main' }],
+            'cms-menu-items': [{ documentId: 'i1', label: 'Home', order: 1, menu: { documentId: 'm1' }, parent: null }],
+        },
+    });
+    try {
+        const client = createClient({ baseUrl: target.url, token: 't', fetchImpl: fetch });
+        const { plan, report, readErrors } = await runSync({
+            manifest: manifest(), schemas: SCHEMAS, sourceClient: client, targetClient: client,
+        });
+        assert.deepEqual(readErrors, []);
+        assert.equal(plan.summary.creates, 0);
+        assert.equal(plan.summary.updates, 0);
+        assert.equal(plan.summary.links, 0, 'every link already correct');
+        assert.ok(plan.summary.linksSettled > 0);
+        assert.equal(report.summary.created + report.summary.updated + report.summary.deleted, 0);
+        assert.equal(target.requests.filter((r) => r.method !== 'GET').length, 0, 'read-only, as an idle run must be');
+    } finally { await target.close(); }
+});
+
+await test('a type that will not read is an error, not a crash — and not a delete', async () => {
+    const m = parseManifest({
+        name: 'x',
+        origin: 'rutba-lan',
+        direction: 'push',
+        target: { baseUrl: 'https://example.invalid' },
+        types: [{ uid: 'api::cms-menu.cms-menu', plural: 'cms-menus', syncDeletions: true }],
+    });
+    const target = await startTarget({
+        seed: { 'cms-menus': [{ documentId: 'm1', name: 'Main' }] },
+        failOn: ({ method }) => method === 'GET',
+    });
+    try {
+        const client = createClient({ baseUrl: target.url, token: 't', fetchImpl: fetch });
+        const { plan, readErrors } = await runSync({ manifest: m, schemas: SCHEMAS, sourceClient: client, targetClient: client });
+        assert.equal(readErrors.length, 2, 'both sides reported');
+        assert.equal(readErrors[0].uid, 'api::cms-menu.cms-menu');
+        assert.equal(plan.summary.deletes, 0, 'an unreadable source must never look like "everything was deleted"');
     } finally { await target.close(); }
 });
 

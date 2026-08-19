@@ -53,4 +53,10 @@ export {
     buildPayload,
     createClient,
     TransportError,
+    // reading a side, and the whole run
+    populateFor,
+    readSide,
+    readSnapshots,
+    readType,
+    runSync,
 } from './lib/engine/index.js';
