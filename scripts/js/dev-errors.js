@@ -21,9 +21,17 @@
  * a fix-list ordered by what is actually happening most, which is the thing you
  * want when sitting down to clear them in a single pass.
  *
- * Read it while running at http://localhost:4100/errors, on exit as a printed
- * summary, or any time afterwards with `npm run dev:errors` — the store is
- * persisted, so it outlives the session that produced it.
+ * Three surfaces, because they answer different questions:
+ *
+ *   http://localhost:4100/errors  the grouped fix-list, live
+ *   npm run dev:errors            the same list, any time after the fact
+ *   npm run dev:errors --history  every occurrence, across sessions, ungrouped
+ *   .dev/logs/dev-<stamp>.log     every line from every service, verbatim
+ *
+ * The grouped store is rewritten each session and can be --clear-ed. The raw
+ * logs and .dev/errors.jsonl are append-only and survive both, so nothing that
+ * happened is ever unrecoverable — which is the point: a problem you did not
+ * notice at the time is still there to be found afterwards.
  */
 
 const fs = require('fs');
@@ -34,8 +42,79 @@ const { ROOT } = require('./dev-runtime');
 
 const STORE_DIR = path.join(ROOT, '.dev');
 const STORE = path.join(STORE_DIR, 'dev-errors.json');
+const LOG_DIR = path.join(STORE_DIR, 'logs');
+const JOURNAL = path.join(STORE_DIR, 'errors.jsonl');
 const MAX_GROUPS = 500;
 const MAX_SAMPLES = 3;
+const KEEP_SESSIONS = 10;              // raw logs retained
+const JOURNAL_MAX_BYTES = 16 * 1024 * 1024;
+
+// ── durable logs ───────────────────────────────────────────
+// The grouped store answers "what should I fix". It deliberately does not
+// answer "what exactly happened at 12:46", because it collapses repeats and
+// keeps only the first sample. Two separate files cover that:
+//
+//   .dev/logs/dev-<stamp>.log   every line from every service, verbatim and
+//                               timestamped — the thing you grep after the
+//                               terminal has scrolled or the window is closed
+//   .dev/errors.jsonl           one JSON record per classified occurrence,
+//                               appended and never rewritten, so a finding
+//                               from three sessions ago is still there
+//
+// Both are written from feed(), which every service's output already passes
+// through, so nothing can be logged by one path and missed by the other.
+
+let rawStream = null;
+let journalStream = null;
+let sessionLogPath = null;
+
+function two(n) { return String(n).padStart(2, '0'); }
+
+function openLogs() {
+  if (rawStream) return;
+  try {
+    fs.mkdirSync(LOG_DIR, { recursive: true });
+    const d = new Date();
+    const st = `${d.getFullYear()}${two(d.getMonth() + 1)}${two(d.getDate())}` +
+               `-${two(d.getHours())}${two(d.getMinutes())}${two(d.getSeconds())}`;
+    sessionLogPath = path.join(LOG_DIR, `dev-${st}.log`);
+    rawStream = fs.createWriteStream(sessionLogPath, { flags: 'a' });
+    rawStream.on('error', () => { rawStream = null; });
+
+    // Trim the journal before appending rather than after, so a long-running
+    // session cannot grow it without bound between restarts.
+    try {
+      if (fs.statSync(JOURNAL).size > JOURNAL_MAX_BYTES) {
+        const keep = fs.readFileSync(JOURNAL, 'utf8').split('\n').slice(-20000).join('\n');
+        fs.writeFileSync(JOURNAL, keep);
+      }
+    } catch { /* absent or unreadable — the append below recreates it */ }
+
+    journalStream = fs.createWriteStream(JOURNAL, { flags: 'a' });
+    journalStream.on('error', () => { journalStream = null; });
+
+    pruneSessions();
+  } catch { /* logging must never take the dev environment down */ }
+}
+
+/** Keep the most recent KEEP_SESSIONS raw logs; older ones are noise. */
+function pruneSessions() {
+  try {
+    const files = fs.readdirSync(LOG_DIR)
+      .filter((f) => /^dev-\d{8}-\d{6}\.log$/.test(f))
+      .sort();
+    for (const f of files.slice(0, Math.max(0, files.length - KEEP_SESSIONS))) {
+      try { fs.unlinkSync(path.join(LOG_DIR, f)); } catch { /* in use */ }
+    }
+  } catch { /* nothing to prune */ }
+}
+
+function closeLogs() {
+  try { rawStream?.end(); } catch {}
+  try { journalStream?.end(); } catch {}
+  rawStream = null;
+  journalStream = null;
+}
 
 // ── classification ─────────────────────────────────────────
 
@@ -81,6 +160,13 @@ const RULES = [
   { kind: 'runtime', severity: 'error',
     re: /^\s*[⨯✗]|^\[ERROR\]|\b(TypeError|ReferenceError|RangeError|AssertionError)\b/ },
   { kind: 'runtime', severity: 'error', re: /(^|\s)Error:\s/ },
+  // Last resort, and deliberately last: anything problem-shaped that no rule
+  // above recognised. Without it a failure phrased in a way the rules do not
+  // anticipate is dropped silently, which is exactly the "goes unnoticed" case.
+  // It is a warning, not an error, because it is a guess — and it doubles as a
+  // visible measure of where the classifier is blind.
+  { kind: 'unclassified', severity: 'warn',
+    re: /\b(failed|failure|exception|denied|refused|unable to|not permitted|forbidden|unauthori[sz]ed|invalid)\b/i },
 ];
 
 /** A stack frame or a bare continuation of the line above it. */
@@ -95,6 +181,11 @@ const CONTINUATION = /^\s+(at\s|\.\.\.|\||\d+\s*\||\^)/;
 const IGNORE = [
   /^\s*[-•]?\s*Experiments \(use with caution\)/,
   /^\s*[⨯✗✓]\s*[\w-]+\s*$/,          // marker followed by a single bare flag name
+  // Ordinary request logs. `GET /x 404 in 5ms` is traffic, not a fault — the
+  // gateway records real HTTP failures itself via httpFailure(), with the route
+  // and method already parsed, so matching these here would double-count them.
+  /^\s*(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+\S+\s+\d{3}\s+in\s/,
+  /^\s*[✓√]\s|^\s*(Ready|Local|Network|Compiled|Starting|- Local|- Network)\b/,
 ];
 
 function classify(line) {
@@ -134,6 +225,7 @@ function signature(source, kind, text) {
 /** signature → group */
 const groups = new Map();
 let httpTotal = 0;
+let overflowed = false;
 let started = Date.now();
 
 // ── backend reachability ───────────────────────────────────
@@ -226,7 +318,22 @@ function bump(source, kind, severity, text, extra) {
   let g = groups.get(sig);
 
   if (!g) {
-    if (groups.size >= MAX_GROUPS) return null;   // runaway guard
+    // A cap that silently drops findings is the failure this whole module
+    // exists to prevent, so overflow is itself recorded — once — and points at
+    // the journal, which is uncapped and has the dropped occurrences.
+    if (groups.size >= MAX_GROUPS) {
+      if (!overflowed) {
+        overflowed = true;
+        groups.set('__overflow__', {
+          source: 'dev-errors', kind: 'group-limit', severity: 'error',
+          message: `More than ${MAX_GROUPS} distinct problems — further kinds are ` +
+                   `no longer grouped here. Every occurrence is still in .dev/errors.jsonl.`,
+          count: 1, first: Date.now(), last: Date.now(),
+          samples: [], detail: null, origin: 'server',
+        });
+      }
+      return null;
+    }
     g = {
       source, kind, severity,
       // The trailing [GET … · app=… · role=…] block is lifted into structured
@@ -277,10 +384,35 @@ function ingestContinuation(source, line) {
   return true;
 }
 
-/** One line of child output — classify it, or attach it to the open group. */
+/**
+ * One line of child output. Everything passes through here, so this is where
+ * the verbatim record is written — before any classification decision, so a
+ * line the rules do not recognise is still on disk and still findable.
+ */
 function feed(source, line) {
+  openLogs();
+  const text = strip(line);
+  if (rawStream) {
+    try { rawStream.write(`${clock(Date.now())} ${source.padEnd(14)} ${text}\n`); } catch {}
+  }
+
   if (ingestContinuation(source, line)) return null;
-  return ingest(source, line);
+  const g = ingest(source, line);
+
+  // Append the occurrence, not the group: the grouped store keeps one sample,
+  // and "it happened 40 times" is a different question from "what did the
+  // fourth one say". The journal survives restarts, so a finding from an
+  // earlier session is still there tomorrow.
+  if (g && journalStream) {
+    try {
+      journalStream.write(JSON.stringify({
+        at: new Date().toISOString(), source, kind: g.kind, severity: g.severity,
+        message: g.message, url: g.url, status: g.status, role: g.role,
+        code: g.code, from: g.from, origin: g.origin,
+      }) + '\n');
+    } catch { /* never let logging break the run */ }
+  }
+  return g;
 }
 
 /** A 4xx/5xx the gateway proxied. */
@@ -332,9 +464,13 @@ function load() {
   try { return JSON.parse(fs.readFileSync(STORE, 'utf8')); } catch { return null; }
 }
 
+function sessionLog() { return sessionLogPath; }
+function journalPath() { return JOURNAL; }
+
 function reset() {
   groups.clear();
   httpTotal = 0;
+  overflowed = false;
   started = Date.now();
 }
 
@@ -463,7 +599,8 @@ function text({ limit = 20, color = true, since = null } = {}) {
 module.exports = {
   feed, ingest, httpFailure, lifecycle,
   all, counts, save, load, reset, text, ago, stamp, clock, verdict, parseSince,
-  watchBackend, backendState, STORE,
+  watchBackend, backendState, closeLogs, sessionLog, journalPath,
+  STORE, JOURNAL, LOG_DIR,
 };
 
 // ── CLI ────────────────────────────────────────────────────
@@ -502,7 +639,41 @@ if (require.main === module) {
     process.exit(1);
   }
 
+  // --history reads the append-only journal instead of the grouped store: it
+  // is the only view that survives `--clear` and spans earlier sessions.
+  if (process.argv.includes('--history')) {
+    let lines = [];
+    try { lines = fs.readFileSync(JOURNAL, 'utf8').split('\n').filter(Boolean); }
+    catch { console.log('No journal yet — run `npm run dev` first.'); process.exit(0); }
+
+    const n = Number(arg('--limit', 60));
+    const rows = lines.slice(-n).map((l) => { try { return JSON.parse(l); } catch { return null; } })
+      .filter(Boolean)
+      .filter((r) => !since || Date.parse(r.at) >= since);
+
+    console.log(`\n${rows.length} occurrence(s) from .dev/errors.jsonl` +
+      `${since ? ` since ${stamp(since)}` : ''}, ${lines.length} recorded in total\n`);
+    for (const r of rows) {
+      const t = stamp(Date.parse(r.at));
+      const sev = r.severity === 'error' ? '\x1b[31m●\x1b[0m' : '\x1b[33m●\x1b[0m';
+      console.log(`${sev} ${t}  \x1b[36m${r.source}\x1b[0m \x1b[2m${r.kind}\x1b[0m`);
+      console.log(`    ${r.message}`);
+      const facts = [r.url && `${r.url}`, r.status && `status ${r.status}`,
+        r.role && `role ${r.role}`, r.from && `from ${r.from}`].filter(Boolean);
+      if (facts.length) console.log(`    \x1b[2m${facts.join('  ·  ')}\x1b[0m`);
+    }
+    console.log('');
+    process.exit(0);
+  }
+
   console.log(text({ limit: Number(arg('--limit', 40)), since }));
+
+  let logs = [];
+  try { logs = fs.readdirSync(LOG_DIR).filter((f) => f.endsWith('.log')).sort(); } catch {}
+  if (logs.length) {
+    console.log(`  full output: .dev/logs/${logs[logs.length - 1]}` +
+      `${logs.length > 1 ? ` (+${logs.length - 1} earlier session${logs.length > 2 ? 's' : ''})` : ''}`);
+  }
   console.log(`  recorded ${stamp(saved.saved)}` +
-    '   ·   --since 10m | --since 14:05 | --clear\n');
+    '   ·   --since 10m | --since 14:05 | --history | --clear\n');
 }

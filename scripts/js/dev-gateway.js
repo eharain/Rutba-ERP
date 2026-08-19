@@ -69,13 +69,16 @@ function ensureStarted(entry) {
   // then send the reader to :5002 instead of the :4002 they should open. Swap
   // it back so the log matches the address that actually works.
   const shadowRe = new RegExp(`:${shadowPort}\\b`, 'g');
-  const capture = lineBuffer((line) => {
+  const capture = lineBuffer((raw) => {
+    // Rewrite once, then use the same text everywhere. Feeding the raw line to
+    // the collector put shadow ports into the durable log and the error store,
+    // so anything read back later pointed at :5018 — an address that is real
+    // but that nobody should ever open.
+    const line = raw.replace(shadowRe, `:${entry.service.port}`);
     entry.log.push(line);
     if (entry.log.length > 200) entry.log.shift();
     errors.feed(entry.service.key, line);
-    process.stdout.write(
-      `\x1b[2m[${entry.service.key}]\x1b[0m ${line.replace(shadowRe, `:${entry.service.port}`)}\n`
-    );
+    process.stdout.write(`\x1b[2m[${entry.service.key}]\x1b[0m ${line}\n`);
   });
   child.stdout.on('data', capture);
   child.stderr.on('data', capture);

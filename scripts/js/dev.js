@@ -285,9 +285,12 @@ function main() {
     shuttingDown = true;
     clearInterval(saver);
     errors.save();
+    errors.closeLogs();
     if (errors.counts().groups) {
       console.log(errors.text({ limit: 12 }));
     }
+    const log = errors.sessionLog();
+    if (log) say(DIM('full output: ' + log.replace(ROOT + require('path').sep, '')));
     console.log('');
     say('shutting down…');
     if (gateway) gateway.stopAll();
