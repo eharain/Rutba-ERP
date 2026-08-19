@@ -19,6 +19,7 @@
     "smoke:policy": "node scripts/smoke-policy.js",
     "smoke:identity": "node scripts/smoke-identity.js",
     "smoke:parties": "node scripts/smoke-parties.js",
+    "smoke:catalog": "node scripts/smoke-catalog.js",
     "token": "node scripts/api-token.js",
     "baseline": "node scripts/baseline-metrics.js",
     "audit:coupling": "node scripts/audit-strapi-coupling.js",

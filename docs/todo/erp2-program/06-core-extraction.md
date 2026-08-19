@@ -129,13 +129,65 @@ dedup tools lose data.
 a match key must never group with each other, because absence of identity is not
 shared identity.
 
+### `catalog` — the second package
+
+[`packages/shared/core/catalog`](../../../packages/shared/core/catalog/index.js),
+plus [`CatalogService`](../../../services/core/src/domain/catalog/catalog.service.js)
+as its storage half. Cheap, as §1 predicted: items are already one identity, so
+there is nothing to unify. What is *not* one thing is the **price**.
+
+A sellable thing here can carry a price at three levels — the stock unit, the
+product, the parent a variant hangs off — and any level may leave it null, empty
+or zero. The resolution rule lives today in exactly one module
+(`apps/sales/marketplace/lib/engine.js`) behind a comment calling it a
+"convention" that nothing enforces, while every other surface re-derives some
+part of it inline. That is the private copy the brief forbids.
+
+**Positive-or-inherit**, stated once: a price counts as set only if it parses
+above zero; null, `''`, `0`, `'0.00'` and import junk all mean *not priced at
+this level*, and resolution moves outward. Zero meaning "unset" rather than
+"free" is the whole point — `??` keeps the zero and sells the thing for nothing.
+Free items are a zero-value sale line, never a zero catalog price.
+
+Two decisions worth arguing with:
+
+- **`selling` and `offer` resolve INDEPENDENTLY, and that is preserved
+  deliberately.** A variant priced 600 with no offer, under a parent priced 500
+  offering 450, resolves to selling 600 / offer 450 — an offer inherited from a
+  differently-priced level. It is what marketplace does today, so it is what the
+  catalog does today; changing it here would quietly reprice live listings, and
+  a refactor must not smuggle in a pricing change. It is *surfaced* instead:
+  `mixedLevels` says the two came from different levels and
+  `offerIsNotADiscount` says the offer is at or above list. **Whoever owns
+  pricing should decide whether the stricter same-level rule is correct; until
+  then the flags make the disagreement visible rather than silent.**
+- **`divisible` is ignored on a countable unit.** A `divisible` flag on a boxed
+  item is data noise, and honouring it would let someone sell a third of a box.
+  Divisibility only means anything for a measured unit (metre, kg), where
+  `unitPrice()` divides by the stock unit's own `sellableUnits` — a 50 m roll
+  priced 5000 is 100/m. A divisible unit whose length is unknown keeps the total
+  rather than dividing by a guessed 1.
+
+The service exists for one method. `priceForUnit()` loads the unit, its product
+*and* that product's parent in one read, because resolving a price needs all
+three ROWS and the failure mode is quiet: a variant priced only on its parent
+reads as unpriced when the parent was not populated. The contract cannot prevent
+that; only the query can. So the contract owns "given these levels, what is the
+price", the service owns "load the levels", and the smoke test asserts the
+populate shapes directly.
+
+33 contract assertions + 26 service assertions. One of them is a drift guard:
+every `unit_of_measure` in the product schema must be classified countable or
+measured, so a unit added there fails a test instead of silently landing in
+whichever branch the code happens to take.
+
 ---
 
 ## 4. What is next, in the order the measurement implies
 
-1. **`catalog`** — cheap, because items are already one identity. A contract
-   over `product` + `stock-item` with the variant price-fallback rule
-   ("positive-or-parent", not `??`) baked in, so no module reimplements it.
+1. ~~**`catalog`**~~ — **done**, see §3. The price rule is now stated once;
+   the open question it surfaced (independent vs same-level offer resolution)
+   needs a pricing owner, not more code.
 2. **`posting`** — the journal-entry contract, plus the export-queue fallback
    when `erp.gl` is unlicensed. This is the first place E1 and
    [E2](../../portal-alignment.md) meet: the fallback is chosen by an
