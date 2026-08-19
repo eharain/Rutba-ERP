@@ -5,7 +5,9 @@
   "scripts": {
     "validate:exports": "node ./scripts/validate-exports.mjs",
     "validate": "npm run validate:exports",
-    "build": "npm run validate"
+    "build": "npm run validate",
+    "test:core": "node core/parties/test.js",
+    "test": "npm run test:core"
   },
   "dependencies": {
     "@rutba/api-provider": "1.0.0"
@@ -30,6 +32,11 @@
     "./domain/*": [
       "./context/domain/*",
       "./context/domain/*.js"
+    ],
+    "./core/*": [
+      "./core/*/index.js",
+      "./core/*.js",
+      "./core/*"
     ],
     "./styles/*": "./styles/*"
   }

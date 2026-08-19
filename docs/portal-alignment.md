@@ -9,6 +9,17 @@
 
 **Source of truth:** the Rutba-Portal repo (`D:\Rutba\Rutba-Portal`) — `plan/11-product-integrations.md` (ERP workstream E1–E6 + coherence rules), `specs/GLOBAL-AUTH.md` (identity & tokens), `specs/SERVICE-SUITES.md` (suites, entitlement keys), `specs/TENANCY-DATA-ARCHITECTURE.md` (per-org instances, Tenant Catalog). This document translates those into this repo's own terms. When they disagree, the portal specs win; fix the disagreement in the same PR that touches both repos.
 
+## Status in this repo (2026-08-20)
+
+| Task | State |
+|---|---|
+| **E4** instance packaging | **done** — migrations on boot under an advisory lock (refuses to serve on a schema it cannot bring current), `/health` readiness (503 on pending migrations), `/version`, build stamping through compose. `/_health` stays liveness-only. |
+| **E2** entitlement gating | **done, behind a stubbed resolver.** The 19 frozen keys live in `config/apps.manifest.json` (one registry, not a ninth); `verify:wiring` fails a service with no entitlement decision. The gate answers **402**, not 403, and implements E5's lifecycle now (grace = read-only, revoked = locked) because it changes what the gate does. `GET /api/entitlements` is what apps gate navigation on. Swap to `@rutba/license-client` is one file. |
+| **E1** Core extraction | **`parties` built; measured first — see [06-core-extraction.md](todo/erp2-program/06-core-extraction.md).** Items are *already* one identity (nothing to unify); parties are five, and **55% of live party rows carry no email and no phone**, so E1 needs a data-completeness workstream, not just a matcher. `catalog`/`posting`/`interactions` scoped and ordered. |
+| **E3** portal auth | not started |
+| **E5** licence polish | lifecycle implemented inside E2's gate; `@rutba/license-client` + `@rutba/usage-reporter` pending publication |
+| **E6** rutba-social | not started |
+
 ## Division of ownership
 
 | The portal owns (ERP must not rebuild) | The ERP owns |
