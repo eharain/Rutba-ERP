@@ -181,6 +181,53 @@ every `unit_of_measure` in the product schema must be classified countable or
 measured, so a unit added there fails a test instead of silently landing in
 whichever branch the code happens to take.
 
+### `posting` — the third package, and where E1 meets E2
+
+[`packages/shared/core/posting`](../../../packages/shared/core/posting/index.js),
+[`PostingService`](../../../services/core/src/domain/posting/posting.service.js),
+and migration [`024-posting-export-queue`](../../../services/core/migrations/024-posting-export-queue.js).
+
+Not a second ledger. The estate already has a working double-entry engine
+(`services/strapi/.../acc-journal-entry/services/accounting.js`) and this does not
+replace it — it is the SHAPE that reaches one, validated before anything touches
+a database. Two things follow:
+
+- **A caller learns it is wrong before it writes.** Today an unbalanced entry
+  surfaces inside the posting engine, mid-operation, after the sale it belongs
+  to has been written. Validation that needs a database cannot run where the
+  entry is built.
+- **An entry is still worth something when there is nowhere to post it.** An org
+  without `erp.gl` still makes sales, and its accountant still needs the
+  numbers.
+
+**Money is integers.** Amounts are minor units (paisa) end to end, including in
+the queue's own total columns. `0.1 + 0.2 !== 0.3` is not a curiosity in a
+ledger; it is an entry that fails its own balance check for no visible reason.
+The existing engine rounds to cents at the moment of comparison, which fixes the
+comparison and leaves every intermediate sum drifting. `scale` travels with the
+data so a three-decimal currency (KWD, BHD) does not silently lose a digit.
+
+**Posting is gated on `erp.gl` specifically, not on the accounts app's key
+list.** The manifest maps that app to `['erp.gl', 'erp.ap-ar']` with ANY-of
+semantics, so an org that bought only the sub-ledgers can open it — correctly,
+since supplier bills and customer invoices live there. It must still not write
+to a general ledger it never licensed. Reusing the app's list would post to a GL
+for every AP/AR customer.
+
+The queue is a transactional outbox, not work for a worker: the rows ARE the
+deliverable, so they outlive any process and stay queryable by period and
+source. `exported` and `posted` are separate outcomes because an entry that
+became both has been counted twice.
+
+Unknown entitlement routes to the LEDGER, not the queue — fail-open, matching
+the rest of the estate. Diverting a licensed org's real postings into a queue
+nobody watches is a far worse failure than posting an entry it turns out not to
+have paid for.
+
+37 contract assertions + 34 service assertions. The service's fake database
+enforces the unique index for real, including a concurrent-capture race,
+because idempotency that is only checked in JavaScript is not idempotency.
+
 ---
 
 ## 4. What is next, in the order the measurement implies
@@ -188,10 +235,9 @@ whichever branch the code happens to take.
 1. ~~**`catalog`**~~ — **done**, see §3. The price rule is now stated once;
    the open question it surfaced (independent vs same-level offer resolution)
    needs a pricing owner, not more code.
-2. **`posting`** — the journal-entry contract, plus the export-queue fallback
-   when `erp.gl` is unlicensed. This is the first place E1 and
-   [E2](../../portal-alignment.md) meet: the fallback is chosen by an
-   entitlement check, and that check now exists.
+2. ~~**`posting`**~~ — **done**, see §3. Still open: nothing EMITS into it yet.
+   Wiring the first module (POS sale is the obvious one) is its own change, and
+   it is what turns the queue from a capability into a guarantee.
 3. **`interactions`** — twelve types today (`crm-activity`, `cmp-event`,
    `hr-lifecycle-event`, `mail-message`, `order-message`, `work-item-activity`,
    `work-item-comment`, `notification-log`, `sale-audit-log`,
