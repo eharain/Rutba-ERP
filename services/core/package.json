@@ -17,6 +17,7 @@
     "social:shorten-urls": "node scripts/shorten-social-post-urls.js",
     "seed:policy": "node scripts/seed-policy.js",
     "smoke:policy": "node scripts/smoke-policy.js",
+    "smoke:identity": "node scripts/smoke-identity.js",
     "token": "node scripts/api-token.js",
     "baseline": "node scripts/baseline-metrics.js",
     "audit:coupling": "node scripts/audit-strapi-coupling.js",
