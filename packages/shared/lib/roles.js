@@ -93,6 +93,36 @@ export const APP_META = {
 };
 
 /**
+ * Is this module switched on for the ORGANISATION (portal task E2)?
+ *
+ * Two different questions decide whether an app appears, and conflating them is
+ * the bug waiting to happen here:
+ *
+ *   appAccess    does THIS USER have access?   per-user, granted by an admin
+ *   entitlement  did THIS ORG buy the module?  per-org, decided by the licence
+ *
+ * A user can hold appAccess for a module the org never licensed; the module is
+ * still not there. So entitlement filters on top of appAccess rather than
+ * replacing it.
+ *
+ * `entitled` is whatever EntitlementContext's `isEntitled` gives — a predicate,
+ * not a table. Deciding which keys an app needs happens once, in
+ * config/apps.manifest.json, and is published already-resolved by
+ * /api/entitlements; re-deriving it here would be a second copy of the map.
+ *
+ * Omitted — which is every caller that has not adopted the provider — means
+ * ungated, so navigation behaves exactly as it does today.
+ *
+ * @param {string} appKey
+ * @param {(appKey: string) => boolean} [entitled]
+ * @returns {boolean}
+ */
+export function isModuleAvailable(appKey, entitled) {
+    if (typeof entitled !== 'function') return true;
+    return entitled(appKey);
+}
+
+/**
  * Normalise the raw appAccess value (from the API / cookie) into a
  * guaranteed string array of valid app keys.
  * @param {unknown} appAccess
@@ -215,7 +245,7 @@ export function isEffectiveAdmin(activeRoleKey, adminAppAccess, appKey) {
  * @param {string} currentApp - the app key we're currently in
  * @returns {{ label: string, href: string, key: string, icon: string }[]}
  */
-export function getCrossAppLinks(appAccess, currentApp) {
+export function getCrossAppLinks(appAccess, currentApp, entitled) {
     const links = [];
     const allowed = getAllowedApps(appAccess);
 
@@ -223,6 +253,7 @@ export function getCrossAppLinks(appAccess, currentApp) {
         if (appKey === currentApp) continue;
         if (!allowed.includes(appKey)) continue;
         if (!APP_URLS[appKey]) continue;
+        if (!isModuleAvailable(appKey, entitled)) continue;
 
         const meta = APP_META[appKey] || {};
         links.push({
@@ -242,6 +273,10 @@ export function getCrossAppLinks(appAccess, currentApp) {
         if (appKey === currentApp) continue;
         if (!APP_URLS[appKey]) continue;
         if (links.find((l) => l.key === appKey)) continue;
+        // "Public" means no sign-in is needed, not that it escapes licensing —
+        // an unlicensed storefront is off for shoppers too. This loop runs over
+        // APP_META rather than VALID_APP_KEYS, so it needs its own check.
+        if (!isModuleAvailable(appKey, entitled)) continue;
 
         links.push({
             key: appKey,
@@ -264,8 +299,8 @@ export function getCrossAppLinks(appAccess, currentApp) {
  * @param {string} currentApp - the app key we're currently in
  * @returns {{ key: string, label: string, icon: string, apps: object[] }[]}
  */
-export function getCrossAppGroups(appAccess, currentApp) {
-    const links = getCrossAppLinks(appAccess, currentApp);
+export function getCrossAppGroups(appAccess, currentApp, entitled) {
+    const links = getCrossAppLinks(appAccess, currentApp, entitled);
     return groupLinksByCategory(links);
 }
 
@@ -279,12 +314,15 @@ export function getCrossAppGroups(appAccess, currentApp) {
  * @param {string} currentApp - the app key we're currently in
  * @returns {{ key, label, href, icon, color, description, external, allowed, current }[]}
  */
-export function getAppCatalogLinks(appAccess, currentApp) {
+export function getAppCatalogLinks(appAccess, currentApp, entitled) {
     const allowed = getAllowedApps(appAccess);
     const links = [];
 
     for (const appKey of VALID_APP_KEYS) {
         if (!APP_URLS[appKey]) continue;
+        // Omitted, not shown locked: a tile for something the org cannot buy
+        // from here is an advert, and the launcher is not where Rutba sells.
+        if (!isModuleAvailable(appKey, entitled)) continue;
         const meta = APP_META[appKey] || {};
         links.push({
             key: appKey,
@@ -303,6 +341,7 @@ export function getAppCatalogLinks(appAccess, currentApp) {
         if (!meta || !meta.public) continue;
         if (!APP_URLS[appKey]) continue;
         if (links.find((l) => l.key === appKey)) continue;
+        if (!isModuleAvailable(appKey, entitled)) continue;
         links.push({
             key: appKey,
             label: meta.label || appKey,
