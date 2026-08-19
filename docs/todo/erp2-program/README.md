@@ -9,7 +9,7 @@ contradictions between programs, and sequences everything into one launchable re
 > has the current standing and the reworked order; read it before the phase list below**, which
 > still reads in the original P0→P5 sequence.
 
-<!-- verify-docs: planned services/core/src/modules/campaigns.js services/core/src/modules/mail.js services/core/migrations/000-baseline-schema.js infra/** scripts/contract-tests/** docs/contracts/** -->
+<!-- verify-docs: planned services/core/migrations/000-baseline-schema.js infra/** scripts/contract-tests/** docs/contracts/** -->
 
 **What "2.0" means, in one sentence per axis:**
 
@@ -69,21 +69,27 @@ is much further along than its README's phase table implies:
   custom routes mounted.
 - **Content-type coverage is 100% by construction** — the schema registry loads every
   `services/strapi/src/api/*/content-types/*/schema.json` at boot; the real axis is custom actions.
-- **Still Strapi-only** (custom actions answer 501 on core): the campaigns cluster
-  (`cmp-campaign`, `cmp-run`, `cmp-sending-identity`, `cmp-template`, `cmp-audience`),
-  `mail-message`/`mail-link` actions, the `media` api dir, and `/api/content-sync/*`
-  (calls `strapi-content-sync-pro`, which core's compat layer cannot load). Mail and campaigns
-  crons have no core home.
+- ~~**Still Strapi-only** (custom actions answer 501 on core): the campaigns cluster,
+  `mail-message`/`mail-link` actions~~ — **ported 2026-08-19**; `route-audit.js` NOT_PORTED is
+  **0**. Still Strapi-only: the `media` api dir and `/api/content-sync/*` (which calls
+  `strapi-content-sync-pro`, a plugin core's compat layer cannot load — the P1 sync engine
+  replaces it rather than porting it). Mail and campaigns **crons** still have no core home, by
+  choice: single-homing a cron belongs to its tranche flip under `RUTBA_CORE_CRONS`.
 - ~~**The hardest residual dependency:** the api-pro descriptor seeder runs only inside
   Strapi~~ — **closed 2026-08-17.** Core's route table is still read from
   `api_pro_interfaces`/`api_pro_interface_methods`, but
   [services/core/src/policy/](../../../services/core/src/policy/) now writes those tables itself
   (and mints API tokens), so a descriptor change no longer needs a Strapi process. See
   [02-policy-seeder-port.md](02-policy-seeder-port.md).
-- **Runtime coupling:** 9 core files `require()` from `services/strapi/node_modules`
-  (auth validators, `@strapi/utils`, nodemailer, `@strapi/upload` image manipulation), and the
-  schema loader reads `schema.json` from the services/strapi tree. Even at `RUTBA_BACKEND=core`,
-  services/strapi's source tree must be deployed.
+- **Runtime coupling — re-measured 2026-08-19** by
+  [audit-strapi-coupling.js](../../../services/core/scripts/audit-strapi-coupling.js)
+  (`npm run audit:coupling`), because the previous claim ("9 core files require from
+  `services/strapi/node_modules`") was wrong in both directions. Core declares every npm package
+  its own source uses; the npm half was **two** packages (`@strapi/utils`, `pluralize`), now
+  declared. The coupling that actually blocks retirement is **source**: core loads **69 Strapi
+  source files** zero-copy plus 10 dynamic `api/<uid>/services/*.js` call sites, and reaches into
+  the 47-file `strapi-api-pro` tree. Even at `RUTBA_BACKEND=core`, services/strapi's source tree
+  must be deployed until P2's `git mv` moves it.
 - **Core cannot create its own base schema** — measured in
   [05-sqlite-viability.md](../offline-desktop-program/05-sqlite-viability.md): the only
   `createTable` in core's source is the migrations ledger. Core derives and validates a schema
@@ -303,9 +309,28 @@ Everything that still *requires* a running Strapi, enumerated and killed.
       ([scripts/smoke-policy.js](../../../services/core/scripts/smoke-policy.js)). It also surfaced
       54 stale rows — including 4 grants the contract had already revoked. Full write-up:
       [02-policy-seeder-port.md](02-policy-seeder-port.md).
-- [ ] **Port the remaining custom actions**: campaigns cluster + campaign cron
-      (`services/core/src/modules/campaigns.js`, planned), `mail-message`/`mail-link` actions +
-      mail cron (`services/core/src/modules/mail.js`, planned), the `media` api dir routes.
+- [x] **Port the remaining custom actions** (2026-08-19) —
+      [campaigns.js](../../../services/core/src/modules/campaigns.js) and
+      [mail.js](../../../services/core/src/modules/mail.js). **`route-audit.js` NOT_PORTED is now
+      0** (was 33), served-by-both 1016 → 1052. That closes one of the four exit criteria below.
+
+      Campaigns needed 14 routes, not the 11 the audit counted: `/cmp/webhook`, `/cmp/t/o/:token`
+      and `/cmp/t/c/:token/:link` have **no api-provider descriptor**, so no row is seeded and core
+      never mounted them at all. They are the MTA delivery webhook and the open/click tracking
+      endpoints — a campaign run on core would have sent its mail and recorded no opens, no clicks
+      and no bounces, which is worse than failing outright. They mount `selfAuth` and verify
+      themselves on the token or signature. **A route with no descriptor is invisible to both the
+      audit's NOT_PORTED count and to api-pro** — worth remembering when judging coverage.
+
+      Mail's 22 are ordering-sensitive: `/mail-accounts/assignees` and `/validate-connection` must
+      beat the *seeded* `/mail-accounts/:documentId`, which relies on module routes registering
+      ahead of seeded ones. Verified by response content, not status alone — the per-account 404s
+      carry the controller's own `"Mail account not found."`, which is how a handler that ran is
+      distinguished from a route never claimed.
+
+      Crons are deliberately still Strapi-homed for both clusters; single-homing them belongs to
+      the tranche flip under the `RUTBA_CORE_CRONS` discipline.
+- [ ] **The `media` api dir routes** — the remainder of the original "custom actions" item.
 - [ ] **Build the sync engine v1** (replaces `strapi-content-sync-pro`): contract-level,
       per the decided design in [06-plugin-replacement-map.md](../core-server-multitenancy-program/06-plugin-replacement-map.md)
       — manifest per connection, CMS `documentId` identity, commerce `external_ids.<origin>`
@@ -358,9 +383,16 @@ Everything that still *requires* a running Strapi, enumerated and killed.
       baseline (option A from [05-sqlite-viability.md](../offline-desktop-program/05-sqlite-viability.md)),
       gated on making `validate-schema.js` SQLite-aware.
 
-**Exit gate:** `route-audit.js` NOT_PORTED = 0; `descriptor-audit.mjs` exit 0; a descriptor
-edit → seed → serve cycle completes with **no Strapi process alive**; sync engine passes the
-CMS-promotion smoke; `RUTBA_CORE_EMAIL=send` covers every mail the system sends.
+**Exit gate:** ~~`route-audit.js` NOT_PORTED = 0~~ **met 2026-08-19**; `descriptor-audit.mjs`
+exit 0; a descriptor edit → seed → serve cycle completes with **no Strapi process alive**; sync
+engine passes the CMS-promotion smoke; `RUTBA_CORE_EMAIL=send` covers every mail the system sends.
+
+> **NOT_PORTED = 0 is not the same as "core serves what Strapi serves."** The same audit still
+> reports **287 routes MISSING from core** — mounted by Strapi, absent from core's table
+> entirely, mostly `DELETE` on the `acc-*` / `cmp-*` clusters. NOT_PORTED only counts routes core
+> *mounted and then refused*; a route with no seeded row is invisible to it. Whether those 287 are
+> deliberate (core withholding destructive verbs) or a gap is **not yet established** — establish
+> it before reading this gate as "core is complete".
 
 ### P2 — Cutover and Strapi retirement (~6–10 weeks elapsed, bake windows included)
 
