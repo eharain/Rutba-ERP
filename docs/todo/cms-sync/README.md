@@ -2,7 +2,7 @@
 
 <!-- verify-docs: external server/** image/** -->
 <!-- Paths and commits below are inside the strapi-content-sync-pro plugin repo
-     (D:Rutbastrapi-pluginsstrapi-content-sync-pro), not this one. -->
+     (D:\Rutba\packages\strapi-plugins\strapi-content-sync-pro), not this one. -->
 
 > **Status (2026-07-29), updated:** GAP-1, GAP-2, GAP-8, GAP-10 (and part of
 > GAP-3) were fixed in the plugin (see plugin-gaps.md), and this runbook has now

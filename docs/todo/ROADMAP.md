@@ -72,9 +72,9 @@ Close the gaps every competitor already fills (AI, analytics) and turn on the Wh
 | 1.1 | **AI copilot MVP** — NL query over sales/inventory/finance; draft descriptions; smart reorder hints. Claude-first, model-agnostic layer, **AI included (not paywalled)**. Aim for automated **synthesis** (generate the report/plan), not just Q&A — the "AI-OS" frame (cf. KeychainOS) | ③ | Rutba ships zero AI while every rival ships copilots — the single biggest competitive gap | services/strapi data, analytics (1.2) | L |
 | 1.2 | **Analytics / BI layer** (`rutba-analytics`) — cross-module dashboards, replenishment forecast, financial-exception detection | ③ | No analytics app exists (RANALYTICS gap); also powers CRM dashboards & the copilot | Strapi data | L |
 | 1.3 | **WhatsApp commerce** — catalog, order-taking, order/shipping notifications, post-sale funnels | ②/⑤ | Core South-Asia channel, not a side feature | notification svc, apps/content/social | M |
-| 1.4 | **`apps/content/campaigns`** — email template studio + audiences + campaigns over Rutba-MTA | ⑤ | Rutba-MTA (send engine) already ported; this is the tenant UI | Rutba-MTA, CRM segments (0.6) | M |
+| 1.4 | **`apps/content/campaigns`** — email template studio + audiences + campaigns over MTA | ⑤ | MTA (send engine) already ported; this is the tenant UI | MTA, CRM segments (0.6) | M |
 | 1.5 | **CRM pipeline** — opportunity/deal/stage/kanban (net-new; RightApp only faked it) | ⑤ | Completes CRM to competitive standard | CRM core (0.6) | M |
-| 1.6 | **Tracked email-on-activity** — CRM ↔ Rutba-MTA opens/clicks | ⑤ | Ties CRM + campaigns + analytics together | 1.2, 1.4 | S |
+| 1.6 | **Tracked email-on-activity** — CRM ↔ MTA opens/clicks | ⑤ | Ties CRM + campaigns + analytics together | 1.2, 1.4 | S |
 | 1.7 | **Marketplace connector framework + Amazon + eBay** — generalize the existing provider-adapter (Daraz done) into a channel-connector layer; add **Amazon SP-API** and **eBay Sell API**: listing/catalog sync, order ingest, inventory + price push, settlement reconciliation, per-account region config | ②/⑤ | Omnichannel selling is table stakes (Cin7/Shopify lead with it); multiplies reach per region and rides the multi-country/regional seeding layer already being built | apps/sales/marketplace + worker (exist), product catalog, marketplace-* CTs | L |
 
 **H1 exit gate:** a demo of Rutba shows an AI copilot, live dashboards, and WhatsApp+email marketing — i.e. it no longer looks a generation behind Odoo/Zoho/Shopify.
@@ -107,7 +107,7 @@ rutba.pk works single-tenant; selling to tenant #2 needs the platform layer. Thi
 | 3.4 | **B2B / wholesale** — company accounts, price lists, payment terms | ② | Shopify made B2B standard in 2026; Rutba has buy-side, extend to sell-side | 2.1 | M |
 | 3.5 | **Agentic AI actions** — auto-reorder, auto-reconcile, month-end assist | ③ | Buyers now ask for an agentic roadmap (NetSuite/Shopify set the expectation) | 1.1, 1.2 | L |
 | 3.6 | **Embedded finance / BNPL** — installments at checkout (KalPay/Alfa-style) | ① | Early-mover edge for higher-ticket apparel | 0.2 | M |
-| 3.7 | **Private Drive + sharing** — user file storage + PIN/signed share links | ⑤ | RSTORAGE-style capability; build on Rutba-Media-FileServer's visibility primitives | Rutba-Media-FileServer | M |
+| 3.7 | **Private Drive + sharing** — user file storage + PIN/signed share links | ⑤ | RSTORAGE-style capability; build on Media-FileServer's visibility primitives | Media-FileServer | M |
 | 3.8 | **Agent-facing commerce (MCP)** — catalog into ChatGPT/Perplexity/Copilot | ⑤ | Watch/keep catalog MCP-exportable; act when the channel matures | catalog | S (watch) |
 | 3.9 | **PLM / product-development + SRM** — design→tech-pack/spec→sample→BOM→sourcing→launch lifecycle, upstream of production; supplier relationship management (discovery, scorecards, source-of-truth) beyond transactional purchase | ② | The upstream Rutba lacks (today = production execution only); a real differentiator for made-to-order **apparel** (cf. Keychain 360's private-label PLM); pull earlier if apparel is the flagship | mfg-*, purchase/supplier, product | L |
 | 3.10 | **Channel & region expansion** — more marketplaces on the 1.7 framework (Shopify, WooCommerce, Walmart, Etsy) + **per-region Amazon marketplaces** (US/UK/EU/GCC…); per-tenant channel accounts | ②/⑤ | Turns the connector layer into a multi-region omnichannel selling story for the SaaS; rides the regional tax/shipping seeding layer | 1.7, 2.1 (multi-tenancy), regional seeding | M |
@@ -137,4 +137,4 @@ Everything else sequences around these three spines.
 - Multi-region fiscalization landscape & seam design (0.1 / 2.5) → [fiscalization-multi-region.md](./fiscalization-multi-region.md)
 - Market rationale & competitor benchmark → [market-strategy/README.md](./market-strategy/README.md)
 - App-level gap detail & CRM carry-over → [rightapp-gap-analysis/README.md](./rightapp-gap-analysis/README.md) + [app-feature-map.md](./rightapp-gap-analysis/app-feature-map.md)
-- Standalone-service pattern (Rutba-MTA, Rutba-Media-FileServer) for infra builds → gap-analysis §1/§4a
+- Standalone-service pattern (MTA, Media-FileServer) for infra builds → gap-analysis §1/§4a

@@ -5,7 +5,7 @@
     "singularName": "cmp-sending-identity",
     "pluralName": "cmp-sending-identities",
     "displayName": "Campaign Sending Identity",
-    "description": "A registered Rutba-MTA sender: the from-address campaigns send as, plus the trust token and webhook secret the MTA issues once at registration. The RMAILX 'mail agent' equivalent."
+    "description": "A registered MTA sender: the from-address campaigns send as, plus the trust token and webhook secret the MTA issues once at registration. The RMAILX 'mail agent' equivalent."
   },
   "options": {
     "draftAndPublish": false

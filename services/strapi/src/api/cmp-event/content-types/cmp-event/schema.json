@@ -5,7 +5,7 @@
     "singularName": "cmp-event",
     "pluralName": "cmp-events",
     "displayName": "Campaign Event",
-    "description": "Delivery events mirrored from Rutba-MTA webhooks. dedup_key is unique because the MTA retries a failed webhook six times — the receiver must be idempotent."
+    "description": "Delivery events mirrored from MTA webhooks. dedup_key is unique because the MTA retries a failed webhook six times — the receiver must be idempotent."
   },
   "options": {
     "draftAndPublish": false

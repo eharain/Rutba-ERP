@@ -486,7 +486,7 @@ COPY --from=seed-build /app/apps/admin/seed/public            ./apps/admin/seed/
 CMD ["node", "apps/admin/seed/server.js"]
 
 # ----------------------------------------------------------
-#  apps/content/campaigns (Email marketing UI over Rutba-MTA)
+#  apps/content/campaigns (Email marketing UI over MTA)
 # ----------------------------------------------------------
 FROM build-env AS campaigns-build
 RUN mkdir -p apps/content/campaigns/public && npm run build --workspace=@rutba/campaigns

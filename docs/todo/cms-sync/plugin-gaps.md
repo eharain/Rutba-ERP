@@ -2,12 +2,12 @@
 
 <!-- verify-docs: external server/** admin/** a810890 -->
 <!-- This document is a code review OF the strapi-content-sync-pro plugin repo
-     (D:Rutbastrapi-pluginsstrapi-content-sync-pro). Every path and commit
+     (D:\Rutba\packages\strapi-plugins\strapi-content-sync-pro). Every path and commit
      below is relative to that repo, not this one. -->
 
 > **Status (2026-07-29), updated:** GAP-1, GAP-2, GAP-8 and GAP-10 are now
 > **fixed** — commit `a810890` on branch `fix/sync-core` in
-> `D:\Rutba\strapi-plugins\strapi-content-sync-pro` (committed locally; **not
+> `D:\Rutba\packages\strapi-plugins\strapi-content-sync-pro` (committed locally; **not
 > yet pushed** — that repo's remote credentials aren't set up in this
 > environment, push it by hand). GAP-3 is **partially** fixed in the same
 > commit: relations targeting `plugin::*`/`admin::*` (the confirmed Rutba

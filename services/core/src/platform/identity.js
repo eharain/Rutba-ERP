@@ -6,7 +6,7 @@
  * `apps/admin/auth` stops being an identity provider: login moves to
  * auth.rutba.io, API routes accept internal assertions from the gateway, and
  * roles arrive as token claims rather than from a local table. That service is
- * being built in parallel (D:\Rutba\Rutba-Auth) and does not exist yet.
+ * being built in parallel (D:\Rutba\Auth) and does not exist yet.
  *
  * So this file is the seam, not the switch. It defines the identity every
  * caller reads — `{sub, org_id, roles, entitlements, req_id}` — and projects

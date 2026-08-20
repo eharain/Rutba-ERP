@@ -172,8 +172,8 @@ flowchart TD
     end
     subgraph Platform["Platform services (shared, own data)"]
         CP["rutba-console control plane\n(own DB: tenant registry, secrets, events)"]
-        MEDIA["Rutba-Media-FileServer"]
-        MTA["Rutba-MTA / mailcow"]
+        MEDIA["Media-FileServer"]
+        MTA["MTA / mailcow"]
         SYNC["sync engine\n(desktop · CMS promotion · instance↔instance · tenant cloning)"]
         MKT["marketplace worker"]
     end
@@ -200,8 +200,8 @@ flowchart TD
 | **production** | `mfg`, `inventory` | BOMs, work orders, lots, reorder rules | core cell |
 | **channels** | `marketplace` module + worker process | listings, channel accounts, sync state | core cell + worker |
 | **control plane** | `rutba-console` (planned, Workstream A) | tenant registry, domains, secrets, tenant events — **own DB, never in a tenant DB** | standalone app |
-| **media** | Rutba-Media-FileServer (external repo) | file bytes, variants | standalone service |
-| **mail transport** | Rutba-MTA / mailcow (external) | queues, mailboxes | standalone service |
+| **media** | Media-FileServer (external repo) | file bytes, variants | standalone service |
+| **mail transport** | MTA / mailcow (external) | queues, mailboxes | standalone service |
 | **sync** | `packages/sync` + core `content-sync` module (planned) | outbox cursors, manifests | library + bridge process |
 
 Cell groupings are **configuration, not commitments** — the enforced boundary is the module.
@@ -689,7 +689,7 @@ surface, measure whether anything calls it.**
 
 **Nothing calls them.** Zero hits for the paths across `apps/`, `packages/`, `services/`,
 `scripts/`, the `@rutba/api-provider` descriptors, and the five sibling repos
-(`Rutba-Media-FileServer`, `Rutba-Social-Poster`, `Rutba-Social-Relay`, `wapp-catalog`,
+(`Media-FileServer`, `Rutba-Social-Poster`, `Social-Relay`, `wapp-catalog`,
 `strapi-plugins`) — the single sibling match was an unrelated archive directory name. The
 overlapping surface the apps *do* use is `/api/media-library/*`, already zero-copy ported by the
 catalog module, plus `/upload` served by the uploads module.

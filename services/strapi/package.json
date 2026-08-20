@@ -19,7 +19,7 @@
     "strapi": "strapi",
     "upgrade": "npx @strapi/upgrade latest",
     "upgrade:dry": "npx @strapi/upgrade latest --dry",
-    "link:sync-pro": "npm link ../../../strapi-plugins/strapi-content-sync-pro",
+    "link:sync-pro": "npm link ../../../packages/strapi-plugins/strapi-content-sync-pro",
     "unlink:sync-pro": "npm unlink strapi-content-sync-pro && npm install",
     "link:api-pro": "npm link ../../packages/strapi-api-pro",
     "unlink:api-pro": "npm unlink api-pro && npm install",

@@ -136,7 +136,7 @@ module.exports = ({ env }) => ({
     // },
 
     // ── strapi-content-sync-pro ──────────────────────────────────────
-    // Linked from D:\Rutba\strapi-plugins\strapi-content-sync-pro via the
+    // Linked from D:\Rutba\packages\strapi-plugins\strapi-content-sync-pro via the
     // file: dependency in package.json. Auto-discovered by Strapi
     // (pkg.strapi.kind === 'plugin'), so this block is just an explicit
     // on/off toggle — flip enabled to false to load Strapi without it

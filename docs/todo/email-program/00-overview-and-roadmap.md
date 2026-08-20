@@ -12,7 +12,7 @@
 
 > **Status (2026-08): ✅ M0–M6 built** (M0 + the same-day continuation).
 > M6 (campaigns Phases 4–5 + identity layer): local open/click tracking —
-> the §5 decision taken as **option (b)** since Rutba-MTA scopes generic
+> the §5 decision taken as **option (b)** since MTA scopes generic
 > tracking out (`FUNCTION.md` "out of scope for now"); `{{_trk}}` merge-key
 > tokens keep per-recipient attribution inside ONE MTA batch; public
 > `/api/cmp/t/o/:token` pixel + `/api/cmp/t/c/:token/:link` redirect
@@ -174,5 +174,5 @@ only the roadmap and (from M6) the person identity layer.
 - No full-text index of unimported mail — search is server-side IMAP SEARCH.
   ([`10`](./10-index-decision.md) recommends an **envelope** index, which is not
   a full-text index and does not change this line's intent.)
-- Campaigns continue to send through **Rutba-MTA**, never through a user's
+- Campaigns continue to send through **MTA**, never through a user's
   personal SMTP (see 07 §identity separation).

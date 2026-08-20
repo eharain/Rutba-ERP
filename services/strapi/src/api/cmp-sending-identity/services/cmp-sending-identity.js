@@ -1,6 +1,6 @@
 'use strict';
 
-// Sending-identity lifecycle against Rutba-MTA.
+// Sending-identity lifecycle against MTA.
 //
 // The awkward part of this contract, and the reason it needs a service rather
 // than a controller: `POST /v1/senders` returns `trustToken` and `webhookSecret`

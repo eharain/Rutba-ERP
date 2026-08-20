@@ -42,7 +42,7 @@ resumes).
       system doing its intended job. Tenant-specific copy stays out per the
       generic-vs-tenant data rule; onboarding data (branding, branches, opening stock)
       arrives later via admin import.
-- [ ] **Step 5 — Media**: create the tenant namespace on Rutba-Media-FileServer
+- [ ] **Step 5 — Media**: create the tenant namespace on Media-FileServer
       (public/private prefixes) and register its credentials.
 - [ ] **Step 6 — Routing**: render the tenant's Caddy site block from the registry
       (hostname → tenant backend upstream; keep the `uri replace "//" "/"` normalization)

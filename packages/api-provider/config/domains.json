@@ -55,7 +55,7 @@
   },
   "campaigns": {
     "name": "Campaigns",
-    "description": "Email marketing: templates, audiences, campaigns, and delivery reporting over Rutba-MTA.",
+    "description": "Email marketing: templates, audiences, campaigns, and delivery reporting over MTA.",
     "roles": [
       "campaigns_admin",
       "campaigns_manager",

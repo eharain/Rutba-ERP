@@ -13,7 +13,7 @@ const fs = require("fs");
 const path = require("path");
 
 const PLUGIN_NAME = "strapi-to-strapi-data-sync";
-const SOURCE_DIR = path.resolve("D:\\Rutba\\strapi-plugins\\strapi-to-strapi-data-sync");
+const SOURCE_DIR = path.resolve("D:\\Rutba\\packages\\strapi-plugins\\strapi-to-strapi-data-sync");
 const DEST_DIR = path.resolve(__dirname, "..", "src", "plugins", PLUGIN_NAME);
 
 // Override SOURCE_DIR via env var if the working copy lives elsewhere.

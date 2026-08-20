@@ -1,6 +1,6 @@
 'use strict';
 
-// HTTP client for Rutba-MTA (D:/Rutba/Rutba-MTA) — the send engine behind
+// HTTP client for MTA (D:/Rutba/MTA) — the send engine behind
 // apps/content/campaigns. The MTA owns suppression, per-domain reputation pacing, the
 // priority queue, bounce capture, unsubscribe, and delivery webhooks; this file
 // is only the transport.
@@ -66,7 +66,7 @@ function isConfigured() {
 async function request(method, path, { token, body, budget = 'default' } = {}) {
   const base = baseUrl();
   if (!base) {
-    throw new MtaError('Rutba-MTA is not configured (set MTA_BASE_URL).', {
+    throw new MtaError('MTA is not configured (set MTA_BASE_URL).', {
       status: 503,
       code: 'mta_not_configured',
     });
@@ -91,7 +91,7 @@ async function request(method, path, { token, body, budget = 'default' } = {}) {
     // AbortError is the timeout; anything else is DNS / connection refused.
     const aborted = e?.name === 'AbortError';
     throw new MtaError(
-      aborted ? `Rutba-MTA did not respond within ${ms}ms.` : `Rutba-MTA unreachable: ${e.message}`,
+      aborted ? `MTA did not respond within ${ms}ms.` : `MTA unreachable: ${e.message}`,
       { status: 504, code: aborted ? 'mta_timeout' : 'mta_unreachable' },
     );
   } finally {
@@ -110,7 +110,7 @@ async function request(method, path, { token, body, budget = 'default' } = {}) {
 
   if (!res.ok) {
     // MTA error shape: { error: 'short_reason', message: 'detail' }
-    throw new MtaError(parsed?.message || parsed?.error || `Rutba-MTA returned ${res.status}.`, {
+    throw new MtaError(parsed?.message || parsed?.error || `MTA returned ${res.status}.`, {
       status: res.status,
       code: parsed?.error || 'mta_http_error',
       body: parsed,

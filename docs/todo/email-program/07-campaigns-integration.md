@@ -15,7 +15,7 @@ this umbrella sequences its outstanding phases and defines the shared seams.
 ## Identity separation — the rule that keeps both modules honest
 
 - **`cmp-sending-identity`** = a *bulk sending* identity registered with
-  Rutba-MTA (trust token, suppression, reputation pacing, unsubscribe).
+  MTA (trust token, suppression, reputation pacing, unsubscribe).
   Campaigns send through the MTA. Always.
 - **`mail-account`** = a *human mailbox* (IMAP+SMTP). The mail client sends
   through the account's own SMTP. Always.

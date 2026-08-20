@@ -2,7 +2,7 @@
 
 /**
  * Locating @rutba/contracts — the shared schemas and signed fixtures every
- * Rutba repo tests against (D:\Rutba\Rutba-Platform\contracts).
+ * Rutba repo tests against (D:\Rutba\Platform\contracts).
  *
  * Read from disk rather than imported, because the package is not published
  * yet and a `file:` dependency in this repo is the pattern that once made
@@ -10,7 +10,7 @@
  * publishes, this module becomes a require() and no smoke test changes.
  *
  * The walk matters. A Claude worktree sits three levels inside the repo, so a
- * fixed `../Rutba-Platform` finds the contracts from the main checkout and
+ * fixed `../Platform` finds the contracts from the main checkout and
  * silently skips from every worktree — which is the worst of both, since a
  * skipped contract test reads exactly like a passing one.
  */
@@ -27,11 +27,11 @@ function findContracts(from = REPO_ROOT) {
   for (let up = 0; up < 8; up += 1) {
     const parent = path.dirname(dir);
     if (parent === dir) break;
-    const candidate = path.join(parent, 'Rutba-Platform', 'contracts');
+    const candidate = path.join(parent, 'Platform', 'contracts');
     if (fs.existsSync(path.join(candidate, 'fixtures', 'manifest.json'))) return candidate;
     dir = parent;
   }
-  return path.join(path.dirname(from), 'Rutba-Platform', 'contracts');
+  return path.join(path.dirname(from), 'Platform', 'contracts');
 }
 
 const readJson = (p) => JSON.parse(fs.readFileSync(p, 'utf8'));
@@ -46,7 +46,7 @@ function openContracts() {
   if (!fs.existsSync(manifestPath)) {
     console.log(`SKIP  @rutba/contracts fixtures not found at ${dir}`);
     console.log('      Nothing was verified. Point RUTBA_CONTRACTS_DIR at the contracts');
-    console.log('      package (D:\\Rutba\\Rutba-Platform\\contracts) to run this.');
+    console.log('      package (D:\\Rutba\\Platform\\contracts) to run this.');
     process.exit(0);
   }
   return {

@@ -43,7 +43,7 @@ override level is tenant-wide and final.
 `subject_reference_format` (`[{ticket_no}]`) · `strip_quoted_history` · `strip_signatures` ·
 `auto_reply_enabled` · `bounce_handling`.
 
-**Dependency:** Rutba-MTA inbound (RSMTPREST ingress) is documented as partial. Confirm before
+**Dependency:** MTA inbound (RSMTPREST ingress) is documented as partial. Confirm before
 enabling `inbound_enabled` in production.
 
 ### WhatsApp

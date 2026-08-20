@@ -31,7 +31,7 @@ transport until it is ported.
 | Channel | Status | Use |
 |---|---|---|
 | **In-app** | Build | Agent-facing default; badge + notification centre |
-| **Email** | Available via Rutba-MTA | Requester-facing default; threaded replies |
+| **Email** | Available via MTA | Requester-facing default; threaded replies |
 | **WhatsApp** | Roadmap H1 | Requester-facing in PK — where customers actually are |
 | **SMS** | Adapter | Urgent only; expensive, so gated by priority |
 | **Push** | Later | Mobile app ([39](39-mobile-requirements.md)) |
@@ -117,7 +117,7 @@ bounces are detected and never create tickets or reopen loops. Inbound is idempo
 `external_id` (`Message-ID`). Signature and quoted-history stripping is best-effort and never
 destroys content — the raw body is retained.
 
-**Dependency:** Rutba-MTA inbound (RSMTPREST ingress) is listed as partial in the RightApp gap
+**Dependency:** MTA inbound (RSMTPREST ingress) is listed as partial in the RightApp gap
 analysis. Confirm before committing email as a launch channel.
 
 ## 15.8 Delivery, retry, logging

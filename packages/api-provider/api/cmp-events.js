@@ -1,6 +1,6 @@
 /**
  * CmpEventsEndpoints
- * Delivery events mirrored from Rutba-MTA webhooks. Read-only from the client —
+ * Delivery events mirrored from MTA webhooks. Read-only from the client —
  * written only by the webhook receiver, which is idempotent on `dedup_key`
  * because the MTA retries a failed webhook six times.
  */

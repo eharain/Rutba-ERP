@@ -239,7 +239,7 @@ Screens:
 - **De-duplicate HR/ESS**: extract the shared ticket UI into `pos-shared` and re-point both
   `tickets.js` pages at the new API. They stay as *filing* surfaces; agents work in
   `apps/sales/helpdesk`.
-- **Email intake** via Rutba-MTA inbound (RSMTPREST ingress is listed as partial in the
+- **Email intake** via MTA inbound (RSMTPREST ingress is listed as partial in the
   [RightApp gap analysis](../rightapp-gap-analysis/README.md) — confirm before committing).
   Reply-to-thread by parsing the ticket reference.
 - **WhatsApp intake** rides the H1 WhatsApp commerce work on the roadmap.

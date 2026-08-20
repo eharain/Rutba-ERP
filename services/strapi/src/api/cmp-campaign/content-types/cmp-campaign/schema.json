@@ -5,7 +5,7 @@
     "singularName": "cmp-campaign",
     "pluralName": "cmp-campaigns",
     "displayName": "Campaign",
-    "description": "Template + audience + sending identity + schedule. Each execution produces a cmp-run; pacing, suppression and reputation are Rutba-MTA's job, not ours."
+    "description": "Template + audience + sending identity + schedule. Each execution produces a cmp-run; pacing, suppression and reputation are MTA's job, not ours."
   },
   "options": {
     "draftAndPublish": false

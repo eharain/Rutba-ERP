@@ -56,7 +56,7 @@ ported controllers/services are mostly copy-paste:
       published-only at migration time and delete D&P handling entirely. Decide when the
       CMS tranche comes up; the shim ignores D&P until then.
 - [ ] Media: no upload logic in core — uploads already go through the custom provider to
-      Rutba-Media-FileServer. Core needs only the `files` table read side (populate) and
+      Media-FileServer. Core needs only the `files` table read side (populate) and
       the provider's write path ported for the endpoints that attach media.
 - [ ] **Document middleware hook**: reproduce the document-service middleware seam
       (kind-typing etc. already prefers it over lifecycles). The 28 `lifecycles.js`

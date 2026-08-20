@@ -84,7 +84,7 @@ The five entities converged on the same shape without anyone designing one:
 | `social-account` | `platform` (7) + `connection_type` (api\|browser) | `last_connected_at` |
 | `social-relay-provider` | `provider` (6: ayrshare, postiz, zernio, post_bridge, bundle_social, custom) | `last_validated_at`, `last_error` |
 | `marketplace-account` | `platform` (4: daraz, amazon, shopify, rutba) | 5 × `last_*_synced_at`, `last_connected_at` |
-| `cmp-sending-identity` | — (Rutba-MTA only) | `last_verified_at`, `last_error` |
+| `cmp-sending-identity` | — (MTA only) | `last_verified_at`, `last_error` |
 | `mail-server` | `kind` (mailcow) | `last_checked_at`, `last_error` |
 
 The convergence is genuine and the differences are real: `marketplace-account`

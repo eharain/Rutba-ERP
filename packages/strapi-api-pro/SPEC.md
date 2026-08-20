@@ -419,7 +419,7 @@ Split layout: left = Domains panel, right = Roles panel.
 
 ### 10.7 Users page
 
-This page is a **faithful port of the AGP Users page** from `D:\Rutba\strapi-plugins\strapi-api-guard-pro\admin\src\pages\Users`.
+This page is a **faithful port of the AGP Users page** from `D:\Rutba\packages\strapi-plugins\strapi-api-guard-pro\admin\src\pages\Users`.
 
 Layout:
 - Header: "API Users".

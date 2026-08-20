@@ -37,11 +37,11 @@ Companion to [README.md](./README.md). Quick-scan mapping of what equates to wha
 | RBOOKS | Accounting | apps/finance/accounts (:4007) + acc-* | ✅ Done | Superseded (RBOOKS was empty) |
 | RTMPLT | Email/content templates | — (only notification-template) | ❌ Gap | Fold into `apps/content/campaigns` — P1 |
 | RMAILX | Email-marketing UI | — | ❌ Gap | **`apps/content/campaigns`** (:4019) — P1, since built |
-| RIGHTMTA | MTA send engine | **Rutba-MTA** (standalone) | ✅ Done | Already ported |
-| RSMTPREST | SMTP/REST ingress | Rutba-MTA (optional ingress) | 🟡 Partial | Add SMTP ingress if needed |
+| RIGHTMTA | MTA send engine | **MTA** (standalone) | ✅ Done | Already ported |
+| RSMTPREST | SMTP/REST ingress | MTA (optional ingress) | 🟡 Partial | Add SMTP ingress if needed |
 | RANALYTICS | Web/email analytics | — | ❌ Gap | **`rutba-analytics`** service (:8030) — P3 |
 | RSTORAGE | Private Drive + PIN sharing | — _(≠ media server; see note)_ | ❌ Gap | Private Drive/sharing not built |
-| _(different lineage)_ | Public media / CDN serving | **Rutba-Media-FileServer** (standalone v2.0) + Strapi provider | ✅ Done | Born to fix Strapi variant bloat, not an RSTORAGE port |
+| _(different lineage)_ | Public media / CDN serving | **Media-FileServer** (standalone v2.0) + Strapi provider | ✅ Done | Born to fix Strapi variant bloat, not an RSTORAGE port |
 | RSHARED / RSRVRX | (empty stubs) | @rutba/shared, api-provider | 🚫 Skip | Were empty in original |
 | — | POS terminal | apps/sales/pos (:4002) | ⭐ Ahead | RightApp had no POS |
 | — | HR / ESS / Payroll | apps/people/hr/ess/payroll (:4006/4015/4008) | ⭐ Ahead | — |
@@ -61,13 +61,13 @@ Companion to [README.md](./README.md). Quick-scan mapping of what equates to wha
 | | TOTP MFA | RIDNTY | — | ❌ | P6 (if SaaS) |
 | **Tenancy** | Multi-tenant by org/subdomain | RAPIS pools + RORGAD | single-tenant deploy | ❌ | P6 (if SaaS) |
 | | Per-user app entitlements | RORGAD | api-pro claims/roles | ✅ | — |
-| **Mail** | Send engine / DKIM / relay | RIGHTMTA | Rutba-MTA | ✅ | — |
-| | Suppression / reputation / unsubscribe | RIGHTMTA | Rutba-MTA | ✅ | — |
-| | SMTP/REST ingress | RSMTPREST | Rutba-MTA (partial) | 🟡 | P1 opt. |
+| **Mail** | Send engine / DKIM / relay | RIGHTMTA | MTA | ✅ | — |
+| | Suppression / reputation / unsubscribe | RIGHTMTA | MTA | ✅ | — |
+| | SMTP/REST ingress | RSMTPREST | MTA (partial) | 🟡 | P1 opt. |
 | | Template studio (Mustache + tracking) | RTMPLT | — | ❌ | **P1 apps/content/campaigns** |
 | | Contacts / audiences | RMAILX | crm-contact (raw) | 🟡 | **P1** (via CRM segments) |
 | | Campaigns (schedule/UTM/reporting) | RMAILX | — | ❌ | **P1 apps/content/campaigns** |
-| | Open/click tracking | RMAILX + RIGHTMTA | Rutba-MTA (click) | 🟡 | P1 + P3 |
+| | Open/click tracking | RMAILX + RIGHTMTA | MTA (click) | 🟡 | P1 + P3 |
 | **Analytics** | First-party web visitor tracker | RANALYTICS | — | ❌ | **P3 rutba-analytics** |
 | | Email-open pixel → activity | RANALYTICS | — | ❌ | P3 |
 | **Products** | Catalog / brand / category | RPRODX | product/brand/category backend | ✅ | — |
@@ -80,8 +80,8 @@ Companion to [README.md](./README.md). Quick-scan mapping of what equates to wha
 | | Barcode/QR label printing | RINVNT | apps/inventory/stock label print | ✅ | — |
 | | Warehouse / bin / batch / FEFO | — | apps/inventory/control | ⭐ | — |
 | **Accounting** | Chart of accounts / GL / tax | RBOOKS (empty) | acc-* + apps/finance/accounts | ✅ | — |
-| **Storage** | Public media / CDN serving (resize/cache/replicate) | _(media server's own origin, not RSTORAGE)_ | **Rutba-Media-FileServer** (standalone) | ✅ | — |
-| | File visibility primitive (public/private) | — | Rutba-Media-FileServer (`.vis` sidecar + node roles) | ✅ | substrate for sharing |
+| **Storage** | Public media / CDN serving (resize/cache/replicate) | _(media server's own origin, not RSTORAGE)_ | **Media-FileServer** (standalone) | ✅ | — |
+| | File visibility primitive (public/private) | — | Media-FileServer (`.vis` sidecar + node roles) | ✅ | substrate for sharing |
 | | Private user "Drive" (org/business/person layout) | RSTORAGE | — | ❌ | Extend media server _or_ new svc — open decision |
 | | Share-links (PIN/signed access) | RSTORAGE | — | ❌ | Build on visibility/signed-URL primitives |
 | **CRM** | (see Table 3) | RCRMXX | apps/sales/crm + crm-* | 🟡 | P2 |
@@ -99,7 +99,7 @@ Companion to [README.md](./README.md). Quick-scan mapping of what equates to wha
 | 5.4 | Bulk CSV/XLSX import (mapping, country resolve, batched) | ✅ | reuse bulk-stock pattern | 🟡 | Bring |
 | 5.5 | Company↔Person associations w/ relationship type (Owner/CEO/Employee) | ✅ | person + address (unified) | 🟡 | **Add** association layer |
 | 5.6 | Click-to-call softphone + call recording | ✅ (Twilio) | — | ❌ | Bring (telephony — scope TBD) |
-| 5.7 | Email-on-activity w/ open/click tracking | ✅ | — | ❌ | **Bring** — hand-off to Rutba-MTA |
+| 5.7 | Email-on-activity w/ open/click tracking | ✅ | — | ❌ | **Bring** — hand-off to MTA |
 | 5.8 | Web-visitor "Site" activities in timeline | ✅ | — | ❌ | Bring (needs P3 analytics) |
 | 5.9 | Dashboard from saved segments (charts) | ✅ | — | ❌ | Bring (after 5.3) |
 | 5.10 | PIN-protected per-contact file sharing | ✅ | — | 🟡 | Optional (needs Drive) |

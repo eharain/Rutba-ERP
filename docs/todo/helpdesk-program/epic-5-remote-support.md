@@ -208,6 +208,6 @@ carries no security exposure.
    needs to be verified, not assumed, before this is offered to tenant #2.
 4. **Does `helpdesk-device` supersede part of `hr-asset`?** Recommendation above is no — link,
    don't merge — but confirm with whoever owns the asset module.
-5. **Recording storage** — Rutba-Media-FileServer with signed URLs and its visibility
+5. **Recording storage** — Media-FileServer with signed URLs and its visibility
    primitives is the obvious home, but session recordings are larger and more sensitive than
    product images. Confirm capacity and access model.

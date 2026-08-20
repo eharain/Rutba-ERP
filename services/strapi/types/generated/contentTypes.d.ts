@@ -1448,7 +1448,7 @@ export interface ApiCmpAudienceCmpAudience extends Struct.CollectionTypeSchema {
 export interface ApiCmpCampaignCmpCampaign extends Struct.CollectionTypeSchema {
   collectionName: 'cmp_campaigns';
   info: {
-    description: "Template + audience + sending identity + schedule. Each execution produces a cmp-run; pacing, suppression and reputation are Rutba-MTA's job, not ours.";
+    description: "Template + audience + sending identity + schedule. Each execution produces a cmp-run; pacing, suppression and reputation are MTA's job, not ours.";
     displayName: 'Campaign';
     pluralName: 'cmp-campaigns';
     singularName: 'cmp-campaign';
@@ -1532,7 +1532,7 @@ export interface ApiCmpCampaignCmpCampaign extends Struct.CollectionTypeSchema {
 export interface ApiCmpEventCmpEvent extends Struct.CollectionTypeSchema {
   collectionName: 'cmp_events';
   info: {
-    description: 'Delivery events mirrored from Rutba-MTA webhooks. dedup_key is unique because the MTA retries a failed webhook six times \u2014 the receiver must be idempotent.';
+    description: 'Delivery events mirrored from MTA webhooks. dedup_key is unique because the MTA retries a failed webhook six times \u2014 the receiver must be idempotent.';
     displayName: 'Campaign Event';
     pluralName: 'cmp-events';
     singularName: 'cmp-event';
@@ -1645,7 +1645,7 @@ export interface ApiCmpRecipientCmpRecipient
 export interface ApiCmpRunCmpRun extends Struct.CollectionTypeSchema {
   collectionName: 'cmp_runs';
   info: {
-    description: "One execution of a campaign. Holds the Rutba-MTA batch_uuid and mirrors that batch's counters, so a run stays readable even if the MTA is unreachable. Engine-written \u2014 no create/update descriptors.";
+    description: "One execution of a campaign. Holds the MTA batch_uuid and mirrors that batch's counters, so a run stays readable even if the MTA is unreachable. Engine-written \u2014 no create/update descriptors.";
     displayName: 'Campaign Run';
     pluralName: 'cmp-runs';
     singularName: 'cmp-run';
@@ -1704,7 +1704,7 @@ export interface ApiCmpSendingIdentityCmpSendingIdentity
   extends Struct.CollectionTypeSchema {
   collectionName: 'cmp_sending_identities';
   info: {
-    description: "A registered Rutba-MTA sender: the from-address campaigns send as, plus the trust token and webhook secret the MTA issues once at registration. The RMAILX 'mail agent' equivalent.";
+    description: "A registered MTA sender: the from-address campaigns send as, plus the trust token and webhook secret the MTA issues once at registration. The RMAILX 'mail agent' equivalent.";
     displayName: 'Campaign Sending Identity';
     pluralName: 'cmp-sending-identities';
     singularName: 'cmp-sending-identity';
@@ -1752,7 +1752,7 @@ export interface ApiCmpSendingIdentityCmpSendingIdentity
 export interface ApiCmpTemplateCmpTemplate extends Struct.CollectionTypeSchema {
   collectionName: 'cmp_templates';
   info: {
-    description: "Reusable campaign message template. Rutba-MTA does not keep a template library (FUNCTION.md: 'reusable saved template library -> caller app'), so this is the store; templates are rendered here and passed inline to /v1/send/batch.";
+    description: "Reusable campaign message template. MTA does not keep a template library (FUNCTION.md: 'reusable saved template library -> caller app'), so this is the store; templates are rendered here and passed inline to /v1/send/batch.";
     displayName: 'Campaign Template';
     pluralName: 'cmp-templates';
     singularName: 'cmp-template';

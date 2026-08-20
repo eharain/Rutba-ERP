@@ -5,7 +5,7 @@
     "singularName": "cmp-run",
     "pluralName": "cmp-runs",
     "displayName": "Campaign Run",
-    "description": "One execution of a campaign. Holds the Rutba-MTA batch_uuid and mirrors that batch's counters, so a run stays readable even if the MTA is unreachable. Engine-written — no create/update descriptors."
+    "description": "One execution of a campaign. Holds the MTA batch_uuid and mirrors that batch's counters, so a run stays readable even if the MTA is unreachable. Engine-written — no create/update descriptors."
   },
   "options": {
     "draftAndPublish": false
@@ -20,7 +20,7 @@
     },
     "batch_uuid": {
       "type": "string",
-      "description": "Rutba-MTA batch id. One per submitted chunk group; the report poller reads GET /v1/batches/:uuid/report."
+      "description": "MTA batch id. One per submitted chunk group; the report poller reads GET /v1/batches/:uuid/report."
     },
     "state": {
       "type": "enumeration",

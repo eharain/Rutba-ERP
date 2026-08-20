@@ -2,10 +2,10 @@
 
 <!-- verify-docs: external plan/** specs/** -->
 <!-- verify-docs: external Rutba-Portal/specs/DEV-ENVIRONMENT.md -->
-<!-- verify-docs: planned Rutba-Infra/dev/PORTS.md -->
+<!-- verify-docs: planned Infra/dev/PORTS.md -->
 <!-- Two sibling-repo citations arrived with the dev port band. They are marked
      with different words on purpose: DEV-ENVIRONMENT.md is present in
-     Rutba-Portal today (checked 2026-08-20), while Rutba-Infra has no dev/
+     Rutba-Portal today (checked 2026-08-20), while Infra has no dev/
      directory at all and no ports chart under any name. "Look in the other
      repo" and "nobody has written it yet" send the next reader somewhere
      different, which is the whole reason the convention has six words. -->
@@ -46,7 +46,7 @@ apps.
 The lazy-boot design these serve is the model the ecosystem orchestrator delegates to rather than
 replaces.
 
-Chart: `Rutba-Infra/dev/PORTS.md`. Decision: `Rutba-Portal/specs/DEV-ENVIRONMENT.md`.
+Chart: `Infra/dev/PORTS.md`. Decision: `Rutba-Portal/specs/DEV-ENVIRONMENT.md`.
 
 ## Division of ownership
 
@@ -89,7 +89,7 @@ Each workspace app gates its navigation, routes, and APIs on its entitlement key
 | `apps/sales/helpdesk` | `erp.helpdesk` (see below) | | |
 
 **Special cases — align, don't duplicate:**
-- **`apps/content/social` + `services/strapi` social types → retire the *publishing* backend; extract the *creative* capability (portal task E6).** The Social Relay is the sole social engine; `erp.social` becomes a UI over the published `@rutba/relay-sdk` against the org's Relay tenant. Migrate social-accounts → Relay connections (re-auth), scheduled posts → Relay posts. **The video/image editors and managed creative libraries (video templates, audio tracks, `packages/video`) are promoted — not discarded — to their own repo `D:\Rutba\Rutba-Studio`** (`social.studio` add-on to the Relay), which reads this repo's Core catalog via API for data-driven creatives and stores masters on the Media FileServer.
+- **`apps/content/social` + `services/strapi` social types → retire the *publishing* backend; extract the *creative* capability (portal task E6).** The Social Relay is the sole social engine; `erp.social` becomes a UI over the published `@rutba/relay-sdk` against the org's Relay tenant. Migrate social-accounts → Relay connections (re-auth), scheduled posts → Relay posts. **The video/image editors and managed creative libraries (video templates, audio tracks, `packages/video`) are promoted — not discarded — to their own repo `D:\Rutba\Studio`** (`social.studio` add-on to the Relay), which reads this repo's Core catalog via API for data-driven creatives and stores masters on the Media FileServer.
 - **`apps/content/mail`** — mailboxes are the Wave-2 `comm.mail` product (Mailcow + first-party client, portal direction Aug 2026). This app must not grow into a mail server or an independent mail client; near-term it may only *send* via Rutba MTA. Flag any further work here against the portal Wave-2 plan first.
 - **`apps/sales/helpdesk` — RESOLVED (Aug 2026): a full ERP module (`erp.helpdesk`) for an org's own customer-service needs — and Rutba's own support desk runs as an org-zero instance of it.** The portal keeps only a thin facade (Rutba-Portal plan 07): portal customers' tickets arrive via a service account, with each portal org mapped to a customer *party* in the org-zero instance. This raises the module's bar — it is Rutba's production desk, so it must be **API-first**: service-account ticket intake (create/thread/attachments against a party), SLA timers, agent assignment, knowledge base with a published/draft distinction and public-read API, and CSAT. Domain logic (SLA, escalation, assignment) lives here, never in the portal facade.
 - **`apps/sales/marketplace`, `apps/admin/console`, `apps/admin/seed`** — instance-internal; console must not duplicate portal Super Console functions (org admin, licensing, billing views live in the portal).

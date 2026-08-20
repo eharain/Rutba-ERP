@@ -56,7 +56,7 @@ These are _screening criteria_ Pakistani buyers select on before they look at fe
    - Real-time invoice transmission to FBR via **PRAL API** (DI API v1.12), JSON schema, **HS product-code** mapping.
    - **FBR Invoice Reference Number (IRN)** + **verifiable QR** printed on every invoice.
    - **Sandbox certification** flow; **6-year archiving**; 18% sales-tax handling; offline buffering.
-   - _Where:_ a `fbr-invoicing` service (standalone, Rutba-MTA pattern) or a services/strapi module wired into sale/sale-order posting. **Highest-priority new build for the PK market.**
+   - _Where:_ a `fbr-invoicing` service (standalone, MTA pattern) or a services/strapi module wired into sale/sale-order posting. **Highest-priority new build for the PK market.**
 2. **Local payments + wallet acceptance at POS** — Pakistan is 88–92% digital retail transactions, but _merchant acceptance is the gap._ Integrate **Raast** (instant rail), **JazzCash** (40M users), **Easypaisa** (59M users), QR acceptance at checkout. Rutba has COD; add prepaid rails to cut returns.
 3. **Offline-first POS hardening** — every credible PK vendor advertises offline billing that syncs on reconnect (intermittent connectivity is the norm). Verify apps/sales/pos degrades gracefully and reconciles.
 4. **WhatsApp commerce** — order-taking, catalog, order/shipping notifications, post-sale funnels. It's a core channel in South Asia, not a side feature. (Complements `apps/content/social` + the planned campaigns app.)
@@ -69,7 +69,7 @@ These are _screening criteria_ Pakistani buyers select on before they look at fe
    - A stated **agentic roadmap** (auto-reorder, auto-reconcile, month-end assist) even if phased — buyers now ask for it.
 6. **Analytics / BI + real-time dashboards — currently missing.** No analytics/reporting app exists (the RANALYTICS gap). Build a `rutba-analytics` layer: cross-module dashboards, demand/replenishment forecasting, financial exception detection. This also unlocks the CRM segmentation/dashboards from the RightApp CRM plan.
 7. **No-code / low-code customization surfaced to users.** `api-pro`'s descriptor + policy engine is a Frappe-like foundation already in the repo — expose it as user-facing configuration (custom fields, custom entities, workflow rules) so Rutba matches Odoo Studio / Frappe DocTypes / Zoho Agent Studio and cuts implementation cost.
-8. **Email marketing / campaigns** — already planned (`apps/content/campaigns` over Rutba-MTA); it's table stakes for the "owned marketing" story alongside WhatsApp.
+8. **Email marketing / campaigns** — already planned (`apps/content/campaigns` over MTA); it's table stakes for the "owned marketing" story alongside WhatsApp.
 
 ## 5. Tier 2 — Productization / SaaS platform (to sell to others)
 

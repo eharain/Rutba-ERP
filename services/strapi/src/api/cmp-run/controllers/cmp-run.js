@@ -3,7 +3,7 @@
 // Delivery-state surface: the public MTA webhook + the manual report refresh.
 //
 // processWebhook is `auth: false` BY DESIGN and takes no requireAppRole: the
-// caller is Rutba-MTA, not a user, and the HMAC over the exact raw bytes
+// caller is MTA, not a user, and the HMAC over the exact raw bytes
 // (X-Mailer-Signature, verified in the service with timingSafeEqual against
 // each stored webhook_secret) IS the authentication. Idempotent — the MTA
 // retries 6×; duplicate dedup_keys are acknowledged, not re-applied.

@@ -32,7 +32,7 @@ Placement is the user's call; this section states the case, it does not edit the
 |---|---|---|---|
 | N1 | **Remote support** — device inventory → consented remote control | Closes IT support end to end | [epic-5](../epic-5-remote-support.md) |
 | N2 | **WhatsApp channel** | Where PK customers actually are | H1 WhatsApp work |
-| N3 | **Inbound email** | The default B2B channel | Rutba-MTA ingress |
+| N3 | **Inbound email** | The default B2B channel | MTA ingress |
 | N4 | **CSAT maturity** — NPS, follow-up surveys, trend by agent | Quality signal | §16 |
 | N5 | **Customer-facing SLA display** for contract customers | Paid-support differentiator | §12 |
 | N6 | **Ticket templates library** per vertical | Faster onboarding | §32 |
