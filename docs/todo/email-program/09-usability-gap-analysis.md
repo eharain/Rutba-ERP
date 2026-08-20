@@ -108,7 +108,7 @@ access, CRM linkage on every message.
 
 ## 4. User-management email config vs Google Workspace / M365 admin
 
-| Capability | Workspace Admin | rutba-users | Verdict |
+| Capability | Workspace Admin | Rutba Admin | Verdict |
 |---|---|---|---|
 | Create user + mailbox in one flow | Yes | Yes (invite + assign-address auto-provision) | Parity — genuinely competitive |
 | Server registry / multi-domain | N/A (they are the server) | mail-server registry, domain-driven resolution | Ours is the right shape for self-hosted |
@@ -130,9 +130,9 @@ access, CRM linkage on every message.
   services/strapi (:4010) while the fleet default is services/core (:4020). Until a
   core `mail` module tranche lands, deploys must pin apps/content/mail's API at
   services/strapi or users get a dead inbox. **P0 decision, not code.**
-- **Human browser pass** of apps/content/mail / rutba-users / apps/content/campaigns is
-  still outstanding; do it before any P0 build so real friction reorders
-  this list.
+- **Human browser pass** of apps/content/mail / apps/admin/console /
+  apps/content/campaigns is still outstanding; do it before any P0 build so
+  real friction reorders this list.
 
 ## Priority summary
 

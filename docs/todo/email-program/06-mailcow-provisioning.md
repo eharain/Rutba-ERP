@@ -5,14 +5,15 @@ BYO covers any provider; this phase makes the company's own mail server
 ERP creates mailboxes and aliases instead of an admin clicking the mailcow UI.
 
 > **Registry marriage (2026-08-10).** Server config now lives in the
-> **`api::mail-server` registry** managed from rutba-users (:4022 →
+> **`api::mail-server` registry** managed from Rutba Admin (:4022 →
 > Email Servers): base_url, encrypted admin key, hosted `mail_domains`,
 > imap/smtp host overrides, `validateServer` probe. Every provisioning entry
 > point resolves a server the same way — explicit `serverId` → the registry
 > entry hosting the email domain (`resolveForEmailDomain`) → the `MAILCOW_*`
 > env server as last fallback — and all of them delegate to ONE path,
 > `mail-account.provisionAccount()`:
-> - **rutba-users**: user page / Mailboxes → `POST /user-admin/users/:id/mailbox`
+> - **Rutba Admin** (`apps/admin/console`): user page / Mailboxes →
+>   `POST /user-admin/users/:id/mailbox`
 >   (assign an address to a user; target user becomes owner).
 > - **apps/content/mail** Settings → Provision (mail_admin): `POST
 >   /mail-accounts/provision`, now registry-aware (server + domain selects,
@@ -21,7 +22,7 @@ ERP creates mailboxes and aliases instead of an admin clicking the mailcow UI.
 > /mail-accounts/server-defaults?domain=` returns connection facts (hosts,
 > 993/465, never the key) and Connect Mailbox fills its IMAP/SMTP fields when
 > the typed address's domain is registered. Ownership and shared-access edits
-> for the whole estate live in rutba-users (`access-map` + `setAccess`;
+> for the whole estate live in Rutba Admin (`access-map` + `setAccess`;
 > access_roles keys are validated against active app-roles on EVERY write
 > path, including BYO create/update). Core parity: these email-config routes
 > are registered in `services/core/src/modules/user-mgmt.js`.
