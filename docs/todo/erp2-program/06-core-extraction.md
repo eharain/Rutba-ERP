@@ -297,6 +297,64 @@ trusted. Verified by reintroducing a bypass and watching it fail.
 that the unique index tolerates many NULL keys (manual entries have no source
 document, and "no identity" must not collapse two of them into one).
 
+### `interactions` — the fourth package, and E1's last
+
+[`packages/shared/core/interactions`](../../../packages/shared/core/interactions/index.js)
+plus [`InteractionService`](../../../services/core/src/domain/interactions/interaction.service.js).
+
+An interaction is **something that happened, to a record, that a human should
+see on a timeline**. Eleven append-only tables were nominated because they share
+a shape — timestamp, actor, payload. Measured against live data, four hold rows
+at all, and **the biggest of them is not an interaction**:
+
+```
+marketplace_sync_logs   1076     ← excluded
+sale_audit_logs           14
+work_item_activities      11
+notification_logs          8
+(seven others)             0
+```
+
+So nine are sources and **two are deliberately not**, each with its reason
+recorded in `NOT_INTERACTIONS`. `marketplace-sync-log` is a robot's job
+statistics against a channel account; admitting it buries a customer's two phone
+calls under a thousand sync runs, and a timeline nobody can read is a timeline
+nobody uses. `person-dedup-audit` is a review queue — work waiting to be
+decided, not events that occurred. **Being a log is a shape; being an
+interaction is a purpose**, and that distinction is most of this package's
+value.
+
+Two of the eleven had already solved the hard part. `work-item-activity` and
+`work-item-comment` carry `entity_uid` + `target_document_id` — "this happened
+to that record, whatever kind it is" — while every other source hard-codes its
+subject as a relation, which is why nothing can render one timeline across them
+today. The contract projects them all onto the generic form, and where a subject
+is a party its party id comes back too, from `core/parties`' own `partyIdFor`
+rather than a second copy of the convention. "Everything that ever happened with
+this customer" becomes a join instead of a special case.
+
+The service exists for the fan-out: one subject's history is spread across up to
+nine tables, none aware of the others. A CRM screen shows `crm-activity`
+because that is the table CRM owns; the same customer's emails, campaign events
+and order chats sit in four more that nobody joined. Which tables answer for a
+subject is derived from the contract's own declarations, so a source that starts
+pointing at people becomes reachable without anyone updating a second map.
+
+Three decisions the tests pin:
+
+- **A failing source degrades the timeline, it does not empty it.** A module
+  this instance never installed has no table; that query throws, and the other
+  eight still have to fill the screen.
+- **Undated rows sink.** `sent_at` is null on a notification that never sent.
+  Putting an event of unknown time at the top of a customer's history asserts
+  something false about when it happened.
+- **A non-party subject gets `null`, never a fabricated party id** — which would
+  join an interaction to a customer it has nothing to do with.
+
+32 contract assertions + 27 service assertions. One contract test walks every
+mapped field against the real schemas, so a renamed column fails a test instead
+of silently producing null bodies and null timestamps across a whole source.
+
 ---
 
 ## 4. What is next, in the order the measurement implies
@@ -307,11 +365,10 @@ document, and "no identity" must not collapse two of them into one).
 2. ~~**`posting`**~~ — **done, and every module emits into it**, see §3. All
    23 posting sites and 8 reversal sites go through the gateway; a smoke test
    fails the build if a new one calls the engine directly.
-3. **`interactions`** — twelve types today (`crm-activity`, `cmp-event`,
-   `hr-lifecycle-event`, `mail-message`, `order-message`, `work-item-activity`,
-   `work-item-comment`, `notification-log`, `sale-audit-log`,
-   `marketplace-sync-log`, `person-dedup-audit`), of which only three hold any
-   rows. Mostly a naming and shape exercise, not a migration.
+3. ~~**`interactions`**~~ — **done**, see §3. It was *not* only a naming
+   exercise: eleven candidates, nine sources, two excluded on purpose, and four
+   (not three) hold rows — the largest of which is one of the two that had to be
+   kept out.
 4. **Retire the two dead party types.** `mail-contact` is referenced by nothing.
    `employee` has no rows but `sale.employee` still points at it — that relation
    has to move to `hr-employee` first, which is a schema change and belongs with

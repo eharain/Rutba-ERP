@@ -20,6 +20,7 @@
     "smoke:identity": "node scripts/smoke-identity.js",
     "smoke:parties": "node scripts/smoke-parties.js",
     "smoke:catalog": "node scripts/smoke-catalog.js",
+    "smoke:interactions": "node scripts/smoke-interactions.js",
     "smoke:posting": "node scripts/smoke-posting.js",
     "smoke:post-or-capture": "node scripts/smoke-post-or-capture.js",
     "token": "node scripts/api-token.js",

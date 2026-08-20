@@ -159,6 +159,25 @@ export function toParty(sourceType, record) {
     });
 }
 
+/**
+ * The party id a source row would carry, without building the whole party.
+ *
+ * Exported because `core/interactions` needs to say "this call was against
+ * person:44" so a timeline can join to a party, and the alternative was a
+ * second copy of the id convention living over there. One definition of what a
+ * party id looks like is the entire point of this package; two would defeat it
+ * on the first day.
+ *
+ * Returns null for a source that is not a party — an interaction against a sale
+ * order has no party id, and inventing one would make it joinable to a customer
+ * it has nothing to do with.
+ */
+export function partyIdFor(sourceType, id) {
+    if (!PARTY_SOURCES[sourceType]) return null;
+    if (id === null || id === undefined || id === '') return null;
+    return `${shortSource(sourceType)}:${id}`;
+}
+
 function shortSource(sourceType) {
     return String(sourceType).replace(/^api::/, '').split('.')[0];
 }
