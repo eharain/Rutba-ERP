@@ -4,8 +4,13 @@
 <!-- verify-docs: external RMAILX/** -->
 <!-- RMAILX paths are in the legacy RightApp codebase. -->
 
-> **Status update (2026-08-09, later): Phases 4–5 built** under the
-> email-program umbrella (M6). The §5 tracking decision was taken as
+> **Status (2026-08-20): Phases 0–5 are built. Phase 6 is a separate roadmap
+> item and is not started.** One thing has never been exercised, at any phase:
+> **no campaign has been sent through a live MTA** — `MTA_BASE_URL` is blank in
+> dev, so every send path below is verified by smoke and by the exact commands it
+> emits, never by a delivered message.
+>
+> **Phases 4–5** were built under the email-program umbrella (M6). The §5 tracking decision was taken as
 > **option (b) — local** — with cause: the MTA's own FUNCTION.md scopes
 > generic open/click tracking out, the repo has its own release process, and
 > dev has no MTA running to verify an MTA-side tracker against. Shape:
@@ -24,8 +29,8 @@
 > live pixel/redirect/dedupe/tamper + activity + `/api/persons` gating); an
 > MTA-connected `_trk` send is still unexercised (`MTA_BASE_URL` blank).
 >
-> **Status update (2026-08-09): Phases 2–3 built** under the email-program
-> umbrella (M4 — see `email-program/00-overview-and-roadmap.md`): audience
+> **Phases 2–3** were built under the email-program umbrella
+> (M4 — see `email-program/00-overview-and-roadmap.md`): audience
 > resolver + `resolveMembers`, campaign runner (`runCampaign`/`cancelCampaign`,
 > failure ledger), `campaign-cron-tasks.js` (due sweep + report poll —
 > `CAMPAIGNS_CRON_ENABLED` finally consumed), the HMAC-verified public
@@ -35,10 +40,9 @@
 > unexercised — `MTA_BASE_URL` is blank in dev. One recorded bound: one MTA
 > batch per run (multi-batch chunking deferred until an audience needs it).
 >
-> **Status (2026-08): 🔨 Phases 0–1 built.** Decisions from §8 were taken as
-> recommended: `cmp-audience` behind a resolver interface, email-only with the
-> channel seam kept, roles-based permissions, port 4019, tracking deferred to
-> Phase 4. **Phases 2–6 are not started** — see §9.
+> **Phases 0–1.** Decisions from §8 were taken as recommended: `cmp-audience`
+> behind a resolver interface, email-only with the channel seam kept,
+> roles-based permissions, port 4019, tracking deferred to Phase 4.
 >
 > **Phase 0** — seven `cmp-*` content types, their api-provider descriptors, the
 > Rutba-MTA client, the sending-identity lifecycle, and the `apps/content/campaigns`
@@ -397,8 +401,8 @@ Screens:
 |---|---|---|
 | **0 — Foundations** ✅ | `cmp-*` content types + descriptors + policies, MTA client service, sending-identity bootstrap, app registration (§6 checklist), empty app shell | **M** |
 | **1 — Template studio** ✅ | GrapesJS editor, folders, merge-key declaration + validation, inline-CSS export, test-send, preview | **M** |
-| **2 — Audiences + composer** | `cmp-audience` (CSV + filter over crm-contact/customer), resolver, merge mapping, 4-step composer, one-time send via `/v1/send/batch` | **M** |
-| **3 — Scheduling + reporting** | `campaign-cron-tasks.js` (recurrence, max_runs/max_failures), webhook receiver + HMAC verify, report poller, run/recipient grids, delivery dashboard, suppression UI | **M** |
+| **2 — Audiences + composer** ✅ | `cmp-audience` (CSV + filter over crm-contact/customer), resolver, merge mapping, 4-step composer, one-time send via `/v1/send/batch` | **M** |
+| **3 — Scheduling + reporting** ✅ | `campaign-cron-tasks.js` (recurrence, max_runs/max_failures), webhook receiver + HMAC verify, report poller, run/recipient grids, delivery dashboard, suppression UI | **M** |
 | **4 — Tracking** ✅ | §5 decided as (b) local — opens + link clicks via `{{_trk}}` pixel/redirect, UTM append (Phase 1), open/click reporting on run + recipient grids | **S–M** |
 | **5 — CRM tie-in (ROADMAP 1.6)** ✅ | campaign send / first open / first click → `crm-activity` on contact-matched recipients; recipients carry person/contact/customer | **S** |
 | **6 — Automation (competitive parity)** | A/B with auto-deploy winner, nurture journeys, lead scoring, landing pages, ABM account object, identity stitching | **L** — separate roadmap item, not 1.4 |

@@ -39,10 +39,16 @@ export const APP_URLS = {
 
 /** All recognised app keys */
 // NOTE: the 'users' app key is deliberately absent. rutba-users was replaced by
-// apps/admin/console ('admin'); the backend 'users' DOMAIN stays alive as a deprecated
-// alias for existing users_* grants, but there is no longer a frontend to launch,
-// and a dead launcher tile is worse than none. These are different registries —
-// see packages/api-provider/config/domains.json.
+// apps/admin/console ('admin'), and there is no longer a frontend to launch — a
+// dead launcher tile is worse than none. These are different registries; see
+// packages/api-provider/config/domains.json.
+//
+// The backend 'users' DOMAIN is gone too (removed during the 2026-08-18
+// restructure), which this comment used to deny. Two descriptors still name it
+// in their `apps` arrays — api/users.js and api/mail-servers.js — so those
+// entries now point at a domain that resolves to no roles. That is inert rather
+// than broken only because every users_* holder was additively granted the
+// matching admin_* role first; the alias is already dead, not deprecated.
 const VALID_APP_KEYS = ['stock', 'pos', 'auth', 'portal', 'orders', 'rider', 'crm', 'hr', 'ess', 'accounts', 'payroll', 'cms', 'social', 'manufacturing', 'marketplace', 'control', 'seed', 'campaigns', 'mail', 'console', 'helpdesk'];
 
 /**

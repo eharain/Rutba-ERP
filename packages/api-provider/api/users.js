@@ -4,10 +4,13 @@
  * the per-domain access matrix, bulk access assignment, the precise per-role
  * editor, and sanitized directory/employee feeds for pickers in other apps.
  *
- * 'users' rides alongside 'admin' in every apps/domains array here as a
- * DEPRECATED alias: apps/admin/console replaced rutba-users and claims
- * X-Rutba-App: admin, but existing users_* grants must keep working until
- * they are migrated off. Retiring the users domain is a separate task.
+ * 'users' rides alongside 'admin' in the apps array below as a DEAD alias:
+ * apps/admin/console replaced rutba-users and claims X-Rutba-App: admin. The
+ * users DOMAIN was removed from config/domains.json in the 2026-08-18
+ * restructure, so 'users' here now resolves to no roles and seeds no policy.
+ * It is inert rather than broken because every users_* holder was additively
+ * granted the matching admin_* role before the domain went. Dropping the
+ * string is safe; it is left only so this note has something to point at.
  *
  * Server side is api::user-admin.user-admin (routes-only api, auth:false with
  * a DB-backed requireAppRole gate — no uid here on purpose: there is no

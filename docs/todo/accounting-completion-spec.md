@@ -1,8 +1,20 @@
 # Accounting Module — Completion Spec
 
-> **Status (2026-08): roadmap 0.4 closed.** A re-audit of every `acc-*` call
-> site found that §4.1–§4.3 were genuinely done, but five gaps this table had
-> not recorded. All are now fixed and covered by
+> **Status (2026-08-20): the ledger engine is complete; three frontend pages are
+> not.** Still open, and the whole of what is open: the Bills, Banking & Registers,
+> and Tax & Periods pages (§6), plus bank reconciliation. Everything else in this
+> spec is built — §3 ledger additions, §4.1–§4.4 posting, §5 reporting, and the
+> rest of the `apps/finance/accounts` frontend (dashboard, chart-of-accounts,
+> journal-entries, invoices, expenses, reports).
+>
+> Since 2026-08-20 no module posts to the ledger directly: all 23 posting sites
+> and 8 reversal sites emit through the `@rutba/shared/core/posting` contract, so
+> an org without `erp.gl` captures its entries in the export queue instead of
+> losing them. A smoke test fails if a new call site reaches the engine directly.
+>
+> **How roadmap 0.4 closed.** A re-audit of every `acc-*` call site found §4.1–§4.3
+> genuinely done, but five gaps this table had not recorded. All are fixed and
+> covered by
 > `services/strapi/scripts/smoke-accounting-gl.js` +
 > `services/core/scripts/smoke-accounting-gl.js` (both run against the dev DB;
 > services/strapi's also drives HTTP when a server is listening):
@@ -20,18 +32,12 @@
 > was seeded and accountants got 403; and core routed generate-bill on `:id`
 > while the ported controller reads `ctx.params.documentId`.
 
-> **Status (2026-06): ✅ Largely built.** The posting wiring (§4.1–§4.4),
-> ledger additions (§3), and reporting layer (§5) all shipped, and the
-> `apps/finance/accounts` frontend (§6) covers dashboard, chart-of-accounts,
-> journal-entries, invoices, expenses, and reports. The §1.2 gap table and the
-> §6 page list below are updated inline; this spec is retained for design
-> rationale. **Still open:** the Bills, Banking & Registers, and Tax & Periods
-> frontend pages (§6), and bank reconciliation. Code: posting in
-> `sale-order/services/sale-order-state-machine.js` + `sale-order.js`
-> `verifyPayment`, `cash-register/controllers/cash-register.js`,
-> `purchase/controllers/purchase.js` `generateBill`,
-> `sale-return/.../lifecycles.js`; reports in
-> `acc-journal-entry/services/reports.js` + `routes/acc-journal-entry.js`.
+> Where the code lives: posting in `sale-order/services/sale-order-state-machine.js`
+> + `sale-order.js` `verifyPayment`, `cash-register/controllers/cash-register.js`,
+> `purchase/controllers/purchase.js` `generateBill`, `sale-return/.../lifecycles.js`;
+> reports in `acc-journal-entry/services/reports.js` +
+> `routes/acc-journal-entry.js`. This spec is retained for its design rationale —
+> the §1.2 gap table and the §6 page list are updated inline.
 
 > **Status:** the accounting *engine* is built and working; this doc specs what
 > remains to make it a usable module.
@@ -67,9 +73,9 @@ wired. Build to the **actual** state below, not the doc's aspirational COA.
 
 ### 1.2 What is NOT built (this doc's scope)
 
-> **Update (2026-06):** gaps 1–5 are **done** — see the ✅ rows. The only
-> remaining item from this table is the frontend, and even that is mostly built
-> (§6): Bills, Banking & Registers, and Tax & Periods pages are the open subset.
+> Gaps 1–5 are **done** — see the ✅ rows. The only item this table still has
+> open is the frontend, and even that is mostly built (§6): Bills, Banking &
+> Registers, and Tax & Periods are the open subset.
 
 | Gap | Impact | State |
 |---|---|---|

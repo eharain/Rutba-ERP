@@ -1,6 +1,10 @@
 # Email Program — Usability Gap Analysis vs Market Leaders
 
-> **Status update (2026-08-15): the daily-driver slice of P1 is BUILT**
+> **Status (2026-08-20): P0 and the daily-driver slice of P1 are built; none of
+> it has met a live mailbox.** The blocker is unchanged and is a credential, not
+> code — see the end of this block.
+>
+> **The P1 daily-driver slice**
 > (production build green; api-provider validators green). Archive and
 > read/unread as verbs · keyboard shortcuts (j/k/Enter/u/r/a/f/e/s/m/#//,c,
 > `?`, Ctrl+Enter, Esc) · draft resume with replace-on-save, 45s auto-save and
@@ -24,8 +28,7 @@
 > compiling the exact IMAP commands each path emits — not by a round trip to a
 > real mailbox. The human browser pass is STILL outstanding.
 
-> **Status update (2026-08-10, later): the P0 wave + the named must-haves are
-> BUILT** (21/21 smoke, production build green). Address books (personal +
+> **The P0 wave + the named must-haves** (21/21 smoke, production build green). Address books (personal +
 > company directory, `mail-contact`), tags (`mail-tag` registry → IMAP
 > keywords, chips/filter/bulk-tag), advanced filters (structured IMAP SEARCH:
 > unread/flagged/from/to/subject/dates/tag + filter bar), conversation

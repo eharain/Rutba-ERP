@@ -8,9 +8,9 @@
 > conversation grouping, uid-set bulk actions, rich-text compose with
 > ERP-wide recipient autocomplete, inline shared-inbox notes
 > (import-on-first-note), and one-click mailbox password reset through the
-> mail-server registry. Earlier status history follows.
+> mail-server registry.
 
-> **Status (2026-08): ✅ M0–M6 built** (M0 + the same-day continuation).
+> **What M6 shipped** — kept as a record of the decision, not a second status.
 > M6 (campaigns Phases 4–5 + identity layer): local open/click tracking —
 > the §5 decision taken as **option (b)** since Rutba-MTA scopes generic
 > tracking out (`FUNCTION.md` "out of scope for now"); `{{_trk}}` merge-key

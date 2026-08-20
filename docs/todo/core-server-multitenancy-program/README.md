@@ -45,7 +45,7 @@ database and one wire contract during migration.
 
 | Phase | Workstream | Deliverable | Doc | Status (updated 2026-08-17) |
 |---|---|---|---|---|
-| 0 | B (enables A too) | Contracts freeze + golden contract test suite | [01-contracts-freeze.md](01-contracts-freeze.md) | not started |
+| 0 | B (enables A too) | Contracts freeze + golden contract test suite | [01-contracts-freeze.md](01-contracts-freeze.md) | partial — the mechanism exists (`contract-diff.js` + 17 `smoke-*.js`) and [erp2 D3](../erp2-program/README.md#5-decisions-this-program-records) makes it official; the per-tranche fixture goldens are the open half |
 | 1 | A | Control plane MVP: tenant registry + provisioning + Caddy routing | [02-control-plane.md](02-control-plane.md) | not started |
 | 2 | A | Tenant-aware frontend fleet (hostname → tenant → API origin) | [03-tenant-aware-frontends.md](03-tenant-aware-frontends.md) | not started |
 | 3 | B | `services/core` skeleton: Koa + data shim + api-pro port | [04-core-server-and-shim.md](04-core-server-and-shim.md) | **built** |
@@ -54,10 +54,15 @@ database and one wire contract during migration.
 | 6 | B | Remaining modules in tranches; sale/stock/accounting cluster last | [05-module-migration-playbook.md](05-module-migration-playbook.md) | **built** — all 8 tranche sheets say ported + smoke-verified |
 | 7 | B | Auth issuer cutover, Strapi retirement, multi-DB core process | [04-core-server-and-shim.md](04-core-server-and-shim.md), [05](05-module-migration-playbook.md) | partial — auth tranche built ([tranche-8-auth.md](tranche-8-auth.md): cross-server-verified); Strapi retirement + multi-DB core not started |
 
-_Status column added 2026-08-17. Workstream B has outrun the tranche sheets:
-`services/core/src/modules/index.js` registers 12 modules, four of which (catalog,
-helpdesk — core-native, uploads, user-mgmt) have no tranche sheet. Workstream A
-(phases 0/1/2/5) has not started._
+_Workstream B has outrun the tranche sheets: `services/core/src/modules/index.js`
+registers 12 modules, four of which (catalog, helpdesk — core-native, uploads,
+user-mgmt) have no tranche sheet. **Workstream A remains at zero build**, and the
+phase numbers understate how far B has gone: since this table was written,
+`route-audit.js` NOT_PORTED reached **0**, the policy seeder runs with no Strapi
+process alive, and the sync engine that replaces `strapi-content-sync-pro` is
+built. What blocks retirement is not porting — it is the 54 zero-copy
+`posRequire` entry points into Strapi's source tree, which only P2's `git mv`
+closes._
 
 Phases 1–2 (ship SaaS on Strapi) and 3–4 (prove the core) can run in parallel.
 

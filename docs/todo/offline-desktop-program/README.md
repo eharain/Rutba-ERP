@@ -1,16 +1,15 @@
 # Offline & Desktop Program
 
-> **Status (2026-08-13): specification only.** Nothing in this program is built.
-> There is no Electron dependency anywhere in the repo today — a repo-wide search
-> of every `package.json` outside `node_modules` returns zero matches. This is a
-> greenfield container around code that already exists.
+> **Status (2026-08-20): the sync half is built, the host is not.**
+> [`packages/sync`](../../../packages/sync/README.md) carries both the phase-1
+> pass-through bridge (per [`offline-pos-options.md` §13.7](../offline-pos-options.md#137-what-this-replaces))
+> and the sync engine — planner, apply phase and `runSync`, verified against live
+> data rather than fixtures. [05](05-sqlite-viability.md) is a completed
+> investigation and [06](06-sync-back-granularity.md) is decided.
 >
-> **Status update (2026-08-17): no longer specification-only.** The phase-1
-> pass-through bridge is built — [`packages/sync`](../../../packages/sync/README.md),
-> per [`offline-pos-options.md` §13.7](../offline-pos-options.md#137-what-this-replaces);
-> [05](05-sqlite-viability.md) is a completed investigation (2026-08-14) and
-> [06](06-sync-back-granularity.md) is decided. The Electron shell itself is
-> still unbuilt, and the zero-Electron-dependency search result above still holds.
+> **The Electron shell remains unbuilt**, and the measurement that says so is
+> reproducible rather than remembered: a search of every `package.json` outside
+> `node_modules` returns zero `electron` matches (re-run 2026-08-20).
 >
 > This program **does not reopen** [`offline-pos-options.md`](../offline-pos-options.md).
 > That document's §§1–5 and §10 are the working design and are treated here as
