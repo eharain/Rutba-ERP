@@ -1,7 +1,7 @@
 'use strict';
 
 // The campaign runner (apps/content/campaigns spec §4.5) — resolve the audience,
-// submit ONE templated batch to MTA, and materialize the run +
+// submit ONE templated batch to Rutba-MTA, and materialize the run +
 // per-recipient rows that make delivery attributable.
 //
 // Division of labour: placeholders ship INTACT to /v1/send/batch with

@@ -1,7 +1,7 @@
 'use strict';
 
 // Open/click tracking for campaigns — the §5 decision, taken as option (b):
-// track locally in the ERP. MTA scopes generic open/click tracking out
+// track locally in the ERP. Rutba-MTA scopes generic open/click tracking out
 // (FUNCTION.md "out of scope for now"), so the ERP injects its own pixel and
 // link redirects at run time. The webhook ingester already accepts
 // `opened`/`clicked` events, so if the MTA ever gains native tracking the

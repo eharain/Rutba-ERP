@@ -2,9 +2,9 @@
 
 _Analysis date: 2026-07-10. Sources: `D:/Projects/RightApp` (2020–21 legacy suite), `D:/Rutba/MTA` (ported MTA), `D:/Rutba/Media-FileServer` (ported storage/media, RSTORAGE), `D:/Rutba/ERP` (current monorepo)._
 
-> **The ecosystem extracts infra-type capability as standalone services** — own repo/DB/port, docs-first (README + SPEC/FUNCTION), zero/near-zero-dep modular `src/`, HTTP/webhook (not code-level) integration with services/strapi. **MTA** is a true port of RIGHTMTA + RSMTPREST. **Media-FileServer** is _not_ a port of RSTORAGE — different lineage (see §4a): it began as a **public media-serving origin** and RSTORAGE was a **private user Drive**; they've only recently converged on shared primitives. New infra capability becomes **features of / new standalone services in this pattern**, not monorepo ERP apps.
+> **The ecosystem extracts infra-type capability as standalone services** — own repo/DB/port, docs-first (README + SPEC/FUNCTION), zero/near-zero-dep modular `src/`, HTTP/webhook (not code-level) integration with services/strapi. **Rutba-MTA** is a true port of RIGHTMTA + RSMTPREST. **Rutba-Media-FileServer** is _not_ a port of RSTORAGE — different lineage (see §4a): it began as a **public media-serving origin** and RSTORAGE was a **private user Drive**; they've only recently converged on shared primitives. New infra capability becomes **features of / new standalone services in this pattern**, not monorepo ERP apps.
 
-RightApp was a multi-tenant SaaS ERP built as ~17 independently-deployed micro-frontends (Angular 8/9 SPAs + thin Express OIDC-BFFs) over a single Oracle data plane (RAPIS) with a central OIDC provider (RIDNTY). It was pulled off years ago for being too slow. Its MTA is now being ported to `MTA` as the template for absorbing legacy modules. This doc inventories what RightApp had, maps it against today's Rutba ERP, and plans the apps to close the gap — with a dedicated CRM section.
+RightApp was a multi-tenant SaaS ERP built as ~17 independently-deployed micro-frontends (Angular 8/9 SPAs + thin Express OIDC-BFFs) over a single Oracle data plane (RAPIS) with a central OIDC provider (RIDNTY). It was pulled off years ago for being too slow. Its MTA is now being ported to `Rutba-MTA` as the template for absorbing legacy modules. This doc inventories what RightApp had, maps it against today's Rutba ERP, and plans the apps to close the gap — with a dedicated CRM section.
 
 ---
 
@@ -25,7 +25,7 @@ RightApp was a multi-tenant SaaS ERP built as ~17 independently-deployed micro-f
 | 11 | **RBOOKS** | Accounting/Books | **Empty stub** (COA/tax/currency lived in RAPIS) |
 | 12 | **RTMPLT** | **Template builder** — email/content templates, folders, blocks, Mustache render, link-tracking rewrite, mail servers/agents | Working |
 | 13 | **RMAILX** | **Mail / email-marketing UI** — mail servers/agents/clients, templates, contacts (+CSV), **campaigns**, reporting, open-tracking pixel, unsubscribe | Working |
-| 14 | **RIGHTMTA** | **MTA send engine** — Kafka pipeline (parse→send/relay), DKIM local send, SES/SendGrid/Mandrill/MailJet relay, campaign runner, reputation throttling | Working → **ported to MTA** |
+| 14 | **RIGHTMTA** | **MTA send engine** — Kafka pipeline (parse→send/relay), DKIM local send, SES/SendGrid/Mandrill/MailJet relay, campaign runner, reputation throttling | Working → **ported to Rutba-MTA** |
 | 15 | **RSMTPREST** | **Inbound gateway** — real SMTP server + REST `/send` that feed the MTA pipeline | Working |
 | 16 | **RANALYTICS** | First-party **web + email analytics** — GA-style pixel tracker, geo/channel/device, feeds CRM activity timeline | Working |
 | 17 | **RSTORAGE** | **Storage / Drive** — file service, EFS layout by org/svc/business/person, PIN-protected public share links | Working |
@@ -63,10 +63,10 @@ Backend already models (Strapi content-types): products/brand/category, purchase
 | RINVNT inventory | apps/inventory/control (:4017) + apps/inventory/stock (:4001) | ✅ Superseded (warehouse/bin/batch/FEFO) |
 | RBOOKS accounting | apps/finance/accounts (:4007) + acc-* | ✅ Superseded (RBOOKS was empty) |
 | RTMPLT template builder | notification-template (system notices only) | ❌ **Gap** — no user email/content template studio with tracking |
-| RMAILX email-marketing UI | — (MTA is send-engine only) | ❌ **Gap** — no campaigns/contacts/segments/mail-agents UI |
-| RIGHTMTA + RSMTPREST send engine | **MTA** (standalone) | ✅ Ported (ingress SMTP server optional) |
-| RANALYTICS web/email analytics | — (MTA does click/open interception; no site tracker) | ❌ **Gap** — no first-party visitor analytics feeding CRM |
-| RSTORAGE drive + share links | _(different lineage — see §4a)_ Media-FileServer covers **public** media serving; **private Drive + PIN sharing is still a gap** | 🟡 Partial — public-media substrate exists, private-Drive/sharing capability not built |
+| RMAILX email-marketing UI | — (Rutba-MTA is send-engine only) | ❌ **Gap** — no campaigns/contacts/segments/mail-agents UI |
+| RIGHTMTA + RSMTPREST send engine | **Rutba-MTA** (standalone) | ✅ Ported (ingress SMTP server optional) |
+| RANALYTICS web/email analytics | — (Rutba-MTA does click/open interception; no site tracker) | ❌ **Gap** — no first-party visitor analytics feeding CRM |
+| RSTORAGE drive + share links | _(different lineage — see §4a)_ Rutba-Media-FileServer covers **public** media serving; **private Drive + PIN sharing is still a gap** | 🟡 Partial — public-media substrate exists, private-Drive/sharing capability not built |
 
 **Where Rutba is already far ahead of RightApp:** POS terminal, HR/ESS/Payroll suite, Manufacturing, multi-vendor Marketplace (+Daraz), Rider/delivery, Social, real GL accounting, warehouse/batch/FEFO inventory, workflow engine, layered api-pro authorization.
 
@@ -74,19 +74,19 @@ Backend already models (Strapi content-types): products/brand/category, purchase
 
 ## 4. The gaps, as an app plan
 
-Ordered by value-to-effort. Ports assume the next free slot (4018+). Follow the **MTA porting pattern** where a capability is infra (standalone Apache-2.0 Node service, own DB/config/port, docs-first, pure-logic core, HTTP/webhook integration) and the **new-ERP-app checklist** (`roles.js` + `/auth/callback` + `domains.json`) where it's a monorepo Next.js app on services/strapi.
+Ordered by value-to-effort. Ports assume the next free slot (4018+). Follow the **Rutba-MTA porting pattern** where a capability is infra (standalone Apache-2.0 Node service, own DB/config/port, docs-first, pure-logic core, HTTP/webhook integration) and the **new-ERP-app checklist** (`roles.js` + `/auth/callback` + `domains.json`) where it's a monorepo Next.js app on services/strapi.
 
 ### Priority 1 — Email Marketing / Campaigns (`apps/content/campaigns`, :4019 — since built)
-The biggest coherent gap and the natural front-end for the MTA already being ported. Rebuilds **RMAILX + RTMPLT** as one app on services/strapi + MTA:
+The biggest coherent gap and the natural front-end for the MTA already being ported. Rebuilds **RMAILX + RTMPLT** as one app on services/strapi + Rutba-MTA:
 - Content-types: `mail-template` (subject/body/tracking/append-links/folder), `mail-template-block`, `mail-audience` (saved contact segment — reuse CRM segmentation §5), `mail-campaign` (template + audience + schedule + UTM), `mail-send-log` (mirror of MTA delivery events via webhook).
-- Screens: template studio (Mustache/`{{var}}`), audience builder, campaign composer + test-send + schedule, delivery/opens/clicks dashboard (fed by MTA webhooks).
-- Integration: MTA already owns sending, suppression, reputation throttle, unsubscribe, click interception — this app is the **tenant UI + template/campaign store** over it. Closes RTMPLT + RMAILX + RIGHTMTA-campaign-runner in one move.
+- Screens: template studio (Mustache/`{{var}}`), audience builder, campaign composer + test-send + schedule, delivery/opens/clicks dashboard (fed by Rutba-MTA webhooks).
+- Integration: Rutba-MTA already owns sending, suppression, reputation throttle, unsubscribe, click interception — this app is the **tenant UI + template/campaign store** over it. Closes RTMPLT + RMAILX + RIGHTMTA-campaign-runner in one move.
 
 ### Priority 2 — CRM feature build-out (extend `apps/sales/crm`, no new app)
 See §5 — this is where the richest RightApp IP lives and it directly serves rutba.pk sales. Highest ROI because the app already exists.
 
 ### Priority 3 — First-party Analytics / Activity Tracker (`rutba-analytics` service, standalone, ~:8030)
-Port **RANALYTICS** using the MTA pattern: a standalone tracker service serving `script.js` + `track.png`, capturing visits (geo/channel/device/UTM), and POSTing **web-visit + email-open events into CRM as `crm-activity` rows**. Powers the CRM "Site" activity timeline (§5) and campaign click-through. Site registration lives in a small settings screen.
+Port **RANALYTICS** using the Rutba-MTA pattern: a standalone tracker service serving `script.js` + `track.png`, capturing visits (geo/channel/device/UTM), and POSTing **web-visit + email-open events into CRM as `crm-activity` rows**. Powers the CRM "Site" activity timeline (§5) and campaign click-through. Site registration lives in a small settings screen.
 
 ### Priority 4 — Product Information Management app (`rutba-pim`, ~:4019) — _optional_
 Backend catalog exists; this adds RPRODX's richer merchandising layer if needed: multi-currency price lists, channel/COA mapping, bulk catalog import from marketplace feeds (Amazon/Daraz equivalent of MWS lookup). Lower urgency — apps/inventory/stock + Strapi admin cover basic catalog editing today.
@@ -103,15 +103,15 @@ RightApp's RORGAD + RUSRPL-billing + RIDNTY-as-IdP only matter if Rutba is sold 
 
 _(Update 2026-08-17: the SaaS question is answered — yes. Multi-tenant SaaS is [ROADMAP](../ROADMAP.md) H2, and the tenancy model is decided as database-per-tenant — [core-server-multitenancy-program README](../core-server-multitenancy-program/README.md) ground rule 4.)_
 
-### 4a. Storage: two distinct lineages (`Media-FileServer` ≠ RSTORAGE port)
+### 4a. Storage: two distinct lineages (`Rutba-Media-FileServer` ≠ RSTORAGE port)
 These started from **different problems** and are only now converging — don't treat the media server as an RSTORAGE port:
 
-- **Media-FileServer** (`D:/Rutba/Media-FileServer`, v2.0.0, MIT) began as a **public media-serving origin** — a CDN-style image host to fix Strapi's responsive-variant disk bloat (5.4k originals → ~30k files / 4.9 GB) for images.rutba.pk / images.trustlist.uk. Its core is masters-only storage + resize-on-request + LRU cache, fronted by a Strapi upload provider. It has since grown authenticated writes (`PUT`/`DELETE`), origin/cluster pull-through, and **per-file public/private visibility** (`X-Visibility` + `.vis` sidecar, public/private node roles, eligibility-gated replication). Built on the standalone-service pattern (own repo/port, docs-first, zero-dep modular `src/`).
+- **Rutba-Media-FileServer** (`D:/Rutba/Media-FileServer`, v2.0.0, MIT) began as a **public media-serving origin** — a CDN-style image host to fix Strapi's responsive-variant disk bloat (5.4k originals → ~30k files / 4.9 GB) for images.rutba.pk / images.trustlist.uk. Its core is masters-only storage + resize-on-request + LRU cache, fronted by a Strapi upload provider. It has since grown authenticated writes (`PUT`/`DELETE`), origin/cluster pull-through, and **per-file public/private visibility** (`X-Visibility` + `.vis` sidecar, public/private node roles, eligibility-gated replication). Built on the standalone-service pattern (own repo/port, docs-first, zero-dep modular `src/`).
 - **RSTORAGE** (RightApp) was a **private user Drive** — per `<org>/<svc>/b<business>/p<person>` file storage with authenticated user access and **PIN-protected public share links**. That user-facing Drive + sharing surface is **still a gap** in Rutba.
 
 **How they relate:** the media server's write + public/private-visibility + signed-access primitives make it the **most likely substrate** to host the RSTORAGE-style Drive/sharing capability _if the user chooses to converge the two tracks_ — but that's a design decision, not a done port. Practically:
-- **Public media/CDN** (product images, CMS assets) — ✅ owned by Media-FileServer today.
-- **Private Drive + PIN/token sharing** (CRM per-contact files §5.10, user documents) — ❌ not built; would either extend Media-FileServer (build on its visibility/`PRIVATE_PATHS`/signed-URL primitives) or be a separate private-storage service. **Open decision for the user.**
+- **Public media/CDN** (product images, CMS assets) — ✅ owned by Rutba-Media-FileServer today.
+- **Private Drive + PIN/token sharing** (CRM per-contact files §5.10, user documents) — ❌ not built; would either extend Rutba-Media-FileServer (build on its visibility/`PRIVATE_PATHS`/signed-URL primitives) or be a separate private-storage service. **Open decision for the user.**
 
 ### Not recommended to port
 - **RSHARED / RSRVRX** — empty in the original.
@@ -143,7 +143,7 @@ Right CRM's three-entity model (Business, Person, and an Association carrying `O
 Browser softphone (Twilio in the original) with live timer, auto-captured duration/outcome, and server-side recording pushed to storage, all logged as a `call` activity. High-signal CRM differentiator; provider can be Twilio or any WebRTC/SIP gateway.
 
 ### 5.7 Email-on-activity with open/click tracking — **bring (synergy)**
-Send an email tied to a contact activity, with open/click tracking. This is a **direct hand-off to MTA** (which already does templated send + click interception + open tracking) — CRM logs the `mail` activity, MTA reports opens/clicks back via webhook. Ties CRM ↔ Priority-1 campaigns ↔ Priority-3 analytics together.
+Send an email tied to a contact activity, with open/click tracking. This is a **direct hand-off to Rutba-MTA** (which already does templated send + click interception + open tracking) — CRM logs the `mail` activity, MTA reports opens/clicks back via webhook. Ties CRM ↔ Priority-1 campaigns ↔ Priority-3 analytics together.
 
 ### 5.8 Web-visitor activity ("Site" timeline) — **bring (with Priority-3)**
 Right CRM folded first-party web analytics into the contact timeline: per-page visits, dwell, geo, language, channel/traffic-route, resolving anonymous → known contacts. Depends on the `rutba-analytics` tracker (Priority 3) writing `crm-activity` rows of type `site`.
@@ -162,7 +162,7 @@ Per-contact files with generate-share-link-with-PIN. Nice-to-have; depends on wh
 
 1. **CRM core build-out** (§5.1 timeline, §5.3 segmentation, §5.4 import, §5.5 associations) — pure additive value on an app that exists and serves rutba.pk now.
 2. **CRM pipeline** (§5.2) — the net-new deal/opportunity layer.
-3. **`apps/content/campaigns`** (Priority 1) — email marketing UI over the already-ported MTA; consumes CRM segments.
+3. **`apps/content/campaigns`** (Priority 1) — email marketing UI over the already-ported Rutba-MTA; consumes CRM segments.
 4. **Tracked email in CRM** (§5.7) — wire CRM ↔ MTA.
 5. **`rutba-analytics`** (Priority 3) — unlocks §5.8 site timeline + campaign click analytics.
 6. **PIM / Procurement UIs** (Priorities 4–5) — only if the backend-only catalog/purchase modules need dedicated front-ends.

@@ -1,6 +1,6 @@
 /**
  * CmpTemplatesEndpoints
- * Campaign message templates — the store MTA deliberately doesn't keep
+ * Campaign message templates — the store Rutba-MTA deliberately doesn't keep
  * (FUNCTION.md: "reusable saved template library → caller app"). Rendered here
  * and passed inline to /v1/send/batch.
  */

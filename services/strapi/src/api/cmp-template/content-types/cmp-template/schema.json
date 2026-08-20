@@ -5,7 +5,7 @@
     "singularName": "cmp-template",
     "pluralName": "cmp-templates",
     "displayName": "Campaign Template",
-    "description": "Reusable campaign message template. MTA does not keep a template library (FUNCTION.md: 'reusable saved template library -> caller app'), so this is the store; templates are rendered here and passed inline to /v1/send/batch."
+    "description": "Reusable campaign message template. Rutba-MTA does not keep a template library (FUNCTION.md: 'reusable saved template library -> caller app'), so this is the store; templates are rendered here and passed inline to /v1/send/batch."
   },
   "options": {
     "draftAndPublish": false

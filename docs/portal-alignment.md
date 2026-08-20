@@ -1,7 +1,7 @@
 # Portal Alignment — ERP × rutba.io
 
 <!-- verify-docs: external plan/** specs/** -->
-<!-- verify-docs: external Rutba-Portal/specs/DEV-ENVIRONMENT.md -->
+<!-- verify-docs: external Portal/specs/DEV-ENVIRONMENT.md -->
 <!-- verify-docs: planned Infra/dev/PORTS.md -->
 <!-- Two sibling-repo citations arrived with the dev port band. They are marked
      with different words on purpose: DEV-ENVIRONMENT.md is present in
@@ -10,12 +10,12 @@
      repo" and "nobody has written it yet" send the next reader somewhere
      different, which is the whole reason the convention has six words. -->
 <!-- `plan/…` and `specs/…` below are paths inside the Rutba-Portal repo
-     (D:\Rutba\Rutba-Portal), not this one — all four verified present there on
+     (D:\Rutba\Portal), not this one — all four verified present there on
      2026-08-20. Without this marker verify-docs reads them as four broken
      links and fails the whole run, which is how a validator stops being a gate
      anyone trusts. -->
 
-**Source of truth:** the Rutba-Portal repo (`D:\Rutba\Rutba-Portal`) — `plan/11-product-integrations.md` (ERP workstream E1–E6 + coherence rules), `specs/GLOBAL-AUTH.md` (identity & tokens), `specs/SERVICE-SUITES.md` (suites, entitlement keys), `specs/TENANCY-DATA-ARCHITECTURE.md` (per-org instances, Tenant Catalog). This document translates those into this repo's own terms. When they disagree, the portal specs win; fix the disagreement in the same PR that touches both repos.
+**Source of truth:** the Rutba-Portal repo (`D:\Rutba\Portal`) — `plan/11-product-integrations.md` (ERP workstream E1–E6 + coherence rules), `specs/GLOBAL-AUTH.md` (identity & tokens), `specs/SERVICE-SUITES.md` (suites, entitlement keys), `specs/TENANCY-DATA-ARCHITECTURE.md` (per-org instances, Tenant Catalog). This document translates those into this repo's own terms. When they disagree, the portal specs win; fix the disagreement in the same PR that touches both repos.
 
 ## Status in this repo (2026-08-20)
 
@@ -46,7 +46,7 @@ apps.
 The lazy-boot design these serve is the model the ecosystem orchestrator delegates to rather than
 replaces.
 
-Chart: `Infra/dev/PORTS.md`. Decision: `Rutba-Portal/specs/DEV-ENVIRONMENT.md`.
+Chart: `Infra/dev/PORTS.md`. Decision: `Portal/specs/DEV-ENVIRONMENT.md`.
 
 ## Division of ownership
 

@@ -146,7 +146,7 @@ not a configuration choice.
 2. Users, roles, claims and app access remain owned by api-pro; Helpdesk defines no identities.
 3. The `person` contact-unification graph is the canonical "who is this human" resolver.
 4. Business calendars and holidays exist as HR reference data and are reusable by SLA.
-5. Email sending is available via MTA; inbound email ingestion is *not* yet proven and
+5. Email sending is available via Rutba-MTA; inbound email ingestion is *not* yet proven and
    is treated as a dependency, not an assumption.
 
 ## 2.6 Dependencies
@@ -157,7 +157,7 @@ not a configuration choice.
 | Workflow service promotion (P2) | Core platform | Lifecycle stays services/strapi-coupled |
 | Core-owned migrations (P7) | Core platform | New tables must go through services/strapi `schema.json` |
 | Business calendar data | HR | SLA cannot honour working hours (RULE-8) |
-| MTA inbound | Infra | Email channel drops from launch scope |
+| Rutba-MTA inbound | Infra | Email channel drops from launch scope |
 | WhatsApp Business API | Roadmap H1 | WhatsApp channel slips |
 | `apps/sales/helpdesk` app registration (:4023) | This program | No agent surface |
 

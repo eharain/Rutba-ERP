@@ -5,7 +5,7 @@ import { useAuth } from "@rutba/shared/context/AuthContext";
 import { CmpSendingIdentitiesEndpoints } from "@rutba/api-provider/endpoints";
 
 // Sending identities — the from-addresses campaigns send as, each backed by a
-// registered MTA sender.
+// registered Rutba-MTA sender.
 //
 // Registration is two steps on purpose. Creating the record is cheap and
 // reversible; registering it with the MTA returns a trust token and webhook
@@ -175,7 +175,7 @@ export default function SettingsPage() {
                     <p className="text-muted">Loading…</p>
                 ) : identities.length === 0 ? (
                     <div className="alert alert-light border">
-                        No sending identities yet. Add one, then register it with MTA.
+                        No sending identities yet. Add one, then register it with Rutba-MTA.
                     </div>
                 ) : (
                     <div className="table-responsive">
@@ -238,7 +238,7 @@ export default function SettingsPage() {
                 {setupFor && (
                     <form className="card border-primary mt-4" onSubmit={registerIdentity}>
                         <div className="card-body">
-                            <h5 className="card-title">Register &ldquo;{setupFor.name}&rdquo; with MTA</h5>
+                            <h5 className="card-title">Register &ldquo;{setupFor.name}&rdquo; with Rutba-MTA</h5>
                             <p className="text-muted small">
                                 The MTA relays through your own SMTP server — it does not deliver
                                 direct-to-MX. These credentials are forwarded to the MTA, which encrypts
@@ -300,7 +300,7 @@ function MtaStatus({ health }) {
     if (!health.configured) {
         return (
             <div className="alert alert-warning">
-                <strong>MTA is not configured.</strong> Set <code>MTA_BASE_URL</code> and restart
+                <strong>Rutba-MTA is not configured.</strong> Set <code>MTA_BASE_URL</code> and restart
                 the API. Campaigns can be authored without it, but no run will send.
             </div>
         );

@@ -12,7 +12,7 @@ error — safely, and let agents find it again.
 ## 25.2 Platform
 
 Core already has an upload platform: `src/platform/upload.js`, `src/http/uploads.js` and
-multipart handling, backed by **Media-FileServer** (v2.0, hosting `images.rutba.pk`)
+multipart handling, backed by **Rutba-Media-FileServer** (v2.0, hosting `images.rutba.pk`)
 through the Strapi upload-provider seam.
 
 Helpdesk **uses it as-is**. It does not build a second storage path.

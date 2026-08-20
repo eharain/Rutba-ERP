@@ -5,8 +5,8 @@ import Link from "next/link";
 
 // Landing page for Rutba Campaigns.
 //
-// Phase 0 is the foundation: content types, api-pro descriptors, the MTA
-// client and the sending-identity lifecycle. Sending itself is MTA's job
+// Phase 0 is the foundation: content types, api-pro descriptors, the Rutba-MTA
+// client and the sending-identity lifecycle. Sending itself is Rutba-MTA's job
 // (suppression, per-domain reputation pacing, bounce capture, unsubscribe) —
 // this app is the tenant UI and the template / audience / campaign store over
 // it. Tiles say plainly what is live and what is not.
@@ -14,7 +14,7 @@ const SECTIONS = [
     {
         icon: "fa-gear", tone: "secondary",
         title: "Settings & Sending Identity",
-        text: "Register a sender with MTA, check the connection, rotate its trust token.",
+        text: "Register a sender with Rutba-MTA, check the connection, rotate its trust token.",
         href: "/settings", state: "live",
     },
     {
@@ -44,7 +44,7 @@ const SECTIONS = [
     {
         icon: "fa-eye", tone: "primary",
         title: "Open & Click Tracking",
-        text: "Not built anywhere yet — MTA puts tracking beyond action tokens out of scope. Phase 4 decision.",
+        text: "Not built anywhere yet — Rutba-MTA puts tracking beyond action tokens out of scope. Phase 4 decision.",
         state: "later",
     },
 ];
@@ -63,7 +63,7 @@ export default function Home() {
                     app="campaigns"
                     eyebrow="Channels"
                     title="Campaigns"
-                    subtitle="Email marketing over MTA — templates, audiences, campaigns and delivery reporting. The MTA owns sending, suppression and reputation; this app owns everything it deliberately doesn't."
+                    subtitle="Email marketing over Rutba-MTA — templates, audiences, campaigns and delivery reporting. The MTA owns sending, suppression and reputation; this app owns everything it deliberately doesn't."
                     actions={
                         <Link href="/settings" className="btn btn-accent">
                             <i className="fa-solid fa-gear me-2"></i>Settings

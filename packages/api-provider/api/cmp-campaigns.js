@@ -85,7 +85,7 @@ export const CmpCampaignsEndpoints = {
     }),
 
     /**
-     * Execute a run NOW: resolve the audience, submit the batch to MTA,
+     * Execute a run NOW: resolve the audience, submit the batch to Rutba-MTA,
      * create the cmp-run + recipient rows. Errors are structured
      * (mta_not_configured, audience_empty, campaign_no_identity, ...).
      */

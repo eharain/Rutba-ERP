@@ -543,7 +543,7 @@ services:
       HOSTNAME: 0.0.0.0
 
   # --------------------------------------------------------
-  # Campaigns (email marketing over MTA)
+  # Campaigns (email marketing over Rutba-MTA)
   # --------------------------------------------------------
   campaigns:
     build:

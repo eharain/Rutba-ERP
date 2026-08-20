@@ -17,7 +17,7 @@ const SECTIONS = [
     // write methods of the social-accounts / social-relay-providers descriptors.
     { href: "/social-accounts", label: "Social Accounts", icon: "fa-share-nodes" },
     // "Social" is load-bearing in the label: relays come in three kinds and
-    // only this one is a pluggable registry. Email relaying is MTA, a
+    // only this one is a pluggable registry. Email relaying is Rutba-MTA, a
     // single instance pinned by MTA_BASE_URL (with per-sender identities in
     // Campaigns → Settings); SMS providers do not exist yet.
     { href: "/social-relays", label: "Social Relay Providers", icon: "fa-tower-broadcast" },

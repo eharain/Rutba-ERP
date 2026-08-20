@@ -1,6 +1,6 @@
 /**
  * CmpSendingIdentitiesEndpoints
- * Registered MTA senders — the from-address campaigns send as.
+ * Registered Rutba-MTA senders — the from-address campaigns send as.
  *
  * The trust token lives on this record, so every mutation is admin-only. The
  * controller re-checks `campaigns_admin` against the database (requireAppAdmin)

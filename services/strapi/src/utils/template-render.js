@@ -1,7 +1,7 @@
 'use strict';
 
 // Pure template-rendering logic for campaigns — no Strapi, no DB, no HTTP, so
-// it can be exercised directly. Same split MTA uses for its relay logic.
+// it can be exercised directly. Same split Rutba-MTA uses for its relay logic.
 //
 // The division of labour with the MTA is the thing to keep straight:
 //

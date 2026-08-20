@@ -4,7 +4,7 @@
 // so it can be exercised without Strapi — this file is the Strapi-facing shell
 // (document reads, sending-identity resolution, MTA calls).
 //
-// The division of labour with MTA is documented in template-render.js and
+// The division of labour with Rutba-MTA is documented in template-render.js and
 // is the thing to keep straight: a real send passes placeholders through for the
 // MTA to render per recipient; only preview and test-send render here.
 

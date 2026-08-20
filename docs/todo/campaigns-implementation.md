@@ -41,7 +41,7 @@
 > Phase 4. **Phases 2–6 are not started** — see §9.
 >
 > **Phase 0** — seven `cmp-*` content types, their api-provider descriptors, the
-> MTA client, the sending-identity lifecycle, and the `apps/content/campaigns`
+> Rutba-MTA client, the sending-identity lifecycle, and the `apps/content/campaigns`
 > app shell (**:4019**) registered across all seven registration points.
 >
 > **Phase 1** — the template studio: GrapesJS + `grapesjs-preset-newsletter`,
@@ -100,7 +100,7 @@ material, but each covers a different slice:
 
 ## 1. What already exists (do not rebuild)
 
-### 1.1 MTA — the send engine, done
+### 1.1 Rutba-MTA — the send engine, done
 
 `D:\Rutba\MTA` already owns: sender registration + trust tokens, the
 suppression gate (hard bounces/complaints go global), adaptive per-domain
@@ -122,7 +122,7 @@ The API surface `apps/content/campaigns` will consume:
 | `GET/POST/DELETE /v1/suppressions` | suppression list UI |
 | webhook `sent`/`deferred`/`bounced`/`complained`/`failed`/`action_clicked`/`unsubscribed` | event stream into our own store |
 
-### 1.2 What MTA explicitly refuses to own
+### 1.2 What Rutba-MTA explicitly refuses to own
 
 `FUNCTION.md:307–317` — this is the load-bearing bit, because it *is* our scope:
 
@@ -182,7 +182,7 @@ which they need, and the composer validates the intersection.
 **RIGHTMTA campaign runner** (`campaign/start.js`) — spawned per campaign via
 `GET /mta/campaign/:clientid/:campaignid`, then a serial `do…while`: pull next
 recipient off the queue → sleep by agent reputation score → register one
-message. **MTA's `/v1/send/batch` replaces this entire loop** (pacing,
+message. **Rutba-MTA's `/v1/send/batch` replaces this entire loop** (pacing,
 suppression, and reputation are already inside it). We only need chunked
 submission for large audiences.
 
@@ -308,10 +308,10 @@ adding actions, `npm run seed -- --only=api-provider,up-permissions`.
 
 ## 5. The open/click tracking gap — decide explicitly
 
-MTA says pixel + action tokens only; everything richer is "out of scope for
+Rutba-Rutba-Rutba-MTA says pixel + action tokens only; everything richer is "out of scope for
 now". Campaign reporting needs opens and link clicks. Three options:
 
-- **(a) Extend MTA** with an open pixel + link-rewrite click tracker,
+- **(a) Extend Rutba-MTA** with an open pixel + link-rewrite click tracker,
   emitting `opened`/`clicked` webhooks. Cleanest — tracking lives with sending,
   and every caller benefits. Cost: a change to an external repo with its own
   release process.
@@ -380,7 +380,7 @@ Screens:
 
 1. **Audience source** — (A) build `crm-segment` first, or (B) `cmp-audience` now
    behind a resolver interface? *(Recommend B.)*
-2. **Tracking** — extend MTA (a), track locally (b), or defer to
+2. **Tracking** — extend Rutba-MTA (a), track locally (b), or defer to
    `rutba-analytics` (c)? *(Recommend a, fallback b.)*
 3. **Channels in v1** — email only, or SMS/WhatsApp scaffolding from day one?
    Affects whether `cmp-campaign.channel` drives real adapters or is a stub.
