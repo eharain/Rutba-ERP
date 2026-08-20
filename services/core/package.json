@@ -29,7 +29,9 @@
     "audit:coupling": "node scripts/audit-strapi-coupling.js",
     "smoke:packaging": "node scripts/smoke-packaging.js",
     "smoke:entitlements": "node scripts/smoke-entitlements.js",
-    "smoke:assertion": "node scripts/smoke-assertion.js"
+    "smoke:assertion": "node scripts/smoke-assertion.js",
+    "smoke:scim": "node scripts/smoke-scim.js",
+    "smoke:oidc": "node scripts/smoke-oidc.js"
   },
   "dependencies": {
     "@koa/router": "^15.7.0",

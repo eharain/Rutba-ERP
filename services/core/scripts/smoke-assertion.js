@@ -11,11 +11,9 @@
  * proves this repo agrees with itself and nothing else, and the first place
  * anyone would find out is the gateway.
  *
- * The fixtures are read from disk rather than imported, because
- * `@rutba/contracts` is not published yet and a `file:` dependency in this repo
- * is the pattern that once made Strapi drop the api_pro_* tables and every user
- * grant with them. When it publishes, CONTRACTS below becomes a require() and
- * nothing else in this file changes.
+ * The fixtures are read from disk rather than imported — scripts/lib/contracts.js
+ * has the why, and the walk that finds them from a worktree as well as from the
+ * main checkout.
  *
  *   node scripts/smoke-assertion.js
  *   RUTBA_CONTRACTS_DIR=/path/to/contracts node scripts/smoke-assertion.js
@@ -25,43 +23,14 @@
  * they do not.
  */
 
-const fs = require('fs');
 const path = require('path');
 const Module = require('module');
+const { REPO_ROOT: ROOT, openContracts } = require('./lib/contracts');
 
-const ROOT = path.resolve(__dirname, '..', '..', '..');
-/**
- * Walk up from this checkout looking for the platform repo beside it. Walking
- * rather than joining one `..` matters: a Claude worktree lives three levels
- * inside the repo, so a fixed relative path finds the contracts from the main
- * checkout and quietly skips from every worktree.
- */
-function findContracts() {
-  if (process.env.RUTBA_CONTRACTS_DIR) return process.env.RUTBA_CONTRACTS_DIR;
-  let dir = ROOT;
-  for (let up = 0; up < 8; up += 1) {
-    const parent = path.dirname(dir);
-    if (parent === dir) break;
-    const candidate = path.join(parent, 'Rutba-Platform', 'contracts');
-    if (fs.existsSync(path.join(candidate, 'fixtures', 'manifest.json'))) return candidate;
-    dir = parent;
-  }
-  return path.join(path.dirname(ROOT), 'Rutba-Platform', 'contracts');
-}
-
-const CONTRACTS = findContracts();
-
-const manifestPath = path.join(CONTRACTS, 'fixtures', 'manifest.json');
-if (!fs.existsSync(manifestPath)) {
-  console.log(`SKIP  @rutba/contracts fixtures not found at ${CONTRACTS}`);
-  console.log('      Nothing was verified. Point RUTBA_CONTRACTS_DIR at the contracts');
-  console.log('      package (D:\\Rutba\\Rutba-Platform\\contracts) to run this.');
-  process.exit(0);
-}
-
-const readJson = (p) => JSON.parse(fs.readFileSync(p, 'utf8'));
-const manifest = readJson(manifestPath);
-const commonSchema = readJson(path.join(CONTRACTS, 'schemas', 'common.schema.json'));
+const contracts = openContracts();
+const manifest = contracts.manifest;
+const commonSchema = contracts.schema('common.schema.json');
+const fixture = contracts.fixture;
 
 // ── stubs, so the seam can be exercised without a database ─────────────────
 const connPath = require.resolve(path.join(ROOT, 'services/core/src/db/connection.js'));
@@ -95,7 +64,6 @@ const eq = (n, got, want) => {
   }
 };
 
-const fixture = (rel) => readJson(path.join(CONTRACTS, 'fixtures', rel));
 const ctxWith = (state) => ({ state, get: (h) => (state.__headers || {})[h] || '' });
 
 /** Run one fixture exactly as its own `verify` block says it must be run. */
@@ -266,6 +234,6 @@ async function runFixture(entry, extra = {}) {
 
   console.log(fail.length
     ? `FAIL ${fail.length}/${count}:\n  - ` + fail.join('\n  - ')
-    : `PASS all ${count} assertion-contract checks (fixtures: ${CONTRACTS})`);
+    : `PASS all ${count} assertion-contract checks (fixtures: ${contracts.dir})`);
   process.exit(fail.length ? 1 : 0);
 })().catch((e) => { console.error('THREW:', e.stack); process.exit(1); });
