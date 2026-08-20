@@ -93,7 +93,7 @@
 
 const { documents } = require('../documents');
 const { get } = require('../config/env');
-const { subjectOf } = require('../platform/identity');
+const { subjectOf, isPerson } = require('../platform/identity');
 const { registerSubscriber } = require('../platform/events');
 const entitlement = require('../domain/helpdesk/policy/entitlement');
 const ticketRepo = require('../domain/helpdesk/repository/ticket.repo');
@@ -214,13 +214,22 @@ function actorOf(ctx, source = 'api') {
   });
 }
 
+/**
+ * A gate, not a fetch. All twenty call sites discard the return value, so it
+ * returns nothing rather than a row a portal-authenticated caller would not
+ * have — and it asks the identity seam for the same reason the policy gates do:
+ * such a caller IS authenticated, and a check written against ctx.state.user
+ * would start refusing them the day that door opens.
+ *
+ * The row itself is still what actorOf() builds an actor from, deliberately and
+ * visibly; see the note there.
+ */
 function requireUser(ctx) {
-  if (!ctx.state.user) {
+  if (!isPerson(subjectOf(ctx))) {
     const err = new Error('Authentication required');
     err.name = 'UnauthorizedError';
     throw err;
   }
-  return ctx.state.user;
 }
 
 /**
