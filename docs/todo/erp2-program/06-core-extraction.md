@@ -355,6 +355,60 @@ Three decisions the tests pin:
 mapped field against the real schemas, so a renamed column fails a test instead
 of silently producing null bodies and null timestamps across a whole source.
 
+### `company` — the item nobody was tracking
+
+[`packages/shared/core/company`](../../../packages/shared/core/company/index.js),
+[`CompanyService`](../../../services/core/src/domain/company/company.service.js),
+migration [`026`](../../../services/core/migrations/026-number-sequences.js).
+
+**E1 has four bullets in Rutba-Portal `plan/11`, not three.** The fourth is
+"Company config (locations, taxes, numbering) as core", and it never reached
+this repo's own notes — which summarised E1 as parties/catalog/posting/
+interactions and tracked exactly those. It was the last piece and it was
+invisible.
+
+**Numbering is not a concept in this estate; it is four incompatible schemes.**
+
+| what | how it is minted | problem |
+|---|---|---|
+| `entry_number` | read the latest, parse trailing digits, add one | **racy** — two concurrent posts mint the same number, and `entry_number` has no unique index to catch it |
+| `invoice_no` | **in the browser**, branch+desk+user+clock packed as hex | not sequential, not human-meaningful, and returns `null` when browser state is missing — a sale can save with no invoice number |
+| `jw_number` | `JW-` + a base-36 clock reading | not a series |
+| `bill_number` | derived from whatever document caused it | not a series |
+
+Only the first is even trying. The contract makes numbering a declared scheme —
+prefix, date part, width, and the SCOPE a counter restarts within — and the
+service allocates from a counter row the database increments.
+
+Scope is the part worth arguing about: a yearly series that restarts at 1 must
+say which year in the number, or last year's invoice 1 and this year's are
+indistinguishable. Two branches never share a counter, two schemes never share
+one even when they format alike, and an unlocated document gets its own bucket
+rather than merging into branch 1's.
+
+**The allocator deadlocked, and the fix is the interesting part.** Forty
+concurrent allocations of a fresh scheme all SELECT, all see no row, and all
+attempt the same INSERT; one wins while the rest block on the duplicate-key
+check holding insert-intention locks, then try to take the row lock for the
+UPDATE — and InnoDB kills one to break the cycle. Creating the row in its own
+committed transaction releases those locks immediately, so the UPDATE only ever
+contends on a row that exists, which is ordinary queueing. Deadlock is retried
+anyway, bounded, because InnoDB will occasionally pick a victim even on
+well-ordered work and a caller who asked for an invoice number should get one.
+
+**Tax carries its type, not just its rate.** Exclusive adds on top, inclusive
+comes out of the amount: 1000 at 17% is either 1170 or 1000-with-145-inside.
+Treating an inclusive price as exclusive overstates every invoice by the tax,
+and it looks like a pricing decision rather than a bug, so it survives review.
+`net + tax === gross` exactly — the tax is derived and the net is the
+remainder, because rounding both independently is how a total ends up a paisa
+off its own lines.
+
+31 contract + 23 service assertions. **Atomicity is proved against real MySQL,
+not a stub** — a single-threaded fake has no race to lose. 40 concurrent
+allocations yielded 40 distinct, gapless numbers from 1; the same test against
+the first implementation is what surfaced the deadlock.
+
 ---
 
 ## 4. What is next, in the order the measurement implies
@@ -369,11 +423,13 @@ of silently producing null bodies and null timestamps across a whole source.
    exercise: eleven candidates, nine sources, two excluded on purpose, and four
    (not three) hold rows — the largest of which is one of the two that had to be
    kept out.
-4. **Retire the two dead party types.** `mail-contact` is referenced by nothing.
+4. ~~**`company` config**~~ — **done**, see §3. It was E1's fourth portal-plan
+   bullet and was missing from this repo's tracking entirely.
+5. **Retire the two dead party types.** `mail-contact` is referenced by nothing.
    `employee` has no rows but `sale.employee` still points at it — that relation
    has to move to `hr-employee` first, which is a schema change and belongs with
    a tranche flip, not with this.
-5. **The data-completeness workstream** the 55% demands: validation at capture,
+6. **The data-completeness workstream** the 55% demands: validation at capture,
    and a review queue for what cannot be matched automatically.
 
 ---

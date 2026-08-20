@@ -6,7 +6,7 @@
     "validate:exports": "node ./scripts/validate-exports.mjs",
     "validate": "npm run validate:exports",
     "build": "npm run validate",
-    "test:core": "node core/parties/test.js && node core/catalog/test.js && node core/posting/test.js && node core/interactions/test.js",
+    "test:core": "node core/parties/test.js && node core/catalog/test.js && node core/posting/test.js && node core/interactions/test.js && node core/company/test.js",
     "test": "npm run test:core"
   },
   "dependencies": {
