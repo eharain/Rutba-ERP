@@ -1,6 +1,14 @@
 # Portal Alignment — ERP × rutba.io
 
 <!-- verify-docs: external plan/** specs/** -->
+<!-- verify-docs: external Rutba-Portal/specs/DEV-ENVIRONMENT.md -->
+<!-- verify-docs: planned Rutba-Infra/dev/PORTS.md -->
+<!-- Two sibling-repo citations arrived with the dev port band. They are marked
+     with different words on purpose: DEV-ENVIRONMENT.md is present in
+     Rutba-Portal today (checked 2026-08-20), while Rutba-Infra has no dev/
+     directory at all and no ports chart under any name. "Look in the other
+     repo" and "nobody has written it yet" send the next reader somewhere
+     different, which is the whole reason the convention has six words. -->
 <!-- `plan/…` and `specs/…` below are paths inside the Rutba-Portal repo
      (D:\Rutba\Rutba-Portal), not this one — all four verified present there on
      2026-08-20. Without this marker verify-docs reads them as four broken
