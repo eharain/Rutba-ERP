@@ -1,5 +1,7 @@
 'use strict';
 
+const { postOrCapture, reverseOrVoid } = require('../../../acc-journal-entry/services/post-or-capture');
+
 /**
  * Bill Lifecycles (Accounts Payable)
  *
@@ -28,7 +30,6 @@ module.exports = {
     if (!previousStatus || previousStatus === newStatus) return;
 
     try {
-      const accounting = strapi.service('api::acc-journal-entry.accounting');
       const resolver = strapi.service('api::acc-journal-entry.account-resolver');
       const branchId = result.branch?.id || result.branch || null;
 
@@ -75,7 +76,7 @@ module.exports = {
           description: `Bill ${result.bill_number} — payable`,
         });
 
-        const entry = await accounting.createAndPost({
+        const entry = await postOrCapture(strapi, {
           date: result.date || new Date(),
           description: `Bill received: ${result.bill_number}`,
           source_type: 'Bill Payment',
@@ -83,14 +84,19 @@ module.exports = {
           source_ref: result.bill_number,
           lines,
           branch: branchId,
-        });
+        }, { discriminator: 'received' });
 
         // Link JE back to bill
-        await strapi.entityService.update(
+        // No journal entry exists when the organisation has no ledger and the
+        // posting was captured for export instead. Linking `undefined` here
+        // would clear a relation rather than skip it.
+        if (entry?.entry?.id) {
+          await strapi.entityService.update(
           'api::acc-bill.acc-bill',
           result.id,
-          { data: { journal_entry: entry.id } }
-        );
+          { data: { journal_entry: entry.entry.id } }
+          );
+        }
       }
 
       // ── Payment made (Received/Partially Paid → Paid/Partially Paid)
@@ -107,7 +113,7 @@ module.exports = {
         const apAccountId = await resolver.resolve('ACCOUNTS_PAYABLE', branchId);
         const bankAccountId = await resolver.resolve('BANK_PRIMARY', branchId);
 
-        await accounting.createAndPost({
+        await postOrCapture(strapi, {
           date: new Date(),
           description: `Bill payment: ${result.bill_number}`,
           source_type: 'Bill Payment',
@@ -128,12 +134,12 @@ module.exports = {
             },
           ],
           branch: branchId,
-        });
+        }, { discriminator: 'payment' });
       }
 
       // ── Cancelled — reverse all JEs ────────────────────────
       if (newStatus === 'Cancelled' && previousStatus !== 'Cancelled') {
-        await accounting.reverseBySource('Bill Payment', result.id);
+        await reverseOrVoid(strapi, 'Bill Payment', result.id);
       }
     } catch (err) {
       strapi.log.error(

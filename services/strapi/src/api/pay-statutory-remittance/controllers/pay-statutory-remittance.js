@@ -1,5 +1,7 @@
 'use strict';
 
+const { postOrCapture } = require('../../acc-journal-entry/services/post-or-capture');
+
 const { createCoreController } = require('@strapi/strapi').factories;
 const { loadActor, isPayrollManager } = require('../../../utils/payroll-access');
 
@@ -45,7 +47,7 @@ module.exports = createCoreController(RM_UID, ({ strapi }) => ({
 
     const cashKey = PAYOUT_METHOD_KEY[rm.method] || 'BANK_PRIMARY';
     try {
-      await accounting.createAndPost({
+      await postOrCapture(strapi, {
         date: new Date(),
         description: `Statutory remittance${rm.authority ? ' — ' + rm.authority : ''}${rm.period_label ? ' (' + rm.period_label + ')' : ''}`,
         source_type: 'Statutory Remittance',

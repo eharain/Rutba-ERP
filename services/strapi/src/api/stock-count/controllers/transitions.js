@@ -1,5 +1,7 @@
 'use strict';
 
+const { postOrCapture } = require('../../acc-journal-entry/services/post-or-capture');
+
 /**
  * Stock-count transitions — post / cancel.
  *
@@ -52,7 +54,7 @@ async function postCountLossGL(strapi, count, totalCost, user) {
       return { posted: false, reason: `account mapping missing (${e.message})` };
     }
 
-    await accounting.createAndPost({
+    await postOrCapture(strapi, {
       date: new Date(),
       description: `Stock count shrinkage — ${count.count_number}`,
       source_type: COUNT_SOURCE_TYPE,

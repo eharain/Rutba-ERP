@@ -45,7 +45,13 @@ export const SOURCE_TYPES = Object.freeze([
     'Cash Register Transaction', 'Inventory Adjustment', 'Expense',
     'Invoice Payment', 'Bill Payment', 'Web Order Payment', 'Payroll Run',
     'Payroll Payment', 'Employee Advance', 'Production Labor',
-    'Statutory Remittance', 'Manual',
+    'Statutory Remittance',
+    // Emitted by hr-expense-claim and stock-count since before this contract
+    // existed, but never declared: the column is varchar, so the writes always
+    // succeeded and nothing noticed the enum was short. Added rather than
+    // dropped from the code — these are live posting paths.
+    'HR Expense Claim', 'Stock Count',
+    'Manual',
 ]);
 
 /** Mirrors `acc-journal-entry.status`. */

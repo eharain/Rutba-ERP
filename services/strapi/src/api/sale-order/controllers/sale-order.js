@@ -1,3 +1,5 @@
+const { postOrCapture } = require('../../acc-journal-entry/services/post-or-capture');
+
 /**
  * order controller — extended with delivery management, rider assignment,
  * messaging, notifications, and order status state machine.
@@ -1198,7 +1200,7 @@ module.exports = factories.createCoreController(
                     const already = await accounting.findBySource('Web Order Payment', order.id);
                     if (!already || already.length === 0) {
                         const amt = Number(order.paid_amount);
-                        await accounting.createAndPost({
+                        await postOrCapture(strapi, {
                             date: new Date(),
                             description: `COD settlement — Web Order ${order.order_id || order.id}`,
                             source_type: 'Web Order Payment',

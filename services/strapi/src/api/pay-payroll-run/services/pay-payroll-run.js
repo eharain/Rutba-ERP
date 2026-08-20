@@ -1,5 +1,7 @@
 'use strict';
 
+const { postOrCapture, reverseOrVoid } = require('../../acc-journal-entry/services/post-or-capture');
+
 /**
  * Payroll Run engine.
  *
@@ -204,7 +206,7 @@ module.exports = createCoreService(PR_UID, ({ strapi }) => ({
         // Reverse the accrual entry.
         try {
             const accounting = strapi.service('api::acc-journal-entry.accounting');
-            await accounting.reverseBySource('Payroll Run', run.id, {
+            await reverseOrVoid(strapi, 'Payroll Run', run.id, {
                 posted_by: user?.email || user?.username || '',
             });
         } catch (err) {
@@ -754,7 +756,7 @@ module.exports = createCoreService(PR_UID, ({ strapi }) => ({
             if (amt > 0) lines.push({ account: await resolver.resolve(key, branchId), debit: 0, credit: amt, description: `Withholding / contribution (${key})` });
         }
 
-        await accounting.createAndPost({
+        await postOrCapture(strapi, {
             date: new Date(),
             description: `Payroll ${run.period_start} → ${run.period_end}`,
             source_type: 'Payroll Run',
@@ -773,7 +775,7 @@ module.exports = createCoreService(PR_UID, ({ strapi }) => ({
         if (net <= 0) return;
 
         const cashKey = PAYOUT_METHOD_KEY[method] || 'BANK_PRIMARY';
-        await accounting.createAndPost({
+        await postOrCapture(strapi, {
             date: new Date(),
             description: `Payslip payout #${payslip.id}`,
             source_type: 'Payroll Payment',

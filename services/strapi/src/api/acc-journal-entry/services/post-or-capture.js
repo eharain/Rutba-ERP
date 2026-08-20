@@ -46,7 +46,11 @@ const { toEntry, validateEntry, POSTING_TARGETS } = require('@rutba/shared/core/
  *        first on the export queue's unique key and is silently dropped as a
  *        duplicate. Passing 'revenue' and 'cogs' keeps them distinct.
  * @returns {Promise<{target: string|null, posted: boolean, captured: boolean,
- *   duplicate?: boolean, valid: boolean, errors: string[], entry?: object}>}
+ *   duplicate?: boolean, valid: boolean, errors: string[], entry: object|null}>}
+ *   `entry` is the created ledger row, and is NULL whenever the entry was
+ *   captured instead of posted. Callers that stamp `journal_entry` onto their
+ *   source document must check it — there is no journal entry to point at when
+ *   the organisation has no ledger.
  */
 async function postOrCapture(strapi, input, options = {}) {
   const entry = toEntry(input);
@@ -64,8 +68,8 @@ async function postOrCapture(strapi, input, options = {}) {
   // No posting surface: real Strapi, or core before this was wired. Behave
   // exactly as the estate always has.
   if (!posting) {
-    await strapi.service('api::acc-journal-entry.accounting').createAndPost(input);
-    return { target: POSTING_TARGETS.LEDGER, posted: true, captured: false, valid: true, errors: [] };
+    const created = await strapi.service('api::acc-journal-entry.accounting').createAndPost(input);
+    return { target: POSTING_TARGETS.LEDGER, posted: true, captured: false, valid: true, errors: [], entry: created || null };
   }
 
   const routed = await posting.capture(entry, { discriminator: options.discriminator });
@@ -76,8 +80,8 @@ async function postOrCapture(strapi, input, options = {}) {
     // the duplication ERP Core exists to end — so the routed entry is handed
     // back to the engine that already does this correctly, with the caller's
     // original argument shape.
-    await strapi.service('api::acc-journal-entry.accounting').createAndPost(input);
-    return { target: routed.target, posted: true, captured: false, valid: true, errors: [] };
+    const created = await strapi.service('api::acc-journal-entry.accounting').createAndPost(input);
+    return { target: routed.target, posted: true, captured: false, valid: true, errors: [], entry: created || null };
   }
 
   return {
@@ -87,6 +91,10 @@ async function postOrCapture(strapi, input, options = {}) {
     duplicate: Boolean(routed.duplicate),
     valid: true,
     errors: [],
+    // No ledger row exists on this path, and callers that link one onto their
+    // document must branch on it rather than write `undefined`. An unlicensed
+    // org's invoice legitimately has no journal entry to point at.
+    entry: null,
   };
 }
 

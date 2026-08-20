@@ -1,5 +1,7 @@
 'use strict';
 
+const { postOrCapture } = require('../../acc-journal-entry/services/post-or-capture');
+
 /**
  * cash-register controller
  *
@@ -397,7 +399,7 @@ module.exports = createCoreController('api::cash-register.cash-register', ({ str
         const branchId = created.branch?.id || null;
         const already = await accounting.findBySource('Cash Register Open', created.id);
         if (!already || already.length === 0) {
-          await accounting.createAndPost({
+          await postOrCapture(strapi, {
             date: new Date(),
             description: `Register opened — desk ${created.desk_name || created.desk_id}`,
             source_type: 'Cash Register Open',
@@ -631,7 +633,7 @@ module.exports = createCoreController('api::cash-register.cash-register', ({ str
           }
         }
         if (lines.length >= 2) {
-          await accounting.createAndPost({
+          await postOrCapture(strapi, {
             date: new Date(),
             description: forceClose
               ? `Register force-closed, no cash count — desk ${register.desk_name || register.desk_id} (${forceReason})`

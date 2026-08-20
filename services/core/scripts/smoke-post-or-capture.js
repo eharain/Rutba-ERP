@@ -181,6 +181,24 @@ const eq = (n, got, want) => {
   const undoPlain = await reverseOrVoid(noSurface, 'POS Sale', 4210, {});
   eq('under plain Strapi it still just reverses', [undoPlain.reversed, undoPlain.voided], [1, 0]);
 
+  // ── the structural guarantee ────────────────────────────────────────────
+  // Every module now posts through this door. A new one added later that
+  // called the engine directly would silently bypass the entitlement check
+  // and the export queue, and would look perfectly correct in review — so the
+  // absence is asserted rather than trusted.
+  {
+    const { execSync } = require('child_process');
+    const direct = (pattern) => execSync(
+      `git grep -n "${pattern}" -- services/strapi/src || true`,
+      { cwd: ROOT, encoding: 'utf8' })
+      .split('\n').map((l) => l.trim()).filter(Boolean)
+      .filter((l) => !l.includes('post-or-capture'))
+      .filter((l) => !l.includes('services/accounting.js'));
+
+    eq('no module posts around the gateway', direct('accounting.createAndPost('), []);
+    eq('and none reverses around it either', direct('accounting.reverseBySource('), []);
+  }
+
   console.log(fail.length ? `FAIL ${fail.length}/${count}:\n  - ` + fail.join('\n  - ') : `PASS all ${count} posting gateway assertions`);
   process.exit(fail.length ? 1 : 0);
 })().catch((e) => { console.error('THREW:', e.stack); process.exit(1); });

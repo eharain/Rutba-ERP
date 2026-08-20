@@ -1,5 +1,7 @@
 'use strict';
 
+const { postOrCapture } = require('../../../acc-journal-entry/services/post-or-capture');
+
 /**
  * Cash register transaction accounting lifecycle.
  *
@@ -50,7 +52,7 @@ module.exports = {
         ];
       }
 
-      await accounting.createAndPost({
+      await postOrCapture(strapi, {
         date: result.transaction_date || new Date(),
         description: `Register ${type}${result.description ? ' — ' + result.description : ''}`,
         source_type: 'Cash Register Transaction',

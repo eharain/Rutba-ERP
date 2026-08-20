@@ -263,7 +263,37 @@ Two things the wiring forced into the open:
   it is in a file somebody has, and that needs a credit note rather than a row
   flip, so the count is reported separately.
 
-25 gateway assertions. Both migrations verified against real MySQL, including
+#### Every other emitter
+
+The remaining 21 posting sites and 7 reversal sites — bills, invoices, expenses,
+cash register, payroll, statutory remittances, purchase and sale returns, web
+orders, stock adjustments and counts, HR expense claims — now go through the
+same door. Converting them turned up three things a per-module change would
+have missed:
+
+- **Four more documents post twice.** Bills (received/payment), invoices
+  (issued/payment), web orders and sale returns (revenue/cogs) all reuse one
+  `source_type` + `source_id` pair, exactly like the POS sale. Each got its
+  discriminator; without one the second entry of each pair is dropped as a
+  duplicate.
+- **Two source types were never declared.** `HR Expense Claim` and
+  `Stock Count` are emitted by live code but absent from the schema's
+  `source_type` enum. The column is `varchar`, so the writes always succeeded
+  and nothing noticed. Added to the enum rather than removed from the code —
+  they are real posting paths — and the contract's drift test now keeps the two
+  in step.
+- **Four documents stamp the journal entry back onto themselves.** There is no
+  entry to stamp when the posting was captured instead, and writing `undefined`
+  would clear the relation rather than skip it. Each is guarded; an unlicensed
+  org's invoice simply has no `journal_entry`, which is the truth.
+
+A structural assertion closes it: the smoke test greps the tree and fails if any
+module calls `createAndPost` or `reverseBySource` outside the gateway. A new
+module that posted directly would bypass the entitlement check and the queue
+while looking perfectly correct in review, so the absence is tested rather than
+trusted. Verified by reintroducing a bypass and watching it fail.
+
+27 gateway assertions. Both migrations verified against real MySQL, including
 that the unique index tolerates many NULL keys (manual entries have no source
 document, and "no identity" must not collapse two of them into one).
 
@@ -274,11 +304,9 @@ document, and "no identity" must not collapse two of them into one).
 1. ~~**`catalog`**~~ — **done**, see §3. The price rule is now stated once;
    the open question it surfaced (independent vs same-level offer resolution)
    needs a pricing owner, not more code.
-2. ~~**`posting`**~~ — **done, and the POS sale now emits into it**, see §3.
-   Remaining emitters: sale returns, purchase receipts, expenses, cash-register
-   open/close, payroll. Each is the same two-line conversion —
-   `createAndPost(x)` → `postOrCapture(strapi, x, { discriminator })` — and each
-   needs its discriminator chosen where one document posts more than once.
+2. ~~**`posting`**~~ — **done, and every module emits into it**, see §3. All
+   23 posting sites and 8 reversal sites go through the gateway; a smoke test
+   fails the build if a new one calls the engine directly.
 3. **`interactions`** — twelve types today (`crm-activity`, `cmp-event`,
    `hr-lifecycle-event`, `mail-message`, `order-message`, `work-item-activity`,
    `work-item-comment`, `notification-log`, `sale-audit-log`,

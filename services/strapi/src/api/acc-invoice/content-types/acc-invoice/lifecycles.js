@@ -1,5 +1,7 @@
 'use strict';
 
+const { postOrCapture, reverseOrVoid } = require('../../../acc-journal-entry/services/post-or-capture');
+
 /**
  * Invoice Lifecycles (Accounts Receivable)
  *
@@ -31,7 +33,6 @@ module.exports = {
     if (!previousStatus || previousStatus === newStatus) return;
 
     try {
-      const accounting = strapi.service('api::acc-journal-entry.accounting');
       const resolver = strapi.service('api::acc-journal-entry.account-resolver');
       const branchId = result.branch?.id || result.branch || null;
 
@@ -71,7 +72,7 @@ module.exports = {
           });
         }
 
-        const entry = await accounting.createAndPost({
+        const entry = await postOrCapture(strapi, {
           date: result.date || new Date(),
           description: `Invoice issued: ${result.invoice_number}`,
           source_type: 'Invoice Payment',
@@ -79,14 +80,19 @@ module.exports = {
           source_ref: result.invoice_number,
           lines,
           branch: branchId,
-        });
+        }, { discriminator: 'issued' });
 
         // Link JE back to invoice
-        await strapi.entityService.update(
+        // No journal entry exists when the organisation has no ledger and the
+        // posting was captured for export instead. Linking `undefined` here
+        // would clear a relation rather than skip it.
+        if (entry?.entry?.id) {
+          await strapi.entityService.update(
           'api::acc-invoice.acc-invoice',
           result.id,
-          { data: { journal_entry: entry.id } }
-        );
+          { data: { journal_entry: entry.entry.id } }
+          );
+        }
       }
 
       // ── Payment received (Sent/Partially Paid → Paid/Partially Paid)
@@ -104,7 +110,7 @@ module.exports = {
         // Default to bank for invoice payments
         const bankAccountId = await resolver.resolve('BANK_PRIMARY', branchId);
 
-        await accounting.createAndPost({
+        await postOrCapture(strapi, {
           date: new Date(),
           description: `Payment received: ${result.invoice_number}`,
           source_type: 'Invoice Payment',
@@ -125,12 +131,12 @@ module.exports = {
             },
           ],
           branch: branchId,
-        });
+        }, { discriminator: 'payment' });
       }
 
       // ── Cancelled — reverse all JEs ────────────────────────
       if (newStatus === 'Cancelled' && previousStatus !== 'Cancelled') {
-        await accounting.reverseBySource('Invoice Payment', result.id);
+        await reverseOrVoid(strapi, 'Invoice Payment', result.id);
       }
     } catch (err) {
       strapi.log.error(

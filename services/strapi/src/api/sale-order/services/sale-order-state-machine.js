@@ -1,5 +1,7 @@
 'use strict';
 
+const { postOrCapture, reverseOrVoid } = require('../../acc-journal-entry/services/post-or-capture');
+
 /**
  * Order State Machine Service
  *
@@ -322,8 +324,8 @@ module.exports = {
                 fields: ['id'],
             });
             if (order) {
-                await accounting.reverseBySource('Web Order', order.id, { posted_by });
-                await accounting.reverseBySource('Web Order Payment', order.id, { posted_by });
+                await reverseOrVoid(strapi, 'Web Order', order.id, { posted_by });
+                await reverseOrVoid(strapi, 'Web Order Payment', order.id, { posted_by });
             }
         }
     },
@@ -382,7 +384,7 @@ module.exports = {
             revenueLines.push({ account: shippingAccountId, debit: 0, credit: shipping, description: 'Shipping revenue' });
         }
 
-        await accounting.createAndPost({
+        await postOrCapture(strapi, {
             date: new Date(),
             description: `Web Order ${order.order_id || order.id}`,
             source_type: 'Web Order',
@@ -391,7 +393,7 @@ module.exports = {
             lines: revenueLines,
             branch: branchId,
             posted_by,
-        });
+        }, { discriminator: 'revenue' });
 
         // --- COGS entry ---
         // Cost basis = the cost_price of the specific stock-items attached to the
@@ -423,7 +425,7 @@ module.exports = {
         if (totalCost > 0) {
             const cogsAccountId = await resolver.resolve('COGS', branchId);
             const inventoryAccountId = await resolver.resolve('INVENTORY', branchId);
-            await accounting.createAndPost({
+            await postOrCapture(strapi, {
                 date: new Date(),
                 description: `COGS for Web Order ${order.order_id || order.id}`,
                 source_type: 'Web Order',
@@ -435,7 +437,7 @@ module.exports = {
                 ],
                 branch: branchId,
                 posted_by,
-            });
+            }, { discriminator: 'cogs' });
         }
     },
 };

@@ -1,5 +1,7 @@
 'use strict';
 
+const { postOrCapture } = require('../../acc-journal-entry/services/post-or-capture');
+
 const { createCoreController } = require('@strapi/strapi').factories;
 const { resolveOrCreateEmployeeForUser, resolveEmployeeForUser, managedReportDocIds, managerUserIdsForEmployee, ownerUserIdForEmployeeRef } = require('../../../utils/hr-access');
 const { loadActor, isPayrollManager, isPayrollAdmin } = require('../../../utils/payroll-access');
@@ -125,7 +127,6 @@ module.exports = createCoreController(CLAIM_UID, ({ strapi }) => ({
     }
 
     try {
-      const accounting = strapi.service('api::acc-journal-entry.accounting');
       const resolver = strapi.service('api::acc-journal-entry.account-resolver');
       const branchId = current.branch?.id || null;
       const amount = Number(current.amount || 0);
@@ -134,7 +135,7 @@ module.exports = createCoreController(CLAIM_UID, ({ strapi }) => ({
       if (!expenseAccountId) expenseAccountId = await resolver.resolve('OPERATING_EXPENSES', branchId);
       const cashAccountId = await resolver.resolve('CASH_DRAWER', branchId);
 
-      const entry = await accounting.createAndPost({
+      const entry = await postOrCapture(strapi, {
         date: new Date(),
         description: `Expense reimbursement: ${current.category}${current.description ? ' — ' + current.description : ''}`,
         source_type: 'HR Expense Claim',
@@ -151,7 +152,9 @@ module.exports = createCoreController(CLAIM_UID, ({ strapi }) => ({
       // (matches acc-expense's lifecycle — the documents() service needs an
       // explicit connect/disconnect verb for relation updates, entityService doesn't).
       const updated = await strapi.entityService.update(CLAIM_UID, current.id, {
-        data: { status: 'Reimbursed', journal_entry: entry.id },
+        // The claim is reimbursed either way; it only carries a journal_entry
+        // when there was a ledger to post one into.
+        data: { status: 'Reimbursed', ...(entry?.entry?.id ? { journal_entry: entry.entry.id } : {}) },
       });
 
       const employeeUserId = current.employee?.user?.id;

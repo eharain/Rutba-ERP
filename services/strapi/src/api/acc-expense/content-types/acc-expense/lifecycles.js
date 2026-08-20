@@ -1,5 +1,7 @@
 'use strict';
 
+const { postOrCapture, reverseOrVoid } = require('../../../acc-journal-entry/services/post-or-capture');
+
 /**
  * Expense Lifecycles
  *
@@ -22,7 +24,6 @@ module.exports = {
     if (!previousStatus || previousStatus === newStatus) return;
 
     try {
-      const accounting = strapi.service('api::acc-journal-entry.accounting');
       const resolver = strapi.service('api::acc-journal-entry.account-resolver');
       const branchId = result.branch?.id || result.branch || null;
 
@@ -48,7 +49,7 @@ module.exports = {
         const creditKey = pmMethodMap[result.payment_method] || 'CASH_DRAWER';
         const creditAccountId = await resolver.resolve(creditKey, branchId);
 
-        const entry = await accounting.createAndPost({
+        const entry = await postOrCapture(strapi, {
           date: result.date || new Date(),
           description: `Expense: ${result.description || result.category || 'General'}`,
           source_type: 'Expense',
@@ -72,16 +73,21 @@ module.exports = {
         });
 
         // Link JE back to expense
-        await strapi.entityService.update(
-          'api::acc-expense.acc-expense',
-          result.id,
-          { data: { journal_entry: entry.id } }
-        );
+        // No journal entry exists when the organisation has no ledger and the
+        // posting was captured for export instead. Linking `undefined` here
+        // would clear the relation rather than skip it.
+        if (entry?.entry?.id) {
+          await strapi.entityService.update(
+            'api::acc-expense.acc-expense',
+            result.id,
+            { data: { journal_entry: entry.entry.id } }
+          );
+        }
       }
 
       // ── Cancelled — reverse all JEs ────────────────────────
       if (newStatus === 'Cancelled' && previousStatus !== 'Cancelled') {
-        await accounting.reverseBySource('Expense', result.id);
+        await reverseOrVoid(strapi, 'Expense', result.id);
       }
     } catch (err) {
       strapi.log.error(

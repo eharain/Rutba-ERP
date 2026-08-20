@@ -1,5 +1,7 @@
 'use strict';
 
+const { postOrCapture } = require('../../../acc-journal-entry/services/post-or-capture');
+
 /**
  * Sale Return accounting lifecycle (POS returns/refunds & exchanges).
  *
@@ -48,7 +50,7 @@ async function postReturn(strapi, id) {
   const refundKey = REFUND_METHOD_KEY[sr.refund_method] || 'CASH_DRAWER';
 
   // --- Contra-revenue + refund ---
-  await accounting.createAndPost({
+  await postOrCapture(strapi, {
     date: sr.return_date || new Date(),
     description: `Sale Return ${sr.return_no}`,
     source_type: 'Sale Return',
@@ -59,7 +61,7 @@ async function postReturn(strapi, id) {
       { account: await resolver.resolve(refundKey, branchId), debit: 0, credit: amount, description: `Refund — ${sr.refund_method}` },
     ],
     branch: branchId,
-  });
+  }, { discriminator: 'revenue' });
 
   // --- COGS reversal for restocked units (best-effort) ---
   let cost = 0;
@@ -68,7 +70,7 @@ async function postReturn(strapi, id) {
   }
   cost = Math.round(cost * 100) / 100;
   if (cost > 0) {
-    await accounting.createAndPost({
+    await postOrCapture(strapi, {
       date: sr.return_date || new Date(),
       description: `COGS reversal for Return ${sr.return_no}`,
       source_type: 'Sale Return',
@@ -79,7 +81,7 @@ async function postReturn(strapi, id) {
         { account: await resolver.resolve('COGS', branchId), debit: 0, credit: cost, description: 'Reverse COGS' },
       ],
       branch: branchId,
-    });
+    }, { discriminator: 'cogs' });
   }
 }
 

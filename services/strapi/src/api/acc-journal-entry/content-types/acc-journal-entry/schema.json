@@ -49,6 +49,8 @@
         "Employee Advance",
         "Production Labor",
         "Statutory Remittance",
+        "HR Expense Claim",
+        "Stock Count",
         "Manual"
       ]
     },
@@ -60,7 +62,11 @@
     },
     "status": {
       "type": "enumeration",
-      "enum": ["Draft", "Posted", "Reversed"],
+      "enum": [
+        "Draft",
+        "Posted",
+        "Reversed"
+      ],
       "default": "Draft"
     },
     "total_debit": {

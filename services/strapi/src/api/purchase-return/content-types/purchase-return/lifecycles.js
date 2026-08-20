@@ -1,5 +1,7 @@
 'use strict';
 
+const { postOrCapture } = require('../../../acc-journal-entry/services/post-or-capture');
+
 /**
  * Purchase Return accounting lifecycle (goods sent back to a supplier).
  *
@@ -52,7 +54,7 @@ async function postPurchaseReturn(strapi, id) {
 
   const branchId = pr.branches?.[0]?.id || null;
 
-  await accounting.createAndPost({
+  await postOrCapture(strapi, {
     date: pr.return_date || new Date(),
     description: `Purchase Return ${pr.return_no || id}`,
     source_type: 'Purchase Return',

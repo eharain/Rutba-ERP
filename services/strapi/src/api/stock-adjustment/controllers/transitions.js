@@ -1,5 +1,7 @@
 'use strict';
 
+const { postOrCapture, reverseOrVoid } = require('../../acc-journal-entry/services/post-or-capture');
+
 /**
  * Stock-adjustment transitions — post / cancel.
  *
@@ -67,7 +69,7 @@ async function postLossGL(strapi, adj, units, user) {
       return { posted: false, reason: `account mapping missing (${e.message})` };
     }
 
-    await accounting.createAndPost({
+    await postOrCapture(strapi, {
       date: new Date(),
       description: `Inventory ${adj.type} — ${adj.adjustment_number}`,
       source_type: SOURCE_TYPE,
@@ -156,8 +158,10 @@ module.exports = {
       try {
         const accounting = strapi.service('api::acc-journal-entry.accounting');
         if (accounting && adj.gl_posted) {
-          const reversals = await accounting.reverseBySource(SOURCE_TYPE, adj.id, { posted_by: user.email || String(user.id) });
-          glReversed = Array.isArray(reversals) && reversals.length > 0;
+          const reversals = await reverseOrVoid(strapi, SOURCE_TYPE, adj.id, { posted_by: user.email || String(user.id) });
+          // Undone either way: a posted entry reversed, or a queued one voided.
+          // Both mean the adjustment no longer has an outstanding GL effect.
+          glReversed = (reversals.reversed + reversals.voided) > 0;
         }
       } catch (e) {
         strapi.log.warn(`[stock-adjustment] GL reversal failed (best-effort): ${e.message}`);

@@ -1,5 +1,7 @@
 'use strict';
 
+const { postOrCapture } = require('../../acc-journal-entry/services/post-or-capture');
+
 /**
  * pay-adjustment controller
  *
@@ -89,7 +91,7 @@ module.exports = createCoreController(ADJ_UID, ({ strapi }) => ({
 
     const who = adj.employee?.name || '';
     try {
-      await accounting.createAndPost({
+      await postOrCapture(strapi, {
         date: new Date(),
         description: `Employee ${adj.type}${who ? ' — ' + who : ''}`,
         source_type: 'Employee Advance',
