@@ -15,28 +15,43 @@
  * who the caller is, because nothing will have been reading ctx.state.user
  * directly.
  *
- * ── What is deliberately NOT here ─────────────────────────────────────────
+ * ── The verifier, and why it exists now ───────────────────────────────────
  *
- * There is no JWKS verification. Writing one against an issuer that does not
- * exist means inventing its key rotation, its clock skew tolerance and its
- * claim names, and every one of those guesses would be a security bug wearing
- * a passing test. verifyPortalAssertion() therefore refuses loudly until
- * PORTAL_ISSUER and PORTAL_JWKS_URL are set AND the verifier is supplied.
+ * This file first shipped without one. Writing a verifier against an issuer
+ * that does not exist means inventing its key rotation, its clock skew
+ * tolerance and its claim names, and every one of those guesses would have been
+ * a security bug wearing a passing test.
  *
- * The door being closed is checked, not assumed: isPortalAuthEnabled() is false
- * whenever the env is unset, which mirrors how the Social Relay gates its own
- * third auth door (Rutba-Portal plan/11, R2). An unconfigured portal is a
- * disabled door, never an open one.
+ * None of it is invented any more. `@rutba/contracts` froze the shape — header
+ * name, the gateway's issuer, the 120-second lifetime cap, the audience rule
+ * and a closed enum of failure reasons — and ships signed fixtures to test
+ * against. src/platform/assertion.js implements exactly that, and
+ * scripts/smoke-assertion.js checks it against the same bytes every other Rutba
+ * service checks against. The auth service itself is still an empty scaffold:
+ * it has to exist for the door to be switched ON, not for the lock to be right.
  *
- * Env (all optional until the auth service ships):
- *   PORTAL_ISSUER     expected `iss` on a portal assertion
- *   PORTAL_JWKS_URL   where its signing keys live
- *   PORTAL_AUDIENCE   expected `aud` for this instance
+ * The door being closed is still checked rather than assumed:
+ * isPortalAuthEnabled() is false whenever any of the three env vars is unset,
+ * which mirrors how the Social Relay gates its own third auth door
+ * (Rutba-Portal plan/11, R2). An unconfigured portal is a disabled door, never
+ * an open one — and verifyPortalAssertion() refuses rather than falling back to
+ * checking a gateway token against the local secret.
+ *
+ * Env (unset means the door does not exist):
+ *   RUTBA_GATEWAY_ISSUER     expected `iss` — the GATEWAY's internal issuer,
+ *                            not auth's; they are deliberately different
+ *   RUTBA_GATEWAY_JWKS_URL   the INTERNAL JWKS. Point this at auth's keys and
+ *                            an edge token starts verifying as an assertion,
+ *                            which is the whole boundary gone
+ *   RUTBA_SERVICE_IDENTITY   this instance's `aud` from the gateway's routing
+ *                            table. Required, not optional: unset would mean
+ *                            accepting an assertion minted for another service
  */
 
 const { get } = require('../config/env');
 const { getDb } = require('../db/connection');
 const { instance } = require('./health');
+const { createJwksLoader, verifyAssertion } = require('./assertion');
 
 /** Where an identity came from. Consumers branch on this, not on ctx internals. */
 const IDENTITY_SOURCES = Object.freeze({
@@ -72,6 +87,10 @@ class PortalOrgMismatch extends Error {
   constructor(claimed, served) {
     super(`portal assertion is for org ${claimed}, but this instance serves ${served}`);
     this.name = 'PortalOrgMismatch';
+    // The platform-wide vocabulary for this failure — contracts/schemas/
+    // common.schema.json pins the enum, so the reason this instance logs is the
+    // one the gateway and every other service log for the same event.
+    this.reason = 'org_mismatch';
     this.status = 403;
   }
 }
@@ -81,32 +100,56 @@ class PortalOrgMismatch extends Error {
  * means the door does not exist — never that it is open.
  */
 function isPortalAuthEnabled() {
-  return Boolean(get('PORTAL_ISSUER', '') && get('PORTAL_JWKS_URL', ''));
+  return Boolean(
+    get('RUTBA_GATEWAY_ISSUER', '')
+    && get('RUTBA_GATEWAY_JWKS_URL', '')
+    && get('RUTBA_SERVICE_IDENTITY', '')
+  );
 }
 
 /**
- * The `@rutba/portal-auth` entry point, kept honest.
- *
- * When the package publishes, this becomes a call into it and everything below
- * stays as-is. Until then it refuses rather than falling back to local
- * verification: a token that claims to be from the portal and is checked
- * against a local secret is not authenticated, it is guessed.
- *
- * @param {string} _token gateway assertion
- * @param {{verify?: Function}} [deps] injection point for the real verifier
- * @returns {Promise<object>} portal claims
+ * The internal JWKS, fetched once and refreshed on rotation. Built lazily so an
+ * instance with the door shut never reaches for a URL it does not have.
  */
-async function verifyPortalAssertion(_token, deps = {}) {
-  if (typeof deps.verify === 'function') return deps.verify(_token);
+let jwksLoader = null;
+function internalJwks() {
+  if (!jwksLoader) {
+    jwksLoader = createJwksLoader({ url: get('RUTBA_GATEWAY_JWKS_URL', '') });
+  }
+  return jwksLoader;
+}
+
+/**
+ * Verify one gateway assertion, or refuse.
+ *
+ * This is the seam `@rutba/portal-auth` will slot into when it publishes: same
+ * signature, same refusals, and the checks it performs are the contract's, so
+ * the swap is a deletion rather than a behaviour change.
+ *
+ * Refusing is still what an unconfigured instance does. A token that claims to
+ * come from the gateway and is checked against the local secret is not
+ * authenticated, it is guessed — and guessing is the one outcome that would
+ * turn this seam into a bypass.
+ *
+ * @param {string} token the compact JWS from X-Rutba-Assertion
+ * @param {{verify?: Function, jwks?: object, replayCache?: object, now?: any}} [deps]
+ * @returns {Promise<object>} the verified assertion claims
+ */
+async function verifyPortalAssertion(token, deps = {}) {
+  if (typeof deps.verify === 'function') return deps.verify(token);
   if (!isPortalAuthEnabled()) {
     throw new PortalAuthNotWired(
-      'portal auth is not configured on this instance (PORTAL_ISSUER / PORTAL_JWKS_URL unset)'
+      'portal auth is not configured on this instance '
+      + '(RUTBA_GATEWAY_ISSUER / RUTBA_GATEWAY_JWKS_URL / RUTBA_SERVICE_IDENTITY unset)'
     );
   }
-  throw new PortalAuthNotWired(
-    'portal auth is configured but @rutba/portal-auth is not installed — '
-    + 'no JWKS verifier is available, and local verification of a portal token would not authenticate it'
-  );
+  return verifyAssertion(token, {
+    jwks: deps.jwks || internalJwks(),
+    issuer: get('RUTBA_GATEWAY_ISSUER', ''),
+    audience: get('RUTBA_SERVICE_IDENTITY', ''),
+    replayCache: deps.replayCache || null,
+    now: deps.now,
+  });
 }
 
 /**

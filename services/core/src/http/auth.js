@@ -51,6 +51,12 @@ function createAuthMiddleware({ isBypassed, optional = false } = {}) {
   const reject = (ctx, next, message) =>
     optional ? next() : unauthorized(ctx, message);
   return async function auth(ctx, next) {
+    // A verified gateway assertion authenticated this request before it reached
+    // the router (src/http/assertion.js). The local doors do not get a second
+    // opinion on it, and must not: there is no local user row to find, and
+    // failing to find one would turn an authenticated caller into a 401.
+    if (ctx.state.portalClaims) return next();
+
     const header = ctx.get('authorization') || '';
     const token = header.startsWith('Bearer ') ? header.slice(7).trim() : null;
     if (!token) {

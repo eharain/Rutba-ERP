@@ -31,6 +31,7 @@ const { isMultipart, parseMultipart } = require('./multipart');
 const { createRequestLogger } = require('./logger');
 const { coreHandler, sendError } = require('./rest');
 const { health, version } = require('../platform/health');
+const { createAssertionMiddleware } = require('./assertion');
 const { createEntitlementMiddleware } = require('./entitlement');
 const { getEntitlementResolver } = require('../platform/entitlement-resolver');
 const { subjectOf, isPerson } = require('../platform/identity');
@@ -258,6 +259,13 @@ async function buildServer() {
   // check. It is also the cheapest — one cached lookup, no database round-trip
   // per request. See src/http/entitlement.js for what it deliberately does not
   // gate (headerless callers, unknown apps).
+  // The portal door comes first: it is what turns a gateway assertion into an
+  // identity, and everything after this point — the entitlement gate, the auth
+  // middleware, the policy gates — reads that identity rather than re-deriving
+  // it. Inert on an instance with no portal configured, where a request without
+  // the header passes straight through.
+  app.use(createAssertionMiddleware());
+
   app.use(createEntitlementMiddleware({ resolver: entitlementResolver, isBypassed }));
 
   const auth = createAuthMiddleware({ isBypassed });
