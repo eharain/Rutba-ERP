@@ -59,12 +59,19 @@ const VALID_APP_KEYS = ['stock', 'pos', 'auth', 'portal', 'orders', 'rider', 'cr
  */
 export const APP_CATEGORIES = [
     { key: 'sales',     label: 'Sales & Customers',      icon: 'fa-solid fa-cart-shopping', color: '#10b981' }, // emerald
-    { key: 'control', label: 'Inventory & Production', icon: 'fa-solid fa-warehouse',     color: '#3b82f6' }, // blue
+    { key: 'inventory', label: 'Inventory & Production', icon: 'fa-solid fa-warehouse',   color: '#3b82f6' }, // blue
     { key: 'people',    label: 'People',                 icon: 'fa-solid fa-users',         color: '#ec4899' }, // pink
     { key: 'finance',   label: 'Finance & Payroll',      icon: 'fa-solid fa-coins',         color: '#f59e0b' }, // amber
     { key: 'content',   label: 'Content & Channels',     icon: 'fa-solid fa-bullhorn',      color: '#8b5cf6' }, // violet
-    { key: 'console',     label: 'Administration',         icon: 'fa-solid fa-gear',          color: '#64748b' }, // slate
+    { key: 'admin',     label: 'Administration',         icon: 'fa-solid fa-gear',          color: '#64748b' }, // slate
 ];
+// These keys are CATEGORY keys and must match APP_META[].group — they are not
+// app keys. The 2026-08-18 restructure renamed two app keys (inventory→control,
+// admin→console) and the sweep rewrote them here too, where nothing was renamed.
+// The labels were left alone, which is what made it survive review. Effect:
+// groupLinksByCategory() skips a category with no apps and never emits an app
+// whose group has no category, so the launcher silently dropped auth, console,
+// seed, stock, manufacturing and control — six apps, no error anywhere.
 
 /**
  * Metadata for each app — icon (FontAwesome class), display label,
