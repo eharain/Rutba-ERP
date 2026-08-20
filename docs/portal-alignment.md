@@ -27,10 +27,16 @@ repo is the incumbent and keeps its 24 public ports** — they are manifest-driv
 app launcher, so the portal moved to 4100–4107 instead. The band 4000–4049 is reserved to the ERP's
 apps.
 
-**One change is owed here:** `scripts/js/dev-gateway.js` sets `SHADOW_OFFSET = 1000`, putting the
-shadow ports at 5000–5023 — outside the range, and colliding with the Relay. Change it to **50**, so
-they land in 4050–4099 and the whole ERP sits inside its band. One constant; the lazy-boot design it
-serves is the model the ecosystem orchestrator delegates to rather than replaces.
+**Two constants are owed here**, both in `scripts/js/dev-gateway.js`:
+
+1. `SHADOW_OFFSET = 1000` → **50**. The shadow ports sit at 5000–5023 today: outside the range, and
+   colliding with the Relay. At 50 they land in 4050–4098, inside the ERP's own band.
+2. `STATUS_PORT = 4100` → **4099**. 4100 is the portal gateway, and this process is holding it right
+   now — the ecosystem dev doctor found the collision on a live machine. 4099 is the top of the
+   ERP's reserved band, which is a natural home for a status endpoint.
+
+The lazy-boot design these serve is the model the ecosystem orchestrator delegates to rather than
+replaces.
 
 Chart: `Rutba-Infra/dev/PORTS.md`. Decision: `Rutba-Portal/specs/DEV-ENVIRONMENT.md`.
 
