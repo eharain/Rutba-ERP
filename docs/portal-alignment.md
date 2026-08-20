@@ -20,6 +20,20 @@
 | **E5** licence polish | lifecycle implemented inside E2's gate; `@rutba/license-client` + `@rutba/usage-reporter` pending publication |
 | **E6** rutba-social | not started |
 
+## Dev ports (Aug 2026)
+
+Every Rutba service listens in **4000–4999**; third-party software keeps its own default. **This
+repo is the incumbent and keeps its 24 public ports** — they are manifest-driven and linked from the
+app launcher, so the portal moved to 4100–4107 instead. The band 4000–4049 is reserved to the ERP's
+apps.
+
+**One change is owed here:** `scripts/js/dev-gateway.js` sets `SHADOW_OFFSET = 1000`, putting the
+shadow ports at 5000–5023 — outside the range, and colliding with the Relay. Change it to **50**, so
+they land in 4050–4099 and the whole ERP sits inside its band. One constant; the lazy-boot design it
+serves is the model the ecosystem orchestrator delegates to rather than replaces.
+
+Chart: `Rutba-Infra/dev/PORTS.md`. Decision: `Rutba-Portal/specs/DEV-ENVIRONMENT.md`.
+
 ## Division of ownership
 
 | The portal owns (ERP must not rebuild) | The ERP owns |
