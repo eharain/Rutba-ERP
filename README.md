@@ -77,7 +77,11 @@ An open-source, modular business management system built as an **npm workspaces 
 ## Tech Stack
 
 - **Frontend:** Next.js 16, React 19, Bootstrap 5 (POS / admin apps), Tailwind CSS (apps/content/storefront storefront)
-- **Backend:** Strapi 5.x (MySQL / MariaDB); custom plugin `packages/strapi-api-pro` for descriptor-driven RBAC
+- **Backend:** two, side by side on one MySQL/MariaDB database, selected per route by
+  `RUTBA_BACKEND=strapi|core|both` — Strapi 5.x (`services/strapi`, legacy, retires in P2)
+  and Rutba Core (`services/core`, Koa + knex, the target). Authorization is
+  descriptor-driven either way: `packages/strapi-api-pro` inside Strapi,
+  `services/core/src/policy/` inside core, both reading the same `api_pro_*` tables
 - **Auth:** OAuth-style flow via `apps/admin/auth` with JWT + per-app `app_access` rows; `X-Rutba-App` / `X-Rutba-App-Role` headers select the active claim
 - **Data API layer:** `packages/api-provider` descriptors are the single source of truth; the scaffolder emits per-app clients and `.d.ts` sidecars
 - **Monorepo:** npm workspaces; env loader at `scripts/js/load-env.js` resolves `<APP_PREFIX>__VAR` overrides into bare env vars per child process
@@ -106,29 +110,46 @@ npm install
 #    See [.env.example](.env.example) for the contract.
 cp .env.example .env.development
 
-# 4. Start Strapi via the workspace launcher (NOT `cd services/strapi`).
+# 4. Start a backend via the workspace launcher (NOT `cd services/strapi`).
 #    The launcher runs load-env.js so POS_STRAPI__* vars become DATABASE_*, etc.
-npm run dev:strapi          # Strapi API      → http://localhost:4010
+#    Both read the SAME database; .env.development points the apps at core (4020).
+npm run dev:core            # Rutba Core      → http://localhost:4020   ← the target
+npm run dev:strapi          # Strapi (legacy) → http://localhost:4010
 
-# 5. In separate terminals, start any app:
-npm run dev:auth             # Auth Portal     → http://localhost:4003
-npm run dev:stock            # Stock Mgmt      → http://localhost:4001
-npm run dev:sale             # Point of Sale   → http://localhost:4002
-npm run dev:web              # Public Website  → http://localhost:4000
-npm run dev:web-user         # My Orders       → http://localhost:4004
-npm run dev:cms              # CMS authoring   → http://localhost:4009
-npm run dev:social           # Social composer → http://localhost:4011
-npm run dev:order-management # Order Mgmt      → http://localhost:4013
-npm run dev:rider            # Rider App       → http://localhost:4012
-npm run dev:crm              # CRM             → http://localhost:4005
-npm run dev:hr               # HR              → http://localhost:4006
-npm run dev:ess              # Employee Self-Service → http://localhost:4015
-npm run dev:accounts         # Accounts        → http://localhost:4007
-npm run dev:payroll          # Payroll         → http://localhost:4008
-npm run dev:manufacturing    # Manufacturing   → http://localhost:4014
-npm run dev:inventory        # Inventory Mgmt   → http://localhost:4017
-npm run dev:all              # Strapi + every app (Linux/macOS friendly)
+# 5. In separate terminals, start any app. One script per app key, and the key
+#    matches config/apps.manifest.json — if a name here is wrong, verify:wiring
+#    is the thing that would have caught it.
+npm run dev:storefront       # 4000  public website
+npm run dev:stock            # 4001  stock management
+npm run dev:pos              # 4002  point of sale
+npm run dev:auth             # 4003  sign-in & SSO
+npm run dev:portal           # 4004  my orders
+npm run dev:crm              # 4005  CRM
+npm run dev:hr               # 4006  human resources
+npm run dev:accounts         # 4007  accounting
+npm run dev:payroll          # 4008  payroll
+npm run dev:cms              # 4009  content management
+npm run dev:social           # 4011  social composer
+npm run dev:rider            # 4012  rider app
+npm run dev:orders           # 4013  order management
+npm run dev:manufacturing    # 4014  manufacturing
+npm run dev:ess              # 4015  employee self-service
+npm run dev:marketplace      # 4016  channel listings
+npm run dev:control          # 4017  inventory management
+npm run dev:seed             # 4018  seeding control
+npm run dev:campaigns        # 4019  email campaigns
+npm run dev:mail             # 4021  mail client
+npm run dev:console          # 4022  admin console
+npm run dev:helpdesk         # 4023  helpdesk
+
+npm run dev:all              # a backend + every app (Linux/macOS friendly)
+npm run dev:gateway          # lazy-boot gateway; starts an app on first request
+npm run dev:stop             # stop everything (see the warning below)
 ```
+
+> **`dev:stop` and `dev-stop.bat` kill every Node process on the machine**, not just
+> this repo's — including an npm install in another window. Stop a single app with
+> Ctrl-C in its own terminal.
 
 Or use the convenience batch files:
 
@@ -187,7 +208,7 @@ docker compose down
 | Campaigns | http://localhost:4019 |
 | Core API | http://localhost:4020 |
 | Mail | http://localhost:4021 |
-| User Management | http://localhost:4022 |
+| Admin Console | http://localhost:4022 |
 | Helpdesk | http://localhost:4023 |
 
 ## Scripts Directory
@@ -247,12 +268,20 @@ Key domain groupings:
 
 ## Documentation
 
+**[docs/README.md](docs/README.md) is the index.** Two entries earn their place here:
+
+- [docs/modules.md](docs/modules.md) — **every module**: port, workspace, licence key,
+  authorization domain and roles. Generated from the registries (`npm run docs:modules`),
+  so it cannot drift from them.
+- [docs/todo/README.md](docs/todo/README.md) — programs, specs and decisions; what is
+  still open rather than what exists.
+
 ### Operational
 
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — full deployment guide
 - [docs/BUILD-DEPLOYMENT-SETUP-TEMPLATE.md](docs/BUILD-DEPLOYMENT-SETUP-TEMPLATE.md) — per-app build template
 - [docs/pre-deployment-test-plan.md](docs/pre-deployment-test-plan.md) — Tier 1–5 test plan
-- docs/SHOP-PAGE-REDESIGN-PLAN.md — storefront redesign reference
+- [docs/portal-alignment.md](docs/portal-alignment.md) — how this repo lines up with the rutba.io platform (workstreams E1–E6, entitlement keys)
 
 ### Architecture & design
 

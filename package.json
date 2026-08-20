@@ -120,7 +120,9 @@
     "build": "node scripts/js/run-app.js build",
     "start": "node scripts/js/run-app.js start",
     "postinstall": "node scripts/js/postinstall.js",
-    "audit:coupling": "node services/core/scripts/audit-strapi-coupling.js"
+    "audit:coupling": "node services/core/scripts/audit-strapi-coupling.js",
+    "docs:modules": "node scripts/js/generate-module-docs.mjs",
+    "verify:modules": "node scripts/js/generate-module-docs.mjs --check"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.3.1",
