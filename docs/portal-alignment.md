@@ -78,6 +78,15 @@ Rule: **a worker belongs to the product that owns the domain.** ERP workers (`pa
 ## Other integrations
 
 - **Instance packaging (portal task E4):** container configured exclusively from environment/Tenant-Catalog references; migrations on boot; `/health` + version endpoint; stateless outside the per-org database — nothing that breaks provision/suspend/migrate.
+
+- **No `org_id` column, anywhere in this schema** (portal `specs/TENANCY-DATA-ARCHITECTURE.md`,
+  Decision 0, Aug 2026). The database *is* the organization: this instance serves exactly one, so a
+  column repeating that is redundant at best, and at worst it is the seam that makes a future
+  "let's share one database" refactor look cheap. The instance learns which organization it serves
+  from its Tenant-Catalog reference and from the assertion on each request — which is what `/version`
+  already does correctly, and the rule that keeps it correct. The portal's org id is a control-plane
+  identifier: it travels **in** requests, and is stored only where Rutba, not the customer, manages
+  organization data.
 - **License (E5):** validate on boot + hourly via `@rutba/license-client`; grace → read-only, revoked → lock; seat counts and metered usage via `@rutba/usage-reporter`.
 - **Interactions:** modules render timelines from Core `interactions`; portal-side events (campaign sends, Relay `post.published`, support tickets) arrive as interactions against parties/records.
 - **Attachments/media:** Media FileServer per-org namespace now; migrate to Drive refs when Wave-2 Drive ships.
