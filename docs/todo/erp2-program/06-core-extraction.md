@@ -228,6 +228,45 @@ have paid for.
 enforces the unique index for real, including a concurrent-capture race,
 because idempotency that is only checked in JavaScript is not idempotency.
 
+#### The first emitter: POS sale
+
+A contract nothing emits into is a capability, not a guarantee. The POS
+checkout now goes through
+[`postOrCapture`](../../../services/strapi/src/api/acc-journal-entry/services/post-or-capture.js),
+which builds the entry, validates it, and routes it — ledger or queue.
+
+It lives in `services/strapi` because its callers are ported controllers that
+services/core loads zero-copy: core requires services/strapi, so services/strapi
+cannot require core without a cycle. The capability arrives the way `apiPro`
+does, on the compat `strapi` object, and is ABSENT under real Strapi. **That
+absence is the safety property** — under Strapi, or under core before an
+entitlement is known, the same `createAndPost` call is made with the same
+arguments as before. The queue only ever catches entries that would otherwise
+have gone nowhere.
+
+Two things the wiring forced into the open:
+
+- **A POS sale posts TWICE** — revenue and cost-of-goods — under one
+  `source_type` and one `source_id`. On the queue's unique key the second
+  collides with the first and is dropped as a duplicate, leaving the books short
+  by exactly the cost of goods. Hence `discriminator: 'revenue' | 'cogs'`. The
+  smoke test asserts the failure as well as the fix, so the parameter cannot be
+  quietly dropped later.
+- **Cancelling a sale had nowhere to reach.** `reverseBySource` reverses posted
+  entries; an unlicensed org has none — its entry is in the queue — so the
+  reversal found nothing, succeeded, and the cancelled sale stayed queued for an
+  accountant. `reverseOrVoid` does both, and migration
+  [025](../../../services/core/migrations/025-posting-export-voided.js) adds the
+  `voided` status. Distinct from `failed` because the two mean opposite things
+  to whoever reads the queue: `failed` is "look at this", `voided` is
+  "correctly withdrawn, do nothing". An entry already exported is NOT voided —
+  it is in a file somebody has, and that needs a credit note rather than a row
+  flip, so the count is reported separately.
+
+25 gateway assertions. Both migrations verified against real MySQL, including
+that the unique index tolerates many NULL keys (manual entries have no source
+document, and "no identity" must not collapse two of them into one).
+
 ---
 
 ## 4. What is next, in the order the measurement implies
@@ -235,9 +274,11 @@ because idempotency that is only checked in JavaScript is not idempotency.
 1. ~~**`catalog`**~~ — **done**, see §3. The price rule is now stated once;
    the open question it surfaced (independent vs same-level offer resolution)
    needs a pricing owner, not more code.
-2. ~~**`posting`**~~ — **done**, see §3. Still open: nothing EMITS into it yet.
-   Wiring the first module (POS sale is the obvious one) is its own change, and
-   it is what turns the queue from a capability into a guarantee.
+2. ~~**`posting`**~~ — **done, and the POS sale now emits into it**, see §3.
+   Remaining emitters: sale returns, purchase receipts, expenses, cash-register
+   open/close, payroll. Each is the same two-line conversion —
+   `createAndPost(x)` → `postOrCapture(strapi, x, { discriminator })` — and each
+   needs its discriminator chosen where one document posts more than once.
 3. **`interactions`** — twelve types today (`crm-activity`, `cmp-event`,
    `hr-lifecycle-event`, `mail-message`, `order-message`, `work-item-activity`,
    `work-item-comment`, `notification-log`, `sale-audit-log`,

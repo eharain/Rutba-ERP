@@ -20,6 +20,8 @@
  *   strapi.service(uid)                   → services/strapi service modules, instantiated
  *                                           against this compat object
  *   strapi.apiPro.cache                   → TTL cache (get/set/clearUser/clearAll)
+ *   strapi.posting                        → ERP Core posting router + export queue
+ *                                           (undefined under real Strapi — see below)
  *   strapi.log / strapi.eventHub          → console logger / plain EventEmitter
  *
  * buildCompatStrapi() also assigns `global.strapi` — ported services/strapi files
@@ -440,6 +442,33 @@ function compatAttributes(model) {
   return attributes;
 }
 
+/**
+ * The posting surface, bound to the process-wide entitlement resolver so the
+ * router and the HTTP gate can never disagree about the same licence.
+ *
+ * Required lazily: posting.service pulls in the shared contract, and loading it
+ * while the compat object is still being assembled would run that import inside
+ * every consumer of this module, including the ones that never post.
+ */
+function buildPostingSurface() {
+  let service = null;
+  let resolver = null;
+  const load = () => {
+    if (!service) service = require('../domain/posting/posting.service');
+    if (!resolver) resolver = require('../platform/entitlement-resolver').getEntitlementResolver();
+    return service;
+  };
+  return {
+    capture: (entry, options = {}) => load().capture(entry, { resolver, ...options }),
+    enqueue: (entry, discriminator) => load().enqueue(entry, discriminator),
+    listPending: (options) => load().listPending(options),
+    pendingSummary: () => load().pendingSummary(),
+    markResolved: (ids, status, error) => load().markResolved(ids, status, error),
+    voidBySource: (sourceType, sourceId) => load().voidBySource(sourceType, sourceId),
+    isLedgerEntitled: (orgId) => load().isLedgerEntitled(resolver, orgId),
+  };
+}
+
 function buildCompatStrapi(overrides = {}) {
   installStrapiFactoryStub();
   const config = { ...pluginConfig.default, ...(overrides.apiProConfig || {}) };
@@ -577,6 +606,17 @@ function buildCompatStrapi(overrides = {}) {
         strapi.apiPro.roleProviders.push(fn);
       },
     },
+    /**
+     * ERP Core posting (portal task E1 × E2), exposed to ported services/strapi code.
+     *
+     * A ported controller cannot require services/core — core requires services/strapi,
+     * and inverting that would be a cycle. So the capability arrives the same
+     * way `apiPro` does: attached here, and ABSENT when the same file runs
+     * under real Strapi. Callers must treat undefined as "post as you always
+     * did", which is what makes wiring an emitter additive rather than a
+     * flag day.
+     */
+    posting: buildPostingSurface(),
     log: {
       info: (...a) => console.log('[core]', ...a),
       warn: (...a) => console.warn('[core]', ...a),

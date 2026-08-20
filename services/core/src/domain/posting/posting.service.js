@@ -209,13 +209,48 @@ async function pendingSummary() {
 async function markResolved(ids, status = 'exported', error = null) {
   const list = (Array.isArray(ids) ? ids : [ids]).filter((v) => Number.isInteger(Number(v)));
   if (!list.length) return 0;
-  if (!['exported', 'posted', 'failed'].includes(status)) {
+  if (!['exported', 'posted', 'failed', 'voided'].includes(status)) {
     throw new Error(`markResolved: '${status}' is not a resolution`);
   }
   return getDb()(TABLE)
     .whereIn('id', list)
     .where({ status: 'pending' })
     .update({ status, error, resolved_at: new Date() });
+}
+
+/**
+ * Withdraw every pending capture for a source document.
+ *
+ * The mirror of `accounting.reverseBySource`, and it exists because that method
+ * cannot do this job for an unlicensed organisation. Cancelling a POS sale
+ * reverses its journal entries — but an org without `erp.gl` has none to
+ * reverse; its entry is in this queue. The reversal finds nothing, succeeds
+ * silently, and the cancelled sale is still handed to an accountant as though
+ * it happened.
+ *
+ * Only `pending` rows move. An entry already exported is in a file somebody
+ * has, and quietly flipping it to `voided` here would make this queue disagree
+ * with a document that has left the building. Those need a credit note, which
+ * is an accounting decision rather than a queue operation, so the count comes
+ * back and the caller can see the difference.
+ *
+ * @returns {Promise<{voided: number, alreadyResolved: number}>}
+ */
+async function voidBySource(sourceType, sourceId) {
+  if (!sourceType || sourceId === null || sourceId === undefined || sourceId === '') {
+    return { voided: 0, alreadyResolved: 0 };
+  }
+  const db = getDb();
+  const match = { source_type: sourceType, source_id: sourceId };
+
+  const settled = await db(TABLE).where(match).whereNot({ status: 'pending' }).count('* as c');
+  const alreadyResolved = Number((settled[0] && settled[0].c) || 0);
+
+  const voided = await db(TABLE)
+    .where({ ...match, status: 'pending' })
+    .update({ status: 'voided', resolved_at: new Date() });
+
+  return { voided: Number(voided), alreadyResolved };
 }
 
 /** Rows come back with the payload parsed — every caller wants it that way. */
@@ -252,4 +287,5 @@ module.exports = {
   listPending,
   pendingSummary,
   markResolved,
+  voidBySource,
 };

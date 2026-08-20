@@ -32,7 +32,7 @@ const { createRequestLogger } = require('./logger');
 const { coreHandler, sendError } = require('./rest');
 const { health, version } = require('../platform/health');
 const { createEntitlementMiddleware } = require('./entitlement');
-const { createEntitlementResolver } = require('../platform/entitlements');
+const { getEntitlementResolver } = require('../platform/entitlement-resolver');
 const { subjectOf, isPerson } = require('../platform/identity');
 const { allKeys, catalogue } = require('../platform/app-entitlements');
 
@@ -108,10 +108,11 @@ async function loadRouteTable() {
   return routes;
 }
 
-// One resolver per process. The last-known-good cache and the collapsing of
-// concurrent refreshes are the whole point of it; a per-request resolver would
-// have neither and would ask the licence service once per request.
-const entitlementResolver = createEntitlementResolver();
+// One resolver per process — see platform/entitlement-resolver.js. The
+// last-known-good cache and the collapsing of concurrent refreshes are the whole
+// point of it, and the posting router now reads the same instance, so the gate
+// and the router can never enforce different licences in one request.
+const entitlementResolver = getEntitlementResolver();
 
 async function buildServer() {
   const app = new Koa();

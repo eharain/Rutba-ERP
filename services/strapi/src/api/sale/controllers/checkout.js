@@ -18,6 +18,8 @@
  * Body: { payments: [{ payment_method, amount, transaction_no?, ... }] }
  */
 
+const { postOrCapture } = require('../../acc-journal-entry/services/post-or-capture');
+
 // The generated client posts bodies wrapped as { data: {...} }; unwrap it so
 // custom controllers can read fields directly (matches sale-order.readBody).
 function readBody(ctx) {
@@ -122,7 +124,9 @@ module.exports = {
     // 4. Accounting — post revenue + COGS only when the sale is settled.
     if (fullyPaid) {
       try {
-        const accounting = strapi.service('api::acc-journal-entry.accounting');
+        // The accounting engine is reached through postOrCapture now, which
+        // decides ledger-or-queue first. Only the account resolver is needed
+        // directly, to turn mapping keys into account ids while lines are built.
         const resolver = strapi.service('api::acc-journal-entry.account-resolver');
 
         const branchId =
@@ -167,7 +171,11 @@ module.exports = {
         }
 
         if (revenueLines.length >= 2) {
-          await accounting.createAndPost({
+          // 'revenue' and 'cogs' below are the same source document — same
+          // source_type, same source_id — so they need discriminating or the
+          // second is dropped as a duplicate of the first when an unlicensed
+          // org's entries land in the export queue.
+          await postOrCapture(strapi, {
             date: sale.sale_date || new Date(),
             description: `POS Sale ${sale.invoice_no}`,
             source_type: 'POS Sale',
@@ -176,7 +184,7 @@ module.exports = {
             lines: revenueLines,
             branch: branchId,
             posted_by: ctx.state?.user?.email || '',
-          });
+          }, { discriminator: 'revenue' });
         }
 
         // 4b. COGS: debit COGS, credit inventory for total cost of sold items.
@@ -206,7 +214,7 @@ module.exports = {
         if (totalCost > 0) {
           const cogsAccountId = await resolver.resolve('COGS', branchId);
           const inventoryAccountId = await resolver.resolve('INVENTORY', branchId);
-          await accounting.createAndPost({
+          await postOrCapture(strapi, {
             date: sale.sale_date || new Date(),
             description: `COGS for Sale ${sale.invoice_no}`,
             source_type: 'POS Sale',
@@ -218,7 +226,7 @@ module.exports = {
             ],
             branch: branchId,
             posted_by: ctx.state?.user?.email || '',
-          });
+          }, { discriminator: 'cogs' });
         }
       } catch (accountingError) {
         // Sale is already committed — log and let accounting be reconciled later.

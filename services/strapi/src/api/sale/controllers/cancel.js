@@ -1,5 +1,7 @@
 'use strict';
 
+const { reverseOrVoid } = require('../../acc-journal-entry/services/post-or-capture');
+
 /**
  * cancel controller
  *
@@ -130,8 +132,11 @@ module.exports = {
 
     // ── 3) Reverse accounting journal entries ───────────────
     try {
-      const accounting = strapi.service('api::acc-journal-entry.accounting');
-      await accounting.reverseBySource('POS Sale', sale.id, {
+      // Reverses posted entries AND voids any still sitting in the export
+      // queue. An org without erp.gl has nothing to reverse — its entries were
+      // captured, not posted — and without the second half a cancelled sale is
+      // still exported to an accountant as though it happened.
+      await reverseOrVoid(strapi, 'POS Sale', sale.id, {
         posted_by: user.email || user.username || '',
       });
     } catch (accountingError) {
